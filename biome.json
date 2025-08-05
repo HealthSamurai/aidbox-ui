@@ -26,6 +26,11 @@
 	},
 	"linter": {
 		"enabled": true,
+		"domains": {
+			"project": "recommended",
+			"react": "recommended",
+			"test": "recommended"
+		},
 		"rules": {
 			"recommended": true
 		}
