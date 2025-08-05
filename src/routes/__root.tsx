@@ -1,3 +1,4 @@
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import * as React from "react";
@@ -12,6 +13,7 @@ function RootComponent() {
 			<div>Hello "__root"!</div>
 			<Outlet />
 			<TanStackRouterDevtools />
+			<ReactQueryDevtools />
 		</React.Fragment>
 	);
 }
