@@ -1,11 +1,7 @@
+import { Button, Label, Textarea } from "@panthevm_original/react-components";
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
-import {
-	Button,
-	Label,
-	Textarea,
-} from "@panthevm_original/react-components";
 
 export const Route = createFileRoute("/rest-console")({
 	component: RouteComponent,
@@ -17,41 +13,42 @@ async function sendAidboxRequest(requestText: string) {
 		throw new Error("AIDBOX_BASE_URL environment variable is not configured");
 	}
 
-	const lines = requestText.trim().split('\n');
-	const [method, path] = lines[0].split(' ', 2);
-	
+	const lines = requestText.trim().split("\n");
+	const [method, path] = lines[0].split(" ", 2);
+
 	let body: string | undefined;
 	if (lines.length > 1) {
-		body = lines.slice(1).join('\n').trim();
+		body = lines.slice(1).join("\n").trim();
 	}
 
 	const url = `${baseUrl}${path}`;
 	const options: RequestInit = {
 		method: method.toUpperCase(),
 		headers: {
-			'Content-Type': 'application/json',
+			"Content-Type": "application/json",
 		},
+		credentials: "include",
 	};
 
-	if (body && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+	if (body && ["POST", "PUT", "PATCH"].includes(method.toUpperCase())) {
 		options.body = body;
 	}
 
 	const response = await fetch(url, options);
 	const responseText = await response.text();
-	
+
 	try {
 		const json = JSON.parse(responseText);
 		return {
 			status: response.status,
 			statusText: response.statusText,
-			data: json
+			data: json,
 		};
 	} catch {
 		return {
 			status: response.status,
 			statusText: response.statusText,
-			data: responseText
+			data: responseText,
 		};
 	}
 }
@@ -67,7 +64,9 @@ function RouteComponent() {
 			setResponse(JSON.stringify(data, null, 2));
 		},
 		onError: (error) => {
-			setResponse(`Error: ${error instanceof Error ? error.message : String(error)}`);
+			setResponse(
+				`Error: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		},
 	});
 
@@ -79,7 +78,7 @@ function RouteComponent() {
 	return (
 		<div className="h-screen flex flex-col p-4">
 			<h1 className="text-2xl font-bold mb-4">REST Console</h1>
-			
+
 			<div className="space-y-2 mb-4">
 				<Label htmlFor="request">HTTP Request</Label>
 				<Textarea
