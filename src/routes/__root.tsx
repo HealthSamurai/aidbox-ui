@@ -1,20 +1,9 @@
-import {
-	Sidebar,
-	SidebarContent,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarGroupLabel,
-	SidebarInset,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	SidebarProvider,
-} from "@panthevm_original/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import * as React from "react";
+import { Layout } from "../components/layout.tsx";
 
 export const Route = createRootRoute({
 	component: RootComponent,
@@ -59,38 +48,11 @@ function useAuthCheck() {
 
 			// Redirect to Aidbox login page with redirect_to parameter
 			const loginUrl = `${baseUrl}/auth/login?redirect_to=${encodedLocation}`;
-			window.location.href = loginUrl;
+			// window.location.href = loginUrl;
 		}
 	}, [error, isLoading]);
 
 	return { isLoading };
-}
-
-function Layout({ children }: { children: React.ReactNode }) {
-	const mainMenuItems = [{ title: "REST Console", url: "/rest-console" }];
-	return (
-		<SidebarProvider defaultOpen={false}>
-			<Sidebar collapsible="expanded">
-				<SidebarContent>
-					<SidebarGroup>
-						<SidebarGroupLabel>Aidbox</SidebarGroupLabel>
-						<SidebarGroupContent>
-							<SidebarMenu>
-								{mainMenuItems.map((item) => (
-									<SidebarMenuItem key={item.title}>
-										<SidebarMenuButton asChild>
-											<Link to={item.url}> {item.title} </Link>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-								))}
-							</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
-				</SidebarContent>
-			</Sidebar>
-			<SidebarInset>{children}</SidebarInset>
-		</SidebarProvider>
-	);
 }
 
 function RootComponent() {
