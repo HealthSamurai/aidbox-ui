@@ -1,2 +1,5 @@
 onlyBuiltDependencies:
   - esbuild
+
+overrides:
+  '@panthevm_original/react-components': link:../../.local/share/pnpm/global/5/node_modules/@panthevm_original/react-components

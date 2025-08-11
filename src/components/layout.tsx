@@ -3,10 +3,12 @@ import {
 	BreadcrumbItem,
 	BreadcrumbList,
 	BreadcrumbSeparator,
+	Button,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Separator,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
@@ -21,8 +23,16 @@ import {
 } from "@panthevm_original/react-components";
 
 import { Link, useMatches, useRouterState } from "@tanstack/react-router";
-import { House, PanelLeftClose, SquareTerminal } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import {
+	BookOpenText,
+	House,
+	LogOut,
+	MessageCircleQuestionMark,
+	PanelLeftClose,
+	SquareTerminal,
+	UserRound,
+} from "lucide-react";
+import React, { Children, useEffect, useState } from "react";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 
 const mainMenuItems = [
@@ -82,7 +92,7 @@ function AidboxSidebar() {
 									<SidebarMenuButton
 										asChild
 										isActive={currentPath === item.url}
-										tooltip={item.title}
+										tooltip={{ sideOffset: 16, children: item.title }}
 										className="text-nowrap"
 									>
 										<Link to={item.url}>
@@ -135,7 +145,7 @@ function Navbar() {
 
 	return (
 		<div className="flex-none h-15 flex items-center border-b">
-			<div className="h-full border-r flex items-center justify-center w-[3rem]">
+			<div className="h-full shrink-0 border-r flex items-center justify-center w-[3rem]">
 				<img
 					src={AidboxLogo}
 					alt="Aidbox"
@@ -144,7 +154,7 @@ function Navbar() {
 					width="24"
 				/>
 			</div>
-			<div className="px-6">
+			<div className="px-6 w-full flex items-center justify-between">
 				{breadcrumbs.length > 0 && (
 					<Breadcrumb>
 						<BreadcrumbList>
@@ -165,6 +175,58 @@ function Navbar() {
 						</BreadcrumbList>
 					</Breadcrumb>
 				)}
+				<div className="flex items-center gap-4">
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-7 rounded-full"
+						asChild
+					>
+						<a href="https://docs.aidbox.app" target="_blank" rel="noopener">
+							<BookOpenText />
+						</a>
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-7 rounded-full"
+						asChild
+					>
+						<a href="https://docs.aidbox.app" target="_blank" rel="noopener">
+							<MessageCircleQuestionMark />
+						</a>
+					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="size-8 rounded-full bg-(--color-surface-1)"
+							>
+								<UserRound />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className="p-2 mr-6">
+							<div className="border-b text-center pb-4 mb-1">
+								<span className="text-xs text-(--color-elements-assistive)">
+									ivan.bagrov@health-samurai.io
+								</span>
+								<div className="bg-(--color-surface-1) w-fit rounded-full p-2 mx-auto">
+									<UserRound size={48} />
+								</div>
+								<Button variant="secondary" className="mx-4" asChild>
+									<a href="https://aidbox.app" target="_blank" rel="noopener">
+										Manage your account
+									</a>
+								</Button>
+							</div>
+							<Button variant="ghost" className="w-full justify-start">
+								<LogOut />
+								Sign out
+							</Button>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 			</div>
 		</div>
 	);
