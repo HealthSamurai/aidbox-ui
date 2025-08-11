@@ -1,7 +1,6 @@
 import {
 	Breadcrumb,
 	BreadcrumbItem,
-	BreadcrumbLink,
 	BreadcrumbList,
 	BreadcrumbSeparator,
 	DropdownMenu,
@@ -21,9 +20,9 @@ import {
 	useSidebar,
 } from "@panthevm_original/react-components";
 
-import { Link, useRouterState } from "@tanstack/react-router";
-import { House, PanelLeftClose, SlashIcon, SquareTerminal } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Link, useMatches, useRouterState } from "@tanstack/react-router";
+import { House, PanelLeftClose, SquareTerminal } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 
 const mainMenuItems = [
@@ -125,6 +124,15 @@ function AidboxSidebar() {
 	);
 }
 function Navbar() {
+	const matches = useMatches();
+	console.log(matches);
+	const breadcrumbs = matches
+		.filter((match) => match.staticData?.title)
+		.map((match) => ({
+			title: match.staticData.title as string,
+			path: match.pathname,
+		}));
+
 	return (
 		<div className="flex-none h-15 flex items-center border-b">
 			<div className="h-full border-r flex items-center justify-center w-[3rem]">
@@ -137,19 +145,26 @@ function Navbar() {
 				/>
 			</div>
 			<div className="px-6">
-				<Breadcrumb>
-					<BreadcrumbList>
-						<BreadcrumbItem>
-							<Link to="/">Home</Link>
-						</BreadcrumbItem>
-						<BreadcrumbSeparator>
-							<SlashIcon />
-						</BreadcrumbSeparator>
-						<BreadcrumbItem>
-							<Link to="/">Rest Console</Link>
-						</BreadcrumbItem>
-					</BreadcrumbList>
-				</Breadcrumb>
+				{breadcrumbs.length > 0 && (
+					<Breadcrumb>
+						<BreadcrumbList>
+							{breadcrumbs.map((crumb, index) => (
+								<React.Fragment key={crumb.path}>
+									{index > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
+									<BreadcrumbItem>
+										{index === breadcrumbs.length - 1 ? (
+											<span className="text-muted-foreground">
+												{crumb.title}
+											</span>
+										) : (
+											<Link to={crumb.path}>{crumb.title}</Link>
+										)}
+									</BreadcrumbItem>
+								</React.Fragment>
+							))}
+						</BreadcrumbList>
+					</Breadcrumb>
+				)}
 			</div>
 		</div>
 	);

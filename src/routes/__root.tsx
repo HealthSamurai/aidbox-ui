@@ -6,6 +6,9 @@ import * as React from "react";
 import { Layout } from "../components/layout.tsx";
 
 export const Route = createRootRoute({
+	staticData: {
+		title: "Home",
+	},
 	component: RootComponent,
 });
 
