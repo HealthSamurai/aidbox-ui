@@ -57,11 +57,16 @@ function getSidebarMode(): SidebarMode {
 	return "expanded";
 }
 
-function AidboxSidebar() {
+function AidboxSidebar({
+	onModeChange,
+}: {
+	onModeChange?: (mode: SidebarMode) => void;
+}) {
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
 	const sidebar = useSidebar();
 	const [sidebarMode, setSidebarMode] = useState<SidebarMode>(getSidebarMode);
+	const [isHovering, setIsHovering] = useState(false);
 
 	useEffect(() => {
 		const mode = getSidebarMode();
@@ -70,20 +75,46 @@ function AidboxSidebar() {
 		} else if (mode === "expanded") {
 			sidebar.setOpen(true);
 		}
-	}, [sidebar]);
+		onModeChange?.(mode);
+	}, [sidebar, onModeChange]);
+
+	useEffect(() => {
+		if (sidebarMode === "hover") {
+			sidebar.setOpen(isHovering);
+		}
+	}, [isHovering, sidebarMode, sidebar]);
 
 	const handleModeChange = (mode: SidebarMode) => {
 		setSidebarMode(mode);
 		saveSidebarMode(mode);
+		onModeChange?.(mode);
 		if (mode === "collapsed" || mode === "hover") {
 			sidebar.setOpen(false);
+			setIsHovering(true);
 		} else if (mode === "expanded") {
 			sidebar.setOpen(true);
 		}
 	};
 
+	const handleMouseEnter = () => {
+		if (sidebarMode === "hover") {
+			setIsHovering(true);
+		}
+	};
+
+	const handleMouseLeave = () => {
+		if (sidebarMode === "hover") {
+			setIsHovering(false);
+		}
+	};
+
 	return (
-		<Sidebar collapsible="icon" className="pb-3 relative h-full">
+		<Sidebar
+			collapsible="icon"
+			className="pb-3 relative h-full"
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+		>
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarGroupContent>
@@ -131,6 +162,12 @@ function AidboxSidebar() {
 									onCheckedChange={() => handleModeChange("collapsed")}
 								>
 									Collapsed
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={sidebarMode === "hover"}
+									onCheckedChange={() => handleModeChange("hover")}
+								>
+									Expand on hover
 								</DropdownMenuCheckboxItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
@@ -242,13 +279,20 @@ function Navbar() {
 function Layout({ children }: { children: React.ReactNode }) {
 	const savedMode = getSidebarMode();
 	const defaultOpen = savedMode === "expanded";
+	const [currentMode, setCurrentMode] = useState<SidebarMode>(savedMode);
 
 	return (
 		<div className="flex flex-col h-screen">
 			<Navbar></Navbar>
 			<SidebarProvider defaultOpen={defaultOpen} className="grow min-h-0">
-				<AidboxSidebar></AidboxSidebar>
-				<SidebarInset>{children}</SidebarInset>
+				<AidboxSidebar onModeChange={setCurrentMode}></AidboxSidebar>
+				<SidebarInset
+					className={
+						currentMode === "hover" ? "absolute ml-(--sidebar-width-icon)" : ""
+					}
+				>
+					{children}
+				</SidebarInset>
 			</SidebarProvider>
 		</div>
 	);
