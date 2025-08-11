@@ -5,10 +5,11 @@ import {
 	BreadcrumbSeparator,
 	Button,
 	DropdownMenu,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
-	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-	Separator,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
@@ -117,14 +118,20 @@ function AidboxSidebar() {
 								</SidebarMenuButton>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent side="top" className="mx-3 w-[240px]">
-								<DropdownMenuItem onSelect={() => handleModeChange("expanded")}>
+								<DropdownMenuLabel>Sidebar control</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								<DropdownMenuCheckboxItem
+									checked={sidebarMode === "expanded"}
+									onCheckedChange={() => handleModeChange("expanded")}
+								>
 									Expanded
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onSelect={() => handleModeChange("collapsed")}
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={sidebarMode === "collapsed"}
+									onCheckedChange={() => handleModeChange("collapsed")}
 								>
 									Collapsed
-								</DropdownMenuItem>
+								</DropdownMenuCheckboxItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</SidebarMenuItem>
@@ -145,7 +152,7 @@ function Navbar() {
 
 	return (
 		<div className="flex-none h-15 flex items-center border-b">
-			<div className="h-full shrink-0 border-r flex items-center justify-center w-[3rem]">
+			<div className="h-full shrink-0 border-r flex items-center justify-center w-12">
 				<img
 					src={AidboxLogo}
 					alt="Aidbox"
@@ -177,7 +184,7 @@ function Navbar() {
 				)}
 				<div className="flex items-center gap-4">
 					<Button
-						variant="ghost"
+						variant="tertiary"
 						size="icon"
 						className="size-7 rounded-full"
 						asChild
@@ -187,7 +194,7 @@ function Navbar() {
 						</a>
 					</Button>
 					<Button
-						variant="ghost"
+						variant="tertiary"
 						size="icon"
 						className="size-7 rounded-full"
 						asChild
@@ -201,7 +208,7 @@ function Navbar() {
 							<Button
 								variant="ghost"
 								size="icon"
-								className="size-8 rounded-full bg-(--color-surface-1)"
+								className="size-8 rounded-full bg-(--color-surface-1) cursor-pointer"
 							>
 								<UserRound />
 							</Button>
