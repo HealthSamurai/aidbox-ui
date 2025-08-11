@@ -1,4 +1,9 @@
 import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbSeparator,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -17,8 +22,9 @@ import {
 } from "@panthevm_original/react-components";
 
 import { Link, useRouterState } from "@tanstack/react-router";
-import { House, PanelLeftClose, SquareTerminal } from "lucide-react";
+import { House, PanelLeftClose, SlashIcon, SquareTerminal } from "lucide-react";
 import { useEffect, useState } from "react";
+import AidboxLogo from "../assets/aidbox-logo.svg";
 
 const mainMenuItems = [
 	{ title: "Home", url: "/", icon: House },
@@ -67,7 +73,7 @@ function AidboxSidebar() {
 	};
 
 	return (
-		<Sidebar collapsible="icon" className="pb-3">
+		<Sidebar collapsible="icon" className="pb-3 relative h-full">
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarGroupContent>
@@ -78,6 +84,7 @@ function AidboxSidebar() {
 										asChild
 										isActive={currentPath === item.url}
 										tooltip={item.title}
+										className="text-nowrap"
 									>
 										<Link to={item.url}>
 											<item.icon />
@@ -117,16 +124,49 @@ function AidboxSidebar() {
 		</Sidebar>
 	);
 }
+function Navbar() {
+	return (
+		<div className="flex-none h-15 flex items-center border-b">
+			<div className="h-full border-r flex items-center justify-center w-[3rem]">
+				<img
+					src={AidboxLogo}
+					alt="Aidbox"
+					className="h-6"
+					height="24"
+					width="24"
+				/>
+			</div>
+			<div className="px-6">
+				<Breadcrumb>
+					<BreadcrumbList>
+						<BreadcrumbItem>
+							<Link to="/">Home</Link>
+						</BreadcrumbItem>
+						<BreadcrumbSeparator>
+							<SlashIcon />
+						</BreadcrumbSeparator>
+						<BreadcrumbItem>
+							<Link to="/">Rest Console</Link>
+						</BreadcrumbItem>
+					</BreadcrumbList>
+				</Breadcrumb>
+			</div>
+		</div>
+	);
+}
 
 function Layout({ children }: { children: React.ReactNode }) {
 	const savedMode = getSidebarMode();
 	const defaultOpen = savedMode === "expanded";
 
 	return (
-		<SidebarProvider defaultOpen={defaultOpen}>
-			<AidboxSidebar></AidboxSidebar>
-			<SidebarInset>{children}</SidebarInset>
-		</SidebarProvider>
+		<div className="flex flex-col h-screen">
+			<Navbar></Navbar>
+			<SidebarProvider defaultOpen={defaultOpen} className="grow min-h-0">
+				<AidboxSidebar></AidboxSidebar>
+				<SidebarInset>{children}</SidebarInset>
+			</SidebarProvider>
+		</div>
 	);
 }
 
