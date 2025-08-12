@@ -3,6 +3,10 @@
     "shadcn-ui-server": {
       "command": "npx",
       "args": ["@heilgar/shadcn-ui-mcp-server"]
+    },
+    "browsermcp": {
+      "command": "npx",
+      "args": ["@browsermcp/mcp@latest"]
     }
   }
 }
