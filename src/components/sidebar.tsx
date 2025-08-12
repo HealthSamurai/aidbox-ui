@@ -95,7 +95,7 @@ export function AidboxSidebar({
 	return (
 		<Sidebar
 			collapsible="icon"
-			className="pb-3 relative h-full"
+			className="relative h-full"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
 		>
@@ -142,6 +142,7 @@ export function AidboxSidebar({
 									onCheckedChange={() => handleModeChange("expanded")}
 								>
 									Expanded
+
 								</DropdownMenuCheckboxItem>
 								<DropdownMenuCheckboxItem
 									checked={sidebarMode === "collapsed"}
