@@ -3,6 +3,9 @@ import {
 	BreadcrumbItem,
 	BreadcrumbLink,
 	BreadcrumbList,
+	Tooltip,
+	TooltipTrigger,
+	TooltipContent,
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 	Button,
@@ -61,33 +64,42 @@ function NavbarButtons() {
 	const logout = useLogout();
 
 	return (
-		<div className="flex items-center gap-4">
-			<Button
-				variant="tertiary"
-				size="icon"
-				className="size-7 rounded-full"
-				asChild
-			>
-				<a href="https://docs.aidbox.app" target="_blank" rel="noopener">
-					<BookOpenText />
-				</a>
-			</Button>
-			<Button
-				variant="tertiary"
-				size="icon"
-				className="size-7 rounded-full"
-				asChild
-			>
-				<a href="https://docs.aidbox.app" target="_blank" rel="noopener">
-					<MessageCircleQuestionMark />
-				</a>
-			</Button>
+		<div className="flex items-center gap-2">
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						className="rounded-full p-2"
+						asChild
+					>
+						<a href="https://health-samurai.io/docs/aidbox" target="_blank" rel="noopener">
+							<BookOpenText />
+						</a>
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side="bottom"> Documentation </TooltipContent>
+			</Tooltip>
+
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						className="rounded-full p-2"
+						asChild
+					>
+						<a href="https://connect.health-samurai.io" target="_blank" rel="noopener">
+							<MessageCircleQuestionMark />
+						</a>
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side="bottom" className="t-40"> Community </TooltipContent>
+			</Tooltip>
+
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant="ghost"
-						size="icon"
-						className="size-8 rounded-full bg-(--color-elements-assistive) text-white cursor-pointer"
+						className="p-2 rounded-full bg-(--color-elements-assistive) text-white cursor-pointer"
 					>
 						<UserRound />
 					</Button>
@@ -106,8 +118,8 @@ function NavbarButtons() {
 							</a>
 						</Button>
 					</div>
-					<Button 
-						variant="ghost" 
+					<Button
+						variant="ghost"
 						className="w-full justify-start"
 						onClick={() => logout.mutate()}
 					>
@@ -132,7 +144,7 @@ export function Navbar() {
 					width="24"
 				/>
 			</div>
-			<div className="px-4 w-full flex items-center justify-between">
+			<div className="pl-4 pr-5 w-full flex items-center justify-between">
 				<Breadcrumbs />
 				<NavbarButtons />
 			</div>
