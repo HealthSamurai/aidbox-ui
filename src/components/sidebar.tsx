@@ -123,6 +123,8 @@ export function AidboxSidebar({
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
+				<SidebarGroup>
+					<SidebarGroupContent>
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<DropdownMenu>
@@ -155,8 +157,10 @@ export function AidboxSidebar({
 								</DropdownMenuCheckboxItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
-					</SidebarMenuItem>
-				</SidebarMenu>
+						</SidebarMenuItem>
+					</SidebarMenu>
+				</SidebarGroupContent>
+				</SidebarGroup>
 			</SidebarFooter>
 		</Sidebar>
 	);
