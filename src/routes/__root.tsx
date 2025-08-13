@@ -1,7 +1,7 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import * as React from "react";
 import { useUserInfo } from "../api/auth";
-import { Layout } from "../components/layout.tsx";
+import { Layout } from "../layout/layout.tsx";
 
 export const Route = createRootRoute({
 	staticData: {

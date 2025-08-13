@@ -1,11 +1,4 @@
 import {
-	Button,
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
@@ -17,29 +10,29 @@ import {
 	useSidebar,
 } from "@panthevm_original/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { House, PanelLeftClose, SquareTerminal } from "lucide-react";
+import { House,  SquareTerminal } from "lucide-react";
+import { SidebarModeSelect } from "./sidebar-mode";
 import { useEffect, useState } from "react";
+
 
 const mainMenuItems = [
 	{ title: "Home", url: "/", icon: House },
 	{ title: "REST Console", url: "/rest-console", icon: SquareTerminal },
 ];
 
-const SIDEBAR_MODE_KEY = "aidbox-sidebar-mode";
-
 export type SidebarMode = "expanded" | "collapsed" | "hover";
+
+const SIDEBAR_MODE_KEY = "aidbox-sidebar-mode";
 
 function saveSidebarMode(mode: SidebarMode) {
 	localStorage.setItem(SIDEBAR_MODE_KEY, mode);
 }
 
 export function getSidebarMode(): SidebarMode {
-	const saved = localStorage.getItem(SIDEBAR_MODE_KEY);
-	if (saved === "expanded" || saved === "collapsed" || saved === "hover") {
-		return saved;
-	}
-	return "expanded";
+	const stored = localStorage.getItem(SIDEBAR_MODE_KEY);
+	return (stored as SidebarMode) || "expanded";
 }
+
 
 export function AidboxSidebar({
 	onModeChange,
@@ -48,7 +41,9 @@ export function AidboxSidebar({
 }) {
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
+
 	const sidebar = useSidebar();
+
 	const [sidebarMode, setSidebarMode] = useState<SidebarMode>(getSidebarMode);
 	const [isHovering, setIsHovering] = useState(false);
 
@@ -95,6 +90,7 @@ export function AidboxSidebar({
 	return (
 		<Sidebar
 			collapsible="icon"
+			data-sidebar-mode={sidebarMode}
 			className="relative h-full"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
@@ -125,42 +121,12 @@ export function AidboxSidebar({
 			<SidebarFooter>
 				<SidebarGroup>
 					<SidebarGroupContent>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<SidebarMenuButton>
-									<PanelLeftClose></PanelLeftClose>
-									edge:d8c83455a0
-								</SidebarMenuButton>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent side="top" className="mx-3 w-[240px]">
-								<DropdownMenuLabel>Sidebar control</DropdownMenuLabel>
-								<DropdownMenuSeparator />
-								<DropdownMenuCheckboxItem
-									checked={sidebarMode === "expanded"}
-									onCheckedChange={() => handleModeChange("expanded")}
-								>
-									Expanded
-
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={sidebarMode === "collapsed"}
-									onCheckedChange={() => handleModeChange("collapsed")}
-								>
-									Collapsed
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={sidebarMode === "hover"}
-									onCheckedChange={() => handleModeChange("hover")}
-								>
-									Expand on hover
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-						</SidebarMenuItem>
-					</SidebarMenu>
-				</SidebarGroupContent>
+						<SidebarMenu>
+							<SidebarMenuItem>
+								<SidebarModeSelect mode={sidebarMode} onModeChange={handleModeChange} />
+							</SidebarMenuItem>
+						</SidebarMenu>
+					</SidebarGroupContent>
 				</SidebarGroup>
 			</SidebarFooter>
 		</Sidebar>
