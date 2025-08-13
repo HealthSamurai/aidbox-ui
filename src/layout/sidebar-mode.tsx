@@ -8,13 +8,23 @@ import {
 } from "@panthevm_original/react-components";
 import { PanelLeftClose } from "lucide-react";
 import { SidebarMenuButton } from "@panthevm_original/react-components";
-import { type SidebarMode } from "./sidebar";
 
-const modes = [
+export type SidebarMode = "expanded" | "collapsed" | "hover";
+const modes: Array<{ label: string; value: SidebarMode }> = [
     { label: "Expanded", value: "expanded" },
     { label: "Collapsed", value: "collapsed" },
     { label: "Hover", value: "hover" }
 ]
+
+const SIDEBAR_MODE_KEY = "aidbox-sidebar-mode";
+export function saveSidebarMode(mode: SidebarMode) {
+    localStorage.setItem(SIDEBAR_MODE_KEY, mode);
+}
+
+export function getSidebarMode() {
+    const stored = localStorage.getItem(SIDEBAR_MODE_KEY);
+    return (stored as SidebarMode) || "expanded";
+}
 
 export function SidebarModeSelect({ mode, onModeChange }: { mode: SidebarMode, onModeChange: (mode: SidebarMode) => void }) {
     return (
@@ -30,8 +40,12 @@ export function SidebarModeSelect({ mode, onModeChange }: { mode: SidebarMode, o
                 <DropdownMenuSeparator />
                 {modes.map(({ label, value }) => (
                     <DropdownMenuCheckboxItem
+                        key={value}
                         checked={mode === value}
-                        onCheckedChange={() => onModeChange(value as SidebarMode)}
+                        onCheckedChange={() => { 
+                            saveSidebarMode(value as SidebarMode); 
+                            onModeChange(value as SidebarMode); 
+                        }}
                     >
                         {label}
                     </DropdownMenuCheckboxItem>

@@ -1,6 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import * as React from "react";
-import { useUserInfo } from "../api/auth";
 import { Layout } from "../layout/layout.tsx";
 
 export const Route = createRootRoute({
@@ -11,7 +10,6 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-	const userInfo = useUserInfo();
 
 	return (
 		<React.Fragment>

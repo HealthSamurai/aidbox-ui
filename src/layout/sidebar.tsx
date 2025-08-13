@@ -11,8 +11,8 @@ import {
 } from "@panthevm_original/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { House,  SquareTerminal } from "lucide-react";
-import { SidebarModeSelect } from "./sidebar-mode";
-import { useEffect, useState } from "react";
+import { type SidebarMode, SidebarModeSelect, getSidebarMode } from "./sidebar-mode";
+import { useState } from "react";
 
 
 const mainMenuItems = [
@@ -20,80 +20,37 @@ const mainMenuItems = [
 	{ title: "REST Console", url: "/rest-console", icon: SquareTerminal },
 ];
 
-export type SidebarMode = "expanded" | "collapsed" | "hover";
 
-const SIDEBAR_MODE_KEY = "aidbox-sidebar-mode";
-
-function saveSidebarMode(mode: SidebarMode) {
-	localStorage.setItem(SIDEBAR_MODE_KEY, mode);
-}
-
-export function getSidebarMode(): SidebarMode {
-	const stored = localStorage.getItem(SIDEBAR_MODE_KEY);
-	return (stored as SidebarMode) || "expanded";
-}
-
-
-export function AidboxSidebar({
-	onModeChange,
-}: {
-	onModeChange?: (mode: SidebarMode) => void;
-}) {
+export function AidboxSidebar() {
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
 
 	const sidebar = useSidebar();
 
 	const [sidebarMode, setSidebarMode] = useState<SidebarMode>(getSidebarMode);
-	const [isHovering, setIsHovering] = useState(false);
 
-	useEffect(() => {
-		const mode = getSidebarMode();
-		if (mode === "collapsed" || mode === "hover") {
-			sidebar.setOpen(false);
-		} else if (mode === "expanded") {
-			sidebar.setOpen(true);
-		}
-		onModeChange?.(mode);
-	}, [sidebar, onModeChange]);
-
-	useEffect(() => {
-		if (sidebarMode === "hover") {
-			sidebar.setOpen(isHovering);
-		}
-	}, [isHovering, sidebarMode, sidebar]);
-
-	const handleModeChange = (mode: SidebarMode) => {
+	const onModeChange = (mode: SidebarMode) => {
 		setSidebarMode(mode);
-		saveSidebarMode(mode);
-		onModeChange?.(mode);
-		if (mode === "collapsed" || mode === "hover") {
-			sidebar.setOpen(false);
-			setIsHovering(true);
-		} else if (mode === "expanded") {
+		if (mode === "expanded") {
 			sidebar.setOpen(true);
+		} else {
+			sidebar.setOpen(false);
 		}
 	};
 
-	const handleMouseEnter = () => {
+	function handleHoverMode(hover: boolean) {
 		if (sidebarMode === "hover") {
-			setIsHovering(true);
+			sidebar.setOpen(hover);
 		}
-	};
-
-	const handleMouseLeave = () => {
-		if (sidebarMode === "hover") {
-			setIsHovering(false);
-		}
-	};
+	}
 
 	return (
 		<Sidebar
 			collapsible="icon"
 			data-sidebar-mode={sidebarMode}
 			className="relative h-full"
-			onMouseEnter={handleMouseEnter}
-			onMouseLeave={handleMouseLeave}
+			onMouseEnter={() => handleHoverMode(true)}
+			onMouseLeave={() => handleHoverMode(false)}
 		>
 			<SidebarContent>
 				<SidebarGroup>
@@ -123,7 +80,7 @@ export function AidboxSidebar({
 					<SidebarGroupContent>
 						<SidebarMenu>
 							<SidebarMenuItem>
-								<SidebarModeSelect mode={sidebarMode} onModeChange={handleModeChange} />
+								<SidebarModeSelect mode={sidebarMode} onModeChange={onModeChange} />
 							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
