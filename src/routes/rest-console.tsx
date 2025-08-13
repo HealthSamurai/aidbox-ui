@@ -1,32 +1,15 @@
 import {
 	Button,
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
 	Input,
-	Label,
-	Sidebar,
-	SidebarContent,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarGroupLabel,
-	SidebarHeader,
-	SidebarInset,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	SidebarProvider,
-	SidebarTrigger,
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
 	Tabs,
-	TabsContent,
 	TabsList,
 	TabsTrigger,
-	Textarea,
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
 } from "@panthevm_original/react-components";
 import { createFileRoute } from "@tanstack/react-router";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/rest-console")({
@@ -36,15 +19,28 @@ export const Route = createFileRoute("/rest-console")({
 	component: RouteComponent,
 });
 
-function HistoryCollectionsSidebar() {
+function RequestPreviewLine({ item }) {
+	return (
+		<span className="truncate">
+			<span className="text-start font-semibold mr-2 text-text-secondary inline-block w-14">
+				{item.method}
+			</span>
+			{item.url}
+		</span>
+	);
+}
+
+function LeftPanel({ isVisible, onToggle }) {
 	const [selectedTab, setSelectedTab] = useState(() => {
 		return localStorage.getItem("rest-console-selected-tab") || "history";
 	});
+	const [searchQuery, setSearchQuery] = useState("");
 
 	const handleTabChange = (value) => {
 		setSelectedTab(value);
 		localStorage.setItem("rest-console-selected-tab", value);
 	};
+
 	const historyItems = [
 		{
 			id: "1",
@@ -53,10 +49,26 @@ function HistoryCollectionsSidebar() {
 		},
 		{
 			id: "2",
+			method: "PUT",
+			url: "/fhir/Organization",
+		},
+		{
+			id: "3",
+			method: "DELETE",
+			url: "/fhir/Organization/org-1",
+		},
+		{
+			id: "4",
+			method: "PATCH",
+			url: "/fhir/Organization/org-1",
+		},
+		{
+			id: "5",
 			method: "GET",
 			url: "/fhir/Patient?gender=male&active=true&deceased=false",
 		},
 	];
+
 	const collectionItems = [
 		{
 			id: "1",
@@ -88,127 +100,153 @@ function HistoryCollectionsSidebar() {
 		});
 		return groups;
 	}, []);
+
+	if (!isVisible) {
+		return (
+			<div className="h-full flex flex-col items-center pt-3 px-2 border-r">
+				<Button
+					variant="ghost"
+					onClick={onToggle}
+					aria-label="Show panel"
+					className="py-2 px-[0.44rem] text-text-secondary hover:bg-bg-secondary"
+				>
+					<PanelRightOpen className="size-5" />
+				</Button>
+				<div className="flex-1 pb-6 flex items-end justify-center px-2">
+					<span
+						className="text-sm text-muted-foreground"
+						style={{
+							writingMode: "vertical-rl",
+							transform: "rotate(180deg)",
+						}}
+					>
+						History / Collections
+					</span>
+				</div>
+			</div>
+		);
+	}
+
 	return (
-		<Sidebar collapsible="icon" className="border-r absolute h-full">
-			<SidebarHeader className="group-data-[collapsible=icon]:p-2 p-0">
-				<SidebarMenu className="gap-0">
-					<SidebarMenuItem className="group-data-[collapsible=icon]:block hidden">
-						<SidebarMenuButton asChild>
-							<SidebarTrigger />
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-					<div className="group-data-[collapsible=icon]:hidden flex items-center justify-between border-b p-2">
-						<Tabs value={selectedTab} onValueChange={handleTabChange}>
-							<TabsList variant="dashed">
-								<TabsTrigger value="history">History</TabsTrigger>
-								<TabsTrigger value="collections">Collections</TabsTrigger>
-							</TabsList>
-						</Tabs>
-						<SidebarTrigger />
-					</div>
-					<div className="group-data-[collapsible=icon]:hidden py-2 border-b px-2">
-						<Input
-							placeholder={
-								selectedTab === "history"
-									? "Search history..."
-									: "Search collections..."
-							}
-						/>
-					</div>
-				</SidebarMenu>
-			</SidebarHeader>
-			<SidebarContent>
+		<div className="h-full flex flex-col">
+			<div className="border-b py-3 px-2 flex items-center justify-between">
+				<Tabs value={selectedTab} onValueChange={handleTabChange}>
+					<TabsList variant="dashed">
+						<TabsTrigger value="history">History</TabsTrigger>
+						<TabsTrigger value="collections">Collections</TabsTrigger>
+					</TabsList>
+				</Tabs>
+				<Button
+					variant="ghost"
+					onClick={onToggle}
+					aria-label="Hide panel"
+					className="py-2 px-[0.44rem] text-text-secondary hover:bg-bg-secondary"
+				>
+					<PanelRightClose className="size-5" />
+				</Button>
+			</div>
+			<div className="border-b p-2">
+				<Input
+					value={searchQuery}
+					onChange={(e) => setSearchQuery(e.target.value)}
+					placeholder={
+						selectedTab === "history"
+							? "Search history..."
+							: "Search collections..."
+					}
+				/>
+			</div>
+			<div className="flex-1 overflow-y-auto p-2">
 				{selectedTab === "history" ? (
-					<SidebarGroup className="group-data-[collapsible=icon]:hidden">
-						<SidebarGroupContent>
-							<SidebarMenu>
-								{historyItems.map((item) => (
-									<SidebarMenuItem key={item.id}>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<SidebarMenuButton className="px-3 truncate">
-													<span>
-														{item.method} {item.url}
-													</span>
-												</SidebarMenuButton>
-											</TooltipTrigger>
-											<TooltipContent
-												side="right"
-												align="center"
-												sideOffset="2"
-											>
-												{item.method} {item.url}
-											</TooltipContent>
-										</Tooltip>
-									</SidebarMenuItem>
-								))}
-							</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
-				) : (
-					<>
-						{Object.entries(groupedCollections).map(
-							([collectionName, items]) => (
-								<SidebarGroup
-									key={collectionName}
-									className="group-data-[collapsible=icon]:hidden"
+					<div className="space-y-1">
+						{historyItems
+							.filter((item) => {
+								const searchText = `${item.method} ${item.url}`.toLowerCase();
+								return searchText.includes(searchQuery.toLowerCase());
+							})
+							.map((item) => (
+								<Button
+									key={item.id}
+									variant="ghost"
+									className="w-full justify-start px-3 truncate"
 								>
-									<SidebarGroupLabel>{collectionName}</SidebarGroupLabel>
-									<SidebarGroupContent>
-										<SidebarMenu>
-											{items.map((item) => (
-												<SidebarMenuItem key={item.id}>
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<SidebarMenuButton className="px-3 truncate">
-																<span>
-																	{item.method} {item.url}
-																</span>
-															</SidebarMenuButton>
-														</TooltipTrigger>
-														<TooltipContent
-															side="right"
-															align="center"
-															sideOffset="2"
-														>
-															{item.method} {item.url}
-														</TooltipContent>
-													</Tooltip>
-												</SidebarMenuItem>
-											))}
-										</SidebarMenu>
-									</SidebarGroupContent>
-								</SidebarGroup>
-							),
-						)}
-					</>
+									<RequestPreviewLine item={item}></RequestPreviewLine>
+								</Button>
+							))}
+					</div>
+				) : (
+					<div className="space-y-4">
+						{Object.entries(groupedCollections)
+							.filter(([collectionName]) =>
+								collectionName
+									.toLowerCase()
+									.includes(searchQuery.toLowerCase()),
+							)
+							.map(([collectionName, items]) => (
+								<div key={collectionName} className="mt-2">
+									<h3 className="text-sm text-text-secondary mb-1 px-3">
+										{collectionName}
+									</h3>
+									<div className="space-y-1 ml-2">
+										{items.map((item) => (
+											<Button
+												key={item.id}
+												variant="ghost"
+												className="w-full justify-start px-3 truncate"
+											>
+												<RequestPreviewLine item={item}></RequestPreviewLine>
+											</Button>
+										))}
+									</div>
+								</div>
+							))}
+					</div>
 				)}
-			</SidebarContent>
-		</Sidebar>
+			</div>
+		</div>
 	);
 }
 
 function RouteComponent() {
-	const [sidebarOpen, setSidebarOpen] = useState(() => {
-		const stored = localStorage.getItem("rest-console-sidebar-open");
-		return stored ? JSON.parse(stored) : false;
+	const [leftPanelVisible, setLeftPanelVisible] = useState(() => {
+		const stored = localStorage.getItem("rest-console-left-panel-visible");
+		return stored ? JSON.parse(stored) : true;
 	});
 
-	const handleOpenChange = (open) => {
-		setSidebarOpen(open);
-		localStorage.setItem("rest-console-sidebar-open", JSON.stringify(open));
+	const toggleLeftPanel = () => {
+		const newState = !leftPanelVisible;
+		setLeftPanelVisible(newState);
+		localStorage.setItem(
+			"rest-console-left-panel-visible",
+			JSON.stringify(newState),
+		);
 	};
 
 	return (
-		<SidebarProvider
-			open={sidebarOpen}
-			onOpenChange={handleOpenChange}
-			className="flex min-h-0"
-		>
-			<HistoryCollectionsSidebar />
-			<SidebarInset className="flex-1 h-full">
-				<div className="p-4">REST Console content area</div>
-			</SidebarInset>
-		</SidebarProvider>
+		<div className="h-full flex">
+			<ResizablePanelGroup
+				autoSaveId="rest-console-left-menu"
+				direction="horizontal"
+				className="h-full flex-1"
+			>
+				<ResizablePanel
+					defaultSize={15}
+					className={!leftPanelVisible ? "max-w-[3.145rem]" : ""}
+				>
+					<LeftPanel isVisible={leftPanelVisible} onToggle={toggleLeftPanel} />
+				</ResizablePanel>
+				<ResizableHandle
+					withHandle
+					className={!leftPanelVisible ? "hidden" : ""}
+				/>
+				<ResizablePanel>
+					<div className="h-full p-4">
+						<div className="text-center text-muted-foreground">
+							REST Console content area
+						</div>
+					</div>
+				</ResizablePanel>
+			</ResizablePanelGroup>
+		</div>
 	);
 }
