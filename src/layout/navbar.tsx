@@ -3,15 +3,15 @@ import {
 	BreadcrumbItem,
 	BreadcrumbLink,
 	BreadcrumbList,
-	Tooltip,
-	TooltipTrigger,
-	TooltipContent,
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 	Button,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from "@panthevm_original/react-components";
 import { Link, useMatches } from "@tanstack/react-router";
 import {
@@ -21,7 +21,7 @@ import {
 	UserRound,
 } from "lucide-react";
 import React from "react";
-import { useUserInfo, useLogout } from "../api/auth";
+import { useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 
 function Breadcrumbs() {
@@ -67,12 +67,12 @@ function NavbarButtons() {
 		<div className="flex items-center gap-2">
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button
-						variant="ghost"
-						className="rounded-full p-2"
-						asChild
-					>
-						<a href="https://health-samurai.io/docs/aidbox" target="_blank" rel="noopener">
+					<Button variant="ghost" className="rounded-full p-2" asChild>
+						<a
+							href="https://health-samurai.io/docs/aidbox"
+							target="_blank"
+							rel="noopener"
+						>
 							<BookOpenText />
 						</a>
 					</Button>
@@ -82,17 +82,20 @@ function NavbarButtons() {
 
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button
-						variant="ghost"
-						className="rounded-full p-2"
-						asChild
-					>
-						<a href="https://connect.health-samurai.io" target="_blank" rel="noopener">
+					<Button variant="ghost" className="rounded-full p-2" asChild>
+						<a
+							href="https://connect.health-samurai.io"
+							target="_blank"
+							rel="noopener"
+						>
 							<MessageCircleQuestionMark />
 						</a>
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent side="bottom" className="t-40"> Community </TooltipContent>
+				<TooltipContent side="bottom" className="t-40">
+					{" "}
+					Community{" "}
+				</TooltipContent>
 			</Tooltip>
 
 			<DropdownMenu>

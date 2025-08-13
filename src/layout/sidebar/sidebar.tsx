@@ -10,38 +10,40 @@ import {
 	useSidebar,
 } from "@panthevm_original/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { House,  SquareTerminal } from "lucide-react";
-import { type SidebarMode, SidebarModeSelect, getSidebarMode } from "./sidebar-mode";
-import { useState } from "react";
-
+import { House, SquareTerminal } from "lucide-react";
+import { useEffect } from "react";
+import type { SidebarMode } from "../../shared/types";
+import { SidebarModeSelect } from "../sidebar-mode";
 
 const mainMenuItems = [
 	{ title: "Home", url: "/", icon: House },
 	{ title: "REST Console", url: "/rest-console", icon: SquareTerminal },
 ];
 
+export interface SidebarInnerProps {
+	sidebarMode: SidebarMode;
+	setSidebarMode: (mode: SidebarMode) => void;
+}
 
-export function AidboxSidebar() {
+export function SidebarInner({
+	setSidebarMode,
+	sidebarMode,
+}: SidebarInnerProps) {
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
 
 	const sidebar = useSidebar();
 
-	const [sidebarMode, setSidebarMode] = useState<SidebarMode>(getSidebarMode);
+	useEffect(() => {
+		sidebar.setOpen(sidebarMode === "expanded");
+	}, [sidebarMode]);
 
 	const onModeChange = (mode: SidebarMode) => {
 		setSidebarMode(mode);
-		if (mode === "expanded") {
-			sidebar.setOpen(true);
-		} else {
-			sidebar.setOpen(false);
-		}
 	};
 
 	function handleHoverMode(hover: boolean) {
-		if (sidebarMode === "hover") {
-			sidebar.setOpen(hover);
-		}
+		sidebar.setOpen(hover);
 	}
 
 	return (
@@ -49,8 +51,12 @@ export function AidboxSidebar() {
 			collapsible="icon"
 			data-sidebar-mode={sidebarMode}
 			className="relative h-full"
-			onMouseEnter={() => handleHoverMode(true)}
-			onMouseLeave={() => handleHoverMode(false)}
+			{...(sidebarMode === "hover"
+				? {
+						onMouseEnter: () => handleHoverMode(true),
+						onMouseLeave: () => handleHoverMode(false),
+					}
+				: {})}
 		>
 			<SidebarContent>
 				<SidebarGroup>
@@ -80,7 +86,10 @@ export function AidboxSidebar() {
 					<SidebarGroupContent>
 						<SidebarMenu>
 							<SidebarMenuItem>
-								<SidebarModeSelect mode={sidebarMode} onModeChange={onModeChange} />
+								<SidebarModeSelect
+									mode={sidebarMode}
+									onModeChange={onModeChange}
+								/>
 							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>

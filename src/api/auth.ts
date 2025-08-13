@@ -12,7 +12,7 @@ async function fetchUserInfo(): Promise<UserInfo> {
 		method: "GET",
 		headers: {
 			"Content-Type": "application/json",
-      		"Accept": "application/json" 
+			Accept: "application/json",
 		},
 		credentials: "include",
 	});
@@ -37,22 +37,22 @@ async function performLogout() {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			"Accept": "application/json"
+			Accept: "application/json",
 		},
 		credentials: "include",
 	});
-	
+
 	Cookies.remove("asid", { path: "/" });
 
 	const encodedLocation = btoa(window.location.href);
 	window.location.href = `${getAidboxBaseURL()}/auth/login?redirect_to=${encodedLocation}`;
-	
+
 	return response;
 }
 
 export function useLogout() {
 	const queryClient = useQueryClient();
-	
+
 	return useMutation({
 		mutationFn: performLogout,
 		onSuccess: () => {

@@ -1,0 +1,1 @@
+export { AidboxSidebar } from "./wrapper";

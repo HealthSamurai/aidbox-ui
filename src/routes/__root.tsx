@@ -10,7 +10,6 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-
 	return (
 		<React.Fragment>
 			<Layout>
