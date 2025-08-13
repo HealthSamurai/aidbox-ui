@@ -142,7 +142,7 @@ function LeftPanel({ isVisible, onToggle }) {
 					aria-label="Hide panel"
 					className="py-2 px-[0.44rem] text-text-secondary hover:bg-bg-secondary"
 				>
-					<PanelRightClose className="size-5" />
+					<PanelRightClose className="size-5 border-b-2 border-transparent" />
 				</Button>
 			</div>
 			<div className="border-b p-2">
@@ -231,7 +231,9 @@ function RouteComponent() {
 			>
 				<ResizablePanel
 					defaultSize={15}
-					className={!leftPanelVisible ? "max-w-[3.145rem]" : ""}
+					className={
+						!leftPanelVisible ? "max-w-[3.145rem] min-w-60" : "min-w-60"
+					}
 				>
 					<LeftPanel isVisible={leftPanelVisible} onToggle={toggleLeftPanel} />
 				</ResizablePanel>
