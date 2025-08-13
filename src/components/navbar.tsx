@@ -135,7 +135,7 @@ function NavbarButtons() {
 export function Navbar() {
 	return (
 		<div className="flex-none h-15 flex items-center border-b">
-			<div className="h-full shrink-0 border-r flex items-center justify-center w-[3.125rem]">
+			<div className="h-full shrink-0 border-r flex items-center justify-center w-[3.125rem] box-content">
 				<img
 					src={AidboxLogo}
 					alt="Aidbox"
