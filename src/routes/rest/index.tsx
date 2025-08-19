@@ -89,7 +89,7 @@ function SidebarToggleButton() {
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<Button variant="link" className="border-r h-full">
+				<Button variant="link" className="h-full border-r">
 					<PanelRightOpen className="size-4" />
 				</Button>
 			</TooltipTrigger>
@@ -100,25 +100,39 @@ function SidebarToggleButton() {
 
 function ActiveTabs() {
 	return (
-		<Tabs defaultValue={MockState.activeTab}>
-			<TabsList>
-				{MockState.activeTabs.map((activeTab) => (
+		<Tabs
+			defaultValue={MockState.activeTab}
+			className="overflow-x-auto overflow-y-hidden"
+		>
+			<TabsList className="flex w-full">
+				{MockState.activeTabs.map((activeTab, index) => (
 					<Fragment key={activeTab.id}>
-						<TabsTrigger
-							value={activeTab.id}
-							className="max-w-100 truncate justify-start"
-						>
-							<span
-								className={`mr-1 ${METHOD_COLORS[activeTab.method as keyof typeof METHOD_COLORS].text}`}
-							>
-								{activeTab.method}
-							</span>
-							{activeTab.path}
-							<Button variant="link" className="p-0 ml-2" asChild>
-								<X size={16} />
-							</Button>
-						</TabsTrigger>
-						<Separator orientation="vertical" />
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<TabsTrigger
+									value={activeTab.id}
+									className="max-w-80 min-w-15 justify-between"
+								>
+									<span className="truncate">
+										<span
+											className={`mr-1 ${METHOD_COLORS[activeTab.method as keyof typeof METHOD_COLORS].text}`}
+										>
+											{activeTab.method}
+										</span>
+										{activeTab.path}
+									</span>
+									<Button variant="link" className="p-0 ml-2" asChild>
+										<X size={16} />
+									</Button>
+								</TabsTrigger>
+							</TooltipTrigger>
+							<TooltipContent>
+								{activeTab.method} {activeTab.path}
+							</TooltipContent>
+						</Tooltip>
+						{index < MockState.activeTabs.length - 1 && (
+							<Separator orientation="vertical" />
+						)}
 					</Fragment>
 				))}
 			</TabsList>
@@ -161,18 +175,16 @@ function RequestLineEditor() {
 function RouteComponent() {
 	return (
 		<div className="h-full w-full">
-			<div className="flex border-b h-10">
+			<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
 				<SidebarToggleButton />
-				<div className="flex w-full overflow-x-scroll">
-					<ActiveTabs />
-					<div className="w-full bg-bg-secondary">
-						<Button variant="link" className="h-full">
-							<Plus />
-						</Button>
-					</div>
+				<ActiveTabs />
+				<div className="bg-bg-secondary border-l">
+					<Button variant="link" className="h-full">
+						<Plus />
+					</Button>
 				</div>
 			</div>
-			<div className="flex w-full px-4 py-3">
+			<div className="px-4 py-3">
 				<RequestLineEditor />
 			</div>
 		</div>
