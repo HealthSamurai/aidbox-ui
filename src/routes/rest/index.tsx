@@ -104,32 +104,32 @@ function ActiveTabs() {
 			defaultValue={MockState.activeTab}
 			className="overflow-x-auto overflow-y-hidden"
 		>
-			<TabsList className="flex w-full">
+			<TabsList className="w-full">
 				{MockState.activeTabs.map((activeTab, index) => (
 					<Fragment key={activeTab.id}>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<TabsTrigger
-									value={activeTab.id}
-									className="max-w-80 min-w-15 justify-between"
-								>
-									<span className="truncate">
-										<span
-											className={`mr-1 ${METHOD_COLORS[activeTab.method as keyof typeof METHOD_COLORS].text}`}
-										>
-											{activeTab.method}
+						<TabsTrigger value={activeTab.id} className="max-w-80 min-w-15">
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className="w-full flex items-center justify-between">
+										<span className="truncate">
+											<span
+												className={`mr-1 ${METHOD_COLORS[activeTab.method as keyof typeof METHOD_COLORS].text}`}
+											>
+												{activeTab.method}
+											</span>
+											{activeTab.path}
 										</span>
-										{activeTab.path}
+										<Button variant="link" className="p-0 ml-2" asChild>
+											<X size={16} />
+										</Button>
 									</span>
-									<Button variant="link" className="p-0 ml-2" asChild>
-										<X size={16} />
-									</Button>
-								</TabsTrigger>
-							</TooltipTrigger>
-							<TooltipContent>
-								{activeTab.method} {activeTab.path}
-							</TooltipContent>
-						</Tooltip>
+								</TooltipTrigger>
+								<TooltipContent>
+									{activeTab.method} {activeTab.path}
+								</TooltipContent>
+							</Tooltip>
+						</TabsTrigger>
+
 						{index < MockState.activeTabs.length - 1 && (
 							<Separator orientation="vertical" />
 						)}
