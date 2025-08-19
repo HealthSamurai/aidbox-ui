@@ -1,11 +1,10 @@
 import {
 	Button,
-	Input,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+	METHOD_COLORS,
+	RequestLineEditor,
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
 	Separator,
 	Tabs,
 	TabsList,
@@ -15,7 +14,7 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { PanelRightOpen, Plus, X } from "lucide-react";
+import { Fullscreen, PanelRightOpen, Play, Plus, Save, X } from "lucide-react";
 import { Fragment, useState } from "react";
 
 export const Route = createFileRoute("/rest/")({
@@ -24,30 +23,6 @@ export const Route = createFileRoute("/rest/")({
 	},
 	component: RouteComponent,
 });
-
-const METHOD_COLORS = {
-	GET: {
-		text: "text-text-success-primary",
-		border: "border-border-success",
-		background: "bg-(--color-green-200)",
-	},
-	POST: {
-		border: "border-border-success",
-		text: "text-yellow-600",
-	},
-	PUT: {
-		border: "border-border-success",
-		text: "text-blue-500",
-	},
-	PATCH: {
-		border: "border-border-success",
-		text: "text-[#B5069E]",
-	},
-	DELETE: {
-		border: "border-border-success",
-		text: "text-text-error-secondary",
-	},
-};
 
 const MockState = {
 	activeTab: "active-tab-1",
@@ -108,7 +83,7 @@ function ActiveTabs() {
 				{MockState.activeTabs.map((activeTab, index) => (
 					<Fragment key={activeTab.id}>
 						<TabsTrigger value={activeTab.id} className="max-w-80 min-w-15">
-							<Tooltip>
+							<Tooltip delayDuration={400}>
 								<TooltipTrigger asChild>
 									<span className="w-full flex items-center justify-between">
 										<span className="truncate">
@@ -124,7 +99,7 @@ function ActiveTabs() {
 										</Button>
 									</span>
 								</TooltipTrigger>
-								<TooltipContent>
+								<TooltipContent className="max-w-60">
 									{activeTab.method} {activeTab.path}
 								</TooltipContent>
 							</Tooltip>
@@ -140,41 +115,80 @@ function ActiveTabs() {
 	);
 }
 
-function RequestLineEditor() {
-	const [selectedMethod, setSelectedMethod] =
-		useState<keyof typeof METHOD_COLORS>("GET");
+function RequestLineEditorWrapper() {
+	const [selectedMethod, setSelectedMethod] = useState("GET");
+	const [requestPath, setRequestPath] = useState("/fhir/Patient");
 	return (
-		<div className={`flex w-full rounded-md border-1 border-border-primary`}>
-			<Select
-				value={selectedMethod}
-				onValueChange={(method: keyof typeof METHOD_COLORS) =>
-					setSelectedMethod(method)
-				}
-			>
-				<SelectTrigger className={`min-w-25 border-none shadow-none`}>
-					<SelectValue />
-				</SelectTrigger>
-				<Separator orientation="vertical" className="bg-border-primary" />
-				<SelectContent>
-					{Object.keys(METHOD_COLORS).map((method) => (
-						<SelectItem key={method} value={method}>
-							<span
-								className={`font-bold mr-1 ${METHOD_COLORS[method as keyof typeof METHOD_COLORS].text}`}
-							>
-								{method}
-							</span>
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-			<Input className="border-none" />
+		<RequestLineEditor
+			className="w-full"
+			selectedMethod={selectedMethod}
+			setMethod={setSelectedMethod}
+			methods={["GET", "POST", "PUT", "PATCH", "DELETE"]}
+			inputValue={requestPath}
+			onInputChange={(event) => setRequestPath(event.target.value)}
+		/>
+	);
+}
+
+function RequestEditorTabs() {
+	return (
+		<Tabs defaultValue="body">
+			<TabsList>
+				<TabsTrigger value="params">Params</TabsTrigger>
+				<TabsTrigger value="headers">Headers</TabsTrigger>
+				<TabsTrigger value="body">Body</TabsTrigger>
+				<TabsTrigger value="raw">Raw</TabsTrigger>
+			</TabsList>
+		</Tabs>
+	);
+}
+
+function RequestView() {
+	return (
+		<div className="flex items-center justify-between bg-bg-secondary px-4 border-y">
+			<div className="flex items-center">
+				<span className="typo-label text-text-secondary mb-0.5 pr-3">
+					Request:
+				</span>
+				<RequestEditorTabs />
+			</div>
+			<Button variant="link">
+				<Fullscreen />
+			</Button>
+		</div>
+	);
+}
+function ResponseEditorTabs() {
+	return (
+		<Tabs defaultValue="body">
+			<TabsList>
+				<TabsTrigger value="body">Body</TabsTrigger>
+				<TabsTrigger value="headers">Headers</TabsTrigger>
+				<TabsTrigger value="raw">Raw</TabsTrigger>
+			</TabsList>
+		</Tabs>
+	);
+}
+
+function ResponseView() {
+	return (
+		<div className="flex items-center justify-between bg-bg-secondary px-4 border-y">
+			<div className="flex items-center">
+				<span className="typo-label text-text-secondary mb-0.5 pr-3">
+					Response:
+				</span>
+				<ResponseEditorTabs />
+			</div>
+			<Button variant="link">
+				<Fullscreen />
+			</Button>
 		</div>
 	);
 }
 
 function RouteComponent() {
 	return (
-		<div className="h-full w-full">
+		<div className="h-full w-full flex flex-col">
 			<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
 				<SidebarToggleButton />
 				<ActiveTabs />
@@ -184,9 +198,29 @@ function RouteComponent() {
 					</Button>
 				</div>
 			</div>
-			<div className="px-4 py-3">
-				<RequestLineEditor />
+			<div className="px-4 py-3 flex">
+				<RequestLineEditorWrapper />
+				<Button variant="primary" className="ml-2">
+					<Play />
+					SEND
+				</Button>
+				<Button variant="link" className="ml-2">
+					<Save />
+				</Button>
 			</div>
+			<ResizablePanelGroup
+				autoSaveId="rest-console-request-response"
+				direction="vertical"
+				className="grow"
+			>
+				<ResizablePanel defaultSize={50} className="min-h-10">
+					<RequestView />
+				</ResizablePanel>
+				<ResizableHandle />
+				<ResizablePanel defaultSize={50} className="min-h-10">
+					<ResponseView />
+				</ResizablePanel>
+			</ResizablePanelGroup>
 		</div>
 	);
 }
