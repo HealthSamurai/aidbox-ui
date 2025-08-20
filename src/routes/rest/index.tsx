@@ -1,11 +1,9 @@
 import {
 	Button,
-	METHOD_COLORS,
 	RequestLineEditor,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
-	Separator,
 	Tabs,
 	TabsList,
 	TabsTrigger,
@@ -14,9 +12,20 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fullscreen, PanelRightOpen, Play, Plus, Save, X } from "lucide-react";
-import { Fragment, useState } from "react";
-import { useLocalStorage } from "../../hooks";
+import { Fullscreen, PanelRightOpen, Play, Save } from "lucide-react";
+import { useState } from "react";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import {
+	REST_CONSOLE_SELECTED_TAB_KEY,
+	REST_CONSOLE_TABS_KEY,
+} from "../../shared/const";
+import {
+	ActiveTabs,
+	DEFAULT_TAB_ID,
+	DEFAULT_TABS,
+	type Tab,
+	type TabId,
+} from "./active-tabs";
 
 export const Route = createFileRoute("/rest/")({
 	staticData: {
@@ -24,42 +33,6 @@ export const Route = createFileRoute("/rest/")({
 	},
 	component: RouteComponent,
 });
-
-const MockState = {
-	activeTab: "active-tab-1",
-	activeTabs: [
-		{
-			id: "active-tab-1",
-			method: "GET",
-			path: "/fhir/Patient",
-		},
-		{
-			id: "active-tab-2",
-			method: "POST",
-			path: "/fhir/Organization",
-		},
-		{
-			id: "active-tab-3",
-			method: "PUT",
-			path: "/fhir/Encounter/en",
-		},
-		{
-			id: "active-tab-4",
-			method: "PATCH",
-			path: "/fhir/Observation/ob",
-		},
-		{
-			id: "active-tab-5",
-			method: "PUT",
-			path: "/fhir/Organization/uuid-uuid-uuid-uuiduuid/QuestionareResponse/uuid-uuid-uuid-uuiduuid",
-		},
-		{
-			id: "active-tab-6",
-			method: "DELETE",
-			path: "/fhir/Appointement/ap",
-		},
-	],
-};
 
 function SidebarToggleButton() {
 	return (
@@ -71,53 +44,6 @@ function SidebarToggleButton() {
 			</TooltipTrigger>
 			<TooltipContent>History / Collections</TooltipContent>
 		</Tooltip>
-	);
-}
-
-function ActiveTabs() {
-	const [tabs, setTabs] = useLocalStorage({
-		key: "key",
-		getInitialValueInEffect: false,
-		defaultValue: [{ id: 1 }],
-	});
-	return (
-		<Tabs
-			defaultValue={MockState.activeTab}
-			className="overflow-x-auto overflow-y-hidden"
-		>
-			<TabsList className="w-full">
-				{MockState.activeTabs.map((activeTab, index) => (
-					<Fragment key={activeTab.id}>
-						<TabsTrigger value={activeTab.id} className="max-w-80 min-w-15">
-							<Tooltip delayDuration={400}>
-								<TooltipTrigger asChild>
-									<span className="w-full flex items-center justify-between">
-										<span className="truncate">
-											<span
-												className={`mr-1 ${METHOD_COLORS[activeTab.method as keyof typeof METHOD_COLORS].text}`}
-											>
-												{activeTab.method}
-											</span>
-											{activeTab.path}
-										</span>
-										<Button variant="link" className="p-0 ml-2" asChild>
-											<X size={16} />
-										</Button>
-									</span>
-								</TooltipTrigger>
-								<TooltipContent className="max-w-60">
-									{activeTab.method} {activeTab.path}
-								</TooltipContent>
-							</Tooltip>
-						</TabsTrigger>
-
-						{index < MockState.activeTabs.length - 1 && (
-							<Separator orientation="vertical" />
-						)}
-					</Fragment>
-				))}
-			</TabsList>
-		</Tabs>
 	);
 }
 
@@ -193,16 +119,20 @@ function ResponseView() {
 }
 
 function RouteComponent() {
+	const [tabs, setTabs] = useLocalStorage<Tab[]>({
+		key: REST_CONSOLE_TABS_KEY,
+		getInitialValueInEffect: false,
+		defaultValue: DEFAULT_TABS,
+	});
+
 	return (
 		<div className="h-full w-full flex flex-col">
 			<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
 				<SidebarToggleButton />
-				<ActiveTabs />
-				<div className="bg-bg-secondary border-l">
-					<Button variant="link" className="h-full">
-						<Plus />
-					</Button>
-				</div>
+				<ActiveTabs
+					setTabs={setTabs}
+					tabs={tabs}
+				/>
 			</div>
 			<div className="px-4 py-3 flex">
 				<RequestLineEditorWrapper />
