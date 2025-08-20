@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowEvent } from "./useWindowEvent";
 
 export type StorageType = "localStorage" | "sessionStorage";
@@ -94,6 +94,9 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 		deserialize = deserializeJSON,
 		serialize = (value: T) => serializeJSON(value, hookName),
 	}: UseStorageOptions<T>): UseStorageReturnValue<T> {
+		const defaultValueRef = useRef(defaultValue);
+		defaultValueRef.current = defaultValue;
+
 		const readStorageValue = useCallback(
 			(skipStorage?: boolean): T => {
 				let storageBlockedOrSkipped: boolean;
@@ -109,20 +112,20 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 				}
 
 				if (storageBlockedOrSkipped) {
-					return defaultValue as T;
+					return defaultValueRef.current as T;
 				}
 
 				const storageValue = getItem(key);
 				return storageValue !== null
 					? deserialize(storageValue)
-					: (defaultValue as T);
+					: (defaultValueRef.current as T);
 			},
-			[key, defaultValue, deserialize, type],
+			[key, deserialize, type],
 		);
 
-		const [value, setValue] = useState<T>(
-			readStorageValue(getInitialValueInEffect),
-		);
+		const [value, setValue] = useState<T>(() => {
+			return readStorageValue(getInitialValueInEffect);
+		});
 
 		const setStorageValue = useCallback(
 			(val: T | ((prevState: T) => T)) => {
@@ -130,7 +133,7 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 					setValue((current) => {
 						const result = val(current);
 						setItem(key, serialize(result));
-						// Defer dispatching this event to avoid the handler being called during render.
+
 						queueMicrotask(() => {
 							window.dispatchEvent(
 								new CustomEvent(eventName, {
@@ -154,9 +157,11 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 		const removeStorageValue = useCallback(() => {
 			removeItem(key);
 			window.dispatchEvent(
-				new CustomEvent(eventName, { detail: { key, value: defaultValue } }),
+				new CustomEvent(eventName, {
+					detail: { key, value: defaultValueRef.current },
+				}),
 			);
-		}, [defaultValue, key]);
+		}, [key]);
 
 		useWindowEvent("storage", (event) => {
 			if (sync) {
@@ -177,19 +182,26 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 			},
 		);
 
+		// biome-ignore lint/correctness/useExhaustiveDependencies: we no need readStorageValue in deps
 		useEffect(() => {
-			if (defaultValue !== undefined && value === undefined) {
-				setStorageValue(defaultValue);
+			if (getInitialValueInEffect) {
+				const val = readStorageValue();
+				if (val !== undefined) {
+					setValue(val);
+				}
 			}
-		}, [defaultValue, value, setStorageValue]);
+		}, [getInitialValueInEffect]);
 
+		// Handle setting default value when value is undefined
 		useEffect(() => {
-			const val = readStorageValue();
-			val !== undefined && setStorageValue(val);
-		}, [readStorageValue, setStorageValue]);
+			if (defaultValueRef.current !== undefined && value === undefined) {
+				setValue(defaultValueRef.current);
+				setItem(key, serialize(defaultValueRef.current));
+			}
+		}, [key, serialize, value]);
 
 		return [
-			value === undefined ? (defaultValue as T) : value,
+			value === undefined ? (defaultValueRef.current as T) : value,
 			setStorageValue,
 			removeStorageValue,
 		];

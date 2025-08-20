@@ -16,6 +16,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, PanelRightOpen, Play, Plus, Save, X } from "lucide-react";
 import { Fragment, useState } from "react";
+import { useLocalStorage } from "../../hooks";
 
 export const Route = createFileRoute("/rest/")({
 	staticData: {
@@ -74,6 +75,11 @@ function SidebarToggleButton() {
 }
 
 function ActiveTabs() {
+	const [tabs, setTabs] = useLocalStorage({
+		key: "key",
+		getInitialValueInEffect: false,
+		defaultValue: [{ id: 1 }],
+	});
 	return (
 		<Tabs
 			defaultValue={MockState.activeTab}
