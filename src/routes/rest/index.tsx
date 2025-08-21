@@ -12,7 +12,14 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fullscreen, PanelRightClose, PanelRightOpen, Play, Save } from "lucide-react";
+import {
+	Fullscreen,
+	PanelRightClose,
+	PanelRightOpen,
+	Play,
+	Save,
+	Timer,
+} from "lucide-react";
 import { useState } from "react";
 import {
 	ActiveTabs,
@@ -22,7 +29,7 @@ import {
 
 import { LeftMenu } from "../../components/rest/left-menu";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { REST_CONSOLE_TABS_KEY } from "../../shared/const";
+import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../../shared/const";
 
 export const Route = createFileRoute("/rest/")({
 	staticData: {
@@ -31,12 +38,26 @@ export const Route = createFileRoute("/rest/")({
 	component: RouteComponent,
 });
 
-function SidebarToggleButton({ setLeftMenuOpen, leftMenuOpen }: { setLeftMenuOpen: (open: boolean) => void, leftMenuOpen: boolean }) {
+function SidebarToggleButton({
+	setLeftMenuOpen,
+	leftMenuOpen,
+}: {
+	setLeftMenuOpen: (open: boolean) => void;
+	leftMenuOpen: boolean;
+}) {
 	return (
 		<Tooltip delayDuration={600}>
 			<TooltipTrigger asChild>
-				<Button variant="link" className="h-full border-r" onClick={() => setLeftMenuOpen(!leftMenuOpen)}>
-					{leftMenuOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+				<Button
+					variant="link"
+					className="h-full border-r"
+					onClick={() => setLeftMenuOpen(!leftMenuOpen)}
+				>
+					{leftMenuOpen ? (
+						<PanelRightClose className="size-4" />
+					) : (
+						<PanelRightOpen className="size-4" />
+					)}
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>History / Collections</TooltipContent>
@@ -74,7 +95,7 @@ function RequestEditorTabs() {
 
 function RequestView() {
 	return (
-		<div className="flex items-center justify-between bg-bg-secondary px-4 border-y">
+		<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
 			<div className="flex items-center">
 				<span className="typo-label text-text-secondary mb-0.5 pr-3">
 					Request:
@@ -99,19 +120,38 @@ function ResponseEditorTabs() {
 	);
 }
 
+function ResponseStatus({ status }: { status: number }) {
+	const messageColor = status >= 400 ? "text-critical-default" : "text-green-500";
+	return (
+		<span className="flex font-medium items-center text-text-secondary text-sm">
+			<span>Status:</span>
+			<span className={`ml-1 ${messageColor}`}>
+				{status} {" "} {HTTP_STATUS_CODES[status]}
+			</span>
+		</span>
+	);
+}
 function ResponseView() {
 	return (
-		<div className="flex items-center justify-between bg-bg-secondary px-4 border-y">
+		<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
 			<div className="flex items-center">
 				<span className="typo-label text-text-secondary mb-0.5 pr-3">
 					Response:
 				</span>
 				<ResponseEditorTabs />
 			</div>
-			<Button variant="link">
-				<Fullscreen />
-			</Button>
-		</div>
+			<div className="flex items-center gap-2">
+				<ResponseStatus status={200} />
+				<span className="flex items-center text-text-secondary text-sm pl-2">
+					<Timer className="size-4 mr-1" strokeWidth={1.5} />
+					<span className="font-bold">512</span>
+					<span className="ml-1">ms</span>
+				</span>
+				<Button variant="link">
+					<Fullscreen />
+				</Button>
+			</div>
+		</div >
 	);
 }
 
@@ -133,7 +173,10 @@ function RouteComponent() {
 			<LeftMenu leftMenuOpen={leftMenuOpen} />
 			<div className="h-full w-full flex flex-col">
 				<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
-					<SidebarToggleButton setLeftMenuOpen={setLeftMenuOpen} leftMenuOpen={leftMenuOpen} />
+					<SidebarToggleButton
+						setLeftMenuOpen={setLeftMenuOpen}
+						leftMenuOpen={leftMenuOpen}
+					/>
 					<ActiveTabs setTabs={setTabs} tabs={tabs} />
 				</div>
 				<div className="px-4 py-3 flex">

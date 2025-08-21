@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@health-samurai/react-
 
 export function LeftMenu({ leftMenuOpen }: { leftMenuOpen: boolean }) {
     return (
-        <div className={`border-r w-0 invisible transition-[width] ${leftMenuOpen ? "w-70 visible" : ""}`}>
+        <div className={`w-0 invisible transition-[width] ${leftMenuOpen ? "w-70 visible border-r" : ""}`}>
             <Tabs defaultValue="history">
                 <div className="border-b h-10">
                     <TabsList>
