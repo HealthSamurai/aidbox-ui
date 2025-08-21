@@ -1,5 +1,6 @@
 import {
 	Button,
+	CodeEditor,
 	RequestLineEditor,
 	ResizableHandle,
 	ResizablePanel,
@@ -26,7 +27,6 @@ import {
 	DEFAULT_TABS,
 	type Tab,
 } from "../../components/rest/active-tabs";
-
 import { LeftMenu } from "../../components/rest/left-menu";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../../shared/const";
@@ -94,17 +94,21 @@ function RequestEditorTabs() {
 }
 
 function RequestView() {
+	const defaultEditorValue = JSON.stringify({ resourceType: "Patient" }, null, 2);
 	return (
-		<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
-			<div className="flex items-center">
-				<span className="typo-label text-text-secondary mb-0.5 pr-3">
-					Request:
-				</span>
-				<RequestEditorTabs />
+		<div className="flex flex-col h-full">
+			<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
+				<div className="flex items-center">
+					<span className="typo-label text-text-secondary mb-0.5 pr-3">
+						Request:
+					</span>
+					<RequestEditorTabs />
+				</div>
+				<Button variant="link">
+					<Fullscreen />
+				</Button>
 			</div>
-			<Button variant="link">
-				<Fullscreen />
-			</Button>
+			<CodeEditor defaultValue={defaultEditorValue} onChange={() => { }} />
 		</div>
 	);
 }
@@ -121,37 +125,42 @@ function ResponseEditorTabs() {
 }
 
 function ResponseStatus({ status }: { status: number }) {
-	const messageColor = status >= 400 ? "text-critical-default" : "text-green-500";
+	const messageColor =
+		status >= 400 ? "text-critical-default" : "text-green-500";
 	return (
 		<span className="flex font-medium items-center text-text-secondary text-sm">
 			<span>Status:</span>
 			<span className={`ml-1 ${messageColor}`}>
-				{status} {" "} {HTTP_STATUS_CODES[status]}
+				{status} {HTTP_STATUS_CODES[status]}
 			</span>
 		</span>
 	);
 }
 function ResponseView() {
+	const defaultEditorValue = JSON.stringify({ resourceType: "Patient" }, null, 2);
 	return (
-		<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
-			<div className="flex items-center">
-				<span className="typo-label text-text-secondary mb-0.5 pr-3">
-					Response:
-				</span>
-				<ResponseEditorTabs />
+		<div className="flex flex-col h-full">
+			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
+				<div className="flex items-center">
+					<span className="typo-label text-text-secondary mb-0.5 pr-3">
+						Response:
+					</span>
+					<ResponseEditorTabs />
+				</div>
+				<div className="flex items-center gap-2">
+					<ResponseStatus status={200} />
+					<span className="flex items-center text-text-secondary text-sm pl-2">
+						<Timer className="size-4 mr-1" strokeWidth={1.5} />
+						<span className="font-bold">512</span>
+						<span className="ml-1">ms</span>
+					</span>
+					<Button variant="link">
+						<Fullscreen />
+					</Button>
+				</div>
 			</div>
-			<div className="flex items-center gap-2">
-				<ResponseStatus status={200} />
-				<span className="flex items-center text-text-secondary text-sm pl-2">
-					<Timer className="size-4 mr-1" strokeWidth={1.5} />
-					<span className="font-bold">512</span>
-					<span className="ml-1">ms</span>
-				</span>
-				<Button variant="link">
-					<Fullscreen />
-				</Button>
-			</div>
-		</div >
+			<CodeEditor defaultValue={defaultEditorValue} onChange={() => { }} />
+		</div>
 	);
 }
 
