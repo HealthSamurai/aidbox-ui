@@ -9,15 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RestConsoleRouteImport } from './routes/rest-console'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RestIndexRouteImport } from './routes/rest/index'
 
-const RestConsoleRoute = RestConsoleRouteImport.update({
-  id: '/rest-console',
-  path: '/rest-console',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,43 +25,32 @@ const RestIndexRoute = RestIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/rest-console': typeof RestConsoleRoute
   '/rest': typeof RestIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/rest-console': typeof RestConsoleRoute
   '/rest': typeof RestIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/rest-console': typeof RestConsoleRoute
   '/rest/': typeof RestIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rest-console' | '/rest'
+  fullPaths: '/' | '/rest'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rest-console' | '/rest'
-  id: '__root__' | '/' | '/rest-console' | '/rest/'
+  to: '/' | '/rest'
+  id: '__root__' | '/' | '/rest/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  RestConsoleRoute: typeof RestConsoleRoute
   RestIndexRoute: typeof RestIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/rest-console': {
-      id: '/rest-console'
-      path: '/rest-console'
-      fullPath: '/rest-console'
-      preLoaderRoute: typeof RestConsoleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -87,7 +70,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  RestConsoleRoute: RestConsoleRoute,
   RestIndexRoute: RestIndexRoute,
 }
 export const routeTree = rootRouteImport
