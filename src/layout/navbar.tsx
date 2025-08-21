@@ -102,7 +102,7 @@ function NavbarButtons() {
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant="ghost"
-						className="p-2 rounded-full bg-(--color-elements-assistive) text-white cursor-pointer"
+						className="w-9 rounded-full bg-(--color-elements-assistive) text-white cursor-pointer"
 					>
 						<UserRound />
 					</Button>
