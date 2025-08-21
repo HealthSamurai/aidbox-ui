@@ -1,6 +1,6 @@
 import {
   Button,
-  METHOD_COLORS,
+  RestConsoleTabs,
   Separator,
   Tabs,
   TabsList,
@@ -53,59 +53,37 @@ function removeTab(tabs: Tab[], tabId: TabId, setTabs: (val: Tab[]) => void) {
   }
 }
 
-function handleTabSelect(tabId: TabId, tabs: Tab[], setTabs: (val: Tab[]) => void) {
+function onTabSelect(
+  tabId: TabId,
+  tabs: Tab[],
+  setTabs: (val: Tab[]) => void,
+) {
   setTabs(tabs.map((t) => ({ ...t, selected: t.id === tabId })));
 }
 
-export function ActiveTabs({ tabs, setTabs }: { tabs: Tab[], setTabs: (val: Tab[]) => void }) {
+export function ActiveTabs({
+  tabs,
+  setTabs,
+}: {
+  tabs: Tab[];
+  setTabs: (val: Tab[]) => void;
+}) {
   const selectedTab = tabs.find((tab) => tab.selected)?.id || DEFAULT_TAB_ID;
+  const handleCloseTab = (tabId: TabId) => {
+    removeTab(tabs, tabId, setTabs);
+  };
+  const handleTabSelect = (tabId: TabId) => {
+    onTabSelect(tabId, tabs, setTabs);
+  };
+
   return (
     <React.Fragment>
-      <Tabs value={selectedTab} className="overflow-x-auto overflow-y-hidden">
-        <TabsList className="w-full">
-          {tabs.map((tab, index) => (
-            <React.Fragment key={tab.id}>
-              <TabsTrigger
-                value={tab.id}
-                className="max-w-80 w-50 min-w-30"
-                onClick={() => handleTabSelect(tab.id, tabs, setTabs)}
-              >
-                <Tooltip delayDuration={400}>
-                  <TooltipTrigger asChild>
-                    <span className="w-full flex items-center justify-between">
-                      <span className="truncate">
-                        <span
-                          className={`mr-1 ${METHOD_COLORS[tab.method as keyof typeof METHOD_COLORS].text}`}
-                        >
-                          {tab.method}
-                        </span>
-                        {tab.name || tab.path}
-                      </span>
-                      <Button
-                        variant="link"
-                        className="p-0 ml-2"
-                        asChild
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeTab(tabs, tab.id, setTabs)
-                        }}
-                      >
-                        <span>
-                          <X size={16} />
-                        </span>
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-60">
-                    {tab.method} {tab.path}
-                  </TooltipContent>
-                </Tooltip>
-              </TabsTrigger>
-              {index < tabs.length - 1 && <Separator orientation="vertical" />}
-            </React.Fragment>
-          ))}
-        </TabsList>
-      </Tabs>
+      <RestConsoleTabs
+        tabs={tabs}
+        selectedTabId={selectedTab}
+        onSelectTab={handleTabSelect}
+        onCloseTab={handleCloseTab}
+      />
       <div className="bg-bg-secondary border-l">
         <Button
           variant="link"
