@@ -14,18 +14,13 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, PanelRightOpen, Play, Save } from "lucide-react";
 import { useState } from "react";
-import { useLocalStorage } from "../../hooks/useLocalStorage";
-import {
-	REST_CONSOLE_SELECTED_TAB_KEY,
-	REST_CONSOLE_TABS_KEY,
-} from "../../shared/const";
 import {
 	ActiveTabs,
-	DEFAULT_TAB_ID,
 	DEFAULT_TABS,
 	type Tab,
-	type TabId,
 } from "../../components/rest/active-tabs";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { REST_CONSOLE_TABS_KEY } from "../../shared/const";
 
 export const Route = createFileRoute("/rest/")({
 	staticData: {
@@ -129,10 +124,7 @@ function RouteComponent() {
 		<div className="h-full w-full flex flex-col">
 			<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
 				<SidebarToggleButton />
-				<ActiveTabs
-					setTabs={setTabs}
-					tabs={tabs}
-				/>
+				<ActiveTabs setTabs={setTabs} tabs={tabs} />
 			</div>
 			<div className="px-4 py-3 flex">
 				<RequestLineEditorWrapper />

@@ -14,7 +14,7 @@ import * as React from "react";
 
 export type TabId = string;
 
-interface Tab {
+export interface Tab {
   id: TabId;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path?: string;
