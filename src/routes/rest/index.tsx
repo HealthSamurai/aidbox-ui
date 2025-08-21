@@ -12,13 +12,15 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fullscreen, PanelRightOpen, Play, Save } from "lucide-react";
+import { Fullscreen, PanelRightClose, PanelRightOpen, Play, Save } from "lucide-react";
 import { useState } from "react";
 import {
 	ActiveTabs,
 	DEFAULT_TABS,
 	type Tab,
 } from "../../components/rest/active-tabs";
+
+import { LeftMenu } from "../../components/rest/left-menu";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { REST_CONSOLE_TABS_KEY } from "../../shared/const";
 
@@ -29,12 +31,12 @@ export const Route = createFileRoute("/rest/")({
 	component: RouteComponent,
 });
 
-function SidebarToggleButton() {
+function SidebarToggleButton({ setLeftMenuOpen, leftMenuOpen }: { setLeftMenuOpen: (open: boolean) => void, leftMenuOpen: boolean }) {
 	return (
-		<Tooltip>
+		<Tooltip delayDuration={600}>
 			<TooltipTrigger asChild>
-				<Button variant="link" className="h-full border-r">
-					<PanelRightOpen className="size-4" />
+				<Button variant="link" className="h-full border-r" onClick={() => setLeftMenuOpen(!leftMenuOpen)}>
+					{leftMenuOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>History / Collections</TooltipContent>
@@ -120,35 +122,44 @@ function RouteComponent() {
 		defaultValue: DEFAULT_TABS,
 	});
 
+	const [leftMenuOpen, setLeftMenuOpen] = useLocalStorage<boolean>({
+		key: "rest-console-left-menu-open",
+		getInitialValueInEffect: false,
+		defaultValue: true,
+	});
+
 	return (
-		<div className="h-full w-full flex flex-col">
-			<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
-				<SidebarToggleButton />
-				<ActiveTabs setTabs={setTabs} tabs={tabs} />
+		<div className="flex h-full w-full">
+			<LeftMenu leftMenuOpen={leftMenuOpen} />
+			<div className="h-full w-full flex flex-col">
+				<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
+					<SidebarToggleButton setLeftMenuOpen={setLeftMenuOpen} leftMenuOpen={leftMenuOpen} />
+					<ActiveTabs setTabs={setTabs} tabs={tabs} />
+				</div>
+				<div className="px-4 py-3 flex">
+					<RequestLineEditorWrapper />
+					<Button variant="primary" className="ml-2">
+						<Play />
+						SEND
+					</Button>
+					<Button variant="link" className="ml-2">
+						<Save />
+					</Button>
+				</div>
+				<ResizablePanelGroup
+					autoSaveId="rest-console-request-response"
+					direction="vertical"
+					className="grow"
+				>
+					<ResizablePanel defaultSize={50} className="min-h-10">
+						<RequestView />
+					</ResizablePanel>
+					<ResizableHandle />
+					<ResizablePanel defaultSize={50} className="min-h-10">
+						<ResponseView />
+					</ResizablePanel>
+				</ResizablePanelGroup>
 			</div>
-			<div className="px-4 py-3 flex">
-				<RequestLineEditorWrapper />
-				<Button variant="primary" className="ml-2">
-					<Play />
-					SEND
-				</Button>
-				<Button variant="link" className="ml-2">
-					<Save />
-				</Button>
-			</div>
-			<ResizablePanelGroup
-				autoSaveId="rest-console-request-response"
-				direction="vertical"
-				className="grow"
-			>
-				<ResizablePanel defaultSize={50} className="min-h-10">
-					<RequestView />
-				</ResizablePanel>
-				<ResizableHandle />
-				<ResizablePanel defaultSize={50} className="min-h-10">
-					<ResponseView />
-				</ResizablePanel>
-			</ResizablePanelGroup>
 		</div>
 	);
 }
