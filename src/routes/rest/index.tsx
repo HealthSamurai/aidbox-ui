@@ -25,7 +25,7 @@ import {
 	DEFAULT_TABS,
 	type Tab,
 	type TabId,
-} from "./active-tabs";
+} from "../../components/rest/active-tabs";
 
 export const Route = createFileRoute("/rest/")({
 	staticData: {
