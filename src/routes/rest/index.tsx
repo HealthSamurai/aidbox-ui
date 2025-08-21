@@ -15,8 +15,8 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	Fullscreen,
-	PanelRightClose,
-	PanelRightOpen,
+	PanelLeftClose,
+	PanelLeftOpen,
 	Play,
 	Save,
 	Timer,
@@ -54,9 +54,9 @@ function SidebarToggleButton({
 					onClick={() => setLeftMenuOpen(!leftMenuOpen)}
 				>
 					{leftMenuOpen ? (
-						<PanelRightClose className="size-4" />
+						<PanelLeftClose className="size-4" />
 					) : (
-						<PanelRightOpen className="size-4" />
+						<PanelLeftOpen className="size-4" />
 					)}
 				</Button>
 			</TooltipTrigger>
