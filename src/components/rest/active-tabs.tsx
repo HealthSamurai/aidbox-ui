@@ -1,8 +1,8 @@
 import {
   Button,
-  RestConsoleTabs,
   Separator,
   Tabs,
+  TabsAddButton,
   TabsList,
   TabsTrigger,
   Tooltip,
@@ -53,11 +53,7 @@ function removeTab(tabs: Tab[], tabId: TabId, setTabs: (val: Tab[]) => void) {
   }
 }
 
-function onTabSelect(
-  tabId: TabId,
-  tabs: Tab[],
-  setTabs: (val: Tab[]) => void,
-) {
+function onTabSelect(tabId: TabId, tabs: Tab[], setTabs: (val: Tab[]) => void) {
   setTabs(tabs.map((t) => ({ ...t, selected: t.id === tabId })));
 }
 
@@ -77,22 +73,18 @@ export function ActiveTabs({
   };
 
   return (
-    <React.Fragment>
-      <RestConsoleTabs
-        tabs={tabs}
-        selectedTabId={selectedTab}
-        onSelectTab={handleTabSelect}
-        onCloseTab={handleCloseTab}
-      />
-      <div className="bg-bg-secondary border-l">
-        <Button
-          variant="link"
-          className="h-full"
-          onClick={() => addTab(tabs, setTabs)}
-        >
-          <Plus />
-        </Button>
-      </div>
-    </React.Fragment>
+    <Tabs variant="browser" defaultValue={selectedTab}>
+      <TabsList>
+        {tabs.map((tab) => (
+          <TabsTrigger key={tab.id} value={tab.id} onClose={() => handleCloseTab(tab.id)}>
+            <span className="flex items-center gap-1">
+              <span className="text-text-success-primary">{tab.method}</span>
+              <span>{tab.path || tab.name}</span>
+            </span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      <TabsAddButton onClick={() => addTab(tabs, setTabs)} />
+    </Tabs>
   );
 }

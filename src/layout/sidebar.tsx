@@ -42,9 +42,9 @@ export function AidboxSidebar({
 			className="relative h-full"
 			{...(sidebarMode === "hover"
 				? {
-						onMouseEnter: () => sidebar.setOpen(true),
-						onMouseLeave: () => sidebar.setOpen(false),
-					}
+					onMouseEnter: () => sidebar.setOpen(true),
+					onMouseLeave: () => sidebar.setOpen(false),
+				}
 				: {})}
 		>
 			<SidebarContent>

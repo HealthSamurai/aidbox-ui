@@ -50,7 +50,7 @@ function SidebarToggleButton({
 			<TooltipTrigger asChild>
 				<Button
 					variant="link"
-					className="h-full border-r"
+					className="h-full border-b flex-shrink-0 border-r"
 					onClick={() => setLeftMenuOpen(!leftMenuOpen)}
 				>
 					{leftMenuOpen ? (
@@ -178,15 +178,17 @@ function RouteComponent() {
 	});
 
 	return (
-		<div className="flex h-full w-full">
+		<div className="flex w-full h-full">
 			<LeftMenu leftMenuOpen={leftMenuOpen} />
-			<div className="h-full w-full flex flex-col">
-				<div className="grid grid-cols-[48px_auto_1fr] h-10 border-b">
+			<div className="flex flex-col grow min-w-0">
+				<div className="flex h-10 w-full" >
 					<SidebarToggleButton
 						setLeftMenuOpen={setLeftMenuOpen}
 						leftMenuOpen={leftMenuOpen}
 					/>
-					<ActiveTabs setTabs={setTabs} tabs={tabs} />
+					<div className="grow min-w-0">
+						<ActiveTabs setTabs={setTabs} tabs={tabs} />
+					</div>
 				</div>
 				<div className="px-4 py-3 flex">
 					<RequestLineEditorWrapper />

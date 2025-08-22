@@ -27,7 +27,7 @@ function Layout({ children }: PropsWithChildren) {
 					sidebarMode={sidebarMode}
 					setSidebarMode={setSidebarMode}
 				/>
-				<SidebarInset>{children}</SidebarInset>
+				<SidebarInset className="min-w-0">{children}</SidebarInset>
 			</SidebarProvider>
 		</div>
 	);
