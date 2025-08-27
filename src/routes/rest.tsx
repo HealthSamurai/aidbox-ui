@@ -30,6 +30,7 @@ import {
 } from "../components/rest/active-tabs";
 import HeadersEditor from "../components/rest/headers-editor";
 import { LeftMenu } from "../components/rest/left-menu";
+import ParamsEditor from "../components/rest/params-editor";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 
@@ -136,6 +137,13 @@ function RequestView({
 	const renderContent = () => {
 		switch (currentActiveSubTab) {
 			case "params":
+				return (
+					<ParamsEditor
+						key={`params-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						params={selectedTab.params || []}
+						onParamChange={onParamChange}
+					/>
+				);
 			case "headers":
 				return (
 					<HeadersEditor
@@ -305,7 +313,30 @@ function RouteComponent() {
 		});
 	}
 
-	function handleTabParamChange(paramIndex: number, param: Header) {}
+	function handleTabParamChange(paramIndex: number, param: Header) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) => {
+				if (!tab.selected) return tab;
+
+				const params = Array.isArray(tab.params) ? [...tab.params] : [];
+				params[paramIndex] = { ...params[paramIndex], ...param };
+
+				// Проверяем, есть ли хотя бы один param с пустыми name и value
+				const hasEmptyParam = params.some(
+					(p) => p.name === "" && p.value === "",
+				);
+
+				if (!hasEmptyParam) {
+					params.push({ id: crypto.randomUUID(), name: "", value: "" });
+				}
+
+				return {
+					...tab,
+					params,
+				};
+			}) as Tab[];
+		});
+	}
 
 	function handleTabBodyChange(body: string) {
 		setTabs((currentTabs) => {

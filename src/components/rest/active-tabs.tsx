@@ -38,7 +38,7 @@ export const DEFAULT_TAB: Tab = {
 		{ id: "2", name: "Accept", value: "application/json" },
 		{ id: "3", name: "", value: "" },
 	],
-	params: [],
+	params: [{ id: "1", name: "", value: "" }],
 };
 
 function addTab(tabs: Tab[], setTabs: (val: Tab[]) => void) {
