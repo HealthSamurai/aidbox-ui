@@ -86,7 +86,11 @@ export function ActiveTabs({
 	};
 
 	return (
-		<Tabs variant="browser" value={selectedTab}>
+		<Tabs
+			variant="browser"
+			defaultValue={selectedTab}
+			onValueChange={handleTabSelect}
+		>
 			<TabsList>
 				{tabs.map((tab) => (
 					<TabsTrigger
@@ -95,7 +99,7 @@ export function ActiveTabs({
 						onClose={() => handleCloseTab(tab.id)}
 						onClick={() => handleTabSelect(tab.id)}
 					>
-						<span className="flex items-center gap-1">
+						<span className="flex items-center gap-1 truncate">
 							<span className={methodColors[tab.method]}>{tab.method}</span>
 							<span>{tab.path || tab.name}</span>
 						</span>

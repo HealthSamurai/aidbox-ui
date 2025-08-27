@@ -89,19 +89,6 @@ function RequestLineEditorWrapper({
 	);
 }
 
-function RequestEditorTabs() {
-	return (
-		<Tabs defaultValue="body">
-			<TabsList>
-				<TabsTrigger value="params">Params</TabsTrigger>
-				<TabsTrigger value="headers">Headers</TabsTrigger>
-				<TabsTrigger value="body">Body</TabsTrigger>
-				<TabsTrigger value="raw">Raw</TabsTrigger>
-			</TabsList>
-		</Tabs>
-	);
-}
-
 function RequestView({
 	selectedTab,
 	onBodyChange,
@@ -115,23 +102,10 @@ function RequestView({
 	onHeaderChange: (headerIndex: number, header: Header) => void;
 	onParamChange: (paramIndex: number, param: Header) => void;
 }) {
-	const activeSubTab = selectedTab.activeSubTab || "body";
-
-	const shouldShowBody =
-		selectedTab.method === "POST" ||
-		selectedTab.method === "PUT" ||
-		selectedTab.method === "PATCH";
-
-	const currentActiveSubTab = shouldShowBody
-		? activeSubTab
-		: activeSubTab === "body"
-			? "headers"
-			: activeSubTab;
+	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
 	const getEditorValue = () => {
-		return (
-			selectedTab.body || JSON.stringify({ resourceType: "Patient" }, null, 2)
-		);
+		return selectedTab.body || JSON.stringify({ resourceType: "" }, null, 2);
 	};
 
 	const renderContent = () => {
@@ -183,8 +157,8 @@ function RequestView({
 						<TabsList>
 							<TabsTrigger value="params">Params</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
-							{shouldShowBody && <TabsTrigger value="body">Body</TabsTrigger>}
-							<TabsTrigger value="raw">Raw</TabsTrigger>
+							<TabsTrigger value="body">Body</TabsTrigger>
+							{/* <TabsTrigger value="raw">Raw</TabsTrigger> */}
 						</TabsList>
 					</Tabs>
 				</div>
@@ -221,11 +195,7 @@ function ResponseStatus({ status }: { status: number }) {
 	);
 }
 function ResponseView() {
-	const defaultEditorValue = JSON.stringify(
-		{ resourceType: "Patient" },
-		null,
-		2,
-	);
+	const defaultEditorValue = JSON.stringify({ resourceType: "" }, null, 2);
 	return (
 		<div className="flex flex-col h-full">
 			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
@@ -252,6 +222,55 @@ function ResponseView() {
 	);
 }
 
+function requestParamsHasEmpty(params: Header[]): boolean {
+	return params.some((param) => param.name === "" && param.value === "");
+}
+
+function handleTabRequestPathChange(
+	path: string,
+	tabs: Tab[],
+	setTabs: (tabs: Tab[]) => void,
+) {
+	const queryParams = path.split("?")[1];
+	const params =
+		queryParams?.split("&").map((param, index) => {
+			const [name, value] = param.split("=");
+			return { id: `${index}`, name: name ?? "", value: value ?? "" };
+		}) || [];
+
+	if (!requestParamsHasEmpty(params)) {
+		params.push({ id: crypto.randomUUID(), name: "", value: "" });
+	}
+
+	setTabs(
+		tabs.map((tab) => (tab.selected ? { ...tab, path, params } : tab)) as Tab[],
+	);
+}
+
+function handleSendRequest(selectedTab: Tab) {
+	console.log(
+		selectedTab.method,
+		selectedTab.path,
+		"\n",
+		"\n",
+		selectedTab.headers
+			?.filter((header) => header.name)
+			.map((header) => header.name + ": " + header.value)
+			.join("\n"),
+		"\n",
+		"\n",
+		selectedTab.body,
+	);
+}
+
+function requestParamsEditorSyncPath(params: Header[], path: string) {
+	const location = path.split("?")[0];
+	const queryParams = params
+		.map((param) => (param.name ? `${param.name}=${param.value}` : ""))
+		.filter((param) => param !== "")
+		.join("&");
+	return queryParams ? `${location}?${queryParams}` : location;
+}
 function RouteComponent() {
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -268,12 +287,6 @@ function RouteComponent() {
 	const selectedTab = useMemo(() => {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
-
-	function handleTabPathChange(path: string) {
-		setTabs((currentTabs) =>
-			currentTabs.map((tab) => (tab.selected ? { ...tab, path } : tab)),
-		);
-	}
 
 	function handleTabMethodChange(method: string) {
 		setTabs((currentTabs) =>
@@ -296,7 +309,6 @@ function RouteComponent() {
 				const headers = Array.isArray(tab.headers) ? [...tab.headers] : [];
 				headers[headerIndex] = { ...headers[headerIndex], ...header };
 
-				// Проверяем, есть ли хотя бы один header с пустыми name и value
 				const hasEmptyHeader = headers.some(
 					(h) => h.name === "" && h.value === "",
 				);
@@ -321,10 +333,7 @@ function RouteComponent() {
 				const params = Array.isArray(tab.params) ? [...tab.params] : [];
 				params[paramIndex] = { ...params[paramIndex], ...param };
 
-				// Проверяем, есть ли хотя бы один param с пустыми name и value
-				const hasEmptyParam = params.some(
-					(p) => p.name === "" && p.value === "",
-				);
+				const hasEmptyParam = requestParamsHasEmpty(params);
 
 				if (!hasEmptyParam) {
 					params.push({ id: crypto.randomUUID(), name: "", value: "" });
@@ -332,6 +341,7 @@ function RouteComponent() {
 
 				return {
 					...tab,
+					path: requestParamsEditorSyncPath(params, tab.path || ""),
 					params,
 				};
 			}) as Tab[];
@@ -372,10 +382,16 @@ function RouteComponent() {
 				<div className="px-4 py-3 flex items-center">
 					<RequestLineEditorWrapper
 						selectedTab={selectedTab}
-						handleTabPathChange={handleTabPathChange}
+						handleTabPathChange={(path) =>
+							handleTabRequestPathChange(path, tabs, setTabs)
+						}
 						handleTabMethodChange={handleTabMethodChange}
 					/>
-					<Button variant="primary" className="ml-2">
+					<Button
+						variant="primary"
+						className="ml-2"
+						onClick={() => handleSendRequest(selectedTab)}
+					>
 						<Play />
 						SEND
 					</Button>

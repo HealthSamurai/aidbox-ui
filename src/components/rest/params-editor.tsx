@@ -22,7 +22,7 @@ function EditableTableRow({
 		<TableRow>
 			<TableCell className="px-4">
 				<Input
-					defaultValue={param.name}
+					value={param.name}
 					onChange={(e) =>
 						onParamChange(index, { ...param, name: e.target.value })
 					}
@@ -30,7 +30,7 @@ function EditableTableRow({
 			</TableCell>
 			<TableCell className="px-4">
 				<Input
-					defaultValue={param.value}
+					value={param.value}
 					onChange={(e) =>
 						onParamChange(index, { ...param, value: e.target.value })
 					}
