@@ -1,18 +1,17 @@
 import {
-	Button,
-	Separator,
 	Tabs,
 	TabsAddButton,
 	TabsList,
 	TabsTrigger,
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { Plus, X } from "lucide-react";
-import * as React from "react";
 
 export type TabId = string;
+
+export type Header = {
+	id: string;
+	name: string;
+	value: string;
+};
 
 export interface Tab {
 	id: TabId;
@@ -20,7 +19,8 @@ export interface Tab {
 	path?: string;
 	body?: string;
 	selected?: boolean;
-	headers?: string;
+	headers?: Header[];
+	params?: Header[];
 	name?: string;
 	activeSubTab?: "params" | "headers" | "body" | "raw";
 }
@@ -33,6 +33,12 @@ export const DEFAULT_TAB: Tab = {
 	name: "New request",
 	selected: true,
 	activeSubTab: "body",
+	headers: [
+		{ id: "1", name: "Content-Type", value: "application/json" },
+		{ id: "2", name: "Accept", value: "application/json" },
+		{ id: "3", name: "", value: "" },
+	],
+	params: [],
 };
 
 function addTab(tabs: Tab[], setTabs: (val: Tab[]) => void) {

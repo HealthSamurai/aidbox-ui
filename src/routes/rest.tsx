@@ -25,8 +25,10 @@ import { useMemo, useState } from "react";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
+	type Header,
 	type Tab,
 } from "../components/rest/active-tabs";
+import HeadersEditor from "../components/rest/headers-editor";
 import { LeftMenu } from "../components/rest/left-menu";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
@@ -102,13 +104,15 @@ function RequestEditorTabs() {
 function RequestView({
 	selectedTab,
 	onBodyChange,
-	onHeadersChange,
 	onSubTabChange,
+	onHeaderChange,
+	onParamChange,
 }: {
 	selectedTab: Tab;
 	onBodyChange: (body: string) => void;
-	onHeadersChange: (headers: string) => void;
 	onSubTabChange: (subTab: "params" | "headers" | "body" | "raw") => void;
+	onHeaderChange: (headerIndex: number, header: Header) => void;
+	onParamChange: (paramIndex: number, param: Header) => void;
 }) {
 	const activeSubTab = selectedTab.activeSubTab || "body";
 
@@ -124,37 +128,34 @@ function RequestView({
 			: activeSubTab;
 
 	const getEditorValue = () => {
-		switch (currentActiveSubTab) {
-			case "body":
-				return (
-					selectedTab.body ||
-					JSON.stringify({ resourceType: "Patient" }, null, 2)
-				);
-			case "headers":
-				return (
-					selectedTab.headers ||
-					JSON.stringify({ "Content-Type": "application/json" }, null, 2)
-				);
-			case "params":
-				return "{}";
-			case "raw":
-				return selectedTab.body || "";
-			default:
-				return "";
-		}
+		return (
+			selectedTab.body || JSON.stringify({ resourceType: "Patient" }, null, 2)
+		);
 	};
 
-	const handleEditorChange = (value: string) => {
+	const renderContent = () => {
 		switch (currentActiveSubTab) {
-			case "body":
-				onBodyChange(value);
-				break;
+			case "params":
 			case "headers":
-				onHeadersChange(value);
-				break;
+				return (
+					<HeadersEditor
+						key={`headers-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						headers={selectedTab.headers || []}
+						onHeaderChange={onHeaderChange}
+					/>
+				);
 			case "raw":
-				onBodyChange(value);
-				break;
+			case "body":
+				return (
+					<CodeEditor
+						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						key={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						defaultValue={getEditorValue()}
+						onChange={onBodyChange}
+					/>
+				);
+			default:
+				return null;
 		}
 	};
 
@@ -183,12 +184,7 @@ function RequestView({
 					<Fullscreen />
 				</Button>
 			</div>
-			<CodeEditor
-				id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-				key={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-				defaultValue={getEditorValue()}
-				onChange={handleEditorChange}
-			/>
+			{renderContent()}
 		</div>
 	);
 }
@@ -284,19 +280,37 @@ function RouteComponent() {
 		);
 	}
 
+	function handleTabHeaderChange(headerIndex: number, header: Header) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) => {
+				if (!tab.selected) return tab;
+
+				const headers = Array.isArray(tab.headers) ? [...tab.headers] : [];
+				headers[headerIndex] = { ...headers[headerIndex], ...header };
+
+				// Проверяем, есть ли хотя бы один header с пустыми name и value
+				const hasEmptyHeader = headers.some(
+					(h) => h.name === "" && h.value === "",
+				);
+
+				if (!hasEmptyHeader) {
+					headers.push({ id: crypto.randomUUID(), name: "", value: "" });
+				}
+
+				return {
+					...tab,
+					headers,
+				};
+			}) as Tab[];
+		});
+	}
+
+	function handleTabParamChange(paramIndex: number, param: Header) {}
+
 	function handleTabBodyChange(body: string) {
 		setTabs((currentTabs) => {
 			const updatedTabs = currentTabs.map((tab) =>
 				tab.selected ? { ...tab, body } : tab,
-			);
-			return updatedTabs;
-		});
-	}
-
-	function handleTabHeadersChange(headers: string) {
-		setTabs((currentTabs) => {
-			const updatedTabs = currentTabs.map((tab) =>
-				tab.selected ? { ...tab, headers } : tab,
 			);
 			return updatedTabs;
 		});
@@ -347,7 +361,8 @@ function RouteComponent() {
 						<RequestView
 							selectedTab={selectedTab}
 							onBodyChange={handleTabBodyChange}
-							onHeadersChange={handleTabHeadersChange}
+							onHeaderChange={handleTabHeaderChange}
+							onParamChange={handleTabParamChange}
 							onSubTabChange={handleSubTabChange}
 						/>
 					</ResizablePanel>
