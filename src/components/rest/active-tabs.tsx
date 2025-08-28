@@ -54,7 +54,14 @@ function removeTab(tabs: Tab[], tabId: TabId, setTabs: (val: Tab[]) => void) {
 	if (newTabs.length === 0) {
 		setTabs([DEFAULT_TAB]);
 	} else {
-		return setTabs(newTabs);
+		const hasSelected = newTabs.some((tab) => tab.selected);
+		let updatedTabs = newTabs;
+		if (!hasSelected && newTabs.length > 0) {
+			updatedTabs = newTabs.map((tab, idx) =>
+				idx === 0 ? { ...tab, selected: true } : { ...tab, selected: false },
+			);
+		}
+		setTabs(updatedTabs);
 	}
 }
 
@@ -86,11 +93,7 @@ export function ActiveTabs({
 	};
 
 	return (
-		<Tabs
-			variant="browser"
-			defaultValue={selectedTab}
-			onValueChange={handleTabSelect}
-		>
+		<Tabs variant="browser" value={selectedTab} onValueChange={handleTabSelect}>
 			<TabsList>
 				{tabs.map((tab) => (
 					<TabsTrigger

@@ -14,10 +14,12 @@ import {
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+	Columns2,
 	Fullscreen,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Play,
+	Rows2,
 	Save,
 	Timer,
 } from "lucide-react";
@@ -89,6 +91,18 @@ function RequestLineEditorWrapper({
 	);
 }
 
+function RawEditor({ selectedTab }: { selectedTab: Tab }) {
+	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path}`;
+	const defaultHeaders =
+		selectedTab.headers
+			?.filter((header) => header.name && header.value)
+			.map((header) => `${header.name}: ${header.value}`)
+			.join("\n") || "";
+
+	const defaultValue = `${defaultRequestLine}\n${defaultHeaders}\n\n${selectedTab.body}`;
+	return <CodeEditor defaultValue={defaultValue} />;
+}
+
 function RequestView({
 	selectedTab,
 	onBodyChange,
@@ -127,6 +141,7 @@ function RequestView({
 					/>
 				);
 			case "raw":
+				return <RawEditor selectedTab={selectedTab} />;
 			case "body":
 				return (
 					<CodeEditor
@@ -158,7 +173,7 @@ function RequestView({
 							<TabsTrigger value="params">Params</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
 							<TabsTrigger value="body">Body</TabsTrigger>
-							{/* <TabsTrigger value="raw">Raw</TabsTrigger> */}
+							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
 					</Tabs>
 				</div>
@@ -194,7 +209,13 @@ function ResponseStatus({ status }: { status: number }) {
 		</span>
 	);
 }
-function ResponseView() {
+function ResponseView({
+	panelsMode,
+	setPanelsMode,
+}: {
+	panelsMode: "horizontal" | "vertical";
+	setPanelsMode: (mode: "horizontal" | "vertical") => void;
+}) {
 	const defaultEditorValue = JSON.stringify({ resourceType: "" }, null, 2);
 	return (
 		<div className="flex flex-col h-full">
@@ -212,6 +233,32 @@ function ResponseView() {
 						<span className="font-bold">512</span>
 						<span className="ml-1">ms</span>
 					</span>
+					{panelsMode === "horizontal" && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="link"
+									onClick={() => setPanelsMode("vertical")}
+								>
+									<Columns2 />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Switch to vertical split</TooltipContent>
+						</Tooltip>
+					)}
+					{panelsMode === "vertical" && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="link"
+									onClick={() => setPanelsMode("horizontal")}
+								>
+									<Rows2 />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Switch to horizontal split</TooltipContent>
+						</Tooltip>
+					)}
 					<Button variant="link">
 						<Fullscreen />
 					</Button>
@@ -282,6 +329,14 @@ function RouteComponent() {
 		key: "rest-console-left-menu-open",
 		getInitialValueInEffect: false,
 		defaultValue: true,
+	});
+
+	const [panelsMode, setPanelsMode] = useLocalStorage<
+		"horizontal" | "vertical"
+	>({
+		key: "rest-console-panels-mode",
+		getInitialValueInEffect: false,
+		defaultValue: "horizontal",
 	});
 
 	const selectedTab = useMemo(() => {
@@ -401,7 +456,7 @@ function RouteComponent() {
 				</div>
 				<ResizablePanelGroup
 					autoSaveId="rest-console-request-response"
-					direction="vertical"
+					direction={panelsMode}
 					className="grow"
 				>
 					<ResizablePanel defaultSize={50} className="min-h-10">
@@ -415,7 +470,10 @@ function RouteComponent() {
 					</ResizablePanel>
 					<ResizableHandle />
 					<ResizablePanel defaultSize={50} className="min-h-10">
-						<ResponseView />
+						<ResponseView
+							panelsMode={panelsMode}
+							setPanelsMode={setPanelsMode}
+						/>
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</div>
