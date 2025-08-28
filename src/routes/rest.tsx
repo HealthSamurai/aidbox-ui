@@ -23,7 +23,7 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -35,6 +35,7 @@ import { LeftMenu } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
+import { parseHttpRequest } from "../utils";
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -91,16 +92,30 @@ function RequestLineEditorWrapper({
 	);
 }
 
-function RawEditor({ selectedTab }: { selectedTab: Tab }) {
-	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path}`;
+function RawEditor({
+	selectedTab,
+	onRawChange,
+}: {
+	selectedTab: Tab;
+	onRawChange?: (rawText: string) => void;
+}) {
+	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const defaultHeaders =
 		selectedTab.headers
 			?.filter((header) => header.name && header.value)
 			.map((header) => `${header.name}: ${header.value}`)
 			.join("\n") || "";
 
-	const defaultValue = `${defaultRequestLine}\n${defaultHeaders}\n\n${selectedTab.body}`;
-	return <CodeEditor defaultValue={defaultValue} />;
+	const currentValue = `${defaultRequestLine}\n${defaultHeaders}\n\n${selectedTab.body || ""}`;
+
+	return (
+		<CodeEditor
+			key={`raw-editor-${selectedTab.id}`}
+			currentValue={currentValue}
+			mode="http"
+			{...(onRawChange ? { onChange: onRawChange } : {})}
+		/>
+	);
 }
 
 function RequestView({
@@ -109,12 +124,14 @@ function RequestView({
 	onSubTabChange,
 	onHeaderChange,
 	onParamChange,
+	onRawChange,
 }: {
 	selectedTab: Tab;
 	onBodyChange: (body: string) => void;
 	onSubTabChange: (subTab: "params" | "headers" | "body" | "raw") => void;
 	onHeaderChange: (headerIndex: number, header: Header) => void;
 	onParamChange: (paramIndex: number, param: Header) => void;
+	onRawChange: (rawText: string) => void;
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -141,7 +158,9 @@ function RequestView({
 					/>
 				);
 			case "raw":
-				return <RawEditor selectedTab={selectedTab} />;
+				return (
+					<RawEditor selectedTab={selectedTab} onRawChange={onRawChange} />
+				);
 			case "body":
 				return (
 					<CodeEditor
@@ -421,6 +440,46 @@ function RouteComponent() {
 		});
 	}
 
+	function handleRawChange(rawText: string) {
+		try {
+			const parsed = parseHttpRequest(rawText);
+
+			setTabs((currentTabs) => {
+				return currentTabs.map((tab) => {
+					if (!tab.selected) return tab;
+
+					// Синхронизируем params из path
+					const queryParams = parsed.path.split("?")[1];
+					const params =
+						queryParams?.split("&").map((param, index) => {
+							const [name, value] = param.split("=");
+							return { id: `${index}`, name: name ?? "", value: value ?? "" };
+						}) || [];
+
+					if (!requestParamsHasEmpty(params)) {
+						params.push({ id: crypto.randomUUID(), name: "", value: "" });
+					}
+
+					return {
+						...tab,
+						method: parsed.method as
+							| "GET"
+							| "POST"
+							| "PUT"
+							| "PATCH"
+							| "DELETE",
+						path: parsed.path,
+						headers: parsed.headers,
+						body: parsed.body,
+						params: params,
+					};
+				}) as Tab[];
+			});
+		} catch (error) {
+			console.warn("Failed to parse HTTP request:", error);
+		}
+	}
+
 	return (
 		<div className="flex w-full h-full">
 			<LeftMenu leftMenuOpen={leftMenuOpen} />
@@ -466,6 +525,7 @@ function RouteComponent() {
 							onHeaderChange={handleTabHeaderChange}
 							onParamChange={handleTabParamChange}
 							onSubTabChange={handleSubTabChange}
+							onRawChange={handleRawChange}
 						/>
 					</ResizablePanel>
 					<ResizableHandle />
