@@ -23,7 +23,8 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -36,6 +37,14 @@ import ParamsEditor from "../components/rest/params-editor";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
+
+interface ResponseData {
+	status: number;
+	statusText: string;
+	headers: Record<string, string>;
+	body: string;
+	duration: number;
+}
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -204,9 +213,20 @@ function RequestView({
 		</div>
 	);
 }
-function ResponseEditorTabs() {
+function ResponseEditorTabs({
+	activeTab,
+	onTabChange,
+}: {
+	activeTab: "body" | "headers" | "raw";
+	onTabChange: (tab: "body" | "headers" | "raw") => void;
+}) {
 	return (
-		<Tabs defaultValue="body">
+		<Tabs
+			value={activeTab}
+			onValueChange={(value) =>
+				onTabChange(value as "body" | "headers" | "raw")
+			}
+		>
 			<TabsList>
 				<TabsTrigger value="body">Body</TabsTrigger>
 				<TabsTrigger value="headers">Headers</TabsTrigger>
@@ -216,14 +236,20 @@ function ResponseEditorTabs() {
 	);
 }
 
-function ResponseStatus({ status }: { status: number }) {
+function ResponseStatus({
+	status,
+	statusText,
+}: {
+	status: number;
+	statusText?: string;
+}) {
 	const messageColor =
 		status >= 400 ? "text-critical-default" : "text-green-500";
 	return (
 		<span className="flex font-medium items-center text-text-secondary text-sm">
 			<span>Status:</span>
 			<span className={`ml-1 ${messageColor}`}>
-				{status} {HTTP_STATUS_CODES[status]}
+				{status} {statusText || HTTP_STATUS_CODES[status]}
 			</span>
 		</span>
 	);
@@ -231,11 +257,39 @@ function ResponseStatus({ status }: { status: number }) {
 function ResponseView({
 	panelsMode,
 	setPanelsMode,
+	response,
+	activeResponseTab,
+	setActiveResponseTab,
 }: {
 	panelsMode: "horizontal" | "vertical";
 	setPanelsMode: (mode: "horizontal" | "vertical") => void;
+	response: ResponseData | null;
+	activeResponseTab: "body" | "headers" | "raw";
+	setActiveResponseTab: (tab: "body" | "headers" | "raw") => void;
 }) {
-	const defaultEditorValue = JSON.stringify({ resourceType: "" }, null, 2);
+	const getEditorContent = () => {
+		if (!response) return "";
+
+		switch (activeResponseTab) {
+			case "headers":
+				return JSON.stringify(response.headers, null, 2);
+			case "raw":
+				return `HTTP/1.1 ${response.status} ${response.statusText}\n${Object.entries(
+					response.headers,
+				)
+					.map(([key, value]) => `${key}: ${value}`)
+					.join("\n")}\n\n${response.body}`;
+			case "body":
+			default:
+				try {
+					const parsed = JSON.parse(response.body);
+					return JSON.stringify(parsed, null, 2);
+				} catch {
+					return response.body;
+				}
+		}
+	};
+
 	return (
 		<div className="flex flex-col h-full">
 			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
@@ -243,15 +297,25 @@ function ResponseView({
 					<span className="typo-label text-text-secondary mb-0.5 pr-3">
 						Response:
 					</span>
-					<ResponseEditorTabs />
+					<ResponseEditorTabs
+						activeTab={activeResponseTab}
+						onTabChange={setActiveResponseTab}
+					/>
 				</div>
 				<div className="flex items-center gap-2">
-					<ResponseStatus status={200} />
-					<span className="flex items-center text-text-secondary text-sm pl-2">
-						<Timer className="size-4 mr-1" strokeWidth={1.5} />
-						<span className="font-bold">512</span>
-						<span className="ml-1">ms</span>
-					</span>
+					{response && (
+						<ResponseStatus
+							status={response.status}
+							statusText={response.statusText}
+						/>
+					)}
+					{response && (
+						<span className="flex items-center text-text-secondary text-sm pl-2">
+							<Timer className="size-4 mr-1" strokeWidth={1.5} />
+							<span className="font-bold">{response.duration}</span>
+							<span className="ml-1">ms</span>
+						</span>
+					)}
 					{panelsMode === "horizontal" && (
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -283,7 +347,20 @@ function ResponseView({
 					</Button>
 				</div>
 			</div>
-			<CodeEditor defaultValue={defaultEditorValue} onChange={() => {}} />
+			{response ? (
+				<CodeEditor
+					key={`response-${activeResponseTab}-${response.status}`}
+					currentValue={getEditorContent()}
+					mode={activeResponseTab === "raw" ? "http" : "json"}
+				/>
+			) : (
+				<div className="flex items-center justify-center h-full text-text-secondary">
+					<div className="text-center">
+						<div className="text-lg mb-2">No response yet</div>
+						<div className="text-sm">Send a request to see the response</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -313,20 +390,42 @@ function handleTabRequestPathChange(
 	);
 }
 
-function handleSendRequest(selectedTab: Tab) {
-	console.log(
-		selectedTab.method,
-		selectedTab.path,
-		"\n",
-		"\n",
+function handleSendRequest(
+	selectedTab: Tab,
+	setResponse: (response: ResponseData | null) => void,
+) {
+	const headers =
 		selectedTab.headers
-			?.filter((header) => header.name)
-			.map((header) => header.name + ": " + header.value)
-			.join("\n"),
-		"\n",
-		"\n",
-		selectedTab.body,
-	);
+			?.filter((header) => header.name && header.value)
+			.reduce(
+				(acc, header) => {
+					acc[header.name] = header.value;
+					return acc;
+				},
+				{} as Record<string, string>,
+			) ?? {};
+
+	AidboxCallWithMeta({
+		method: selectedTab.method,
+		url: selectedTab.path || "/",
+		headers,
+		body: selectedTab.body || "",
+	})
+		.then((response) => {
+			setResponse(response);
+		})
+		.catch((error) => {
+			console.error("error", error);
+
+			const errorResponse: ResponseData = {
+				status: 0,
+				statusText: "Network Error",
+				headers: {},
+				body: JSON.stringify({ error: error.message }, null, 2),
+				duration: 0,
+			};
+			setResponse(errorResponse);
+		});
 }
 
 function requestParamsEditorSyncPath(params: Header[], path: string) {
@@ -355,12 +454,36 @@ function RouteComponent() {
 	>({
 		key: "rest-console-panels-mode",
 		getInitialValueInEffect: false,
-		defaultValue: "horizontal",
+		defaultValue: "vertical",
 	});
+
+	const [response, setResponse] = useState<ResponseData | null>(null);
+	const [activeResponseTab, setActiveResponseTab] = useState<
+		"body" | "headers" | "raw"
+	>("body");
 
 	const selectedTab = useMemo(() => {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.ctrlKey && event.key === "Enter") {
+				event.preventDefault();
+				handleSendRequest(selectedTab, setResponse);
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [selectedTab]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Need to clear response only on tab change
+	useEffect(() => {
+		setResponse(null);
+	}, [selectedTab.id]);
 
 	function handleTabMethodChange(method: string) {
 		setTabs((currentTabs) =>
@@ -448,7 +571,6 @@ function RouteComponent() {
 				return currentTabs.map((tab) => {
 					if (!tab.selected) return tab;
 
-					// Синхронизируем params из path
 					const queryParams = parsed.path.split("?")[1];
 					const params =
 						queryParams?.split("&").map((param, index) => {
@@ -501,14 +623,19 @@ function RouteComponent() {
 						}
 						handleTabMethodChange={handleTabMethodChange}
 					/>
-					<Button
-						variant="primary"
-						className="ml-2"
-						onClick={() => handleSendRequest(selectedTab)}
-					>
-						<Play />
-						SEND
-					</Button>
+					<Tooltip delayDuration={600}>
+						<TooltipTrigger asChild>
+							<Button
+								variant="primary"
+								className="ml-2"
+								onClick={() => handleSendRequest(selectedTab, setResponse)}
+							>
+								<Play />
+								SEND
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+					</Tooltip>
 					<Button variant="link" className="ml-2">
 						<Save />
 					</Button>
@@ -531,8 +658,12 @@ function RouteComponent() {
 					<ResizableHandle />
 					<ResizablePanel defaultSize={50} className="min-h-10">
 						<ResponseView
+							key={`response-${selectedTab.id}`}
 							panelsMode={panelsMode}
 							setPanelsMode={setPanelsMode}
+							response={response}
+							activeResponseTab={activeResponseTab}
+							setActiveResponseTab={setActiveResponseTab}
 						/>
 					</ResizablePanel>
 				</ResizablePanelGroup>

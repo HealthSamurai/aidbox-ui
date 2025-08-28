@@ -8,9 +8,6 @@ export function getAidboxBaseURL(): string {
 	return `${window.location.protocol}//${window.location.host}`;
 }
 
-/**
- * Парсит raw HTTP запрос в структурированные данные
- */
 export function parseHttpRequest(rawText: string): {
 	method: string;
 	path: string;
@@ -28,7 +25,6 @@ export function parseHttpRequest(rawText: string): {
 		const line = lines[i];
 		if (line === undefined) continue;
 
-		// Первая строка - request line
 		if (i === 0 && line.trim()) {
 			const requestLineParts = line.trim().split(/\s+/);
 			if (requestLineParts.length >= 2) {
@@ -38,19 +34,16 @@ export function parseHttpRequest(rawText: string): {
 			continue;
 		}
 
-		// Пустая строка означает начало body
 		if (line.trim() === "" && !isBodySection) {
 			isBodySection = true;
 			continue;
 		}
 
-		// Если уже в секции body, собираем все строки
 		if (isBodySection) {
 			bodyLines.push(line);
 			continue;
 		}
 
-		// Парсим headers (format: "name: value")
 		const colonIndex = line.indexOf(":");
 		if (colonIndex > 0) {
 			const headerName = line.substring(0, colonIndex).trim();
@@ -63,7 +56,6 @@ export function parseHttpRequest(rawText: string): {
 		}
 	}
 
-	// Добавляем пустую строку в конце headers если её нет
 	if (!headers.some((h) => h.name === "" && h.value === "")) {
 		headers.push({ id: crypto.randomUUID(), name: "", value: "" });
 	}
@@ -76,9 +68,6 @@ export function parseHttpRequest(rawText: string): {
 	};
 }
 
-/**
- * Генерирует raw HTTP запрос из структурированных данных
- */
 export function generateHttpRequest(tab: Tab): string {
 	const requestLine = `${tab.method} ${tab.path || ""}`;
 
