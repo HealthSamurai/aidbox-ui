@@ -100,12 +100,12 @@ function NavbarButtons() {
 
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
-					<Button
-						variant="ghost"
-						className="w-9 rounded-full bg-(--color-elements-assistive) text-white cursor-pointer"
+					<button
+						type="button"
+						className="rounded-full h-7 w-7 bg-(--color-elements-assistive) flex items-center justify-center text-white hover:opacity-50 cursor-pointer"
 					>
-						<UserRound />
-					</Button>
+						<UserRound size={16} />
+					</button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className="p-2 mr-6">
 					<div className="border-b text-center pb-4 mb-1">
