@@ -93,7 +93,7 @@ export function ActiveTabs({
 	};
 
 	return (
-		<Tabs variant="browser" value={selectedTab} onValueChange={handleTabSelect}>
+		<Tabs variant="browser" value={selectedTab}>
 			<TabsList>
 				{tabs.map((tab) => (
 					<TabsTrigger
