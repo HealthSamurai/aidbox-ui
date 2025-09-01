@@ -134,6 +134,8 @@ function RequestView({
 	onHeaderChange,
 	onParamChange,
 	onRawChange,
+	onHeaderRemove,
+	onParamRemove,
 }: {
 	selectedTab: Tab;
 	onBodyChange: (body: string) => void;
@@ -141,6 +143,8 @@ function RequestView({
 	onHeaderChange: (headerIndex: number, header: Header) => void;
 	onParamChange: (paramIndex: number, param: Header) => void;
 	onRawChange: (rawText: string) => void;
+	onHeaderRemove: (headerIndex: number) => void;
+	onParamRemove: (paramIndex: number) => void;
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -156,6 +160,7 @@ function RequestView({
 						key={`params-editor-${selectedTab.id}-${currentActiveSubTab}`}
 						params={selectedTab.params || []}
 						onParamChange={onParamChange}
+						onParamRemove={onParamRemove}
 					/>
 				);
 			case "headers":
@@ -164,6 +169,7 @@ function RequestView({
 						key={`headers-editor-${selectedTab.id}-${currentActiveSubTab}`}
 						headers={selectedTab.headers || []}
 						onHeaderChange={onHeaderChange}
+						onHeaderRemove={onHeaderRemove}
 					/>
 				);
 			case "raw":
@@ -604,6 +610,67 @@ function RouteComponent() {
 		}
 	}
 
+	function handleTabHeaderRemove(headerIndex: number) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) => {
+				if (!tab.selected) return tab;
+
+				const headers = Array.isArray(tab.headers) ? [...tab.headers] : [];
+				headers.splice(headerIndex, 1);
+
+				// Check if after removal there is at least one empty header (both name and value are empty)
+				const hasEmptyHeader = headers.some(
+					(header) =>
+						(header.name === undefined || header.name === "") &&
+						(header.value === undefined || header.value === ""),
+				);
+
+				// If not, add an empty header row
+				if (!hasEmptyHeader) {
+					headers.push({
+						id: crypto.randomUUID(),
+						name: "",
+						value: "",
+					});
+				}
+
+				return {
+					...tab,
+					headers,
+				};
+			}) as Tab[];
+		});
+	}
+
+	function handleTabParamRemove(paramIndex: number) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) => {
+				if (!tab.selected) return tab;
+
+				const params = Array.isArray(tab.params) ? [...tab.params] : [];
+				params.splice(paramIndex, 1);
+
+				// Check if after removal there is at least one empty param (both name and value are empty)
+				const hasEmptyParam = requestParamsHasEmpty(params);
+
+				// If not, add an empty param row
+				if (!hasEmptyParam) {
+					params.push({
+						id: crypto.randomUUID(),
+						name: "",
+						value: "",
+					});
+				}
+
+				return {
+					...tab,
+					path: requestParamsEditorSyncPath(params, tab.path || ""),
+					params,
+				};
+			}) as Tab[];
+		});
+	}
+
 	return (
 		<div className="flex w-full h-full">
 			<LeftMenu leftMenuOpen={leftMenuOpen} />
@@ -656,6 +723,8 @@ function RouteComponent() {
 							onParamChange={handleTabParamChange}
 							onSubTabChange={handleSubTabChange}
 							onRawChange={handleRawChange}
+							onHeaderRemove={handleTabHeaderRemove}
+							onParamRemove={handleTabParamRemove}
 						/>
 					</ResizablePanel>
 					<ResizableHandle />
