@@ -631,13 +631,14 @@ function RouteComponent() {
 								onClick={() => handleSendRequest(selectedTab, setResponse)}
 							>
 								<Play />
-								SEND
+								Send
 							</Button>
 						</TooltipTrigger>
 						<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
 					</Tooltip>
-					<Button variant="link" className="ml-2">
+					<Button variant="secondary" className="ml-2">
 						<Save />
+						Save
 					</Button>
 				</div>
 				<ResizablePanelGroup
