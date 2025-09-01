@@ -205,7 +205,7 @@ function RequestView({
 						</TabsList>
 					</Tabs>
 				</div>
-				<Button variant="link">
+				<Button variant="link" size="small">
 					<Fullscreen />
 				</Button>
 			</div>
@@ -302,7 +302,7 @@ function ResponseView({
 						onTabChange={setActiveResponseTab}
 					/>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1">
 					{response && (
 						<ResponseStatus
 							status={response.status}
@@ -322,6 +322,7 @@ function ResponseView({
 								<Button
 									variant="link"
 									onClick={() => setPanelsMode("vertical")}
+									size="small"
 								>
 									<Columns2 />
 								</Button>
@@ -335,6 +336,7 @@ function ResponseView({
 								<Button
 									variant="link"
 									onClick={() => setPanelsMode("horizontal")}
+									size="small"
 								>
 									<Rows2 />
 								</Button>
@@ -342,7 +344,7 @@ function ResponseView({
 							<TooltipContent>Switch to horizontal split</TooltipContent>
 						</Tooltip>
 					)}
-					<Button variant="link">
+					<Button variant="link" size="small">
 						<Fullscreen />
 					</Button>
 				</div>
