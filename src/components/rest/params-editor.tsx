@@ -1,4 +1,4 @@
-import { Button, Input } from "@health-samurai/react-components";
+import { Button, Checkbox, Input } from "@health-samurai/react-components";
 import { Trash2 } from "lucide-react";
 import type { Header } from "./active-tabs";
 
@@ -16,6 +16,13 @@ export default function ParamsEditor({
 			{params.map((param, index) => {
 				return (
 					<div key={param.id} className="flex gap-2 items-center">
+						<Checkbox
+							className="mr-2"
+							checked={param.enabled ?? true}
+							onCheckedChange={(checked) =>
+								onParamChange(index, { ...param, enabled: !!checked })
+							}
+						/>
 						<div className="max-w-90 w-90">
 							<Input
 								placeholder="Key"
@@ -23,6 +30,7 @@ export default function ParamsEditor({
 								onChange={(e) =>
 									onParamChange(index, { ...param, name: e.target.value })
 								}
+								disabled={!(param.enabled ?? true)}
 							/>
 						</div>
 						<Input
@@ -31,6 +39,7 @@ export default function ParamsEditor({
 							onChange={(e) =>
 								onParamChange(index, { ...param, value: e.target.value })
 							}
+							disabled={!(param.enabled ?? true)}
 						/>
 						<Button
 							variant="link"

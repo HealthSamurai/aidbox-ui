@@ -52,12 +52,18 @@ export function parseHttpRequest(rawText: string): {
 				id: crypto.randomUUID(),
 				name: headerName,
 				value: headerValue,
+				enabled: true,
 			});
 		}
 	}
 
 	if (!headers.some((h) => h.name === "" && h.value === "")) {
-		headers.push({ id: crypto.randomUUID(), name: "", value: "" });
+		headers.push({
+			id: crypto.randomUUID(),
+			name: "",
+			value: "",
+			enabled: true,
+		});
 	}
 
 	return {
@@ -73,7 +79,9 @@ export function generateHttpRequest(tab: Tab): string {
 
 	const headers =
 		tab.headers
-			?.filter((header) => header.name && header.value)
+			?.filter(
+				(header) => header.name && header.value && (header.enabled ?? true),
+			)
 			.map((header) => `${header.name}: ${header.value}`)
 			.join("\n") || "";
 

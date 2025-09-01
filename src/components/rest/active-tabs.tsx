@@ -11,6 +11,7 @@ export type Header = {
 	id: string;
 	name: string;
 	value: string;
+	enabled?: boolean;
 };
 
 export interface Tab {
@@ -34,11 +35,11 @@ export const DEFAULT_TAB: Tab = {
 	selected: true,
 	activeSubTab: "body",
 	headers: [
-		{ id: "1", name: "Content-Type", value: "application/json" },
-		{ id: "2", name: "Accept", value: "application/json" },
-		{ id: "3", name: "", value: "" },
+		{ id: "1", name: "Content-Type", value: "application/json", enabled: true },
+		{ id: "2", name: "Accept", value: "application/json", enabled: true },
+		{ id: "3", name: "", value: "", enabled: true },
 	],
-	params: [{ id: "1", name: "", value: "" }],
+	params: [{ id: "1", name: "", value: "", enabled: true }],
 };
 
 function addTab(tabs: Tab[], setTabs: (val: Tab[]) => void) {

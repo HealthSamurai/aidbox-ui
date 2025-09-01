@@ -111,7 +111,9 @@ function RawEditor({
 	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const defaultHeaders =
 		selectedTab.headers
-			?.filter((header) => header.name && header.value)
+			?.filter(
+				(header) => header.name && header.value && (header.enabled ?? true),
+			)
 			.map((header) => `${header.name}: ${header.value}`)
 			.join("\n") || "";
 
@@ -386,11 +388,21 @@ function handleTabRequestPathChange(
 	const params =
 		queryParams?.split("&").map((param, index) => {
 			const [name, value] = param.split("=");
-			return { id: `${index}`, name: name ?? "", value: value ?? "" };
+			return {
+				id: `${index}`,
+				name: name ?? "",
+				value: value ?? "",
+				enabled: true,
+			};
 		}) || [];
 
 	if (!requestParamsHasEmpty(params)) {
-		params.push({ id: crypto.randomUUID(), name: "", value: "" });
+		params.push({
+			id: crypto.randomUUID(),
+			name: "",
+			value: "",
+			enabled: true,
+		});
 	}
 
 	setTabs(
@@ -404,7 +416,9 @@ function handleSendRequest(
 ) {
 	const headers =
 		selectedTab.headers
-			?.filter((header) => header.name && header.value)
+			?.filter(
+				(header) => header.name && header.value && (header.enabled ?? true),
+			)
 			.reduce(
 				(acc, header) => {
 					acc[header.name] = header.value;
@@ -439,6 +453,7 @@ function handleSendRequest(
 function requestParamsEditorSyncPath(params: Header[], path: string) {
 	const location = path.split("?")[0];
 	const queryParams = params
+		.filter((param) => param.enabled ?? true)
 		.map((param) => (param.name ? `${param.name}=${param.value}` : ""))
 		.filter((param) => param !== "")
 		.join("&");
@@ -519,7 +534,12 @@ function RouteComponent() {
 				);
 
 				if (!hasEmptyHeader) {
-					headers.push({ id: crypto.randomUUID(), name: "", value: "" });
+					headers.push({
+						id: crypto.randomUUID(),
+						name: "",
+						value: "",
+						enabled: true,
+					});
 				}
 
 				return {
@@ -541,7 +561,12 @@ function RouteComponent() {
 				const hasEmptyParam = requestParamsHasEmpty(params);
 
 				if (!hasEmptyParam) {
-					params.push({ id: crypto.randomUUID(), name: "", value: "" });
+					params.push({
+						id: crypto.randomUUID(),
+						name: "",
+						value: "",
+						enabled: true,
+					});
 				}
 
 				return {
@@ -583,11 +608,21 @@ function RouteComponent() {
 					const params =
 						queryParams?.split("&").map((param, index) => {
 							const [name, value] = param.split("=");
-							return { id: `${index}`, name: name ?? "", value: value ?? "" };
+							return {
+								id: `${index}`,
+								name: name ?? "",
+								value: value ?? "",
+								enabled: true,
+							};
 						}) || [];
 
 					if (!requestParamsHasEmpty(params)) {
-						params.push({ id: crypto.randomUUID(), name: "", value: "" });
+						params.push({
+							id: crypto.randomUUID(),
+							name: "",
+							value: "",
+							enabled: true,
+						});
 					}
 
 					return {
@@ -631,6 +666,7 @@ function RouteComponent() {
 						id: crypto.randomUUID(),
 						name: "",
 						value: "",
+						enabled: true,
 					});
 				}
 
@@ -659,6 +695,7 @@ function RouteComponent() {
 						id: crypto.randomUUID(),
 						name: "",
 						value: "",
+						enabled: true,
 					});
 				}
 

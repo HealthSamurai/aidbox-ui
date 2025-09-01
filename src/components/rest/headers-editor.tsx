@@ -1,4 +1,4 @@
-import { Button, Input } from "@health-samurai/react-components";
+import { Button, Checkbox, Input } from "@health-samurai/react-components";
 import { Trash2 } from "lucide-react";
 import type { Header } from "./active-tabs";
 
@@ -16,6 +16,13 @@ export default function HeadersEditor({
 			{headers.map((header, index) => {
 				return (
 					<div key={header.id} className="flex gap-2 items-center">
+						<Checkbox
+							className="mr-2"
+							checked={header.enabled ?? true}
+							onCheckedChange={(checked) =>
+								onHeaderChange(index, { ...header, enabled: !!checked })
+							}
+						/>
 						<div className="max-w-90 w-90">
 							<Input
 								placeholder="Key"
@@ -23,6 +30,7 @@ export default function HeadersEditor({
 								onChange={(e) =>
 									onHeaderChange(index, { ...header, name: e.target.value })
 								}
+								disabled={!(header.enabled ?? true)}
 							/>
 						</div>
 						<Input
@@ -31,6 +39,7 @@ export default function HeadersEditor({
 							onChange={(e) =>
 								onHeaderChange(index, { ...header, value: e.target.value })
 							}
+							disabled={!(header.enabled ?? true)}
 						/>
 						<Button
 							variant="link"
