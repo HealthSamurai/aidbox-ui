@@ -1,6 +1,7 @@
 import {
 	Button,
 	CodeEditor,
+	PlayIcon,
 	RequestLineEditor,
 	ResizableHandle,
 	ResizablePanel,
@@ -18,7 +19,6 @@ import {
 	Fullscreen,
 	PanelLeftClose,
 	PanelLeftOpen,
-	Play,
 	Rows2,
 	Save,
 	Timer,
@@ -632,7 +632,7 @@ function RouteComponent() {
 								className="ml-2"
 								onClick={() => handleSendRequest(selectedTab, setResponse)}
 							>
-								<Play />
+								<PlayIcon />
 								Send
 							</Button>
 						</TooltipTrigger>
