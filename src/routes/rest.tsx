@@ -302,7 +302,7 @@ function SplitDirectionToggle({
 	}
 }
 
-function ResponseView({
+function ResponsePane({
 	panelsMode,
 	setPanelsMode,
 	response,
@@ -788,7 +788,7 @@ function RouteComponent() {
 					</ResizablePanel>
 					<ResizableHandle />
 					<ResizablePanel defaultSize={50} className="min-h-10">
-						<ResponseView
+						<ResponsePane
 							key={`response-${selectedTab.id}`}
 							panelsMode={panelsMode}
 							setPanelsMode={setPanelsMode}
