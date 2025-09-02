@@ -176,9 +176,7 @@ function RequestView({
 							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
 					</div>
-					<Button variant="link" size="small">
-						<Fullscreen />
-					</Button>
+					<ExpandPane />
 				</div>
 				<TabsContent value="params">
 					<ParamsEditor
@@ -285,6 +283,14 @@ function VerticalSplit({ onChange }: { onChange: () => void }) {
 	);
 }
 
+function ExpandPane() {
+	return (
+		<Button variant="link" size="small">
+			<Fullscreen />
+		</Button>
+	);
+}
+
 function SplitDirectionToggle({
 	direction,
 	onChange,
@@ -364,9 +370,7 @@ function ResponseView({
 						direction={panelsMode}
 						onChange={(newMode) => setPanelsMode(newMode)}
 					/>
-					<Button variant="link" size="small">
-						<Fullscreen />
-					</Button>
+					<ExpandPane />
 				</div>
 			</div>
 			{response ? (
