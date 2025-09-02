@@ -3,7 +3,18 @@ import {
 	TabsAddButton,
 	TabsList,
 	TabsTrigger,
+	Button,
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	Command,
+	CommandInput,
+	CommandList,
+	CommandItem,
+	CommandEmpty,
 } from "@health-samurai/react-components";
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, X } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 
 
@@ -81,6 +92,10 @@ function onTabSelect(tabId: TabId, tabs: Tab[], setTabs: (val: Tab[] | ((prev: T
 
 
 
+// Стили
+const scrollButtonStyles = "h-10 px-2 border-b border-border-primary bg-bg-secondary flex items-center justify-center";
+const tabsMenuButtonStyles = "h-10 px-2 border-b border-l border-border-primary bg-bg-secondary flex items-center justify-center";
+
 const methodColors = {
 	GET: "text-utility-green",
 	POST: "text-utility-yellow",
@@ -97,33 +112,159 @@ export function ActiveTabs({
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 }) {
 	const selectedTab = tabs.find((tab) => tab.selected)?.id || DEFAULT_TAB_ID;
+	const tabsListRef = useRef<HTMLDivElement>(null);
+	const [canScrollLeft, setCanScrollLeft] = useState(false);
+	const [canScrollRight, setCanScrollRight] = useState(false);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+
 	const handleCloseTab = (tabId: TabId) => {
 		removeTab(tabs, tabId, setTabs);
 	};
+	
 	const handleTabSelect = (tabId: TabId) => {
 		onTabSelect(tabId, tabs, setTabs);
 	};
 
+	// Проверяем возможность скролла используя существующую логику overflow-x-auto
+	const checkScrollButtons = () => {
+		if (!tabsListRef.current) return;
+		
+		const { scrollLeft, scrollWidth, clientWidth } = tabsListRef.current;
+		setCanScrollLeft(scrollLeft > 0);
+		setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+	};
+
+	const scrollTabs = (direction: 'left' | 'right') => {
+		if (!tabsListRef.current) return;
+		
+		const scrollAmount = 200;
+		const newScrollLeft = direction === 'left' 
+			? tabsListRef.current.scrollLeft - scrollAmount
+			: tabsListRef.current.scrollLeft + scrollAmount;
+			
+		tabsListRef.current.scrollTo({
+			left: newScrollLeft,
+			behavior: 'smooth'
+		});
+	};
+
+	useEffect(() => {
+		checkScrollButtons();
+		const handleResize = () => checkScrollButtons();
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
+	}, [tabs]);
+
+	useEffect(() => {
+		if (!tabsListRef.current) return;
+		
+		const handleScroll = () => checkScrollButtons();
+		tabsListRef.current.addEventListener('scroll', handleScroll);
+		return () => tabsListRef.current?.removeEventListener('scroll', handleScroll);
+	}, []);
+
 	return (
-		<Tabs variant="browser" value={selectedTab}>
-			<TabsList>
-				{tabs.map((tab) => {
-					return (
-						<TabsTrigger
-							key={tab.id}
-							value={tab.id}
-							{...(tabs.length > 1 && { onClose: () => handleCloseTab(tab.id) })}
-							onClick={() => handleTabSelect(tab.id)}
-						>
-							<span className="flex items-center gap-1 truncate">
-								<span className={methodColors[tab.method]}>{tab.method}</span>
-								<span>{tab.path || tab.name}</span>
-							</span>
-						</TabsTrigger>
-					);
-				})}
-			</TabsList>
-			<TabsAddButton onClick={() => addTab(tabs, setTabs)} />
-		</Tabs>
+		<div className="flex items-center w-full">
+			{/* Левая стрелка скролла */}
+			{canScrollLeft && (
+				<Button
+					variant="ghost"
+					size="small"
+					className={scrollButtonStyles}
+					onClick={() => scrollTabs('left')}
+				>
+					<ChevronLeftIcon className="size-4" />
+				</Button>
+			)}
+			
+			{/* Основной компонент Tabs с существующей логикой скролла */}
+			<div className="flex-1 min-w-0">
+				<Tabs variant="browser" value={selectedTab}>
+					<TabsList 
+						ref={tabsListRef}
+						onScroll={checkScrollButtons}
+						className="scrollbar-hide"
+					>
+						{tabs.map((tab) => (
+							<TabsTrigger
+								key={tab.id}
+								value={tab.id}
+								{...(tabs.length > 1 && { onClose: () => handleCloseTab(tab.id) })}
+								onClick={() => handleTabSelect(tab.id)}
+							>
+								<span className="flex items-center gap-1 truncate">
+									<span className={methodColors[tab.method]}>{tab.method}</span>
+									<span>{tab.path || tab.name}</span>
+								</span>
+							</TabsTrigger>
+						))}
+					</TabsList>
+					{/* Кнопка + липнет к табам, но отступает от кнопки меню при максимальном размере */}
+					<TabsAddButton onClick={() => addTab(tabs, setTabs)} />
+				</Tabs>
+			</div>
+			
+			{/* Правая стрелка скролла */}
+			{canScrollRight && (
+				<Button
+					variant="ghost"
+					size="small"
+					className={scrollButtonStyles}
+					onClick={() => scrollTabs('right')}
+				>
+					<ChevronRightIcon className="size-4" />
+				</Button>
+			)}
+			
+			{/* Кнопка меню табов - всегда прикреплена к правому краю */}
+			<Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+				<PopoverTrigger asChild>
+					<Button
+						variant="ghost"
+						size="small"
+						className={tabsMenuButtonStyles}
+					>
+						<ChevronDownIcon className="size-4" />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent className="w-80 p-0" align="end">
+					<Command>
+						<CommandInput placeholder="Поиск табов..." />
+						<CommandList>
+							<CommandEmpty>Табы не найдены.</CommandEmpty>
+							{tabs.map((tab) => (
+								<CommandItem
+									key={tab.id}
+									value={`${tab.method} ${tab.path || tab.name}`}
+									onSelect={() => {
+										handleTabSelect(tab.id);
+										setIsMenuOpen(false);
+									}}
+									className="group flex items-center justify-between"
+								>
+									<div className="flex items-center gap-2 flex-1 truncate">
+										<span className={methodColors[tab.method]}>{tab.method}</span>
+										<span className="truncate">{tab.path || tab.name}</span>
+									</div>
+									{tabs.length > 1 && (
+										<Button
+											variant="ghost"
+											size="small"
+											className="opacity-0 group-hover:opacity-100 transition-opacity p-1 ml-2"
+											onClick={(e) => {
+												e.stopPropagation();
+												handleCloseTab(tab.id);
+											}}
+										>
+											<X className="size-3" />
+										</Button>
+									)}
+								</CommandItem>
+							))}
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</div>
 	);
 }
