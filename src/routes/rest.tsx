@@ -231,6 +231,8 @@ function ResponseEditorTabs({
 	);
 }
 
+type ResponseTabs = "body" | "headers" | "raw";
+
 function ResponseStatus({
 	status,
 	statusText,
@@ -249,6 +251,51 @@ function ResponseStatus({
 		</span>
 	);
 }
+
+type PanelSplitDirection = "horizontal" | "vertical";
+
+type SplitDirectionToggleProps = {
+	direction: PanelSplitDirection;
+	onChange: (direction: PanelSplitDirection) => void;
+};
+
+function HorizontalSplit({ onChange }: { onChange: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button variant="link" onClick={onChange} size="small">
+					<Columns2 />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>Switch to vertical split</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function VerticalSplit({ onChange }: { onChange: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button variant="link" onClick={onChange} size="small">
+					<Rows2 />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>Switch to horizontal split</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function SplitDirectionToggle({
+	direction,
+	onChange,
+}: SplitDirectionToggleProps) {
+	if (direction === "horizontal") {
+		return <HorizontalSplit onChange={() => onChange("vertical")} />;
+	} else if (direction === "vertical") {
+		return <VerticalSplit onChange={() => onChange("horizontal")} />;
+	}
+}
+
 function ResponseView({
 	panelsMode,
 	setPanelsMode,
@@ -313,34 +360,10 @@ function ResponseView({
 							<span className="ml-1">ms</span>
 						</span>
 					)}
-					{panelsMode === "horizontal" && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="link"
-									onClick={() => setPanelsMode("vertical")}
-									size="small"
-								>
-									<Columns2 />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Switch to vertical split</TooltipContent>
-						</Tooltip>
-					)}
-					{panelsMode === "vertical" && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="link"
-									onClick={() => setPanelsMode("horizontal")}
-									size="small"
-								>
-									<Rows2 />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Switch to horizontal split</TooltipContent>
-						</Tooltip>
-					)}
+					<SplitDirectionToggle
+						direction={panelsMode}
+						onChange={(newMode) => setPanelsMode(newMode)}
+					/>
 					<Button variant="link" size="small">
 						<Fullscreen />
 					</Button>
