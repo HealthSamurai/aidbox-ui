@@ -300,7 +300,9 @@ function ResponseView({
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
+			<div
+				className={`flex items-center justify-between bg-bg-secondary px-4 h-10 ${panelsMode === "horizontal" ? "border-y" : "border-b"}`}
+			>
 				<div className="flex items-center">
 					<span className="typo-label text-text-secondary mb-0.5 pr-3">
 						Response:
@@ -364,7 +366,7 @@ function ResponseView({
 					mode={activeResponseTab === "raw" ? "http" : "json"}
 				/>
 			) : (
-				<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2">No response yet</div>
 						<div className="text-sm">Send a request to see the response</div>
