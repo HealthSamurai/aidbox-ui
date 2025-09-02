@@ -8,6 +8,7 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 	Tabs,
+	TabsContent,
 	TabsList,
 	TabsTrigger,
 	Tooltip,
@@ -155,70 +156,55 @@ function RequestView({
 		return selectedTab.body || JSON.stringify({ resourceType: "" }, null, 2);
 	};
 
-	const renderContent = () => {
-		switch (currentActiveSubTab) {
-			case "params":
-				return (
-					<ParamsEditor
-						key={`params-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						params={selectedTab.params || []}
-						onParamChange={onParamChange}
-						onParamRemove={onParamRemove}
-					/>
-				);
-			case "headers":
-				return (
-					<HeadersEditor
-						key={`headers-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						headers={selectedTab.headers || []}
-						onHeaderChange={onHeaderChange}
-						onHeaderRemove={onHeaderRemove}
-					/>
-				);
-			case "raw":
-				return (
-					<RawEditor selectedTab={selectedTab} onRawChange={onRawChange} />
-				);
-			case "body":
-				return (
-					<CodeEditor
-						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						key={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						defaultValue={getEditorValue()}
-						onChange={onBodyChange}
-					/>
-				);
-			default:
-				return null;
-		}
-	};
-
 	return (
 		<div className="flex flex-col h-full">
-			<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
-				<div className="flex items-center">
-					<span className="typo-label text-text-secondary mb-0.5 pr-3">
-						Request:
-					</span>
-					<Tabs
-						value={currentActiveSubTab}
-						onValueChange={(value) =>
-							onSubTabChange(value as "params" | "headers" | "body" | "raw")
-						}
-					>
+			<Tabs
+				value={currentActiveSubTab}
+				onValueChange={(value) =>
+					onSubTabChange(value as "params" | "headers" | "body" | "raw")
+				}
+			>
+				<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
+					<div className="flex items-center">
+						<span className="typo-label text-text-secondary mb-0.5 pr-3">
+							Request:
+						</span>
 						<TabsList>
 							<TabsTrigger value="params">Params</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
 							<TabsTrigger value="body">Body</TabsTrigger>
 							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
-					</Tabs>
+					</div>
+					<Button variant="link" size="small">
+						<Fullscreen />
+					</Button>
 				</div>
-				<Button variant="link" size="small">
-					<Fullscreen />
-				</Button>
-			</div>
-			{renderContent()}
+				<TabsContent value="params">
+					<ParamsEditor
+						params={selectedTab.params || []}
+						onParamChange={onParamChange}
+						onParamRemove={onParamRemove}
+					/>
+				</TabsContent>
+				<TabsContent value="headers">
+					<HeadersEditor
+						headers={selectedTab.headers || []}
+						onHeaderChange={onHeaderChange}
+						onHeaderRemove={onHeaderRemove}
+					/>
+				</TabsContent>
+				<TabsContent value="body">
+					<CodeEditor
+						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						defaultValue={getEditorValue()}
+						onChange={onBodyChange}
+					/>
+				</TabsContent>
+				<TabsContent value="raw">
+					<RawEditor selectedTab={selectedTab} onRawChange={onRawChange} />
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }
