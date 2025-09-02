@@ -25,7 +25,13 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { act, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -34,7 +40,11 @@ import {
 	type Tab,
 } from "../components/rest/active-tabs";
 import HeadersEditor from "../components/rest/headers-editor";
-import { LeftMenu } from "../components/rest/left-menu";
+import {
+	LeftMenu,
+	LeftMenuContext,
+	LeftMenuToggle,
+} from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
@@ -55,22 +65,28 @@ export const Route = createFileRoute("/rest")({
 	component: RouteComponent,
 });
 
+type SidebarStatus = "open" | "close";
+
+type SidebarToggleButtonProps = {
+	value?: SidebarStatus;
+	onOpen: () => void;
+	onClose: () => void;
+};
+
 function SidebarToggleButton({
-	setLeftMenuOpen,
-	leftMenuOpen,
-}: {
-	setLeftMenuOpen: (open: boolean) => void;
-	leftMenuOpen: boolean;
-}) {
+	value,
+	onOpen,
+	onClose,
+}: SidebarToggleButtonProps) {
 	return (
 		<Tooltip delayDuration={600}>
 			<TooltipTrigger asChild>
 				<Button
 					variant="link"
 					className="h-full border-b flex-shrink-0 border-r"
-					onClick={() => setLeftMenuOpen(!leftMenuOpen)}
+					onClick={value === "open" ? onOpen : onClose}
 				>
-					{leftMenuOpen ? (
+					{value === "open" ? (
 						<PanelLeftClose className="size-4" />
 					) : (
 						<PanelLeftOpen className="size-4" />
@@ -509,6 +525,7 @@ function requestParamsEditorSyncPath(params: Header[], path: string) {
 		.join("&");
 	return queryParams ? `${location}?${queryParams}` : location;
 }
+
 function RouteComponent() {
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -765,74 +782,82 @@ function RouteComponent() {
 	}
 
 	return (
-		<div className="flex w-full h-full">
-			<LeftMenu leftMenuOpen={leftMenuOpen} />
-			<div className="flex flex-col grow min-w-0">
-				<div className="flex h-10 w-full">
-					<SidebarToggleButton
-						setLeftMenuOpen={setLeftMenuOpen}
-						leftMenuOpen={leftMenuOpen}
-					/>
-					<div className="grow min-w-0">
-						<ActiveTabs setTabs={setTabs} tabs={tabs} />
+		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
+			<div className="flex w-full h-full">
+				<LeftMenu />
+				<div className="flex flex-col grow min-w-0">
+					<div className="flex h-10 w-full">
+						<LeftMenuToggle
+							onClose={() => {
+								console.log("close");
+								setLeftMenuOpen(false);
+							}}
+							onOpen={() => {
+								console.log("open");
+								setLeftMenuOpen(true);
+							}}
+						/>
+						<div className="grow min-w-0">
+							<ActiveTabs setTabs={setTabs} tabs={tabs} />
+						</div>
 					</div>
-				</div>
-				<div className="px-4 py-3 flex items-center">
-					<RequestLineEditorWrapper
-						selectedTab={selectedTab}
-						handleTabPathChange={(path) =>
-							handleTabRequestPathChange(path, tabs, setTabs)
-						}
-						handleTabMethodChange={handleTabMethodChange}
-					/>
-					<Tooltip delayDuration={600}>
-						<TooltipTrigger asChild>
-							<Button
-								variant="primary"
-								className="ml-2"
-								onClick={() => handleSendRequest(selectedTab, setResponse)}
-							>
-								<PlayIcon />
-								Send
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
-					</Tooltip>
-					<Button variant="secondary" className="ml-2">
-						<Save />
-						Save
-					</Button>
-				</div>
-				<ResizablePanelGroup
-					autoSaveId="rest-console-request-response"
-					direction={panelsMode}
-					className="grow"
-				>
-					<ResizablePanel defaultSize={50} className="min-h-10">
-						<RequestView
+					<div className="px-4 py-3 flex items-center">
+						<RequestLineEditorWrapper
 							selectedTab={selectedTab}
-							onBodyChange={handleTabBodyChange}
-							onHeaderChange={handleTabHeaderChange}
-							onParamChange={handleTabParamChange}
-							onSubTabChange={handleSubTabChange}
-							onRawChange={handleRawChange}
-							onHeaderRemove={handleTabHeaderRemove}
-							onParamRemove={handleTabParamRemove}
+							handleTabPathChange={(path) =>
+								handleTabRequestPathChange(path, tabs, setTabs)
+							}
+							handleTabMethodChange={handleTabMethodChange}
 						/>
-					</ResizablePanel>
-					<ResizableHandle />
-					<ResizablePanel defaultSize={50} className="min-h-10">
-						<ResponsePane
-							key={`response-${selectedTab.id}`}
-							panelsMode={panelsMode}
-							setPanelsMode={setPanelsMode}
-							response={response}
-							activeResponseTab={activeResponseTab}
-							setActiveResponseTab={setActiveResponseTab}
-						/>
-					</ResizablePanel>
-				</ResizablePanelGroup>
+						<Tooltip delayDuration={600}>
+							<TooltipTrigger asChild>
+								<Button
+									variant="primary"
+									className="ml-2"
+									onClick={() => handleSendRequest(selectedTab, setResponse)}
+								>
+									<PlayIcon />
+									Send
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+						</Tooltip>
+						<Button variant="secondary" className="ml-2">
+							<Save />
+							Save
+						</Button>
+					</div>
+					<ResizablePanelGroup
+						autoSaveId="rest-console-request-response"
+						direction={panelsMode}
+						className="grow"
+					>
+						<ResizablePanel defaultSize={50} className="min-h-10">
+							<RequestView
+								selectedTab={selectedTab}
+								onBodyChange={handleTabBodyChange}
+								onHeaderChange={handleTabHeaderChange}
+								onParamChange={handleTabParamChange}
+								onSubTabChange={handleSubTabChange}
+								onRawChange={handleRawChange}
+								onHeaderRemove={handleTabHeaderRemove}
+								onParamRemove={handleTabParamRemove}
+							/>
+						</ResizablePanel>
+						<ResizableHandle />
+						<ResizablePanel defaultSize={50} className="min-h-10">
+							<ResponsePane
+								key={`response-${selectedTab.id}`}
+								panelsMode={panelsMode}
+								setPanelsMode={setPanelsMode}
+								response={response}
+								activeResponseTab={activeResponseTab}
+								setActiveResponseTab={setActiveResponseTab}
+							/>
+						</ResizablePanel>
+					</ResizablePanelGroup>
+				</div>
 			</div>
-		</div>
+		</LeftMenuContext>
 	);
 }
