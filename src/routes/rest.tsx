@@ -25,7 +25,7 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { act, useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -40,13 +40,13 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
 
-interface ResponseData {
+type ResponseData = {
 	status: number;
 	statusText: string;
 	headers: Record<string, string>;
 	body: string;
 	duration: number;
-}
+};
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -302,18 +302,38 @@ function SplitDirectionToggle({
 	}
 }
 
-function ResponsePane({
-	panelsMode,
-	setPanelsMode,
+type ResponsePaneProps = {
+	panelsMode: PanelSplitDirection;
+	setPanelsMode: (mode: PanelSplitDirection) => void;
+	response: ResponseData | null;
+	activeResponseTab: ResponseTabs;
+	setActiveResponseTab: (tab: ResponseTabs) => void;
+};
+
+function ResponseInfo({ response }: { response: ResponseData }) {
+	if (response) {
+		return (
+			<>
+				<ResponseStatus
+					status={response.status}
+					statusText={response.statusText}
+				/>
+				<span className="flex items-center text-text-secondary text-sm pl-2">
+					<Timer className="size-4 mr-1" strokeWidth={1.5} />
+					<span className="font-bold">{response.duration}</span>
+					<span className="ml-1">ms</span>
+				</span>
+			</>
+		);
+	}
+}
+
+function ResponseView({
 	response,
 	activeResponseTab,
-	setActiveResponseTab,
 }: {
-	panelsMode: "horizontal" | "vertical";
-	setPanelsMode: (mode: "horizontal" | "vertical") => void;
 	response: ResponseData | null;
-	activeResponseTab: "body" | "headers" | "raw";
-	setActiveResponseTab: (tab: "body" | "headers" | "raw") => void;
+	activeResponseTab: ResponseTabs;
 }) {
 	const getEditorContent = () => {
 		if (!response) return "";
@@ -338,56 +358,69 @@ function ResponsePane({
 		}
 	};
 
-	return (
-		<div className="flex flex-col h-full">
-			<div
-				className={`flex items-center justify-between bg-bg-secondary px-4 h-10 ${panelsMode === "horizontal" ? "border-y" : "border-b"}`}
-			>
-				<div className="flex items-center">
-					<span className="typo-label text-text-secondary mb-0.5 pr-3">
-						Response:
-					</span>
-					<ResponseEditorTabs
-						activeTab={activeResponseTab}
-						onTabChange={setActiveResponseTab}
-					/>
-				</div>
-				<div className="flex items-center gap-1">
-					{response && (
-						<ResponseStatus
-							status={response.status}
-							statusText={response.statusText}
-						/>
-					)}
-					{response && (
-						<span className="flex items-center text-text-secondary text-sm pl-2">
-							<Timer className="size-4 mr-1" strokeWidth={1.5} />
-							<span className="font-bold">{response.duration}</span>
-							<span className="ml-1">ms</span>
-						</span>
-					)}
-					<SplitDirectionToggle
-						direction={panelsMode}
-						onChange={(newMode) => setPanelsMode(newMode)}
-					/>
-					<ExpandPane />
+	if (response) {
+		return (
+			<CodeEditor
+				key={`response-${activeResponseTab}-${response.status}`}
+				currentValue={getEditorContent()}
+				mode={activeResponseTab === "raw" ? "http" : "json"}
+			/>
+		);
+	} else {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No response yet</div>
+					<div className="text-sm">Send a request to see the response</div>
 				</div>
 			</div>
-			{response ? (
-				<CodeEditor
-					key={`response-${activeResponseTab}-${response.status}`}
-					currentValue={getEditorContent()}
-					mode={activeResponseTab === "raw" ? "http" : "json"}
-				/>
-			) : (
-				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-					<div className="text-center">
-						<div className="text-lg mb-2">No response yet</div>
-						<div className="text-sm">Send a request to see the response</div>
+		);
+	}
+}
+
+function ResponsePane({
+	panelsMode,
+	setPanelsMode,
+	response,
+	activeResponseTab,
+	setActiveResponseTab,
+}: ResponsePaneProps) {
+	return (
+		<Tabs
+			value={activeResponseTab}
+			onValueChange={(value) =>
+				setActiveResponseTab(value as "body" | "headers" | "raw")
+			}
+		>
+			<div className="flex flex-col h-full">
+				<div
+					className={`flex items-center justify-between bg-bg-secondary px-4 h-10 ${panelsMode === "horizontal" ? "border-y" : "border-b"}`}
+				>
+					<div className="flex items-center">
+						<span className="typo-label text-text-secondary mb-0.5 pr-3">
+							Response:
+						</span>
+						<TabsList>
+							<TabsTrigger value="body">Body</TabsTrigger>
+							<TabsTrigger value="headers">Headers</TabsTrigger>
+							<TabsTrigger value="raw">Raw</TabsTrigger>
+						</TabsList>
+					</div>
+					<div className="flex items-center gap-1">
+						{response && <ResponseInfo response={response} />}
+						<SplitDirectionToggle
+							direction={panelsMode}
+							onChange={(newMode) => setPanelsMode(newMode)}
+						/>
+						<ExpandPane />
 					</div>
 				</div>
-			)}
-		</div>
+				<ResponseView
+					response={response}
+					activeResponseTab={activeResponseTab}
+				/>
+			</div>
+		</Tabs>
 	);
 }
 
@@ -450,7 +483,7 @@ function handleSendRequest(
 		body: selectedTab.body || "",
 	})
 		.then((response) => {
-			setResponse(response);
+			console.log(response);
 		})
 		.catch((error) => {
 			console.error("error", error);
@@ -462,6 +495,7 @@ function handleSendRequest(
 				body: JSON.stringify({ error: error.message }, null, 2),
 				duration: 0,
 			};
+
 			setResponse(errorResponse);
 		});
 }
