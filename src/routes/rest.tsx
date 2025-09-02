@@ -1,6 +1,7 @@
 import {
 	Button,
 	CodeEditor,
+	type CodeEditorView,
 	PlayIcon,
 	RequestLineEditor,
 	ResizableHandle,
@@ -23,7 +24,7 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -580,14 +581,17 @@ function RouteComponent() {
 		});
 	}
 
-	function handleTabBodyChange(body: string) {
-		setTabs((currentTabs) => {
-			const updatedTabs = currentTabs.map((tab) =>
-				tab.selected ? { ...tab, body } : tab,
-			);
-			return updatedTabs;
-		});
-	}
+	const handleTabBodyChange = useCallback(
+		(body: string) => {
+			setTabs((currentTabs) => {
+				const updatedTabs = currentTabs.map((tab) =>
+					tab.selected ? { ...tab, body } : tab,
+				);
+				return updatedTabs;
+			});
+		},
+		[setTabs],
+	);
 
 	function handleSubTabChange(subTab: "params" | "headers" | "body" | "raw") {
 		setTabs((currentTabs) => {
@@ -598,54 +602,57 @@ function RouteComponent() {
 		});
 	}
 
-	function handleRawChange(rawText: string) {
-		try {
-			const parsed = parseHttpRequest(rawText);
+	const handleRawChange = useCallback(
+		(rawText: string) => {
+			try {
+				const parsed = parseHttpRequest(rawText);
 
-			setTabs((currentTabs) => {
-				return currentTabs.map((tab) => {
-					if (!tab.selected) return tab;
+				setTabs((currentTabs) => {
+					return currentTabs.map((tab) => {
+						if (!tab.selected) return tab;
 
-					const queryParams = parsed.path.split("?")[1];
-					const params =
-						queryParams?.split("&").map((param, index) => {
-							const [name, value] = param.split("=");
-							return {
-								id: `${index}`,
-								name: name ?? "",
-								value: value ?? "",
+						const queryParams = parsed.path.split("?")[1];
+						const params =
+							queryParams?.split("&").map((param, index) => {
+								const [name, value] = param.split("=");
+								return {
+									id: `${index}`,
+									name: name ?? "",
+									value: value ?? "",
+									enabled: true,
+								};
+							}) || [];
+
+						if (!requestParamsHasEmpty(params)) {
+							params.push({
+								id: crypto.randomUUID(),
+								name: "",
+								value: "",
 								enabled: true,
-							};
-						}) || [];
+							});
+						}
 
-					if (!requestParamsHasEmpty(params)) {
-						params.push({
-							id: crypto.randomUUID(),
-							name: "",
-							value: "",
-							enabled: true,
-						});
-					}
-
-					return {
-						...tab,
-						method: parsed.method as
-							| "GET"
-							| "POST"
-							| "PUT"
-							| "PATCH"
-							| "DELETE",
-						path: parsed.path,
-						headers: parsed.headers,
-						body: parsed.body,
-						params: params,
-					};
-				}) as Tab[];
-			});
-		} catch (error) {
-			console.warn("Failed to parse HTTP request:", error);
-		}
-	}
+						return {
+							...tab,
+							method: parsed.method as
+								| "GET"
+								| "POST"
+								| "PUT"
+								| "PATCH"
+								| "DELETE",
+							path: parsed.path,
+							headers: parsed.headers,
+							body: parsed.body,
+							params: params,
+						};
+					}) as Tab[];
+				});
+			} catch (error) {
+				console.warn("Failed to parse HTTP request:", error);
+			}
+		},
+		[setTabs],
+	);
 
 	function handleTabHeaderRemove(headerIndex: number) {
 		setTabs((currentTabs) => {
