@@ -1,12 +1,14 @@
 import {
 	Button,
 	CodeEditor,
+	type CodeEditorView,
 	PlayIcon,
 	RequestLineEditor,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 	Tabs,
+	TabsContent,
 	TabsList,
 	TabsTrigger,
 	Tooltip,
@@ -23,7 +25,13 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -32,19 +40,23 @@ import {
 	type Tab,
 } from "../components/rest/active-tabs";
 import HeadersEditor from "../components/rest/headers-editor";
-import { LeftMenu } from "../components/rest/left-menu";
+import {
+	LeftMenu,
+	LeftMenuContext,
+	LeftMenuToggle,
+} from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
 
-interface ResponseData {
+type ResponseData = {
 	status: number;
 	statusText: string;
 	headers: Record<string, string>;
 	body: string;
 	duration: number;
-}
+};
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -53,22 +65,28 @@ export const Route = createFileRoute("/rest")({
 	component: RouteComponent,
 });
 
+type SidebarStatus = "open" | "close";
+
+type SidebarToggleButtonProps = {
+	value?: SidebarStatus;
+	onOpen: () => void;
+	onClose: () => void;
+};
+
 function SidebarToggleButton({
-	setLeftMenuOpen,
-	leftMenuOpen,
-}: {
-	setLeftMenuOpen: (open: boolean) => void;
-	leftMenuOpen: boolean;
-}) {
+	value,
+	onOpen,
+	onClose,
+}: SidebarToggleButtonProps) {
 	return (
 		<Tooltip delayDuration={600}>
 			<TooltipTrigger asChild>
 				<Button
 					variant="link"
 					className="h-full border-b flex-shrink-0 border-r"
-					onClick={() => setLeftMenuOpen(!leftMenuOpen)}
+					onClick={value === "open" ? onOpen : onClose}
 				>
-					{leftMenuOpen ? (
+					{value === "open" ? (
 						<PanelLeftClose className="size-4" />
 					) : (
 						<PanelLeftOpen className="size-4" />
@@ -154,70 +172,53 @@ function RequestView({
 		return selectedTab.body || JSON.stringify({ resourceType: "" }, null, 2);
 	};
 
-	const renderContent = () => {
-		switch (currentActiveSubTab) {
-			case "params":
-				return (
-					<ParamsEditor
-						key={`params-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						params={selectedTab.params || []}
-						onParamChange={onParamChange}
-						onParamRemove={onParamRemove}
-					/>
-				);
-			case "headers":
-				return (
-					<HeadersEditor
-						key={`headers-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						headers={selectedTab.headers || []}
-						onHeaderChange={onHeaderChange}
-						onHeaderRemove={onHeaderRemove}
-					/>
-				);
-			case "raw":
-				return (
-					<RawEditor selectedTab={selectedTab} onRawChange={onRawChange} />
-				);
-			case "body":
-				return (
-					<CodeEditor
-						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						key={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						defaultValue={getEditorValue()}
-						onChange={onBodyChange}
-					/>
-				);
-			default:
-				return null;
-		}
-	};
-
 	return (
 		<div className="flex flex-col h-full">
-			<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
-				<div className="flex items-center">
-					<span className="typo-label text-text-secondary mb-0.5 pr-3">
-						Request:
-					</span>
-					<Tabs
-						value={currentActiveSubTab}
-						onValueChange={(value) =>
-							onSubTabChange(value as "params" | "headers" | "body" | "raw")
-						}
-					>
+			<Tabs
+				value={currentActiveSubTab}
+				onValueChange={(value) =>
+					onSubTabChange(value as "params" | "headers" | "body" | "raw")
+				}
+			>
+				<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
+					<div className="flex items-center">
+						<span className="typo-label text-text-secondary mb-0.5 pr-3">
+							Request:
+						</span>
 						<TabsList>
 							<TabsTrigger value="params">Params</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
 							<TabsTrigger value="body">Body</TabsTrigger>
 							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
-					</Tabs>
+					</div>
+					<ExpandPane />
 				</div>
-				<Button variant="link" size="small">
-					<Fullscreen />
-				</Button>
-			</div>
-			{renderContent()}
+				<TabsContent value="params">
+					<ParamsEditor
+						params={selectedTab.params || []}
+						onParamChange={onParamChange}
+						onParamRemove={onParamRemove}
+					/>
+				</TabsContent>
+				<TabsContent value="headers">
+					<HeadersEditor
+						headers={selectedTab.headers || []}
+						onHeaderChange={onHeaderChange}
+						onHeaderRemove={onHeaderRemove}
+					/>
+				</TabsContent>
+				<TabsContent value="body">
+					<CodeEditor
+						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						defaultValue={getEditorValue()}
+						onChange={onBodyChange}
+					/>
+				</TabsContent>
+				<TabsContent value="raw">
+					<RawEditor selectedTab={selectedTab} onRawChange={onRawChange} />
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }
@@ -244,6 +245,8 @@ function ResponseEditorTabs({
 	);
 }
 
+type ResponseTabs = "body" | "headers" | "raw";
+
 function ResponseStatus({
 	status,
 	statusText,
@@ -262,18 +265,91 @@ function ResponseStatus({
 		</span>
 	);
 }
+
+type PanelSplitDirection = "horizontal" | "vertical";
+
+type SplitDirectionToggleProps = {
+	direction: PanelSplitDirection;
+	onChange: (direction: PanelSplitDirection) => void;
+};
+
+function HorizontalSplit({ onChange }: { onChange: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button variant="link" onClick={onChange} size="small">
+					<Columns2 />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>Switch to vertical split</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function VerticalSplit({ onChange }: { onChange: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button variant="link" onClick={onChange} size="small">
+					<Rows2 />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>Switch to horizontal split</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function ExpandPane() {
+	return (
+		<Button variant="link" size="small">
+			<Fullscreen />
+		</Button>
+	);
+}
+
+function SplitDirectionToggle({
+	direction,
+	onChange,
+}: SplitDirectionToggleProps) {
+	if (direction === "horizontal") {
+		return <HorizontalSplit onChange={() => onChange("vertical")} />;
+	} else if (direction === "vertical") {
+		return <VerticalSplit onChange={() => onChange("horizontal")} />;
+	}
+}
+
+type ResponsePaneProps = {
+	panelsMode: PanelSplitDirection;
+	setPanelsMode: (mode: PanelSplitDirection) => void;
+	response: ResponseData | null;
+	activeResponseTab: ResponseTabs;
+	setActiveResponseTab: (tab: ResponseTabs) => void;
+};
+
+function ResponseInfo({ response }: { response: ResponseData }) {
+	if (response) {
+		return (
+			<>
+				<ResponseStatus
+					status={response.status}
+					statusText={response.statusText}
+				/>
+				<span className="flex items-center text-text-secondary text-sm pl-2">
+					<Timer className="size-4 mr-1" strokeWidth={1.5} />
+					<span className="font-bold">{response.duration}</span>
+					<span className="ml-1">ms</span>
+				</span>
+			</>
+		);
+	}
+}
+
 function ResponseView({
-	panelsMode,
-	setPanelsMode,
 	response,
 	activeResponseTab,
-	setActiveResponseTab,
 }: {
-	panelsMode: "horizontal" | "vertical";
-	setPanelsMode: (mode: "horizontal" | "vertical") => void;
 	response: ResponseData | null;
-	activeResponseTab: "body" | "headers" | "raw";
-	setActiveResponseTab: (tab: "body" | "headers" | "raw") => void;
+	activeResponseTab: ResponseTabs;
 }) {
 	const getEditorContent = () => {
 		if (!response) return "";
@@ -298,82 +374,69 @@ function ResponseView({
 		}
 	};
 
-	return (
-		<div className="flex flex-col h-full">
-			<div
-				className={`flex items-center justify-between bg-bg-secondary px-4 h-10 ${panelsMode === "horizontal" ? "border-y" : "border-b"}`}
-			>
-				<div className="flex items-center">
-					<span className="typo-label text-text-secondary mb-0.5 pr-3">
-						Response:
-					</span>
-					<ResponseEditorTabs
-						activeTab={activeResponseTab}
-						onTabChange={setActiveResponseTab}
-					/>
-				</div>
-				<div className="flex items-center gap-1">
-					{response && (
-						<ResponseStatus
-							status={response.status}
-							statusText={response.statusText}
-						/>
-					)}
-					{response && (
-						<span className="flex items-center text-text-secondary text-sm pl-2">
-							<Timer className="size-4 mr-1" strokeWidth={1.5} />
-							<span className="font-bold">{response.duration}</span>
-							<span className="ml-1">ms</span>
-						</span>
-					)}
-					{panelsMode === "horizontal" && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="link"
-									onClick={() => setPanelsMode("vertical")}
-									size="small"
-								>
-									<Columns2 />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Switch to vertical split</TooltipContent>
-						</Tooltip>
-					)}
-					{panelsMode === "vertical" && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="link"
-									onClick={() => setPanelsMode("horizontal")}
-									size="small"
-								>
-									<Rows2 />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Switch to horizontal split</TooltipContent>
-						</Tooltip>
-					)}
-					<Button variant="link" size="small">
-						<Fullscreen />
-					</Button>
+	if (response) {
+		return (
+			<CodeEditor
+				key={`response-${activeResponseTab}-${response.status}`}
+				currentValue={getEditorContent()}
+				mode={activeResponseTab === "raw" ? "http" : "json"}
+			/>
+		);
+	} else {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No response yet</div>
+					<div className="text-sm">Send a request to see the response</div>
 				</div>
 			</div>
-			{response ? (
-				<CodeEditor
-					key={`response-${activeResponseTab}-${response.status}`}
-					currentValue={getEditorContent()}
-					mode={activeResponseTab === "raw" ? "http" : "json"}
-				/>
-			) : (
-				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-					<div className="text-center">
-						<div className="text-lg mb-2">No response yet</div>
-						<div className="text-sm">Send a request to see the response</div>
+		);
+	}
+}
+
+function ResponsePane({
+	panelsMode,
+	setPanelsMode,
+	response,
+	activeResponseTab,
+	setActiveResponseTab,
+}: ResponsePaneProps) {
+	return (
+		<Tabs
+			value={activeResponseTab}
+			onValueChange={(value) =>
+				setActiveResponseTab(value as "body" | "headers" | "raw")
+			}
+		>
+			<div className="flex flex-col h-full">
+				<div
+					className={`flex items-center justify-between bg-bg-secondary px-4 h-10 ${panelsMode === "horizontal" ? "border-y" : "border-b"}`}
+				>
+					<div className="flex items-center">
+						<span className="typo-label text-text-secondary mb-0.5 pr-3">
+							Response:
+						</span>
+						<TabsList>
+							<TabsTrigger value="body">Body</TabsTrigger>
+							<TabsTrigger value="headers">Headers</TabsTrigger>
+							<TabsTrigger value="raw">Raw</TabsTrigger>
+						</TabsList>
+					</div>
+					<div className="flex items-center gap-1">
+						{response && <ResponseInfo response={response} />}
+						<SplitDirectionToggle
+							direction={panelsMode}
+							onChange={(newMode) => setPanelsMode(newMode)}
+						/>
+						<ExpandPane />
 					</div>
 				</div>
-			)}
-		</div>
+				<ResponseView
+					response={response}
+					activeResponseTab={activeResponseTab}
+				/>
+			</div>
+		</Tabs>
 	);
 }
 
@@ -436,7 +499,7 @@ function handleSendRequest(
 		body: selectedTab.body || "",
 	})
 		.then((response) => {
-			setResponse(response);
+			console.log(response);
 		})
 		.catch((error) => {
 			console.error("error", error);
@@ -448,6 +511,7 @@ function handleSendRequest(
 				body: JSON.stringify({ error: error.message }, null, 2),
 				duration: 0,
 			};
+
 			setResponse(errorResponse);
 		});
 }
@@ -461,6 +525,7 @@ function requestParamsEditorSyncPath(params: Header[], path: string) {
 		.join("&");
 	return queryParams ? `${location}?${queryParams}` : location;
 }
+
 function RouteComponent() {
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -580,14 +645,17 @@ function RouteComponent() {
 		});
 	}
 
-	function handleTabBodyChange(body: string) {
-		setTabs((currentTabs) => {
-			const updatedTabs = currentTabs.map((tab) =>
-				tab.selected ? { ...tab, body } : tab,
-			);
-			return updatedTabs;
-		});
-	}
+	const handleTabBodyChange = useCallback(
+		(body: string) => {
+			setTabs((currentTabs) => {
+				const updatedTabs = currentTabs.map((tab) =>
+					tab.selected ? { ...tab, body } : tab,
+				);
+				return updatedTabs;
+			});
+		},
+		[setTabs],
+	);
 
 	function handleSubTabChange(subTab: "params" | "headers" | "body" | "raw") {
 		setTabs((currentTabs) => {
@@ -598,54 +666,57 @@ function RouteComponent() {
 		});
 	}
 
-	function handleRawChange(rawText: string) {
-		try {
-			const parsed = parseHttpRequest(rawText);
+	const handleRawChange = useCallback(
+		(rawText: string) => {
+			try {
+				const parsed = parseHttpRequest(rawText);
 
-			setTabs((currentTabs) => {
-				return currentTabs.map((tab) => {
-					if (!tab.selected) return tab;
+				setTabs((currentTabs) => {
+					return currentTabs.map((tab) => {
+						if (!tab.selected) return tab;
 
-					const queryParams = parsed.path.split("?")[1];
-					const params =
-						queryParams?.split("&").map((param, index) => {
-							const [name, value] = param.split("=");
-							return {
-								id: `${index}`,
-								name: name ?? "",
-								value: value ?? "",
+						const queryParams = parsed.path.split("?")[1];
+						const params =
+							queryParams?.split("&").map((param, index) => {
+								const [name, value] = param.split("=");
+								return {
+									id: `${index}`,
+									name: name ?? "",
+									value: value ?? "",
+									enabled: true,
+								};
+							}) || [];
+
+						if (!requestParamsHasEmpty(params)) {
+							params.push({
+								id: crypto.randomUUID(),
+								name: "",
+								value: "",
 								enabled: true,
-							};
-						}) || [];
+							});
+						}
 
-					if (!requestParamsHasEmpty(params)) {
-						params.push({
-							id: crypto.randomUUID(),
-							name: "",
-							value: "",
-							enabled: true,
-						});
-					}
-
-					return {
-						...tab,
-						method: parsed.method as
-							| "GET"
-							| "POST"
-							| "PUT"
-							| "PATCH"
-							| "DELETE",
-						path: parsed.path,
-						headers: parsed.headers,
-						body: parsed.body,
-						params: params,
-					};
-				}) as Tab[];
-			});
-		} catch (error) {
-			console.warn("Failed to parse HTTP request:", error);
-		}
-	}
+						return {
+							...tab,
+							method: parsed.method as
+								| "GET"
+								| "POST"
+								| "PUT"
+								| "PATCH"
+								| "DELETE",
+							path: parsed.path,
+							headers: parsed.headers,
+							body: parsed.body,
+							params: params,
+						};
+					}) as Tab[];
+				});
+			} catch (error) {
+				console.warn("Failed to parse HTTP request:", error);
+			}
+		},
+		[setTabs],
+	);
 
 	function handleTabHeaderRemove(headerIndex: number) {
 		setTabs((currentTabs) => {
@@ -711,74 +782,82 @@ function RouteComponent() {
 	}
 
 	return (
-		<div className="flex w-full h-full">
-			<LeftMenu leftMenuOpen={leftMenuOpen} />
-			<div className="flex flex-col grow min-w-0">
-				<div className="flex h-10 w-full">
-					<SidebarToggleButton
-						setLeftMenuOpen={setLeftMenuOpen}
-						leftMenuOpen={leftMenuOpen}
-					/>
-					<div className="grow min-w-0">
-						<ActiveTabs setTabs={setTabs} tabs={tabs} />
+		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
+			<div className="flex w-full h-full">
+				<LeftMenu />
+				<div className="flex flex-col grow min-w-0">
+					<div className="flex h-10 w-full">
+						<LeftMenuToggle
+							onClose={() => {
+								console.log("close");
+								setLeftMenuOpen(false);
+							}}
+							onOpen={() => {
+								console.log("open");
+								setLeftMenuOpen(true);
+							}}
+						/>
+						<div className="grow min-w-0">
+							<ActiveTabs setTabs={setTabs} tabs={tabs} />
+						</div>
 					</div>
-				</div>
-				<div className="px-4 py-3 flex items-center">
-					<RequestLineEditorWrapper
-						selectedTab={selectedTab}
-						handleTabPathChange={(path) =>
-							handleTabRequestPathChange(path, tabs, setTabs)
-						}
-						handleTabMethodChange={handleTabMethodChange}
-					/>
-					<Tooltip delayDuration={600}>
-						<TooltipTrigger asChild>
-							<Button
-								variant="primary"
-								className="ml-2"
-								onClick={() => handleSendRequest(selectedTab, setResponse)}
-							>
-								<PlayIcon />
-								Send
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
-					</Tooltip>
-					<Button variant="secondary" className="ml-2">
-						<Save />
-						Save
-					</Button>
-				</div>
-				<ResizablePanelGroup
-					autoSaveId="rest-console-request-response"
-					direction={panelsMode}
-					className="grow"
-				>
-					<ResizablePanel defaultSize={50} className="min-h-10">
-						<RequestView
+					<div className="px-4 py-3 flex items-center">
+						<RequestLineEditorWrapper
 							selectedTab={selectedTab}
-							onBodyChange={handleTabBodyChange}
-							onHeaderChange={handleTabHeaderChange}
-							onParamChange={handleTabParamChange}
-							onSubTabChange={handleSubTabChange}
-							onRawChange={handleRawChange}
-							onHeaderRemove={handleTabHeaderRemove}
-							onParamRemove={handleTabParamRemove}
+							handleTabPathChange={(path) =>
+								handleTabRequestPathChange(path, tabs, setTabs)
+							}
+							handleTabMethodChange={handleTabMethodChange}
 						/>
-					</ResizablePanel>
-					<ResizableHandle />
-					<ResizablePanel defaultSize={50} className="min-h-10">
-						<ResponseView
-							key={`response-${selectedTab.id}`}
-							panelsMode={panelsMode}
-							setPanelsMode={setPanelsMode}
-							response={response}
-							activeResponseTab={activeResponseTab}
-							setActiveResponseTab={setActiveResponseTab}
-						/>
-					</ResizablePanel>
-				</ResizablePanelGroup>
+						<Tooltip delayDuration={600}>
+							<TooltipTrigger asChild>
+								<Button
+									variant="primary"
+									className="ml-2"
+									onClick={() => handleSendRequest(selectedTab, setResponse)}
+								>
+									<PlayIcon />
+									Send
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+						</Tooltip>
+						<Button variant="secondary" className="ml-2">
+							<Save />
+							Save
+						</Button>
+					</div>
+					<ResizablePanelGroup
+						autoSaveId="rest-console-request-response"
+						direction={panelsMode}
+						className="grow"
+					>
+						<ResizablePanel defaultSize={50} className="min-h-10">
+							<RequestView
+								selectedTab={selectedTab}
+								onBodyChange={handleTabBodyChange}
+								onHeaderChange={handleTabHeaderChange}
+								onParamChange={handleTabParamChange}
+								onSubTabChange={handleSubTabChange}
+								onRawChange={handleRawChange}
+								onHeaderRemove={handleTabHeaderRemove}
+								onParamRemove={handleTabParamRemove}
+							/>
+						</ResizablePanel>
+						<ResizableHandle />
+						<ResizablePanel defaultSize={50} className="min-h-10">
+							<ResponsePane
+								key={`response-${selectedTab.id}`}
+								panelsMode={panelsMode}
+								setPanelsMode={setPanelsMode}
+								response={response}
+								activeResponseTab={activeResponseTab}
+								setActiveResponseTab={setActiveResponseTab}
+							/>
+						</ResizablePanel>
+					</ResizablePanelGroup>
+				</div>
 			</div>
-		</div>
+		</LeftMenuContext>
 	);
 }

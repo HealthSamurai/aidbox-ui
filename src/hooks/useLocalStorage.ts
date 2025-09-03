@@ -92,8 +92,19 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 		getInitialValueInEffect = true,
 		sync = true,
 		deserialize = deserializeJSON,
-		serialize = (value: T) => serializeJSON(value, hookName),
+		serialize,
 	}: UseStorageOptions<T>): UseStorageReturnValue<T> {
+		const serializeFn = useCallback(
+			(value: T) => {
+				if (serialize) {
+					return serialize(value);
+				} else {
+					return serializeJSON(value, hookName);
+				}
+			},
+			[serialize, hookName],
+		);
+
 		const defaultValueRef = useRef(defaultValue);
 		defaultValueRef.current = defaultValue;
 
@@ -132,7 +143,7 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 				if (val instanceof Function) {
 					setValue((current) => {
 						const result = val(current);
-						setItem(key, serialize(result));
+						setItem(key, serializeFn(result));
 
 						queueMicrotask(() => {
 							window.dispatchEvent(
@@ -144,14 +155,14 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 						return result;
 					});
 				} else {
-					setItem(key, serialize(val));
+					setItem(key, serializeFn(val));
 					window.dispatchEvent(
 						new CustomEvent(eventName, { detail: { key, value: val } }),
 					);
 					setValue(val);
 				}
 			},
-			[key, serialize],
+			[key, serializeFn],
 		);
 
 		const removeStorageValue = useCallback(() => {
@@ -196,9 +207,9 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 		useEffect(() => {
 			if (defaultValueRef.current !== undefined && value === undefined) {
 				setValue(defaultValueRef.current);
-				setItem(key, serialize(defaultValueRef.current));
+				setItem(key, serializeFn(defaultValueRef.current));
 			}
-		}, [key, serialize, value]);
+		}, [key, serializeFn, value]);
 
 		return [
 			value === undefined ? (defaultValueRef.current as T) : value,
