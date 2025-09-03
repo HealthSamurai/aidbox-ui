@@ -147,7 +147,7 @@ export function Navbar() {
 					width="24"
 				/>
 			</div>
-			<div className="pl-4 pr-5 w-full flex items-center justify-between">
+			<div className="pl-4 pr-4 w-full flex items-center justify-between">
 				<Breadcrumbs />
 				<NavbarButtons />
 			</div>

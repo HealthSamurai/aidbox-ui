@@ -12,7 +12,7 @@ export default function ParamsEditor({
 	onParamRemove: (paramIndex: number) => void;
 }) {
 	return (
-		<div className="flex flex-col gap-3 p-4">
+		<div className="flex flex-col gap-3 p-4 bg-bg-primary">
 			{params.map((param, index) => {
 				return (
 					<div key={param.id} className="flex gap-2 items-center">

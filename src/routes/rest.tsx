@@ -19,6 +19,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
 	Columns2,
 	Fullscreen,
+	Minimize2,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Rows2,
@@ -156,6 +157,8 @@ function RequestView({
 	onRawChange,
 	onHeaderRemove,
 	onParamRemove,
+	handleFullscreenPanelChange,
+	fullscreenPanel,
 }: {
 	selectedTab: Tab;
 	onBodyChange: (body: string) => void;
@@ -165,6 +168,8 @@ function RequestView({
 	onRawChange: (rawText: string) => void;
 	onHeaderRemove: (headerIndex: number) => void;
 	onParamRemove: (paramIndex: number) => void;
+	handleFullscreenPanelChange: (panel: "request" | "response") => void;
+	fullscreenPanel: "request" | "response" | null;
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -180,7 +185,7 @@ function RequestView({
 					onSubTabChange(value as "params" | "headers" | "body" | "raw")
 				}
 			>
-				<div className="flex items-center justify-between bg-bg-secondary px-4 border-y h-10">
+				<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
 					<div className="flex items-center">
 						<span className="typo-label text-text-secondary mb-0.5 pr-3">
 							Request:
@@ -192,7 +197,10 @@ function RequestView({
 							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
 					</div>
-					<ExpandPane />
+					<ExpandPane
+						onClick={() => handleFullscreenPanelChange("request")}
+						fullscreenPanel={fullscreenPanel}
+					/>
 				</div>
 				<TabsContent value="params">
 					<ParamsEditor
@@ -299,12 +307,26 @@ function VerticalSplit({ onChange }: { onChange: () => void }) {
 	);
 }
 
-function ExpandPane() {
-	return (
-		<Button variant="link" size="small">
-			<Fullscreen />
-		</Button>
-	);
+function ExpandPane({
+	onClick,
+	fullscreenPanel,
+}: {
+	onClick: () => void;
+	fullscreenPanel: "request" | "response" | null;
+}) {
+	if (fullscreenPanel === null) {
+		return (
+			<Button variant="link" size="small" onClick={onClick}>
+				<Fullscreen />
+			</Button>
+		);
+	} else {
+		return (
+			<Button variant="primary" size="small" onClick={onClick}>
+				<Minimize2 />
+			</Button>
+		);
+	}
 }
 
 function SplitDirectionToggle({
@@ -324,6 +346,8 @@ type ResponsePaneProps = {
 	response: ResponseData | null;
 	activeResponseTab: ResponseTabs;
 	setActiveResponseTab: (tab: ResponseTabs) => void;
+	handleFullscreenPanelChange: (panel: "request" | "response") => void;
+	fullscreenPanel: "request" | "response" | null;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -400,6 +424,8 @@ function ResponsePane({
 	response,
 	activeResponseTab,
 	setActiveResponseTab,
+	handleFullscreenPanelChange,
+	fullscreenPanel,
 }: ResponsePaneProps) {
 	return (
 		<Tabs
@@ -410,9 +436,7 @@ function ResponsePane({
 			}
 		>
 			<div className="flex flex-col h-full">
-				<div
-					className={`flex items-center justify-between bg-bg-secondary px-4 h-10 ${panelsMode === "horizontal" ? "border-y" : "border-b"}`}
-				>
+				<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
 					<div className="flex items-center">
 						<span className="typo-label text-text-secondary mb-0.5 pr-3">
 							Response:
@@ -425,11 +449,16 @@ function ResponsePane({
 					</div>
 					<div className="flex items-center gap-1">
 						{response && <ResponseInfo response={response} />}
-						<SplitDirectionToggle
-							direction={panelsMode}
-							onChange={(newMode) => setPanelsMode(newMode)}
+						{fullscreenPanel === null && (
+							<SplitDirectionToggle
+								direction={panelsMode}
+								onChange={(newMode) => setPanelsMode(newMode)}
+							/>
+						)}
+						<ExpandPane
+							onClick={() => handleFullscreenPanelChange("response")}
+							fullscreenPanel={fullscreenPanel}
 						/>
-						<ExpandPane />
 					</div>
 				</div>
 				<ResponseView
@@ -552,6 +581,10 @@ function RouteComponent() {
 	const [activeResponseTab, setActiveResponseTab] = useState<
 		"body" | "headers" | "raw"
 	>("body");
+
+	const [fullscreenPanel, setFullscreenPanel] = useState<
+		"request" | "response" | null
+	>(null);
 
 	const selectedTab = useMemo(() => {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
@@ -782,6 +815,14 @@ function RouteComponent() {
 		});
 	}
 
+	const handleFullscreenPanelChange = (panel: "request" | "response") => {
+		if (fullscreenPanel === panel) {
+			setFullscreenPanel(null);
+		} else {
+			setFullscreenPanel(panel);
+		}
+	};
+
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			<div className="flex w-full h-full">
@@ -802,7 +843,7 @@ function RouteComponent() {
 							<ActiveTabs setTabs={setTabs} tabs={tabs} />
 						</div>
 					</div>
-					<div className="px-4 py-3 flex items-center">
+					<div className="px-4 py-3 flex items-center border-b">
 						<RequestLineEditorWrapper
 							selectedTab={selectedTab}
 							handleTabPathChange={(path) =>
@@ -833,7 +874,10 @@ function RouteComponent() {
 						direction={panelsMode}
 						className="grow"
 					>
-						<ResizablePanel defaultSize={50} className="min-h-10">
+						<ResizablePanel
+							defaultSize={50}
+							className={`min-h-10 ${fullscreenPanel === "request" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "response" ? "hidden" : ""}`}
+						>
 							<RequestView
 								selectedTab={selectedTab}
 								onBodyChange={handleTabBodyChange}
@@ -843,10 +887,15 @@ function RouteComponent() {
 								onRawChange={handleRawChange}
 								onHeaderRemove={handleTabHeaderRemove}
 								onParamRemove={handleTabParamRemove}
+								handleFullscreenPanelChange={handleFullscreenPanelChange}
+								fullscreenPanel={fullscreenPanel}
 							/>
 						</ResizablePanel>
 						<ResizableHandle />
-						<ResizablePanel defaultSize={50} className="min-h-10">
+						<ResizablePanel
+							defaultSize={50}
+							className={`min-h-10 ${fullscreenPanel === "response" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "request" ? "hidden" : ""}`}
+						>
 							<ResponsePane
 								key={`response-${selectedTab.id}`}
 								panelsMode={panelsMode}
@@ -854,6 +903,8 @@ function RouteComponent() {
 								response={response}
 								activeResponseTab={activeResponseTab}
 								setActiveResponseTab={setActiveResponseTab}
+								handleFullscreenPanelChange={handleFullscreenPanelChange}
+								fullscreenPanel={fullscreenPanel}
 							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>

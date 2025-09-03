@@ -12,7 +12,7 @@ export default function HeadersEditor({
 	onHeaderRemove: (headerIndex: number) => void;
 }) {
 	return (
-		<div className="flex flex-col gap-3 p-4">
+		<div className="flex flex-col gap-3 p-4 bg-bg-primary">
 			{headers.map((header, index) => {
 				return (
 					<div key={header.id} className="flex gap-2 items-center">
