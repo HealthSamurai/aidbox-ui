@@ -286,7 +286,7 @@ function HorizontalSplit({ onChange }: { onChange: () => void }) {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<Button variant="link" onClick={onChange} size="small">
-					<Columns2 />
+					<Rows2 />
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>Switch to vertical split</TooltipContent>
@@ -299,7 +299,7 @@ function VerticalSplit({ onChange }: { onChange: () => void }) {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<Button variant="link" onClick={onChange} size="small">
-					<Rows2 />
+					<Columns2 />
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>Switch to horizontal split</TooltipContent>
