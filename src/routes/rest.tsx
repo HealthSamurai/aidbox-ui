@@ -404,6 +404,7 @@ function ResponsePane({
 	return (
 		<Tabs
 			value={activeResponseTab}
+			className="h-full"
 			onValueChange={(value) =>
 				setActiveResponseTab(value as "body" | "headers" | "raw")
 			}
