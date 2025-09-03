@@ -529,7 +529,7 @@ function handleSendRequest(
 		body: selectedTab.body || "",
 	})
 		.then((response) => {
-			console.log(response);
+			setResponse(response);
 		})
 		.catch((error) => {
 			console.error("error", error);
@@ -831,11 +831,9 @@ function RouteComponent() {
 					<div className="flex h-10 w-full">
 						<LeftMenuToggle
 							onClose={() => {
-								console.log("close");
 								setLeftMenuOpen(false);
 							}}
 							onOpen={() => {
-								console.log("open");
 								setLeftMenuOpen(true);
 							}}
 						/>
