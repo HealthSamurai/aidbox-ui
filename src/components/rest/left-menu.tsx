@@ -1,5 +1,11 @@
 import {
 	Button,
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
 	Tabs,
 	TabsContent,
 	TabsList,
@@ -111,6 +117,15 @@ function groupHistoryByTime(items: UIHistoryResource[]) {
 	return groups;
 }
 
+// Helper function to check if history item matches selected tab
+function isHistoryItemSelected(
+	item: UIHistoryResource,
+	selectedTab?: Tab,
+): boolean {
+	if (!selectedTab || !selectedTab.historyId) return false;
+	return item.id === selectedTab.historyId;
+}
+
 // Helper function to format group title
 function formatGroupTitle(groupKey: string): string {
 	if (groupKey === "TODAY" || groupKey === "YESTERDAY") {
@@ -128,28 +143,20 @@ function formatGroupTitle(groupKey: string): string {
 	}
 }
 
-// Component for group header
-function GroupHeader({ title }: { title: string }) {
-	const displayTitle = formatGroupTitle(title);
-	return (
-		<h3 className="text-text-quternary text-sm font-semibold uppercase tracking-wide border-b py-2">
-			{displayTitle}
-		</h3>
-	);
-}
-
-// Component for individual history item
-function HistoryItem({
-	item,
-	onClick,
-	onMiddleClick,
+// Component for Command-based history
+function HistoryCommand({
+	groupedHistory,
+	getSortedGroupKeys,
+	selectedTab,
+	onItemClick,
+	onItemMiddleClick,
 }: {
-	item: UIHistoryResource;
-	onClick?: (item: UIHistoryResource) => void;
-	onMiddleClick?: (item: UIHistoryResource) => void;
+	groupedHistory: Record<string, UIHistoryResource[]>;
+	getSortedGroupKeys: (groups: Record<string, UIHistoryResource[]>) => string[];
+	selectedTab?: Tab;
+	onItemClick: (item: UIHistoryResource) => void;
+	onItemMiddleClick: (item: UIHistoryResource) => void;
 }) {
-	const { method, path } = parseHttpCommand(item.command);
-
 	const getMethodColor = (method: string) => {
 		const methodColors: Record<string, string> = {
 			GET: "text-utility-green",
@@ -161,41 +168,76 @@ function HistoryItem({
 		return methodColors[method.toUpperCase()] || "text-text-secondary";
 	};
 
-	const handleMouseDown = (event: React.MouseEvent) => {
+	const handleItemMouseDown = (
+		event: React.MouseEvent,
+		item: UIHistoryResource,
+	) => {
 		// Middle mouse button (wheel click) - button 1
 		if (event.button === 1) {
 			event.preventDefault();
 			event.stopPropagation();
-			onMiddleClick?.(item);
+			onItemMiddleClick(item);
 		}
 	};
 
+	const createSearchableText = (item: UIHistoryResource) => {
+		const { method, path, headers, body } = parseHttpCommand(item.command);
+		const headersText = headers.map((h) => `${h.key}:${h.value}`).join(" ");
+		return `${method} ${path} ${headersText} ${body}`.toLowerCase();
+	};
+
 	return (
-		<button
-			type="button"
-			className={`flex flex-col gap-1 py-2 hover:opacity-70 cursor-pointer rounded w-full`}
-			onClick={() => onClick?.(item)}
-			onMouseDown={handleMouseDown}
-		>
-			<div className="flex items-center gap-2 typo-code">
-				<span className={`text-sm font-medium ${getMethodColor(method || "")}`}>
-					{method}
-				</span>
-				<div className="text-sm truncate" title={path}>
-					{path}
-				</div>
-			</div>
-		</button>
+		<Command className="h-full">
+			<CommandInput placeholder="Search history..." />
+			<CommandList className="h-full max-h-full p-0">
+				<CommandEmpty>No history found.</CommandEmpty>
+				{getSortedGroupKeys(groupedHistory).map((groupKey) => {
+					const items = groupedHistory[groupKey];
+					if (!items || items.length === 0) return null;
+
+					return (
+						<CommandGroup key={groupKey} heading={formatGroupTitle(groupKey)}>
+							{items.map((item) => {
+								const { method, path } = parseHttpCommand(item.command);
+								const isSelected = isHistoryItemSelected(item, selectedTab);
+								return (
+									<CommandItem
+										key={item.id}
+										value={createSearchableText(item)}
+										onSelect={() => onItemClick(item)}
+										onMouseDown={(event) => handleItemMouseDown(event, item)}
+										className={`flex items-center gap-2 typo-code cursor-pointer ${
+											isSelected ? "bg-accent text-accent-foreground" : ""
+										}`}
+									>
+										<span
+											className={`text-sm font-medium ${getMethodColor(method || "")}`}
+										>
+											{method}
+										</span>
+										<div className="text-sm truncate" title={path}>
+											{path}
+										</div>
+									</CommandItem>
+								);
+							})}
+						</CommandGroup>
+					);
+				})}
+			</CommandList>
+		</Command>
 	);
 }
 
 export function LeftMenu({
 	tabs,
 	setTabs,
+	selectedTab,
 	onHistoryRefreshNeeded,
 }: {
 	tabs: Tab[];
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
+	selectedTab?: Tab;
 	onHistoryRefreshNeeded?: (refreshFn: () => void) => void;
 }) {
 	const leftMenuStatus = React.useContext(LeftMenuContext);
@@ -307,44 +349,31 @@ export function LeftMenu({
 						<TabsTrigger value="collections">Collections</TabsTrigger>
 					</TabsList>
 				</div>
-				<TabsContent value="history" className="p-0 text-nowrap">
-					<div className="h-full overflow-y-auto">
-						{isLoading && (
-							<div className="p-4 text-center text-sm text-gray-500">
-								Loading history...
-							</div>
-						)}
-						{error && (
-							<div className="p-4 text-center text-sm text-red-500">
-								Failed to load history
-							</div>
-						)}
-						{historyData?.entry?.length === 0 && (
-							<div className="p-4 text-center text-sm text-gray-500">
-								No history found
-							</div>
-						)}
-						{historyData?.entry &&
-							historyData.entry.length > 0 &&
-							getSortedGroupKeys(groupedHistory).map((groupKey) => {
-								const items = groupedHistory[groupKey];
-								if (!items || items.length === 0) return null;
-
-								return (
-									<div key={groupKey} className="px-3 py-2">
-										<GroupHeader title={groupKey} />
-										{items.map((item) => (
-											<HistoryItem
-												key={item.id}
-												item={item}
-												onClick={handleHistoryItemClick}
-												onMiddleClick={handleHistoryItemMiddleClick}
-											/>
-										))}
-									</div>
-								);
-							})}
-					</div>
+				<TabsContent value="history" className="p-0 h-full">
+					{isLoading && (
+						<div className="p-4 text-center text-sm text-gray-500">
+							Loading history...
+						</div>
+					)}
+					{error && (
+						<div className="p-4 text-center text-sm text-red-500">
+							Failed to load history
+						</div>
+					)}
+					{historyData?.entry?.length === 0 && (
+						<div className="p-4 text-center text-sm text-gray-500">
+							No history found
+						</div>
+					)}
+					{historyData?.entry && historyData.entry.length > 0 && (
+						<HistoryCommand
+							groupedHistory={groupedHistory}
+							getSortedGroupKeys={getSortedGroupKeys}
+							selectedTab={selectedTab as Tab}
+							onItemClick={handleHistoryItemClick}
+							onItemMiddleClick={handleHistoryItemMiddleClick}
+						/>
+					)}
 				</TabsContent>
 				<TabsContent value="collections" className="px-3 py-2 text-nowrap">
 					todo collections

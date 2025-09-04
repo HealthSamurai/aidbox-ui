@@ -848,6 +848,7 @@ function RouteComponent() {
 				<LeftMenu
 					tabs={tabs}
 					setTabs={setTabs}
+					selectedTab={selectedTab}
 					onHistoryRefreshNeeded={setRefreshHistory}
 				/>
 				<div className="flex flex-col grow min-w-0">
