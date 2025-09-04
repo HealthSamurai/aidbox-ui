@@ -23,7 +23,7 @@ import {
 	Save,
 	Timer,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -452,6 +452,7 @@ function handleTabRequestPathChange(
 function handleSendRequest(
 	selectedTab: Tab,
 	setResponse: (response: ResponseData | null) => void,
+	onHistorySaved?: () => void,
 ) {
 	const headers =
 		selectedTab.headers
@@ -465,6 +466,9 @@ function handleSendRequest(
 				},
 				{} as Record<string, string>,
 			) ?? {};
+
+	// Save to UI history (don't wait for it)
+	saveToUIHistory(selectedTab, onHistorySaved);
 
 	AidboxCallWithMeta({
 		method: selectedTab.method,
@@ -500,6 +504,63 @@ function requestParamsEditorSyncPath(params: Header[], path: string) {
 	return queryParams ? `${location}?${queryParams}` : location;
 }
 
+// Helper function to format request as HTTP command for history
+function formatRequestAsHttpCommand(tab: Tab): string {
+	const method = tab.method;
+	const path = tab.path || "/";
+
+	// Format headers - note: using colon without space after header name to match expected format
+	const headerLines =
+		tab.headers
+			?.filter(
+				(header) => header.name && header.value && (header.enabled ?? true),
+			)
+			.map((header) => `${header.name}:${header.value}`)
+			.join("\n") || "";
+
+	// Format body
+	const body = tab.body?.trim() || "";
+
+	// Combine all parts
+	let command = `${method} ${path}`;
+	if (headerLines) {
+		command += `\n${headerLines}`;
+	}
+	if (body) {
+		command += `\n\n${body}`;
+	}
+
+	return command;
+}
+
+// Helper function to save request to UI history
+async function saveToUIHistory(tab: Tab, onSaved?: () => void): Promise<void> {
+	try {
+		const historyId = crypto.randomUUID();
+		const command = formatRequestAsHttpCommand(tab);
+
+		const historyPayload = {
+			type: "http",
+			command: command,
+		};
+
+		await AidboxCallWithMeta({
+			method: "PUT",
+			url: `/ui_history/${historyId}`,
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(historyPayload),
+		});
+
+		// Call the callback to refresh history
+		onSaved?.();
+	} catch (error) {
+		// Silently fail - history saving shouldn't block the main request
+		console.warn("Failed to save to UI history:", error);
+	}
+}
+
 function RouteComponent() {
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -512,6 +573,11 @@ function RouteComponent() {
 		getInitialValueInEffect: false,
 		defaultValue: true,
 	});
+
+	// State to store history refresh function
+	const [refreshHistory, setRefreshHistory] = React.useState<
+		(() => void) | null
+	>(null);
 
 	const [panelsMode, setPanelsMode] = useLocalStorage<
 		"horizontal" | "vertical"
@@ -542,7 +608,11 @@ function RouteComponent() {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.ctrlKey && event.key === "Enter") {
 				event.preventDefault();
-				handleSendRequest(selectedTab, setResponse);
+				handleSendRequest(
+					selectedTab,
+					setResponse,
+					refreshHistory || undefined,
+				);
 			}
 		};
 
@@ -550,7 +620,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab]);
+	}, [selectedTab, refreshHistory]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Need to clear response only on tab change
 	useEffect(() => {
@@ -775,7 +845,11 @@ function RouteComponent() {
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			<div className="flex w-full h-full">
-				<LeftMenu />
+				<LeftMenu
+					tabs={tabs}
+					setTabs={setTabs}
+					onHistoryRefreshNeeded={setRefreshHistory}
+				/>
 				<div className="flex flex-col grow min-w-0">
 					<div className="flex h-10 w-full">
 						<LeftMenuToggle
@@ -804,7 +878,13 @@ function RouteComponent() {
 								<Button
 									variant="primary"
 									className="ml-2"
-									onClick={() => handleSendRequest(selectedTab, setResponse)}
+									onClick={() =>
+										handleSendRequest(
+											selectedTab,
+											setResponse,
+											refreshHistory || undefined,
+										)
+									}
 								>
 									<PlayIcon />
 									Send

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Cookies from "js-cookie";
+import type { UIHistoryResponse } from "../shared/types";
 import { getAidboxBaseURL } from "../utils";
 
 export interface UserInfo {
@@ -66,7 +67,7 @@ export async function AidboxCall<T = unknown>({
 		return null as T;
 	}
 
-	return response as T;
+	return response.json() as T;
 }
 
 export async function AidboxCallWithMeta({
@@ -190,4 +191,36 @@ export function useLogout() {
 			queryClient.removeQueries({ queryKey: ["userInfo"] });
 		},
 	});
+}
+
+// UI History API
+async function fetchUIHistory(): Promise<UIHistoryResponse> {
+	const response = await AidboxCall<UIHistoryResponse>({
+		method: "GET",
+		url: "/ui_history",
+		params: {
+			".type": "http",
+			_sort: "-_lastUpdated",
+			_count: "200",
+		},
+	});
+
+	return response;
+}
+
+export function useUIHistory() {
+	return useQuery({
+		queryKey: ["uiHistory"],
+		queryFn: fetchUIHistory,
+		refetchOnWindowFocus: false,
+		staleTime: 30000, // 30 seconds
+	});
+}
+
+export function useRefreshUIHistory() {
+	const queryClient = useQueryClient();
+
+	return () => {
+		queryClient.invalidateQueries({ queryKey: ["uiHistory"] });
+	};
 }

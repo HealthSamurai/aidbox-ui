@@ -25,6 +25,7 @@ export interface Tab {
 	params?: Header[];
 	name?: string;
 	activeSubTab?: "params" | "headers" | "body" | "raw";
+	historyId?: string;
 }
 
 export const DEFAULT_TAB_ID: TabId = "active-tab-example";
@@ -54,7 +55,52 @@ function addTab(
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 }
 
-function removeTab(
+export function addTabFromHistory(
+	tabs: Tab[],
+	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
+	historyData: {
+		method: string;
+		path: string;
+		headers: Header[];
+		params?: Header[];
+		body?: string;
+		historyId: string;
+	},
+) {
+	// Check if tab with this historyId already exists
+	const existingTab = tabs.find(
+		(tab) => tab.historyId === historyData.historyId,
+	);
+
+	if (existingTab) {
+		// Focus existing tab instead of creating new one
+		setTabs(tabs.map((t) => ({ ...t, selected: t.id === existingTab.id })));
+		return;
+	}
+
+	const newTab: Tab = {
+		...DEFAULT_TAB,
+		id: crypto.randomUUID(),
+		method: historyData.method as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+		path: historyData.path,
+		name: `${historyData.method} ${historyData.path}`,
+		body: historyData.body || "",
+		historyId: historyData.historyId,
+		headers: [
+			...historyData.headers,
+			// Add empty header if not exists
+			...(historyData.headers.some((h) => h.name === "" && h.value === "")
+				? []
+				: [{ id: crypto.randomUUID(), name: "", value: "", enabled: true }]),
+		],
+		params: historyData.params || [
+			{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
+		],
+	};
+	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
+}
+
+export function removeTab(
 	tabs: Tab[],
 	tabId: TabId,
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
@@ -123,6 +169,15 @@ export function ActiveTabs({
 		onTabSelect(tabId, tabs, setTabs);
 	};
 
+	const handleTabMouseDown = (event: React.MouseEvent, tabId: TabId) => {
+		// Middle mouse button (wheel click) - button 1
+		if (event.button === 1) {
+			event.preventDefault();
+			event.stopPropagation();
+			handleCloseTab(tabId);
+		}
+	};
+
 	return (
 		<Tabs variant="browser" value={selectedTab}>
 			<TabsBrowserList>
@@ -135,6 +190,7 @@ export function ActiveTabs({
 								onClose: () => handleCloseTab(tab.id),
 							})}
 							onClick={() => handleTabSelect(tab.id)}
+							onMouseDown={(event) => handleTabMouseDown(event, tab.id)}
 						>
 							<TabContent tab={tab} />
 						</TabsTrigger>
