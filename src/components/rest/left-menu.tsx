@@ -340,7 +340,7 @@ export function LeftMenu({
 
 	return (
 		<div
-			className={`w-0 invisible transition-[width] ${leftMenuStatus === "open" ? "min-w-70 w-70 visible border-r" : ""}`}
+			className={`w-0 invisible transition-[width] ${leftMenuStatus === "open" ? "w-70 visible border-r" : ""}`}
 		>
 			<Tabs defaultValue="history">
 				<div className="border-b h-10 bg-bg-secondary">

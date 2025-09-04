@@ -149,7 +149,7 @@ function RequestView({
 			>
 				<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
 					<div className="flex items-center">
-						<span className="typo-label text-text-secondary mb-0.5 pr-3">
+						<span className="typo-label text-text-secondary pr-3">
 							Request:
 						</span>
 						<TabsList>
@@ -382,7 +382,7 @@ function ResponsePane({
 			<div className="flex flex-col h-full">
 				<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
 					<div className="flex items-center">
-						<span className="typo-label text-text-secondary mb-0.5 pr-3">
+						<span className="typo-label text-text-secondary pr-3">
 							Response:
 						</span>
 						<TabsList>
