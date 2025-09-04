@@ -1,7 +1,6 @@
 import {
 	Button,
 	CodeEditor,
-	type CodeEditorView,
 	PlayIcon,
 	RequestLineEditor,
 	ResizableHandle,
@@ -20,19 +19,11 @@ import {
 	Columns2,
 	Fullscreen,
 	Minimize2,
-	PanelLeftClose,
-	PanelLeftOpen,
 	Rows2,
 	Save,
 	Timer,
 } from "lucide-react";
-import {
-	createContext,
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -66,39 +57,6 @@ export const Route = createFileRoute("/rest")({
 	component: RouteComponent,
 });
 
-type SidebarStatus = "open" | "close";
-
-type SidebarToggleButtonProps = {
-	value?: SidebarStatus;
-	onOpen: () => void;
-	onClose: () => void;
-};
-
-function SidebarToggleButton({
-	value,
-	onOpen,
-	onClose,
-}: SidebarToggleButtonProps) {
-	return (
-		<Tooltip delayDuration={600}>
-			<TooltipTrigger asChild>
-				<Button
-					variant="link"
-					className="h-full border-b flex-shrink-0 border-r"
-					onClick={value === "open" ? onOpen : onClose}
-				>
-					{value === "open" ? (
-						<PanelLeftClose className="size-4" />
-					) : (
-						<PanelLeftOpen className="size-4" />
-					)}
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent>History / Collections</TooltipContent>
-		</Tooltip>
-	);
-}
-
 function RequestLineEditorWrapper({
 	selectedTab,
 	handleTabPathChange,
@@ -122,9 +80,11 @@ function RequestLineEditorWrapper({
 
 function RawEditor({
 	selectedTab,
+	requestLineVersion,
 	onRawChange,
 }: {
 	selectedTab: Tab;
+	requestLineVersion: string;
 	onRawChange?: (rawText: string) => void;
 }) {
 	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
@@ -140,8 +100,8 @@ function RawEditor({
 
 	return (
 		<CodeEditor
-			key={`raw-editor-${selectedTab.id}`}
-			currentValue={currentValue}
+			key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
+			defaultValue={currentValue}
 			mode="http"
 			{...(onRawChange ? { onChange: onRawChange } : {})}
 		/>
@@ -150,6 +110,7 @@ function RawEditor({
 
 function RequestView({
 	selectedTab,
+	requestLineVersion,
 	onBodyChange,
 	onSubTabChange,
 	onHeaderChange,
@@ -161,6 +122,7 @@ function RequestView({
 	fullscreenPanel,
 }: {
 	selectedTab: Tab;
+	requestLineVersion: string;
 	onBodyChange: (body: string) => void;
 	onSubTabChange: (subTab: "params" | "headers" | "body" | "raw") => void;
 	onHeaderChange: (headerIndex: number, header: Header) => void;
@@ -224,32 +186,14 @@ function RequestView({
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
-					<RawEditor selectedTab={selectedTab} onRawChange={onRawChange} />
+					<RawEditor
+						requestLineVersion={requestLineVersion}
+						selectedTab={selectedTab}
+						onRawChange={onRawChange}
+					/>
 				</TabsContent>
 			</Tabs>
 		</div>
-	);
-}
-function ResponseEditorTabs({
-	activeTab,
-	onTabChange,
-}: {
-	activeTab: "body" | "headers" | "raw";
-	onTabChange: (tab: "body" | "headers" | "raw") => void;
-}) {
-	return (
-		<Tabs
-			value={activeTab}
-			onValueChange={(value) =>
-				onTabChange(value as "body" | "headers" | "raw")
-			}
-		>
-			<TabsList>
-				<TabsTrigger value="body">Body</TabsTrigger>
-				<TabsTrigger value="headers">Headers</TabsTrigger>
-				<TabsTrigger value="raw">Raw</TabsTrigger>
-			</TabsList>
-		</Tabs>
 	);
 }
 
@@ -582,6 +526,10 @@ function RouteComponent() {
 		"body" | "headers" | "raw"
 	>("body");
 
+	const [requestLineVersion, setRequestLineVersion] = useState<string>(
+		crypto.randomUUID(),
+	);
+
 	const [fullscreenPanel, setFullscreenPanel] = useState<
 		"request" | "response" | null
 	>(null);
@@ -610,6 +558,7 @@ function RouteComponent() {
 	}, [selectedTab.id]);
 
 	function handleTabMethodChange(method: string) {
+		setRequestLineVersion(crypto.randomUUID());
 		setTabs((currentTabs) =>
 			currentTabs.map((tab) =>
 				tab.selected
@@ -844,9 +793,10 @@ function RouteComponent() {
 					<div className="px-4 py-3 flex items-center border-b">
 						<RequestLineEditorWrapper
 							selectedTab={selectedTab}
-							handleTabPathChange={(path) =>
-								handleTabRequestPathChange(path, tabs, setTabs)
-							}
+							handleTabPathChange={(path) => {
+								setRequestLineVersion(crypto.randomUUID());
+								handleTabRequestPathChange(path, tabs, setTabs);
+							}}
 							handleTabMethodChange={handleTabMethodChange}
 						/>
 						<Tooltip delayDuration={600}>
@@ -877,6 +827,7 @@ function RouteComponent() {
 							className={`min-h-10 ${fullscreenPanel === "request" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "response" ? "hidden" : ""}`}
 						>
 							<RequestView
+								requestLineVersion={requestLineVersion}
 								selectedTab={selectedTab}
 								onBodyChange={handleTabBodyChange}
 								onHeaderChange={handleTabHeaderChange}
