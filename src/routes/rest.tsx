@@ -345,6 +345,7 @@ function ResponseView({
 	if (response) {
 		return (
 			<CodeEditor
+				readOnly={true}
 				key={`response-${activeResponseTab}-${response.status}`}
 				currentValue={getEditorContent()}
 				mode={activeResponseTab === "raw" ? "http" : "json"}
