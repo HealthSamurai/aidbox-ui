@@ -69,11 +69,10 @@ function RequestLineEditorWrapper({
 	return (
 		<RequestLineEditor
 			className="w-full"
-			selectedMethod={selectedTab.method}
-			setMethod={(method) => handleTabMethodChange(method)}
-			methods={["GET", "POST", "PUT", "PATCH", "DELETE"]}
-			inputValue={selectedTab.path || ""}
-			onInputChange={(event) => handleTabPathChange(event.target.value)}
+			method={selectedTab.method}
+			path={selectedTab.path || ""}
+			onMethodChange={(method) => handleTabMethodChange(method)}
+			onPathChange={(event) => handleTabPathChange(event.target.value)}
 		/>
 	);
 }

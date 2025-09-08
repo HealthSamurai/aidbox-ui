@@ -5,15 +5,15 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@health-samurai/react-components': link:../../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
+  '@health-samurai/react-components': link:../../.local/share/pnpm/global/5/node_modules/@health-samurai/react-components
 
 importers:
 
   .:
     dependencies:
       '@health-samurai/react-components':
-        specifier: link:../../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
-        version: link:../../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
+        specifier: link:../../.local/share/pnpm/global/5/node_modules/@health-samurai/react-components
+        version: link:../../.local/share/pnpm/global/5/node_modules/@health-samurai/react-components
       '@tanstack/react-query':
         specifier: ^5.85.3
         version: 5.85.3(react@19.1.1)
