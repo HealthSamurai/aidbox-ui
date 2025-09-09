@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
 
-const router = createRouter({ routeTree });
+const router = createRouter({ basepath: "/u", routeTree });
 
 const queryClient = new QueryClient();
 
