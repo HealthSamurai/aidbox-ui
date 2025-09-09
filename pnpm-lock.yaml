@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@health-samurai/react-components': link:../../.local/share/pnpm/global/5/node_modules/@health-samurai/react-components
-
 importers:
 
   .:
