@@ -6,6 +6,17 @@ import {
 	TabsTrigger,
 } from "@health-samurai/react-components";
 
+// Styles
+const methodColors = {
+	GET: "text-utility-green typo-label-xs",
+	POST: "text-utility-yellow typo-label-xs",
+	PUT: "text-utility-blue typo-label-xs",
+	PATCH: "text-utility-violet typo-label-xs",
+	DELETE: "text-utility-red typo-label-xs",
+};
+
+const tabPathStyle = "typo-label-xs";
+
 export type TabId = string;
 
 export type Header = {
@@ -137,19 +148,11 @@ function onTabSelect(
 	setTabs(tabs.map((t) => ({ ...t, selected: t.id === tabId })));
 }
 
-const methodColors = {
-	GET: "text-utility-green",
-	POST: "text-utility-yellow",
-	PUT: "text-utility-blue",
-	PATCH: "text-utility-violet",
-	DELETE: "text-utility-red",
-};
-
 function TabContent({ tab }: { tab: Tab }) {
 	return (
 		<span className="flex items-center gap-1 truncate">
 			<span className={methodColors[tab.method]}>{tab.method}</span>
-			<span>{tab.path || tab.name}</span>
+			<span className={tabPathStyle}>{tab.path || tab.name}</span>
 		</span>
 	);
 }
