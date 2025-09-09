@@ -201,7 +201,7 @@ async function fetchUIHistory(): Promise<UIHistoryResponse> {
 		params: {
 			".type": "http",
 			_sort: "-_lastUpdated",
-			_count: "200",
+			_count: "100",
 		},
 	});
 
@@ -215,12 +215,4 @@ export function useUIHistory() {
 		refetchOnWindowFocus: false,
 		staleTime: 30000, // 30 seconds
 	});
-}
-
-export function useRefreshUIHistory() {
-	const queryClient = useQueryClient();
-
-	return () => {
-		queryClient.invalidateQueries({ queryKey: ["uiHistory"] });
-	};
 }

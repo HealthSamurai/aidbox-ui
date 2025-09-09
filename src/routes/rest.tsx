@@ -14,6 +14,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	Columns2,
@@ -452,7 +453,7 @@ function handleTabRequestPathChange(
 function handleSendRequest(
 	selectedTab: Tab,
 	setResponse: (response: ResponseData | null) => void,
-	onHistorySaved?: () => void,
+	queryClient: QueryClient,
 ) {
 	const headers =
 		selectedTab.headers
@@ -468,7 +469,7 @@ function handleSendRequest(
 			) ?? {};
 
 	// Save to UI history (don't wait for it)
-	saveToUIHistory(selectedTab, onHistorySaved);
+	saveToUIHistory(selectedTab, queryClient);
 
 	AidboxCallWithMeta({
 		method: selectedTab.method,
@@ -534,10 +535,15 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 }
 
 // Helper function to save request to UI history
-async function saveToUIHistory(tab: Tab, onSaved?: () => void): Promise<void> {
+async function saveToUIHistory(
+	tab: Tab,
+	queryClient: QueryClient,
+): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();
 		const command = formatRequestAsHttpCommand(tab);
+
+		queryClient.invalidateQueries({ queryKey: ["uiHistory"] });
 
 		const historyPayload = {
 			type: "http",
@@ -553,8 +559,7 @@ async function saveToUIHistory(tab: Tab, onSaved?: () => void): Promise<void> {
 			body: JSON.stringify(historyPayload),
 		});
 
-		// Call the callback to refresh history
-		onSaved?.();
+		queryClient.invalidateQueries({ queryKey: ["uiHistory"] });
 	} catch (error) {
 		// Silently fail - history saving shouldn't block the main request
 		console.warn("Failed to save to UI history:", error);
@@ -604,15 +609,13 @@ function RouteComponent() {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
 
+	const queryClient = useQueryClient();
+
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.ctrlKey && event.key === "Enter") {
 				event.preventDefault();
-				handleSendRequest(
-					selectedTab,
-					setResponse,
-					refreshHistory || undefined,
-				);
+				handleSendRequest(selectedTab, setResponse, queryClient);
 			}
 		};
 
@@ -620,7 +623,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, refreshHistory]);
+	}, [selectedTab, queryClient]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Need to clear response only on tab change
 	useEffect(() => {
@@ -845,12 +848,7 @@ function RouteComponent() {
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			<div className="flex w-full h-full">
-				<LeftMenu
-					tabs={tabs}
-					setTabs={setTabs}
-					selectedTab={selectedTab}
-					onHistoryRefreshNeeded={setRefreshHistory}
-				/>
+				<LeftMenu tabs={tabs} setTabs={setTabs} selectedTab={selectedTab} />
 				<div className="flex flex-col grow min-w-0">
 					<div className="flex h-10 w-full">
 						<LeftMenuToggle
@@ -880,11 +878,7 @@ function RouteComponent() {
 									variant="primary"
 									className="ml-2"
 									onClick={() =>
-										handleSendRequest(
-											selectedTab,
-											setResponse,
-											refreshHistory || undefined,
-										)
+										handleSendRequest(selectedTab, setResponse, queryClient)
 									}
 								>
 									<PlayIcon />

@@ -16,7 +16,7 @@ import {
 } from "@health-samurai/react-components";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
-import { useRefreshUIHistory, useUIHistory } from "../../api/auth";
+import { useUIHistory } from "../../api/auth";
 import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
 
@@ -233,23 +233,13 @@ export function LeftMenu({
 	tabs,
 	setTabs,
 	selectedTab,
-	onHistoryRefreshNeeded,
 }: {
 	tabs: Tab[];
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	selectedTab?: Tab;
-	onHistoryRefreshNeeded?: (refreshFn: () => void) => void;
 }) {
 	const leftMenuStatus = React.useContext(LeftMenuContext);
 	const { data: historyData, isLoading, error } = useUIHistory();
-	const refreshHistory = useRefreshUIHistory();
-
-	// Call parent callback when refresh function is available
-	React.useEffect(() => {
-		if (onHistoryRefreshNeeded) {
-			onHistoryRefreshNeeded(refreshHistory);
-		}
-	}, [onHistoryRefreshNeeded, refreshHistory]);
 
 	const handleHistoryItemClick = (item: UIHistoryResource) => {
 		const { method, path, headers, body } = parseHttpCommand(item.command);
