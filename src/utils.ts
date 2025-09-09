@@ -1,6 +1,14 @@
 import type { Header, Tab } from "./components/rest/active-tabs";
 
 export function getAidboxBaseURL(): string {
+	const cookies = document.cookie.split("; ");
+	for (const cookie of cookies) {
+		const [name, rest] = cookie.split("=");
+		if (name === "aidbox-base-url") {
+			return decodeURIComponent(rest ?? "");
+		}
+	}
+
 	const vite_base_url = import.meta.env.VITE_AIDBOX_BASE_URL;
 	if (vite_base_url) {
 		return vite_base_url;
