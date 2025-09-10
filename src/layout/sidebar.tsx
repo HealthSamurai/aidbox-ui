@@ -16,8 +16,8 @@ import type { SidebarMode } from "../shared/types";
 import { SidebarModeSelect } from "./sidebar-mode";
 
 const mainMenuItems = [
-	{ title: "Home", url: "/", icon: House },
-	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
+	{ title: "Home", url: "/u/", icon: House },
+	{ title: "REST Console", url: "/u/rest", icon: SquareTerminal },
 ];
 
 export function AidboxSidebar({
