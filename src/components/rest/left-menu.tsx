@@ -19,6 +19,7 @@ import React from "react";
 import { useRefreshUIHistory, useUIHistory } from "../../api/auth";
 import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
+import { CollectionsView } from "./collections";
 
 type LeftMenuStatus = "open" | "close";
 
@@ -375,8 +376,8 @@ export function LeftMenu({
 						/>
 					)}
 				</TabsContent>
-				<TabsContent value="collections" className="px-3 py-2 text-nowrap">
-					todo collections
+				<TabsContent value="collections" className="px-1 py-2 text-nowrap">
+					<CollectionsView />
 				</TabsContent>
 			</Tabs>
 		</div>
