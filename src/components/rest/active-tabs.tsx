@@ -1,10 +1,29 @@
 import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
+	ContextMenuTrigger,
 	Tabs,
 	TabsAddButton,
 	TabsBrowserList,
 	TabsListDropdown,
 	TabsTrigger,
 } from "@health-samurai/react-components";
+
+// Styles
+const methodColors = {
+	GET: "text-utility-green typo-label-xs",
+	POST: "text-utility-yellow typo-label-xs",
+	PUT: "text-utility-blue typo-label-xs",
+	PATCH: "text-utility-violet typo-label-xs",
+	DELETE: "text-utility-red typo-label-xs",
+};
+
+const tabPathStyle = "typo-label-xs";
 
 export type TabId = string;
 
@@ -100,6 +119,19 @@ export function addTabFromHistory(
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 }
 
+function forceSelectedTab(tabs: Tab[], tabIndex: number): Tab[] {
+	const hasSelected = tabs.some((tab) => tab.selected);
+	if (!hasSelected && tabs.length > 0) {
+		const safeIndex = Math.min(tabIndex, tabs.length - 1);
+		return tabs.map((tab, idx) =>
+			idx === safeIndex
+				? { ...tab, selected: true }
+				: { ...tab, selected: false },
+		);
+	}
+	return tabs;
+}
+
 export function removeTab(
 	tabs: Tab[],
 	tabId: TabId,
@@ -137,20 +169,71 @@ function onTabSelect(
 	setTabs(tabs.map((t) => ({ ...t, selected: t.id === tabId })));
 }
 
-const methodColors = {
-	GET: "text-utility-green",
-	POST: "text-utility-yellow",
-	PUT: "text-utility-blue",
-	PATCH: "text-utility-violet",
-	DELETE: "text-utility-red",
-};
-
 function TabContent({ tab }: { tab: Tab }) {
 	return (
 		<span className="flex items-center gap-1 truncate">
 			<span className={methodColors[tab.method]}>{tab.method}</span>
-			<span>{tab.path || tab.name}</span>
+			<span className={tabPathStyle}>{tab.path || tab.name}</span>
 		</span>
+	);
+}
+
+function TabContextMenuContent({
+	tab,
+	tabs,
+	setTabs,
+	handleCloseTab,
+}: {
+	tab: Tab;
+	tabs: Tab[];
+	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
+	handleCloseTab: (tabId: TabId) => void;
+}) {
+	const tabIndex = tabs.findIndex((t) => t.id === tab.id);
+
+	const handleDuplicateTab = () => {
+		const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
+		setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
+	};
+
+	const handleCloseTabsToLeft = () => {
+		const newTabs = tabs.filter((_, index) => index >= tabIndex);
+		setTabs(forceSelectedTab(newTabs, tabIndex));
+	};
+
+	const handleCloseTabsToRight = () => {
+		const newTabs = tabs.filter((_, index) => index <= tabIndex);
+		setTabs(forceSelectedTab(newTabs, tabIndex));
+	};
+
+	const handleCloseOtherTabs = () => {
+		setTabs([{ ...tab, selected: true }]);
+	};
+
+	return (
+		<ContextMenuContent className="w-50">
+			<ContextMenuItem onClick={handleDuplicateTab}>
+				Duplicate tab
+			</ContextMenuItem>
+			<ContextMenuSeparator></ContextMenuSeparator>
+			<ContextMenuItem onClick={() => handleCloseTab(tab.id)}>
+				Close tab
+			</ContextMenuItem>
+			<ContextMenuSub>
+				<ContextMenuSubTrigger>Close multiple tabs</ContextMenuSubTrigger>
+				<ContextMenuSubContent className="w-40">
+					<ContextMenuItem onClick={handleCloseTabsToLeft}>
+						Close tabs to left
+					</ContextMenuItem>
+					<ContextMenuItem onClick={handleCloseTabsToRight}>
+						Close tabs to right
+					</ContextMenuItem>
+					<ContextMenuItem onClick={handleCloseOtherTabs}>
+						Close other tabs
+					</ContextMenuItem>
+				</ContextMenuSubContent>
+			</ContextMenuSub>
+		</ContextMenuContent>
 	);
 }
 
@@ -183,17 +266,26 @@ export function ActiveTabs({
 			<TabsBrowserList>
 				{tabs.map((tab) => {
 					return (
-						<TabsTrigger
-							key={tab.id}
-							value={tab.id}
-							{...(tabs.length > 1 && {
-								onClose: () => handleCloseTab(tab.id),
-							})}
-							onClick={() => handleTabSelect(tab.id)}
-							onMouseDown={(event) => handleTabMouseDown(event, tab.id)}
-						>
-							<TabContent tab={tab} />
-						</TabsTrigger>
+						<ContextMenu key={tab.id}>
+							<ContextMenuTrigger>
+								<TabsTrigger
+									value={tab.id}
+									{...(tabs.length > 1 && {
+										onClose: () => handleCloseTab(tab.id),
+									})}
+									onClick={() => handleTabSelect(tab.id)}
+									onMouseDown={(event) => handleTabMouseDown(event, tab.id)}
+								>
+									<TabContent tab={tab} />
+								</TabsTrigger>
+							</ContextMenuTrigger>
+							<TabContextMenuContent
+								tab={tab}
+								tabs={tabs}
+								setTabs={setTabs}
+								handleCloseTab={handleCloseTab}
+							/>
+						</ContextMenu>
 					);
 				})}
 			</TabsBrowserList>
