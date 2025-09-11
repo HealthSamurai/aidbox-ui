@@ -15,12 +15,12 @@ import {
 } from "@health-samurai/react-components";
 
 // Styles
-const methodColors = {
-	GET: "text-utility-green typo-label-xs",
-	POST: "text-utility-yellow typo-label-xs",
-	PUT: "text-utility-blue typo-label-xs",
-	PATCH: "text-utility-violet typo-label-xs",
-	DELETE: "text-utility-red typo-label-xs",
+export const methodColors = {
+	GET: "text-utility-green typo-label",
+	POST: "text-utility-yellow typo-label",
+	PUT: "text-utility-blue typo-label",
+	PATCH: "text-utility-violet typo-label",
+	DELETE: "text-utility-red typo-label",
 };
 
 const tabPathStyle = "typo-label-xs";
