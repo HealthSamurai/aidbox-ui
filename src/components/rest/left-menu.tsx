@@ -22,6 +22,71 @@ import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
 import { CollectionsView } from "./collections";
 
+// Utility function for combining classes
+function cn(...inputs: (string | undefined | boolean | null)[]) {
+	return inputs.filter(Boolean).join(" ");
+}
+
+// =============================================================================
+// STYLES
+// =============================================================================
+
+// Layout styles
+const leftMenuContainer = cn("w-0", "invisible", "transition-[width]");
+
+const leftMenuContainerOpen = cn("min-w-80", "w-80", "visible", "border-r");
+
+const tabsHeader = cn("border-b", "h-10", "bg-bg-secondary");
+
+const tabsContent = cn("p-0", "h-full");
+
+const collectionsTabsContent = cn("px-1", "py-2", "text-nowrap");
+
+// Loading and error state
+const loadingContainer = cn("p-4", "text-center");
+
+const loadingText = cn("typo-body", "text-text-secondary");
+
+const errorText = cn("typo-body", "text-utility-red");
+
+// Command styles
+const commandContainer = cn("h-full");
+
+const commandList = cn("h-full", "max-h-full", "p-0");
+
+// History item styles
+const historyItem = cn(
+	"flex",
+	"items-center",
+	"gap-2",
+	"my-1",
+	"py-2",
+	"cursor-pointer",
+	"hover:bg-bg-secondary",
+);
+
+const historyItemSelected = cn("bg-bg-tertiary", "text-text-primary");
+
+const methodLabel = cn("typo-label-xs", "w-12", "text-right", "shrink-0");
+
+const pathLabel = cn("typo-body-xs", "text-text-secondary", "truncate");
+
+const pathLabelSelected = cn("typo-body-xs", "text-text-primary", "truncate");
+
+// Toggle button styles
+const toggleButton = cn("h-full", "flex-shrink-0", "border-b", "border-r");
+
+const iconSize = cn("size-4");
+
+// Method color mapping
+const methodColors = {
+	GET: "text-utility-green",
+	POST: "text-utility-yellow",
+	PUT: "text-utility-blue",
+	PATCH: "text-utility-violet",
+	DELETE: "text-utility-red",
+} as const;
+
 type LeftMenuStatus = "open" | "close";
 
 const LeftMenuContext = React.createContext<LeftMenuStatus>("open");
@@ -129,7 +194,12 @@ function isHistoryItemSelected(
 }
 
 // Helper function to format group title
-function formatGroupTitle(groupKey: string): string {
+function formatGroupTitle(groupKey: string, allGroupKeys: string[]): string {
+	// If there's only one group and it's TODAY, don't show the title
+	if (groupKey === "TODAY" && allGroupKeys.length === 1) {
+		return "";
+	}
+
 	if (groupKey === "TODAY" || groupKey === "YESTERDAY") {
 		return groupKey;
 	}
@@ -160,14 +230,10 @@ function HistoryCommand({
 	onItemMiddleClick: (item: UIHistoryResource) => void;
 }) {
 	const getMethodColor = (method: string) => {
-		const methodColors: Record<string, string> = {
-			GET: "text-utility-green",
-			POST: "text-utility-yellow",
-			PUT: "text-utility-blue",
-			PATCH: "text-utility-violet",
-			DELETE: "text-utility-red",
-		};
-		return methodColors[method.toUpperCase()] || "text-text-secondary";
+		return (
+			methodColors[method.toUpperCase() as keyof typeof methodColors] ||
+			"text-text-secondary"
+		);
 	};
 
 	const handleItemMouseDown = (
@@ -189,16 +255,19 @@ function HistoryCommand({
 	};
 
 	return (
-		<Command className="h-full">
+		<Command className={commandContainer}>
 			<CommandInput placeholder="Search history..." />
-			<CommandList className="h-full max-h-full p-0">
+			<CommandList className={commandList}>
 				<CommandEmpty>No history found.</CommandEmpty>
 				{getSortedGroupKeys(groupedHistory).map((groupKey) => {
 					const items = groupedHistory[groupKey];
 					if (!items || items.length === 0) return null;
 
+					const allGroupKeys = getSortedGroupKeys(groupedHistory);
+					const groupTitle = formatGroupTitle(groupKey, allGroupKeys);
+
 					return (
-						<CommandGroup key={groupKey} heading={formatGroupTitle(groupKey)}>
+						<CommandGroup key={groupKey} heading={groupTitle}>
 							{items.map((item) => {
 								const { method, path } = parseHttpCommand(item.command);
 								const isSelected = isHistoryItemSelected(item, selectedTab);
@@ -208,16 +277,20 @@ function HistoryCommand({
 										value={createSearchableText(item)}
 										onSelect={() => onItemClick(item)}
 										onMouseDown={(event) => handleItemMouseDown(event, item)}
-										className={`flex items-center gap-2 typo-code cursor-pointer ${
-											isSelected ? "bg-accent text-accent-foreground" : ""
-										}`}
+										className={cn(
+											historyItem,
+											isSelected && historyItemSelected,
+										)}
 									>
 										<span
-											className={`text-sm font-medium ${getMethodColor(method || "")}`}
+											className={cn(methodLabel, getMethodColor(method || ""))}
 										>
 											{method}
 										</span>
-										<div className="text-sm truncate" title={path}>
+										<div
+											className={isSelected ? pathLabelSelected : pathLabel}
+											title={path}
+										>
 											{path}
 										</div>
 									</CommandItem>
@@ -347,29 +420,32 @@ export function LeftMenu({
 
 	return (
 		<div
-			className={`w-0 invisible transition-[width] ${leftMenuStatus === "open" ? "min-w-80 w-80 visible border-r" : ""}`}
+			className={cn(
+				leftMenuContainer,
+				leftMenuStatus === "open" && leftMenuContainerOpen,
+			)}
 		>
 			<Tabs value={selectedMenuTab} onValueChange={setSelectedMenuTab}>
-				<div className="border-b h-10 bg-bg-secondary">
+				<div className={tabsHeader}>
 					<TabsList>
 						<TabsTrigger value="history">History</TabsTrigger>
 						<TabsTrigger value="collections">Collections</TabsTrigger>
 					</TabsList>
 				</div>
-				<TabsContent value="history" className="p-0 h-full">
+				<TabsContent value="history" className={tabsContent}>
 					{isLoading && (
-						<div className="p-4 text-center text-sm text-gray-500">
-							Loading history...
+						<div className={loadingContainer}>
+							<div className={loadingText}>Loading history...</div>
 						</div>
 					)}
 					{error && (
-						<div className="p-4 text-center text-sm text-red-500">
-							Failed to load history
+						<div className={loadingContainer}>
+							<div className={errorText}>Failed to load history</div>
 						</div>
 					)}
 					{historyData?.entry?.length === 0 && (
-						<div className="p-4 text-center text-sm text-gray-500">
-							No history found
+						<div className={loadingContainer}>
+							<div className={loadingText}>No history found</div>
 						</div>
 					)}
 					{historyData?.entry && historyData.entry.length > 0 && (
@@ -382,7 +458,7 @@ export function LeftMenu({
 						/>
 					)}
 				</TabsContent>
-				<TabsContent value="collections" className="px-1 py-2 text-nowrap">
+				<TabsContent value="collections" className={collectionsTabsContent}>
 					<CollectionsView tabs={tabs} setTabs={setTabs} />
 				</TabsContent>
 			</Tabs>
@@ -403,13 +479,13 @@ export function LeftMenuToggle({ onOpen, onClose }: LeftMenuToggleProps) {
 			<TooltipTrigger asChild>
 				<Button
 					variant="link"
-					className="h-full border-b flex-shrink-0 border-r"
+					className={toggleButton}
 					onClick={leftMenuStatus === "open" ? onClose : onOpen}
 				>
 					{leftMenuStatus === "open" ? (
-						<PanelLeftClose className="size-4" />
+						<PanelLeftClose className={iconSize} />
 					) : (
-						<PanelLeftOpen className="size-4" />
+						<PanelLeftOpen className={iconSize} />
 					)}
 				</Button>
 			</TooltipTrigger>
