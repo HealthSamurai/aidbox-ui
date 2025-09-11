@@ -32,6 +32,7 @@ import {
 	type Header,
 	type Tab,
 } from "../components/rest/active-tabs";
+import * as RestCollections from "../components/rest/collections";
 import HeadersEditor from "../components/rest/headers-editor";
 import {
 	LeftMenu,
@@ -863,7 +864,7 @@ function RouteComponent() {
 							<ActiveTabs setTabs={setTabs} tabs={tabs} />
 						</div>
 					</div>
-					<div className="px-4 py-3 flex items-center border-b">
+					<div className="px-4 py-3 flex items-center border-b gap-2">
 						<RequestLineEditorWrapper
 							selectedTab={selectedTab}
 							handleTabPathChange={(path) => {
@@ -876,7 +877,6 @@ function RouteComponent() {
 							<TooltipTrigger asChild>
 								<Button
 									variant="primary"
-									className="ml-2"
 									onClick={() =>
 										handleSendRequest(selectedTab, setResponse, queryClient)
 									}
@@ -887,10 +887,7 @@ function RouteComponent() {
 							</TooltipTrigger>
 							<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
 						</Tooltip>
-						<Button variant="secondary" className="ml-2">
-							<Save />
-							Save
-						</Button>
+						<RestCollections.SaveButton tab={selectedTab} />
 					</div>
 					<ResizablePanelGroup
 						autoSaveId="rest-console-request-response"

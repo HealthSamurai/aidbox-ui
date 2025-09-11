@@ -17,8 +17,10 @@ import {
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
 import { useUIHistory } from "../../api/auth";
+import { useLocalStorage } from "../../hooks";
 import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
+import { CollectionsView } from "./collections";
 
 type LeftMenuStatus = "open" | "close";
 
@@ -328,11 +330,16 @@ export function LeftMenu({
 		[],
 	);
 
+	const [selectedMenuTab, setSelectedMenuTab] = useLocalStorage<string>({
+		key: "rest-console-left-menu-default-tab",
+		defaultValue: "history",
+	});
+
 	return (
 		<div
-			className={`w-0 invisible transition-[width] ${leftMenuStatus === "open" ? "w-70 visible border-r" : ""}`}
+			className={`w-0 invisible transition-[width] ${leftMenuStatus === "open" ? "min-w-80 w-80 visible border-r" : ""}`}
 		>
-			<Tabs defaultValue="history">
+			<Tabs value={selectedMenuTab} onValueChange={setSelectedMenuTab}>
 				<div className="border-b h-10 bg-bg-secondary">
 					<TabsList>
 						<TabsTrigger value="history">History</TabsTrigger>
@@ -365,8 +372,8 @@ export function LeftMenu({
 						/>
 					)}
 				</TabsContent>
-				<TabsContent value="collections" className="px-3 py-2 text-nowrap">
-					todo collections
+				<TabsContent value="collections" className="px-1 py-2 text-nowrap">
+					<CollectionsView tabs={tabs} setTabs={setTabs} />
 				</TabsContent>
 			</Tabs>
 		</div>
