@@ -1,6 +1,7 @@
 import {
 	SidebarInset,
 	SidebarProvider,
+	Toaster,
 } from "@health-samurai/react-components";
 import type { PropsWithChildren } from "react";
 import { useUserInfo } from "../api/auth";
@@ -32,6 +33,17 @@ function Layout({ children }: PropsWithChildren) {
 				/>
 				<SidebarInset className="min-w-0">{children}</SidebarInset>
 			</SidebarProvider>
+			<Toaster
+				position="top-center"
+				toastOptions={{
+					style: {
+						width: "fit-content",
+						minWidth: "auto",
+						maxWidth: "90vw",
+						textAlign: "center",
+					},
+				}}
+			/>
 		</div>
 	);
 }
