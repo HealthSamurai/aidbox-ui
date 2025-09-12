@@ -266,9 +266,12 @@ function ExpandPane({
 		);
 	} else {
 		return (
-			<Button variant="primary" size="small" onClick={onClick}>
-				<Minimize2 />
-			</Button>
+			<div className="flex gap-2 items-center">
+				<span className="typo-body text-text-secondary">Esc</span>
+				<Button variant="primary" size="small" onClick={onClick}>
+					<Minimize2 />
+				</Button>
+			</div>
 		);
 	}
 }
@@ -614,6 +617,9 @@ function RouteComponent() {
 					setResponse,
 					refreshHistory || undefined,
 				);
+			} else if (event.key === "Escape" && fullscreenPanel !== null) {
+				event.preventDefault();
+				setFullscreenPanel(null);
 			}
 		};
 
@@ -621,7 +627,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, refreshHistory]);
+	}, [selectedTab, refreshHistory, fullscreenPanel]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Need to clear response only on tab change
 	useEffect(() => {
