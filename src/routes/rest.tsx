@@ -574,6 +574,22 @@ async function saveToUIHistory(tab: Tab, onSaved?: () => void): Promise<void> {
 	}
 }
 
+function SendButton(
+	props: Omit<React.ComponentProps<typeof Button>, "variant">,
+) {
+	return (
+		<Tooltip delayDuration={600}>
+			<TooltipTrigger asChild>
+				<Button {...props} variant="primary">
+					<PlayIcon />
+					Send
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+		</Tooltip>
+	);
+}
+
 function RouteComponent() {
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -894,24 +910,15 @@ function RouteComponent() {
 							}}
 							handleTabMethodChange={handleTabMethodChange}
 						/>
-						<Tooltip delayDuration={600}>
-							<TooltipTrigger asChild>
-								<Button
-									variant="primary"
-									onClick={() =>
-										handleSendRequest(
-											selectedTab,
-											setResponse,
-											refreshHistory || undefined,
-										)
-									}
-								>
-									<PlayIcon />
-									Send
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
-						</Tooltip>
+						<SendButton
+							onClick={() =>
+								handleSendRequest(
+									selectedTab,
+									setResponse,
+									refreshHistory || undefined,
+								)
+							}
+						/>
 						<RestCollections.SaveButton
 							tab={selectedTab}
 							collectionEntries={collectionEntries}
