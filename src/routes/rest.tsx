@@ -69,6 +69,9 @@ function RequestLineEditorWrapper({
 }) {
 	return (
 		<RequestLineEditor
+			key={`request-line-editor-${selectedTab.id}`}
+			placeholder="/fhir/Patient"
+			autoFocus={selectedTab.path === ""}
 			className="w-full"
 			method={selectedTab.method}
 			path={selectedTab.path || ""}
