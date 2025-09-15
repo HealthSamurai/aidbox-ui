@@ -122,8 +122,8 @@ function RequestView({
 	onRawChange,
 	onHeaderRemove,
 	onParamRemove,
-	handleFullscreenPanelChange,
-	fullscreenPanel,
+	onFullScreenToggle,
+	fullScreenState,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
@@ -134,8 +134,8 @@ function RequestView({
 	onRawChange: (rawText: string) => void;
 	onHeaderRemove: (headerIndex: number) => void;
 	onParamRemove: (paramIndex: number) => void;
-	handleFullscreenPanelChange: (panel: "request" | "response") => void;
-	fullscreenPanel: "request" | "response" | null;
+	onFullScreenToggle: (state: "maximized" | "normal") => void;
+	fullScreenState: "maximized" | "normal";
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -164,8 +164,8 @@ function RequestView({
 						</TabsList>
 					</div>
 					<ExpandPane
-						onClick={() => handleFullscreenPanelChange("request")}
-						fullscreenPanel={fullscreenPanel}
+						onToggle={(state) => onFullScreenToggle(state)}
+						state={fullScreenState}
 					/>
 				</div>
 				<TabsContent value="params">
@@ -257,15 +257,15 @@ function VerticalSplit({ onChange }: { onChange: () => void }) {
 }
 
 function ExpandPane({
-	onClick,
-	fullscreenPanel,
+	onToggle,
+	state,
 }: {
-	onClick: () => void;
-	fullscreenPanel: "request" | "response" | null;
+	onToggle: (state: "maximized" | "normal") => void;
+	state: "maximized" | "normal";
 }) {
-	if (fullscreenPanel === null) {
+	if (state === "normal") {
 		return (
-			<Button variant="link" size="small" onClick={onClick}>
+			<Button variant="link" size="small" onClick={() => onToggle("maximized")}>
 				<Fullscreen />
 			</Button>
 		);
@@ -273,7 +273,11 @@ function ExpandPane({
 		return (
 			<div className="flex gap-2 items-center">
 				<span className="typo-body text-text-secondary">Esc</span>
-				<Button variant="primary" size="small" onClick={onClick}>
+				<Button
+					variant="primary"
+					size="small"
+					onClick={() => onToggle("normal")}
+				>
 					<Minimize2 />
 				</Button>
 			</div>
@@ -298,8 +302,8 @@ type ResponsePaneProps = {
 	response: ResponseData | null;
 	activeResponseTab: ResponseTabs;
 	setActiveResponseTab: (tab: ResponseTabs) => void;
-	handleFullscreenPanelChange: (panel: "request" | "response") => void;
-	fullscreenPanel: "request" | "response" | null;
+	onFullScreenToggle: (state: "maximized" | "normal") => void;
+	fullScreenState: "maximized" | "normal";
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -377,8 +381,8 @@ function ResponsePane({
 	response,
 	activeResponseTab,
 	setActiveResponseTab,
-	handleFullscreenPanelChange,
-	fullscreenPanel,
+	onFullScreenToggle,
+	fullScreenState,
 }: ResponsePaneProps) {
 	return (
 		<Tabs
@@ -402,15 +406,15 @@ function ResponsePane({
 					</div>
 					<div className="flex items-center gap-1">
 						{response && <ResponseInfo response={response} />}
-						{fullscreenPanel === null && (
+						{fullScreenState === "normal" && (
 							<SplitDirectionToggle
 								direction={panelsMode}
 								onChange={(newMode) => setPanelsMode(newMode)}
 							/>
 						)}
 						<ExpandPane
-							onClick={() => handleFullscreenPanelChange("response")}
-							fullscreenPanel={fullscreenPanel}
+							onToggle={(state) => onFullScreenToggle(state)}
+							state={fullScreenState}
 						/>
 					</div>
 				</div>
@@ -850,14 +854,6 @@ function RouteComponent() {
 		});
 	}
 
-	const handleFullscreenPanelChange = (panel: "request" | "response") => {
-		if (fullscreenPanel === panel) {
-			setFullscreenPanel(null);
-		} else {
-			setFullscreenPanel(panel);
-		}
-	};
-
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
 		queryFn: RestCollections.getCollectionsEntries,
@@ -943,8 +939,12 @@ function RouteComponent() {
 								onRawChange={handleRawChange}
 								onHeaderRemove={handleTabHeaderRemove}
 								onParamRemove={handleTabParamRemove}
-								handleFullscreenPanelChange={handleFullscreenPanelChange}
-								fullscreenPanel={fullscreenPanel}
+								onFullScreenToggle={(state) =>
+									setFullscreenPanel(state === "maximized" ? "request" : null)
+								}
+								fullScreenState={
+									fullscreenPanel === "request" ? "maximized" : "normal"
+								}
 							/>
 						</ResizablePanel>
 						<ResizableHandle />
@@ -959,8 +959,14 @@ function RouteComponent() {
 								response={response}
 								activeResponseTab={activeResponseTab}
 								setActiveResponseTab={setActiveResponseTab}
-								handleFullscreenPanelChange={handleFullscreenPanelChange}
-								fullscreenPanel={fullscreenPanel}
+								onFullScreenToggle={(state) =>
+									state === "maximized"
+										? setFullscreenPanel("response")
+										: setFullscreenPanel(null)
+								}
+								fullScreenState={
+									fullscreenPanel === "response" ? "maximized" : "normal"
+								}
 							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>
