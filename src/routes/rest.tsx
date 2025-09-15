@@ -181,6 +181,7 @@ function RequestView({
 				<TabsContent value="body">
 					<CodeEditor
 						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						key={`request-editor-${selectedTab.id}`}
 						defaultValue={getEditorValue()}
 						onChange={onBodyChange}
 					/>
