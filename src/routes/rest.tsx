@@ -297,11 +297,9 @@ function SplitDirectionToggle({
 }
 
 type ResponsePaneProps = {
-	panelsMode: PanelSplitDirection;
-	setPanelsMode: (mode: PanelSplitDirection) => void;
 	response: ResponseData | null;
-	activeResponseTab: ResponseTabs;
-	setActiveResponseTab: (tab: ResponseTabs) => void;
+	splitState: PanelSplitDirection;
+	onSplitChange: (mode: PanelSplitDirection) => void;
 	onFullScreenToggle: (state: "maximized" | "normal") => void;
 	fullScreenState: "maximized" | "normal";
 };
@@ -376,14 +374,16 @@ function ResponseView({
 }
 
 function ResponsePane({
-	panelsMode,
-	setPanelsMode,
+	splitState,
+	onSplitChange,
 	response,
-	activeResponseTab,
-	setActiveResponseTab,
 	onFullScreenToggle,
 	fullScreenState,
 }: ResponsePaneProps) {
+	const [activeResponseTab, setActiveResponseTab] = useState<
+		"body" | "headers" | "raw"
+	>("body");
+
 	return (
 		<Tabs
 			value={activeResponseTab}
@@ -408,8 +408,8 @@ function ResponsePane({
 						{response && <ResponseInfo response={response} />}
 						{fullScreenState === "normal" && (
 							<SplitDirectionToggle
-								direction={panelsMode}
-								onChange={(newMode) => setPanelsMode(newMode)}
+								direction={splitState}
+								onChange={(newMode) => onSplitChange(newMode)}
 							/>
 						)}
 						<ExpandPane
@@ -617,9 +617,6 @@ function RouteComponent() {
 	});
 
 	const [response, setResponse] = useState<ResponseData | null>(null);
-	const [activeResponseTab, setActiveResponseTab] = useState<
-		"body" | "headers" | "raw"
-	>("body");
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
 		crypto.randomUUID(),
@@ -961,18 +958,16 @@ function RouteComponent() {
 						>
 							<ResponsePane
 								key={`response-${selectedTab.id}`}
-								panelsMode={panelsMode}
-								setPanelsMode={setPanelsMode}
 								response={response}
-								activeResponseTab={activeResponseTab}
-								setActiveResponseTab={setActiveResponseTab}
+								splitState={panelsMode}
+								onSplitChange={setPanelsMode}
+								fullScreenState={
+									fullscreenPanel === "response" ? "maximized" : "normal"
+								}
 								onFullScreenToggle={(state) =>
 									state === "maximized"
 										? setFullscreenPanel("response")
 										: setFullscreenPanel(null)
-								}
-								fullScreenState={
-									fullscreenPanel === "response" ? "maximized" : "normal"
 								}
 							/>
 						</ResizablePanel>
