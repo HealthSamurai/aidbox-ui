@@ -14,6 +14,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	Columns2,
@@ -853,6 +854,11 @@ function RouteComponent() {
 		}
 	};
 
+	const collectionEntries = useQuery({
+		queryKey: ["rest-console-collections"],
+		queryFn: RestCollections.getCollectionsEntries,
+	});
+
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			<div className="flex w-full h-full">
@@ -861,6 +867,7 @@ function RouteComponent() {
 					setTabs={setTabs}
 					selectedTab={selectedTab}
 					onHistoryRefreshNeeded={setRefreshHistory}
+					collectionEntries={collectionEntries}
 				/>
 				<div className="flex flex-col grow min-w-0">
 					<div className="flex h-10 w-full">
@@ -903,7 +910,10 @@ function RouteComponent() {
 							</TooltipTrigger>
 							<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
 						</Tooltip>
-						<RestCollections.SaveButton tab={selectedTab} />
+						<RestCollections.SaveButton
+							tab={selectedTab}
+							collectionEntries={collectionEntries}
+						/>
 					</div>
 					<ResizablePanelGroup
 						autoSaveId="rest-console-request-response"

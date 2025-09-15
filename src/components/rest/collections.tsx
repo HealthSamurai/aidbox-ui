@@ -1,6 +1,10 @@
 import * as ReactComponents from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	type QueryObserverResult,
+	useQueryClient,
+} from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import * as Auth from "../../api/auth";
@@ -8,9 +12,7 @@ import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
 import { methodColors, type Tab } from "./active-tabs";
 
-type SaveCollectionButtonMode = "empty-collection" | "filled-collection";
-
-interface CollectionEntry {
+export interface CollectionEntry {
 	id: string;
 	type: string;
 	command: string;
@@ -18,7 +20,7 @@ interface CollectionEntry {
 	collection?: string[];
 }
 
-async function getCollectionsEntries(): Promise<CollectionEntry[]> {
+export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
 	const response = await Auth.AidboxCallWithMeta({
 		method: "GET",
 		url: `/ui_snippet`,
@@ -28,27 +30,57 @@ async function getCollectionsEntries(): Promise<CollectionEntry[]> {
 	);
 }
 
-async function SaveRequest(tab: Tab, queryClient: QueryClient) {
+async function SaveRequest(
+	tab: Tab,
+	queryClient: QueryClient,
+	collection: string[],
+) {
 	const result = await Auth.AidboxCallWithMeta({
 		method: "PUT",
 		url: `/ui_snippet/${tab.id}`,
 		body: JSON.stringify({
 			type: "http",
 			command: Utils.generateHttpRequest(tab),
+			...(collection.length > 0 ? { collection } : {}),
 		}),
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	return result;
 }
 
-export const SaveButton = ({ tab }: { tab: Tab }) => {
+function getNewUniqueCollectionName(collectionEntries: CollectionEntry[]) {
+	const collectionNames = collectionEntries
+		.flatMap((entry) => entry.collection)
+		.filter((name) => name !== undefined);
+
+	const countNewNames = collectionNames.filter(
+		(name) => name === "New Collection" || name.startsWith("New Collection ("),
+	).length;
+
+	if (countNewNames === 0) {
+		return "New Collection";
+	} else {
+		return `New Collection (${countNewNames + 1})`;
+	}
+}
+
+export const SaveButton = ({
+	tab,
+	collectionEntries,
+}: {
+	tab: Tab;
+	collectionEntries: QueryObserverResult<CollectionEntry[]>;
+}) => {
 	const queryClient = useQueryClient();
 	return (
 		<ReactComponents.SplitButton>
 			<ReactComponents.Button
 				variant="secondary"
 				onClick={() => {
-					SaveRequest(tab, queryClient);
+					SaveRequest(tab, queryClient, [
+						getNewUniqueCollectionName(collectionEntries.data ?? []),
+					]);
+					ReactComponents.toast("Request saved to collections");
 				}}
 			>
 				<Lucide.Save />
@@ -69,15 +101,54 @@ export const SaveButton = ({ tab }: { tab: Tab }) => {
 						No collections
 					</ReactComponents.DropdownMenuItem>
 					<ReactComponents.DropdownMenuSeparator />
-					<ReactComponents.DropdownMenuItem>
-						<Lucide.Plus className="text-fg-link" />
-						New collection
+					<ReactComponents.DropdownMenuItem asChild>
+						<ReactComponents.Button
+							variant="link"
+							onClick={() => {
+								SaveRequest(tab, queryClient, [
+									getNewUniqueCollectionName(collectionEntries.data ?? []),
+								]);
+								ReactComponents.toast("Request saved to collections");
+							}}
+						>
+							<Lucide.Plus className="text-fg-link" />
+							New collection
+						</ReactComponents.Button>
 					</ReactComponents.DropdownMenuItem>
 				</ReactComponents.DropdownMenuContent>
 			</ReactComponents.DropdownMenu>
 		</ReactComponents.SplitButton>
 	);
 };
+// [a b c]
+// [a b]
+
+// a -> b
+// b -> c
+// b -> uuid
+// c -> uuid
+
+function addCollectionToTree(
+	tree: Record<string, ReactComponents.TreeViewItem<any>>,
+	entryId: string,
+	collection: string[],
+) {
+	if (collection.length === 0) {
+		return;
+	}
+	const uniqeCollectionId = collection.join("-");
+	if (tree[uniqeCollectionId]) {
+		tree[uniqeCollectionId].children!.push(entryId);
+	} else {
+		tree[uniqeCollectionId] = {
+			name: collection.at(-1)!,
+			children: [entryId],
+		};
+		const parentCollection = collection.slice(0, -1);
+		const parentCollectionId = parentCollection.join("-");
+		addCollectionToTree(tree, parentCollectionId, parentCollection);
+	}
+}
 
 function buildTreeView(
 	entries: CollectionEntry[],
@@ -85,23 +156,25 @@ function buildTreeView(
 	const tree: Record<string, ReactComponents.TreeViewItem<any>> = {
 		root: {
 			name: "root",
-			children: [],
+			children: entries
+				.filter((entry) => entry.collection && entry.collection.length > 0)
+				.map((entry) => entry.collection!.at(0) ?? ""),
 		},
 	};
 
 	entries.forEach((entry) => {
+		const parsedCommand = parseHttpRequest(entry.command);
+		tree[entry.id] = {
+			name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
+			meta: {
+				...parsedCommand,
+				title: entry.title,
+				id: entry.id,
+			},
+		};
 		if (entry.collection) {
-			entry.collection.forEach((colId) => {});
+			addCollectionToTree(tree, entry.id, entry.collection);
 		} else {
-			const parsedCommand = parseHttpRequest(entry.command);
-			tree[entry.id] = {
-				name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
-				meta: {
-					...parsedCommand,
-					title: entry.title,
-					id: entry.id,
-				},
-			};
 			tree.root!.children!.push(entry.id);
 		}
 	});
@@ -138,36 +211,50 @@ function customItemView(
 	}
 }
 
-const NoCollectionsView = () => {
-	return (
-		<div className="bg-bg-tertiary h-full flex items-center justify-center">
-			<div className="flex flex-col items-center">
-				<span className="text-text-disabled text-xl font-medium">
-					No collections
-				</span>
-				<ReactComponents.Button variant="link">
-					<Lucide.Plus className="text-fg-link" />
-					New collection
-				</ReactComponents.Button>
+const NoCollectionsView = ({
+	selectedTab,
+	collectionEntries,
+}: {
+	selectedTab: Tab | undefined;
+	collectionEntries: CollectionEntry[];
+}) => {
+	const queryClient = useQueryClient();
+	if (selectedTab) {
+		return (
+			<div className="bg-bg-tertiary h-full flex items-center justify-center">
+				<div className="flex flex-col items-center">
+					<span className="text-text-disabled text-xl font-medium">
+						No collections
+					</span>
+					<ReactComponents.Button
+						variant="link"
+						onClick={() =>
+							SaveRequest(selectedTab, queryClient, [
+								getNewUniqueCollectionName(collectionEntries),
+							])
+						}
+					>
+						<Lucide.Plus className="text-fg-link" />
+						New collection
+					</ReactComponents.Button>
+				</div>
 			</div>
-		</div>
-	);
+		);
+	}
 };
 
 export const CollectionsView = ({
+	collectionEntries,
 	setTabs,
 	tabs,
 }: {
 	tabs: Tab[];
 	setTabs: (tabs: Tab[]) => void;
+	collectionEntries: QueryObserverResult<CollectionEntry[]>;
 }) => {
-	const x = ReactQuery.useQuery({
-		queryKey: ["rest-console-collections"],
-		queryFn: getCollectionsEntries,
-	});
-
-	const tree = buildTreeView(x.data ?? []);
-	const selectedTabId = tabs.find((tab) => tab.selected)?.id;
+	const tree = buildTreeView(collectionEntries.data ?? []);
+	const selectedTab = tabs.find((tab) => tab.selected);
+	const selectedTabId = selectedTab?.id;
 
 	function handleSelectItem(
 		item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
@@ -204,21 +291,29 @@ export const CollectionsView = ({
 		}
 	}
 
-	const selectedTabEntry = x.data?.find((entry) => entry.id === selectedTabId);
+	const selectedTabEntry = collectionEntries.data?.find(
+		(entry) => entry.id === selectedTabId,
+	);
 
 	const expandedItemIds = ["root"].concat(selectedTabEntry?.collection ?? []);
 
-	if (x.isPending) {
+	if (collectionEntries.isPending) {
 		return <div>Loading...</div>;
 	}
 
+	console.log(tree);
+
 	return (
 		<React.Fragment>
-			{x.isSuccess && x.data?.length === 0 ? (
-				<NoCollectionsView />
+			{collectionEntries.isSuccess && collectionEntries.data?.length === 0 ? (
+				<NoCollectionsView
+					selectedTab={selectedTab}
+					collectionEntries={collectionEntries.data ?? []}
+				/>
 			) : (
 				<div className="px-1 py-2">
 					<ReactComponents.TreeView
+						key={collectionEntries.data?.length}
 						rootItemId="root"
 						items={tree}
 						selectedItemId={selectedTabId ?? "root"}

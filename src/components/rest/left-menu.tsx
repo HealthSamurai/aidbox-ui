@@ -14,13 +14,14 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
+import type { QueryObserverResult } from "@tanstack/react-query";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
 import { useRefreshUIHistory, useUIHistory } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
 import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
-import { CollectionsView } from "./collections";
+import { type CollectionEntry, CollectionsView } from "./collections";
 
 // Utility function for combining classes
 function cn(...inputs: (string | undefined | boolean | null)[]) {
@@ -309,8 +310,10 @@ export function LeftMenu({
 	setTabs,
 	selectedTab,
 	onHistoryRefreshNeeded,
+	collectionEntries,
 }: {
 	tabs: Tab[];
+	collectionEntries: QueryObserverResult<CollectionEntry[]>;
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	selectedTab?: Tab;
 	onHistoryRefreshNeeded?: (refreshFn: () => void) => void;
@@ -459,7 +462,11 @@ export function LeftMenu({
 					)}
 				</TabsContent>
 				<TabsContent value="collections" className={collectionsTabsContent}>
-					<CollectionsView tabs={tabs} setTabs={setTabs} />
+					<CollectionsView
+						tabs={tabs}
+						setTabs={setTabs}
+						collectionEntries={collectionEntries}
+					/>
 				</TabsContent>
 			</Tabs>
 		</div>
