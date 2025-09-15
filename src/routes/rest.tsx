@@ -16,14 +16,7 @@ import {
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	Columns2,
-	Fullscreen,
-	Minimize2,
-	Rows2,
-	Save,
-	Timer,
-} from "lucide-react";
+import { Fullscreen, Minimize2, Timer } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
@@ -40,6 +33,7 @@ import {
 	LeftMenuToggle,
 } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
+import { SplitButton, type SplitDirection } from "../components/Split";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
@@ -223,39 +217,6 @@ function ResponseStatus({
 	);
 }
 
-type PanelSplitDirection = "horizontal" | "vertical";
-
-type SplitDirectionToggleProps = {
-	direction: PanelSplitDirection;
-	onChange: (direction: PanelSplitDirection) => void;
-};
-
-function HorizontalSplit({ onChange }: { onChange: () => void }) {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button variant="link" onClick={onChange} size="small">
-					<Rows2 />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent>Switch to vertical split</TooltipContent>
-		</Tooltip>
-	);
-}
-
-function VerticalSplit({ onChange }: { onChange: () => void }) {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button variant="link" onClick={onChange} size="small">
-					<Columns2 />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent>Switch to horizontal split</TooltipContent>
-		</Tooltip>
-	);
-}
-
 function ExpandPane({
 	onToggle,
 	state,
@@ -285,21 +246,10 @@ function ExpandPane({
 	}
 }
 
-function SplitDirectionToggle({
-	direction,
-	onChange,
-}: SplitDirectionToggleProps) {
-	if (direction === "horizontal") {
-		return <HorizontalSplit onChange={() => onChange("vertical")} />;
-	} else if (direction === "vertical") {
-		return <VerticalSplit onChange={() => onChange("horizontal")} />;
-	}
-}
-
 type ResponsePaneProps = {
 	response: ResponseData | null;
-	splitState: PanelSplitDirection;
-	onSplitChange: (mode: PanelSplitDirection) => void;
+	splitState: SplitDirection;
+	onSplitChange: (mode: SplitDirection) => void;
 	onFullScreenToggle: (state: "maximized" | "normal") => void;
 	fullScreenState: "maximized" | "normal";
 };
@@ -407,7 +357,7 @@ function ResponsePane({
 					<div className="flex items-center gap-1">
 						{response && <ResponseInfo response={response} />}
 						{fullScreenState === "normal" && (
-							<SplitDirectionToggle
+							<SplitButton
 								direction={splitState}
 								onChange={(newMode) => onSplitChange(newMode)}
 							/>
