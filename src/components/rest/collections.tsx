@@ -1,6 +1,8 @@
 import * as ReactComponents from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
+import * as React from "react";
 import * as Auth from "../../api/auth";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
@@ -21,11 +23,13 @@ async function getCollectionsEntries(): Promise<CollectionEntry[]> {
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	return JSON.parse(response.body).entry.map((entry: any) => entry.resource);
+	return (
+		JSON.parse(response.body).entry?.map((entry: any) => entry.resource) ?? []
+	);
 }
 
-async function createCollectionEntry(tab: Tab) {
-	return await Auth.AidboxCallWithMeta({
+async function SaveRequest(tab: Tab, queryClient: QueryClient) {
+	const result = await Auth.AidboxCallWithMeta({
 		method: "PUT",
 		url: `/ui_snippet/${tab.id}`,
 		body: JSON.stringify({
@@ -33,25 +37,45 @@ async function createCollectionEntry(tab: Tab) {
 			command: Utils.generateHttpRequest(tab),
 		}),
 	});
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+	return result;
 }
 
 export const SaveButton = ({ tab }: { tab: Tab }) => {
-	const mode: SaveCollectionButtonMode = "empty-collection";
-
-	const handleSave = () => {
-		switch (mode) {
-			case "empty-collection": {
-				createCollectionEntry(tab);
-				break;
-			}
-		}
-	};
-
+	const queryClient = useQueryClient();
 	return (
-		<ReactComponents.Button variant="secondary" onClick={handleSave}>
-			<Lucide.Save />
-			Save
-		</ReactComponents.Button>
+		<ReactComponents.SplitButton>
+			<ReactComponents.Button
+				variant="secondary"
+				onClick={() => {
+					SaveRequest(tab, queryClient);
+				}}
+			>
+				<Lucide.Save />
+				Save
+			</ReactComponents.Button>
+			<ReactComponents.DropdownMenu>
+				<ReactComponents.DropdownMenuTrigger asChild>
+					<ReactComponents.Button variant="secondary">
+						<Lucide.ChevronDown />
+					</ReactComponents.Button>
+				</ReactComponents.DropdownMenuTrigger>
+				<ReactComponents.DropdownMenuContent className="mr-4">
+					<ReactComponents.DropdownMenuLabel>
+						Save to collection:
+					</ReactComponents.DropdownMenuLabel>
+					<ReactComponents.DropdownMenuSeparator />
+					<ReactComponents.DropdownMenuItem disabled>
+						No collections
+					</ReactComponents.DropdownMenuItem>
+					<ReactComponents.DropdownMenuSeparator />
+					<ReactComponents.DropdownMenuItem>
+						<Lucide.Plus className="text-fg-link" />
+						New collection
+					</ReactComponents.DropdownMenuItem>
+				</ReactComponents.DropdownMenuContent>
+			</ReactComponents.DropdownMenu>
+		</ReactComponents.SplitButton>
 	);
 };
 
@@ -61,10 +85,6 @@ function buildTreeView(
 	const tree: Record<string, ReactComponents.TreeViewItem<any>> = {
 		root: {
 			name: "root",
-			children: ["oldsnippets"],
-		},
-		oldsnippets: {
-			name: "Snippets",
 			children: [],
 		},
 	};
@@ -82,7 +102,7 @@ function buildTreeView(
 					id: entry.id,
 				},
 			};
-			tree.oldsnippets!.children!.push(entry.id);
+			tree.root!.children!.push(entry.id);
 		}
 	});
 
@@ -117,6 +137,22 @@ function customItemView(
 		);
 	}
 }
+
+const NoCollectionsView = () => {
+	return (
+		<div className="bg-bg-tertiary h-full flex items-center justify-center">
+			<div className="flex flex-col items-center">
+				<span className="text-text-disabled text-xl font-medium">
+					No collections
+				</span>
+				<ReactComponents.Button variant="link">
+					<Lucide.Plus className="text-fg-link" />
+					New collection
+				</ReactComponents.Button>
+			</div>
+		</div>
+	);
+};
 
 export const CollectionsView = ({
 	setTabs,
@@ -170,24 +206,28 @@ export const CollectionsView = ({
 
 	const selectedTabEntry = x.data?.find((entry) => entry.id === selectedTabId);
 
-	const expandedItemIds = ["root"].concat(
-		selectedTabEntry?.collection ?? ["oldsnippets"],
-	);
+	const expandedItemIds = ["root"].concat(selectedTabEntry?.collection ?? []);
 
 	if (x.isPending) {
 		return <div>Loading...</div>;
 	}
 
 	return (
-		<div>
-			<ReactComponents.TreeView
-				rootItemId="root"
-				items={tree}
-				selectedItemId={selectedTabId ?? "root"}
-				expandedItemIds={expandedItemIds}
-				customItemView={customItemView}
-				onSelectItem={handleSelectItem}
-			/>
-		</div>
+		<React.Fragment>
+			{x.isSuccess && x.data?.length === 0 ? (
+				<NoCollectionsView />
+			) : (
+				<div className="px-1 py-2">
+					<ReactComponents.TreeView
+						rootItemId="root"
+						items={tree}
+						selectedItemId={selectedTabId ?? "root"}
+						expandedItemIds={expandedItemIds}
+						customItemView={customItemView}
+						onSelectItem={handleSelectItem}
+					/>
+				</div>
+			)}
+		</React.Fragment>
 	);
 };

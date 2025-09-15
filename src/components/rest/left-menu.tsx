@@ -40,7 +40,7 @@ const tabsHeader = cn("border-b", "h-10", "bg-bg-secondary");
 
 const tabsContent = cn("p-0", "h-full");
 
-const collectionsTabsContent = cn("px-1", "py-2", "text-nowrap");
+const collectionsTabsContent = cn("text-nowrap");
 
 // Loading and error state
 const loadingContainer = cn("p-4", "text-center");
