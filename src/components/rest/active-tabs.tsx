@@ -63,7 +63,7 @@ export const DEFAULT_TAB: Tab = {
 	params: [{ id: "1", name: "", value: "", enabled: true }],
 };
 
-function addTab(
+export function addTab(
 	tabs: Tab[],
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
@@ -72,6 +72,7 @@ function addTab(
 		id: crypto.randomUUID(),
 	};
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
+	return newTab;
 }
 
 export function addTabFromHistory(
@@ -119,7 +120,7 @@ export function addTabFromHistory(
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 }
 
-function forceSelectedTab(tabs: Tab[], tabIndex: number): Tab[] {
+export function forceSelectedTab(tabs: Tab[], tabIndex: number): Tab[] {
 	const hasSelected = tabs.some((tab) => tab.selected);
 	if (!hasSelected && tabs.length > 0) {
 		const safeIndex = Math.min(tabIndex, tabs.length - 1);

@@ -9,6 +9,7 @@ import * as React from "react";
 import * as Auth from "../../api/auth";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
+import * as ActiveTabs from "./active-tabs";
 import { methodColors, type Tab } from "./active-tabs";
 
 export interface CollectionEntry {
@@ -172,7 +173,11 @@ function buildTreeView(
 		root: {
 			name: "root",
 			children: entries
-				.filter((entry) => entry.collection)
+				.filter(
+					(entry, idx, arr) =>
+						entry.collection &&
+						arr.findIndex((e) => e.collection === entry.collection) === idx,
+				)
 				.map((entry) => entry.collection!),
 		},
 	};
@@ -204,30 +209,206 @@ function buildTreeView(
 	return tree;
 }
 
+async function handleAddNewCollectionEntry(
+	collectionName: string,
+	queryClient: QueryClient,
+	setSelectedCollectionItemId: (id: string) => void,
+	setTabs: (tabs: Tab[] | ((prev: Tab[]) => Tab[])) => void,
+	tabs: Tab[],
+) {
+	const newTab = ActiveTabs.addTab(tabs, setTabs);
+	await Auth.AidboxCallWithMeta({
+		method: "PUT",
+		url: `/ui_snippet/${newTab.id}`,
+		body: JSON.stringify({
+			type: "http",
+			collection: collectionName,
+			command: Utils.generateHttpRequest(newTab),
+		}),
+	});
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+	setSelectedCollectionItemId(newTab.id);
+}
+
+async function handleDeleteSnippet(
+	itemData: ReactComponents.TreeViewItem<any>,
+	queryClient: QueryClient,
+	tabs: Tab[],
+	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
+) {
+	const result = await Auth.AidboxCallWithMeta({
+		method: "DELETE",
+		url: `/ui_snippet/${itemData.meta.id}`,
+	});
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+	ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
+}
+
+function SnippetMoreButton({
+	itemData,
+	queryClient,
+	tabs,
+	setTabs,
+	tree,
+}: {
+	itemData: ReactComponents.TreeViewItem<any>;
+	queryClient: QueryClient;
+	tabs: Tab[];
+	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
+	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>;
+}) {
+	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
+
+	return (
+		<ReactComponents.DropdownMenu>
+			<ReactComponents.DropdownMenuTrigger asChild>
+				<ReactComponents.Button
+					variant="link"
+					size="small"
+					className="p-0 h-4 opacity-0 data-[state=open]:opacity-100 group-hover/tree-item-label:opacity-100"
+					asChild
+				>
+					<span>
+						<Lucide.Ellipsis />
+					</span>
+				</ReactComponents.Button>
+			</ReactComponents.DropdownMenuTrigger>
+			<ReactComponents.DropdownMenuContent>
+				<ReactComponents.DropdownMenuItem
+					onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}
+				>
+					Rename
+				</ReactComponents.DropdownMenuItem>
+				<ReactComponents.DropdownMenuItem
+					variant="destructive"
+					onClick={() => setIsAlertDialogOpen(true)}
+				>
+					Delete
+				</ReactComponents.DropdownMenuItem>
+			</ReactComponents.DropdownMenuContent>
+
+			<ReactComponents.AlertDialog
+				open={isAlertDialogOpen}
+				onOpenChange={setIsAlertDialogOpen}
+			>
+				<ReactComponents.AlertDialogContent>
+					<ReactComponents.AlertDialogHeader>
+						<ReactComponents.AlertDialogTitle>
+							Delete snippet?
+						</ReactComponents.AlertDialogTitle>
+						<ReactComponents.AlertDialogDescription>
+							Are you sure you want to delete this snippet? This action cannot
+							be undone.
+						</ReactComponents.AlertDialogDescription>
+					</ReactComponents.AlertDialogHeader>
+					<ReactComponents.AlertDialogFooter>
+						<ReactComponents.AlertDialogCancel
+							onClick={() => setIsAlertDialogOpen(false)}
+						>
+							Cancel
+						</ReactComponents.AlertDialogCancel>
+						<ReactComponents.AlertDialogAction
+							variant="primary"
+							danger
+							onClick={() => {
+								handleDeleteSnippet(itemData, queryClient, tabs, setTabs);
+								setIsAlertDialogOpen(false);
+							}}
+							asChild
+						>
+							<span>
+								<Lucide.Trash /> Delete
+							</span>
+						</ReactComponents.AlertDialogAction>
+					</ReactComponents.AlertDialogFooter>
+				</ReactComponents.AlertDialogContent>
+			</ReactComponents.AlertDialog>
+		</ReactComponents.DropdownMenu>
+	);
+}
+
 function customItemView(
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
+	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
+	tabs: Tab[],
+	queryClient: QueryClient,
+	setSelectedCollectionItemId: (id: string) => void,
+	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>,
 ) {
 	const isFolder = item.isFolder();
 	const itemData = item.getItemData();
-
 	if (isFolder) {
-		return <div>{itemData?.name}</div>;
+		return (
+			<div className="flex justify-between items-center w-full">
+				<div>{itemData?.name}</div>
+				<div className="hidden group-hover/tree-item-label:flex items-center gap-2">
+					<ReactComponents.Button
+						variant="link"
+						size="small"
+						className="p-0 h-4"
+						onClick={(e) => {
+							e.stopPropagation();
+							e.preventDefault();
+							handleAddNewCollectionEntry(
+								itemData?.name,
+								queryClient,
+								setSelectedCollectionItemId,
+								setTabs,
+								tabs,
+							);
+						}}
+						asChild
+					>
+						<span>
+							<Lucide.Plus />
+						</span>
+					</ReactComponents.Button>
+					<ReactComponents.Button
+						variant="link"
+						size="small"
+						className="p-0 h-4 hover:text-fg-link"
+						asChild
+					>
+						<span>
+							<Lucide.Pin />
+						</span>
+					</ReactComponents.Button>
+				</div>
+			</div>
+		);
 	} else {
 		const parsedCommand = itemData?.meta;
 		const methodColor =
 			methodColors[parsedCommand?.method as keyof typeof methodColors];
 		return (
-			<div className="flex items-center gap-2">
-				<div
-					className={`${methodColor} opacity-50 group-hover/tree-item-label:opacity-100 in-data-[selected=true]:opacity-100 font-medium min-w-13 w-13 text-left`}
-				>
-					{parsedCommand?.method}
+			<div className="flex justify-between items-center w-full">
+				<div className="flex items-center gap-2">
+					<div
+						className={`${methodColor} opacity-50 group-hover/tree-item-label:opacity-100 in-data-[selected=true]:opacity-100 font-medium min-w-13 w-12 text-right`}
+					>
+						{parsedCommand?.method}
+					</div>
+					{item.isRenaming() ? (
+						<ReactComponents.Input
+							className="h-5 border-none p-0"
+							autoFocus
+							{...item.getRenameInputProps()}
+						/>
+					) : itemData.meta.title ? (
+						<div>{itemData.meta.title}</div>
+					) : (
+						<div>{parsedCommand?.path}</div>
+					)}
 				</div>
-				{itemData.meta.title ? (
-					<div>{itemData.meta.title}</div>
-				) : (
-					<div>{parsedCommand?.path}</div>
-				)}
+				<div className="flex items-center gap-2">
+					<SnippetMoreButton
+						itemData={itemData}
+						queryClient={queryClient}
+						tabs={tabs}
+						setTabs={setTabs}
+						tree={tree}
+					/>
+				</div>
 			</div>
 		);
 	}
@@ -277,6 +458,21 @@ const NoCollectionsView = ({
 	}
 };
 
+async function handleRenameSnippet(
+	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
+	newTitle: string,
+	queryClient: QueryClient,
+) {
+	await Auth.AidboxCallWithMeta({
+		method: "PATCH",
+		url: `/ui_snippet/${item.getItemData().meta?.id}`,
+		body: JSON.stringify({
+			title: newTitle,
+		}),
+	});
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+}
+
 export const CollectionsView = ({
 	collectionEntries,
 	setTabs,
@@ -285,14 +481,14 @@ export const CollectionsView = ({
 	selectedCollectionItemId,
 }: {
 	tabs: Tab[];
-	setTabs: (tabs: Tab[]) => void;
+	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	collectionEntries: QueryObserverResult<CollectionEntry[]>;
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
 }) => {
 	const tree = buildTreeView(collectionEntries.data ?? []);
 	const selectedTab = tabs.find((tab) => tab.selected);
-
+	const queryClient = useQueryClient();
 	function handleSelectItem(
 		item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
 	) {
@@ -338,8 +534,6 @@ export const CollectionsView = ({
 		return <div>Loading...</div>;
 	}
 
-	console.log(selectedCollectionItemId);
-
 	return (
 		<React.Fragment>
 			{collectionEntries.isSuccess && collectionEntries.data?.length === 0 ? (
@@ -358,7 +552,19 @@ export const CollectionsView = ({
 						items={tree}
 						selectedItemId={selectedCollectionItemId ?? "root"}
 						expandedItemIds={expandedItemIds}
-						customItemView={customItemView}
+						onRename={(item, newTitle) => {
+							handleRenameSnippet(item, newTitle, queryClient);
+						}}
+						customItemView={(data, tree) =>
+							customItemView(
+								data,
+								setTabs,
+								tabs,
+								queryClient,
+								setSelectedCollectionItemId,
+								tree,
+							)
+						}
 						onSelectItem={handleSelectItem}
 					/>
 				</div>
