@@ -311,12 +311,16 @@ export function LeftMenu({
 	selectedTab,
 	onHistoryRefreshNeeded,
 	collectionEntries,
+	setSelectedCollectionItemId,
+	selectedCollectionItemId,
 }: {
 	tabs: Tab[];
 	collectionEntries: QueryObserverResult<CollectionEntry[]>;
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	selectedTab?: Tab;
 	onHistoryRefreshNeeded?: (refreshFn: () => void) => void;
+	setSelectedCollectionItemId: (id: string) => void;
+	selectedCollectionItemId: string | undefined;
 }) {
 	const leftMenuStatus = React.useContext(LeftMenuContext);
 	const { data: historyData, isLoading, error } = useUIHistory();
@@ -466,6 +470,8 @@ export function LeftMenu({
 						tabs={tabs}
 						setTabs={setTabs}
 						collectionEntries={collectionEntries}
+						setSelectedCollectionItemId={setSelectedCollectionItemId}
+						selectedCollectionItemId={selectedCollectionItemId}
 					/>
 				</TabsContent>
 			</Tabs>

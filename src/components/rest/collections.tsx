@@ -1,5 +1,4 @@
 import * as ReactComponents from "@health-samurai/react-components";
-import * as ReactQuery from "@tanstack/react-query";
 import {
 	type QueryClient,
 	type QueryObserverResult,
@@ -17,7 +16,7 @@ export interface CollectionEntry {
 	type: string;
 	command: string;
 	title?: string;
-	collection?: string[];
+	collection?: string;
 }
 
 export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
@@ -33,17 +32,44 @@ export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
 async function SaveRequest(
 	tab: Tab,
 	queryClient: QueryClient,
-	collection: string[],
+	collectionEntries: CollectionEntry[],
+	setSelectedCollectionItemId: (id: string) => void,
+	createNewCollection: boolean,
+	setTabs: (tabs: Tab[]) => void,
+	tabs: Tab[],
 ) {
+	const currentSnippet = collectionEntries.find((entry) => entry.id === tab.id);
+	let collection: string;
+	let snippetId: string;
+
+	if (createNewCollection) {
+		collection = getNewUniqueCollectionName(collectionEntries);
+	} else {
+		collection =
+			currentSnippet?.collection ||
+			getNewUniqueCollectionName(collectionEntries);
+	}
+
+	if (currentSnippet && createNewCollection) {
+		snippetId = crypto.randomUUID();
+		setTabs([
+			...tabs.map((t) => ({ ...t, selected: false })),
+			{ ...tab, id: snippetId, selected: true },
+		]);
+	} else {
+		snippetId = tab.id;
+	}
+
 	const result = await Auth.AidboxCallWithMeta({
 		method: "PUT",
-		url: `/ui_snippet/${tab.id}`,
+		url: `/ui_snippet/${snippetId}`,
 		body: JSON.stringify({
 			type: "http",
 			command: Utils.generateHttpRequest(tab),
-			...(collection.length > 0 ? { collection } : {}),
+			...(collection ? { collection } : {}),
 		}),
 	});
+	setSelectedCollectionItemId(snippetId);
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	return result;
 }
@@ -67,9 +93,15 @@ function getNewUniqueCollectionName(collectionEntries: CollectionEntry[]) {
 export const SaveButton = ({
 	tab,
 	collectionEntries,
+	tabs,
+	setSelectedCollectionItemId,
+	setTabs,
 }: {
 	tab: Tab;
 	collectionEntries: QueryObserverResult<CollectionEntry[]>;
+	setSelectedCollectionItemId: (id: string) => void;
+	tabs: Tab[];
+	setTabs: (tabs: Tab[]) => void;
 }) => {
 	const queryClient = useQueryClient();
 	return (
@@ -77,9 +109,15 @@ export const SaveButton = ({
 			<ReactComponents.Button
 				variant="secondary"
 				onClick={() => {
-					SaveRequest(tab, queryClient, [
-						getNewUniqueCollectionName(collectionEntries.data ?? []),
-					]);
+					SaveRequest(
+						tab,
+						queryClient,
+						collectionEntries.data ?? [],
+						setSelectedCollectionItemId,
+						false,
+						setTabs,
+						tabs,
+					);
 					ReactComponents.toast("Request saved to collections");
 				}}
 			>
@@ -105,9 +143,15 @@ export const SaveButton = ({
 						<ReactComponents.Button
 							variant="link"
 							onClick={() => {
-								SaveRequest(tab, queryClient, [
-									getNewUniqueCollectionName(collectionEntries.data ?? []),
-								]);
+								SaveRequest(
+									tab,
+									queryClient,
+									collectionEntries.data ?? [],
+									setSelectedCollectionItemId,
+									true,
+									setTabs,
+									tabs,
+								);
 								ReactComponents.toast("Request saved to collections");
 							}}
 						>
@@ -120,35 +164,6 @@ export const SaveButton = ({
 		</ReactComponents.SplitButton>
 	);
 };
-// [a b c]
-// [a b]
-
-// a -> b
-// b -> c
-// b -> uuid
-// c -> uuid
-
-function addCollectionToTree(
-	tree: Record<string, ReactComponents.TreeViewItem<any>>,
-	entryId: string,
-	collection: string[],
-) {
-	if (collection.length === 0) {
-		return;
-	}
-	const uniqeCollectionId = collection.join("-");
-	if (tree[uniqeCollectionId]) {
-		tree[uniqeCollectionId].children!.push(entryId);
-	} else {
-		tree[uniqeCollectionId] = {
-			name: collection.at(-1)!,
-			children: [entryId],
-		};
-		const parentCollection = collection.slice(0, -1);
-		const parentCollectionId = parentCollection.join("-");
-		addCollectionToTree(tree, parentCollectionId, parentCollection);
-	}
-}
 
 function buildTreeView(
 	entries: CollectionEntry[],
@@ -157,8 +172,8 @@ function buildTreeView(
 		root: {
 			name: "root",
 			children: entries
-				.filter((entry) => entry.collection && entry.collection.length > 0)
-				.map((entry) => entry.collection!.at(0) ?? ""),
+				.filter((entry) => entry.collection)
+				.map((entry) => entry.collection!),
 		},
 	};
 
@@ -173,7 +188,14 @@ function buildTreeView(
 			},
 		};
 		if (entry.collection) {
-			addCollectionToTree(tree, entry.id, entry.collection);
+			if (tree[entry.collection]) {
+				tree[entry.collection]!.children!.push(entry.id);
+			} else {
+				tree[entry.collection] = {
+					name: entry.collection,
+					children: [entry.id],
+				};
+			}
 		} else {
 			tree.root!.children!.push(entry.id);
 		}
@@ -214,9 +236,15 @@ function customItemView(
 const NoCollectionsView = ({
 	selectedTab,
 	collectionEntries,
+	setSelectedCollectionItemId,
+	setTabs,
+	tabs,
 }: {
 	selectedTab: Tab | undefined;
 	collectionEntries: CollectionEntry[];
+	setSelectedCollectionItemId: (id: string) => void;
+	setTabs: (tabs: Tab[]) => void;
+	tabs: Tab[];
 }) => {
 	const queryClient = useQueryClient();
 	if (selectedTab) {
@@ -229,9 +257,15 @@ const NoCollectionsView = ({
 					<ReactComponents.Button
 						variant="link"
 						onClick={() =>
-							SaveRequest(selectedTab, queryClient, [
-								getNewUniqueCollectionName(collectionEntries),
-							])
+							SaveRequest(
+								selectedTab,
+								queryClient,
+								collectionEntries,
+								setSelectedCollectionItemId,
+								true,
+								setTabs,
+								tabs,
+							)
 						}
 					>
 						<Lucide.Plus className="text-fg-link" />
@@ -247,14 +281,17 @@ export const CollectionsView = ({
 	collectionEntries,
 	setTabs,
 	tabs,
+	setSelectedCollectionItemId,
+	selectedCollectionItemId,
 }: {
 	tabs: Tab[];
 	setTabs: (tabs: Tab[]) => void;
 	collectionEntries: QueryObserverResult<CollectionEntry[]>;
+	setSelectedCollectionItemId: (id: string) => void;
+	selectedCollectionItemId: string | undefined;
 }) => {
 	const tree = buildTreeView(collectionEntries.data ?? []);
 	const selectedTab = tabs.find((tab) => tab.selected);
-	const selectedTabId = selectedTab?.id;
 
 	function handleSelectItem(
 		item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
@@ -292,16 +329,16 @@ export const CollectionsView = ({
 	}
 
 	const selectedTabEntry = collectionEntries.data?.find(
-		(entry) => entry.id === selectedTabId,
+		(entry) => entry.id === selectedCollectionItemId,
 	);
 
-	const expandedItemIds = ["root"].concat(selectedTabEntry?.collection ?? []);
+	const expandedItemIds = ["root", selectedTabEntry?.collection ?? ""];
 
 	if (collectionEntries.isPending) {
 		return <div>Loading...</div>;
 	}
 
-	console.log(tree);
+	console.log(selectedCollectionItemId);
 
 	return (
 		<React.Fragment>
@@ -309,6 +346,9 @@ export const CollectionsView = ({
 				<NoCollectionsView
 					selectedTab={selectedTab}
 					collectionEntries={collectionEntries.data ?? []}
+					setSelectedCollectionItemId={setSelectedCollectionItemId}
+					setTabs={setTabs}
+					tabs={tabs}
 				/>
 			) : (
 				<div className="px-1 py-2">
@@ -316,7 +356,7 @@ export const CollectionsView = ({
 						key={collectionEntries.data?.length}
 						rootItemId="root"
 						items={tree}
-						selectedItemId={selectedTabId ?? "root"}
+						selectedItemId={selectedCollectionItemId ?? "root"}
 						expandedItemIds={expandedItemIds}
 						customItemView={customItemView}
 						onSelectItem={handleSelectItem}

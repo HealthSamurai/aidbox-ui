@@ -613,6 +613,10 @@ function RouteComponent() {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
 
+	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
+		string | undefined
+	>(selectedTab.id);
+
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.ctrlKey && event.key === "Enter") {
@@ -868,6 +872,8 @@ function RouteComponent() {
 					selectedTab={selectedTab}
 					onHistoryRefreshNeeded={setRefreshHistory}
 					collectionEntries={collectionEntries}
+					setSelectedCollectionItemId={setSelectedCollectionItemId}
+					selectedCollectionItemId={selectedCollectionItemId}
 				/>
 				<div className="flex flex-col grow min-w-0">
 					<div className="flex h-10 w-full">
@@ -913,6 +919,9 @@ function RouteComponent() {
 						<RestCollections.SaveButton
 							tab={selectedTab}
 							collectionEntries={collectionEntries}
+							setSelectedCollectionItemId={setSelectedCollectionItemId}
+							tabs={tabs}
+							setTabs={setTabs}
 						/>
 					</div>
 					<ResizablePanelGroup
