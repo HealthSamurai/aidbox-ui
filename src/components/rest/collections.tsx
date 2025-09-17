@@ -7,6 +7,7 @@ import {
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import * as Auth from "../../api/auth";
+import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
 import * as ActiveTabs from "./active-tabs";
@@ -397,7 +398,7 @@ function customItemView(
 					) : itemData.meta.title ? (
 						<div>{itemData.meta.title}</div>
 					) : (
-						<div>{parsedCommand?.path}</div>
+						<div>{parsedCommand?.path || "New request"}</div>
 					)}
 				</div>
 				<div className="flex items-center gap-2">
@@ -489,10 +490,27 @@ export const CollectionsView = ({
 	const tree = buildTreeView(collectionEntries.data ?? []);
 	const selectedTab = tabs.find((tab) => tab.selected);
 	const queryClient = useQueryClient();
+
+	const selectedTabEntry = collectionEntries.data?.find(
+		(entry) => entry.id === selectedCollectionItemId,
+	);
+
+	const [expandedItemIds, setExpandedItemIds] = useLocalStorage<string[]>({
+		key: "rest-console-expanded-items",
+		defaultValue: ["root", selectedTabEntry?.collection ?? ""],
+	});
+
 	function handleSelectItem(
 		item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
+		expandedItemIds: string[],
+		setExpandedItemIds: (ids: string[]) => void,
 	) {
 		if (item.isFolder()) {
+			if (item.isExpanded()) {
+				setExpandedItemIds(expandedItemIds.filter((id) => id !== item.getId()));
+			} else {
+				setExpandedItemIds(expandedItemIds.concat(item.getId()));
+			}
 			return;
 		}
 		const activeTab = tabs.find(
@@ -523,12 +541,6 @@ export const CollectionsView = ({
 			);
 		}
 	}
-
-	const selectedTabEntry = collectionEntries.data?.find(
-		(entry) => entry.id === selectedCollectionItemId,
-	);
-
-	const expandedItemIds = ["root", selectedTabEntry?.collection ?? ""];
 
 	if (collectionEntries.isPending) {
 		return <div>Loading...</div>;
@@ -565,7 +577,9 @@ export const CollectionsView = ({
 								tree,
 							)
 						}
-						onSelectItem={handleSelectItem}
+						onSelectItem={(e) =>
+							handleSelectItem(e, expandedItemIds, setExpandedItemIds)
+						}
 					/>
 				</div>
 			)}
