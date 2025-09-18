@@ -40,13 +40,16 @@ async function SaveRequest(
 	setTabs: (tabs: Tab[]) => void,
 	tabs: Tab[],
 	collectionName?: string,
+	saveToRootCollection?: boolean,
 ) {
 	const currentSnippet = collectionEntries.find((entry) => entry.id === tab.id);
-	let collection: string;
+	let collection: string | undefined;
 	let snippetId: string;
 
 	if (createNewCollection) {
 		collection = getNewUniqueCollectionName(collectionEntries);
+	} else if (saveToRootCollection) {
+		collection = undefined;
 	} else {
 		collection =
 			collectionName ||
@@ -121,6 +124,8 @@ export const SaveButton = ({
 						false,
 						setTabs,
 						tabs,
+						undefined,
+						true,
 					);
 					ReactComponents.toast("Request saved to collections");
 				}}
@@ -206,17 +211,22 @@ export const SaveButton = ({
 
 function buildTreeView(
 	entries: CollectionEntry[],
+	pinnedCollections: string[],
 ): Record<string, ReactComponents.TreeViewItem<any>> {
 	const tree: Record<string, ReactComponents.TreeViewItem<any>> = {
 		root: {
 			name: "root",
-			children: entries
-				.filter(
-					(entry, idx, arr) =>
-						entry.collection &&
-						arr.findIndex((e) => e.collection === entry.collection) === idx,
-				)
-				.map((entry) => entry.collection!),
+			children: [
+				...[...pinnedCollections].reverse(),
+				...entries
+					.filter((entry) => !pinnedCollections.includes(entry.collection!))
+					.filter(
+						(entry, idx, arr) =>
+							entry.collection &&
+							arr.findIndex((e) => e.collection === entry.collection) === idx,
+					)
+					.map((entry) => entry.collection!),
+			],
 		},
 	};
 
@@ -279,17 +289,36 @@ async function handleDeleteSnippet(
 		url: `/ui_snippet/${itemData.meta.id}`,
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
-	ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
+	// ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
+}
+
+async function handleDeleteCollection(
+	itemData: ReactComponents.TreeViewItem<any>,
+	queryClient: QueryClient,
+) {
+	await Auth.AidboxCallWithMeta({
+		method: "DELETE",
+		url: `/ui_snippet`,
+		headers: {
+			"x-conditional-delete": "remove-all",
+		},
+		params: {
+			id: itemData.children?.join(",") ?? "",
+		},
+	});
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
 
 function CollectionMoreButton({
 	itemData,
 	queryClient,
 	tree,
+	itemId,
 }: {
 	itemData: ReactComponents.TreeViewItem<any>;
 	queryClient: QueryClient;
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>;
+	itemId: string;
 }) {
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
@@ -309,7 +338,7 @@ function CollectionMoreButton({
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
 				<ReactComponents.DropdownMenuItem
-					onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}
+					onClick={() => tree.getItemInstance(itemId).startRenaming()}
 				>
 					Rename
 				</ReactComponents.DropdownMenuItem>
@@ -345,7 +374,7 @@ function CollectionMoreButton({
 							variant="primary"
 							danger
 							onClick={() => {
-								// TODO: Delete collection
+								handleDeleteCollection(itemData, queryClient);
 								setIsAlertDialogOpen(false);
 							}}
 							asChild
@@ -451,51 +480,78 @@ function customItemView(
 	queryClient: QueryClient,
 	setSelectedCollectionItemId: (id: string) => void,
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>,
+	pinnedCollections: string[],
+	setPinnedCollections: (ids: string[]) => void,
 ) {
 	const isFolder = item.isFolder();
 	const itemData = item.getItemData();
+	const itemId = item.getId();
+	const isPinned = pinnedCollections.includes(itemId);
 	if (isFolder) {
 		return (
 			<div className="flex justify-between items-center w-full">
-				<div>{itemData?.name}</div>
-				<div className="opacity-0 group-hover/tree-item-label:opacity-100 *:data-[state=open]:opacity-100 flex items-center gap-2">
-					<ReactComponents.Button
-						variant="link"
-						size="small"
-						className="p-0 h-4"
-						onClick={(e) => {
-							e.stopPropagation();
-							e.preventDefault();
-							handleAddNewCollectionEntry(
-								itemData?.name,
-								queryClient,
-								setSelectedCollectionItemId,
-								setTabs,
-								tabs,
-							);
-						}}
-						asChild
-					>
-						<span>
-							<Lucide.Plus />
-						</span>
-					</ReactComponents.Button>
-					<ReactComponents.Button
-						variant="link"
-						size="small"
-						className="p-0 h-4 hover:text-fg-link"
-						asChild
-					>
-						<span>
-							<Lucide.Pin />
-						</span>
-					</ReactComponents.Button>
-					<CollectionMoreButton
-						itemData={itemData}
-						queryClient={queryClient}
-						tree={tree}
+				{item.isRenaming() ? (
+					<ReactComponents.Input
+						className="h-5 border-none p-0"
+						autoFocus
+						{...item.getRenameInputProps()}
 					/>
-				</div>
+				) : (
+					<React.Fragment>
+						<div>{itemData?.name}</div>
+
+						<div className="flex items-center gap-2">
+							<ReactComponents.Button
+								className="opacity-0 group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 p-0 h-4"
+								variant="link"
+								size="small"
+								onClick={(e) => {
+									e.stopPropagation();
+									e.preventDefault();
+									handleAddNewCollectionEntry(
+										itemData?.name,
+										queryClient,
+										setSelectedCollectionItemId,
+										setTabs,
+										tabs,
+									);
+								}}
+								asChild
+							>
+								<span>
+									<Lucide.Plus />
+								</span>
+							</ReactComponents.Button>
+							<ReactComponents.Button
+								variant="link"
+								size="small"
+								className={`hover:text-fg-link ${!isPinned ? "opacity-0" : ""} group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 p-0 h-4`}
+								onClick={(e) => {
+									e.stopPropagation();
+									e.preventDefault();
+									if (isPinned) {
+										setPinnedCollections(
+											pinnedCollections.filter((id) => id !== itemId),
+										);
+									} else {
+										setPinnedCollections([...pinnedCollections, itemId]);
+									}
+								}}
+								asChild
+							>
+								<span>
+									{isPinned ? <ReactComponents.PinIcon /> : <Lucide.Pin />}
+								</span>
+							</ReactComponents.Button>
+							<CollectionMoreButton
+								itemData={itemData}
+								queryClient={queryClient}
+								tree={tree}
+								itemId={item.getId()}
+							/>
+						</div>
+					</React.Fragment>
+				)}
 			</div>
 		);
 	} else {
@@ -568,6 +624,8 @@ const NoCollectionsView = ({
 								true,
 								setTabs,
 								tabs,
+								undefined,
+								true,
 							)
 						}
 					>
@@ -585,13 +643,35 @@ async function handleRenameSnippet(
 	newTitle: string,
 	queryClient: QueryClient,
 ) {
-	await Auth.AidboxCallWithMeta({
-		method: "PATCH",
-		url: `/ui_snippet/${item.getItemData().meta?.id}`,
-		body: JSON.stringify({
-			title: newTitle,
-		}),
-	});
+	if (item.isFolder()) {
+		const snippetIds = item.getChildren().map((child) => child.getId());
+		await Auth.AidboxCallWithMeta({
+			method: "POST",
+			url: `/`,
+			body: JSON.stringify({
+				resourceType: "Bundle",
+				type: "transaction",
+				entry: snippetIds.map((id) => ({
+					request: {
+						method: "PATCH",
+						url: `/ui_snippet/${id}`,
+					},
+					resource: {
+						resourceType: "ui_snippet",
+						collection: newTitle,
+					},
+				})),
+			}),
+		});
+	} else {
+		await Auth.AidboxCallWithMeta({
+			method: "PATCH",
+			url: `/ui_snippet/${item.getItemData().meta?.id}`,
+			body: JSON.stringify({
+				title: newTitle,
+			}),
+		});
+	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
 
@@ -608,7 +688,11 @@ export const CollectionsView = ({
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
 }) => {
-	const tree = buildTreeView(collectionEntries.data ?? []);
+	const [pinnedCollections, setPinnedCollections] = useLocalStorage<string[]>({
+		key: "rest-console-pinned-collections",
+		defaultValue: [],
+	});
+	const tree = buildTreeView(collectionEntries.data ?? [], pinnedCollections);
 	const selectedTab = tabs.find((tab) => tab.selected);
 	const queryClient = useQueryClient();
 
@@ -682,12 +766,15 @@ export const CollectionsView = ({
 					<ReactComponents.TreeView
 						key={
 							queryClient.getQueryState(["rest-console-collections"])
-								?.dataUpdatedAt
+								?.dataUpdatedAt + pinnedCollections.join(",")
 						}
 						rootItemId="root"
 						items={tree}
 						selectedItemId={selectedCollectionItemId ?? "root"}
-						expandedItemIds={expandedItemIds}
+						expandedItemIds={[
+							...expandedItemIds,
+							selectedTabEntry?.collection ?? "",
+						]}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(item, newTitle, queryClient);
 						}}
@@ -699,6 +786,8 @@ export const CollectionsView = ({
 								queryClient,
 								setSelectedCollectionItemId,
 								tree,
+								pinnedCollections,
+								setPinnedCollections,
 							)
 						}
 						onSelectItem={(e) =>
