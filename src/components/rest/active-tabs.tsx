@@ -220,20 +220,15 @@ function TabContextMenuContent({
 			<ContextMenuItem onClick={() => handleCloseTab(tab.id)}>
 				Close tab
 			</ContextMenuItem>
-			<ContextMenuSub>
-				<ContextMenuSubTrigger>Close multiple tabs</ContextMenuSubTrigger>
-				<ContextMenuSubContent className="w-40">
-					<ContextMenuItem onClick={handleCloseTabsToLeft}>
-						Close tabs to left
-					</ContextMenuItem>
-					<ContextMenuItem onClick={handleCloseTabsToRight}>
-						Close tabs to right
-					</ContextMenuItem>
-					<ContextMenuItem onClick={handleCloseOtherTabs}>
-						Close other tabs
-					</ContextMenuItem>
-				</ContextMenuSubContent>
-			</ContextMenuSub>
+			<ContextMenuItem onClick={handleCloseOtherTabs}>
+				Close other tabs
+			</ContextMenuItem>
+			<ContextMenuItem onClick={handleCloseTabsToLeft}>
+				Close tabs to left
+			</ContextMenuItem>
+			<ContextMenuItem onClick={handleCloseTabsToRight}>
+				Close tabs to right
+			</ContextMenuItem>
 		</ContextMenuContent>
 	);
 }

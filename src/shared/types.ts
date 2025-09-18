@@ -1,4 +1,4 @@
-export type SidebarMode = "expanded" | "collapsed" | "hover";
+export type SidebarMode = "expanded" | "collapsed";
 
 // UI History types based on Aidbox response
 export interface UIHistoryResource {

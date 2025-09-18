@@ -7,13 +7,18 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarTrigger,
 	useSidebar,
 } from "@health-samurai/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { House, SquareTerminal } from "lucide-react";
+import {
+	House,
+	PanelLeftClose,
+	PanelLeftOpen,
+	SquareTerminal,
+} from "lucide-react";
 import { useEffect } from "react";
 import type { SidebarMode } from "../shared/types";
-import { SidebarModeSelect } from "./sidebar-mode";
 
 const mainMenuItems = [
 	{ title: "Home", url: "/u/", icon: House },
@@ -40,12 +45,6 @@ export function AidboxSidebar({
 			collapsible="icon"
 			data-sidebar-mode={sidebarMode}
 			className="relative h-full"
-			{...(sidebarMode === "hover"
-				? {
-					onMouseEnter: () => sidebar.setOpen(true),
-					onMouseLeave: () => sidebar.setOpen(false),
-				}
-				: {})}
 		>
 			<SidebarContent>
 				<SidebarGroup>
@@ -75,10 +74,20 @@ export function AidboxSidebar({
 					<SidebarGroupContent>
 						<SidebarMenu>
 							<SidebarMenuItem>
-								<SidebarModeSelect
-									mode={sidebarMode}
-									onModeChange={setSidebarMode}
-								/>
+								<SidebarMenuButton
+									onClick={() =>
+										sidebarMode === "expanded"
+											? setSidebarMode("collapsed")
+											: setSidebarMode("expanded")
+									}
+								>
+									{sidebarMode === "expanded" ? (
+										<PanelLeftClose />
+									) : (
+										<PanelLeftOpen />
+									)}
+									edge:d8c83455a0
+								</SidebarMenuButton>
 							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
