@@ -40,13 +40,16 @@ async function SaveRequest(
 	setTabs: (tabs: Tab[]) => void,
 	tabs: Tab[],
 	collectionName?: string,
+	saveToRootCollection?: boolean,
 ) {
 	const currentSnippet = collectionEntries.find((entry) => entry.id === tab.id);
-	let collection: string;
+	let collection: string | undefined;
 	let snippetId: string;
 
 	if (createNewCollection) {
 		collection = getNewUniqueCollectionName(collectionEntries);
+	} else if (saveToRootCollection) {
+		collection = undefined;
 	} else {
 		collection =
 			collectionName ||
@@ -121,6 +124,8 @@ export const SaveButton = ({
 						false,
 						setTabs,
 						tabs,
+						undefined,
+						true,
 					);
 					ReactComponents.toast("Request saved to collections");
 				}}
@@ -284,7 +289,7 @@ async function handleDeleteSnippet(
 		url: `/ui_snippet/${itemData.meta.id}`,
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
-	ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
+	// ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
 }
 
 async function handleDeleteCollection(
@@ -619,6 +624,8 @@ const NoCollectionsView = ({
 								true,
 								setTabs,
 								tabs,
+								undefined,
+								true,
 							)
 						}
 					>
