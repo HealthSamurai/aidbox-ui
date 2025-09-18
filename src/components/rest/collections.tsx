@@ -282,6 +282,85 @@ async function handleDeleteSnippet(
 	ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
 }
 
+function CollectionMoreButton({
+	itemData,
+	queryClient,
+	tree,
+}: {
+	itemData: ReactComponents.TreeViewItem<any>;
+	queryClient: QueryClient;
+	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>;
+}) {
+	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
+
+	return (
+		<ReactComponents.DropdownMenu>
+			<ReactComponents.DropdownMenuTrigger asChild>
+				<ReactComponents.Button
+					variant="link"
+					size="small"
+					className="p-0 h-4 opacity-0 data-[state=open]:opacity-100 group-hover/tree-item-label:opacity-100"
+					asChild
+				>
+					<span>
+						<Lucide.Ellipsis />
+					</span>
+				</ReactComponents.Button>
+			</ReactComponents.DropdownMenuTrigger>
+			<ReactComponents.DropdownMenuContent>
+				<ReactComponents.DropdownMenuItem
+					onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}
+				>
+					Rename
+				</ReactComponents.DropdownMenuItem>
+				<ReactComponents.DropdownMenuItem
+					variant="destructive"
+					onClick={() => setIsAlertDialogOpen(true)}
+				>
+					Delete
+				</ReactComponents.DropdownMenuItem>
+			</ReactComponents.DropdownMenuContent>
+
+			<ReactComponents.AlertDialog
+				open={isAlertDialogOpen}
+				onOpenChange={setIsAlertDialogOpen}
+			>
+				<ReactComponents.AlertDialogContent>
+					<ReactComponents.AlertDialogHeader>
+						<ReactComponents.AlertDialogTitle>
+							Delete snippet?
+						</ReactComponents.AlertDialogTitle>
+						<ReactComponents.AlertDialogDescription>
+							Are you sure you want to delete this collection? This action
+							cannot be undone.
+						</ReactComponents.AlertDialogDescription>
+					</ReactComponents.AlertDialogHeader>
+					<ReactComponents.AlertDialogFooter>
+						<ReactComponents.AlertDialogCancel
+							onClick={() => setIsAlertDialogOpen(false)}
+						>
+							Cancel
+						</ReactComponents.AlertDialogCancel>
+						<ReactComponents.AlertDialogAction
+							variant="primary"
+							danger
+							onClick={() => {
+								// TODO: Delete collection
+								setIsAlertDialogOpen(false);
+							}}
+							asChild
+						>
+							<span>
+								<Lucide.Trash /> Delete
+							</span>
+						</ReactComponents.AlertDialogAction>
+					</ReactComponents.AlertDialogFooter>
+				</ReactComponents.AlertDialogContent>
+			</ReactComponents.AlertDialog>
+		</ReactComponents.DropdownMenu>
+	);
+}
+
 function SnippetMoreButton({
 	itemData,
 	queryClient,
@@ -379,7 +458,7 @@ function customItemView(
 		return (
 			<div className="flex justify-between items-center w-full">
 				<div>{itemData?.name}</div>
-				<div className="hidden group-hover/tree-item-label:flex items-center gap-2">
+				<div className="opacity-0 group-hover/tree-item-label:opacity-100 *:data-[state=open]:opacity-100 flex items-center gap-2">
 					<ReactComponents.Button
 						variant="link"
 						size="small"
@@ -411,6 +490,11 @@ function customItemView(
 							<Lucide.Pin />
 						</span>
 					</ReactComponents.Button>
+					<CollectionMoreButton
+						itemData={itemData}
+						queryClient={queryClient}
+						tree={tree}
+					/>
 				</div>
 			</div>
 		);
