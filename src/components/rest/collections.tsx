@@ -303,10 +303,12 @@ function CollectionMoreButton({
 	itemData,
 	queryClient,
 	tree,
+	itemId,
 }: {
 	itemData: ReactComponents.TreeViewItem<any>;
 	queryClient: QueryClient;
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>;
+	itemId: string;
 }) {
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
@@ -326,7 +328,7 @@ function CollectionMoreButton({
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
 				<ReactComponents.DropdownMenuItem
-					onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}
+					onClick={() => tree.getItemInstance(itemId).startRenaming()}
 				>
 					Rename
 				</ReactComponents.DropdownMenuItem>
@@ -474,45 +476,56 @@ function customItemView(
 	if (isFolder) {
 		return (
 			<div className="flex justify-between items-center w-full">
-				<div>{itemData?.name}</div>
-				<div className="opacity-0 group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 flex items-center gap-2">
-					<ReactComponents.Button
-						variant="link"
-						size="small"
-						className="p-0 h-4"
-						onClick={(e) => {
-							e.stopPropagation();
-							e.preventDefault();
-							handleAddNewCollectionEntry(
-								itemData?.name,
-								queryClient,
-								setSelectedCollectionItemId,
-								setTabs,
-								tabs,
-							);
-						}}
-						asChild
-					>
-						<span>
-							<Lucide.Plus />
-						</span>
-					</ReactComponents.Button>
-					<ReactComponents.Button
-						variant="link"
-						size="small"
-						className="p-0 h-4 hover:text-fg-link"
-						asChild
-					>
-						<span>
-							<Lucide.Pin />
-						</span>
-					</ReactComponents.Button>
-					<CollectionMoreButton
-						itemData={itemData}
-						queryClient={queryClient}
-						tree={tree}
+				{item.isRenaming() ? (
+					<ReactComponents.Input
+						className="h-5 border-none p-0"
+						autoFocus
+						{...item.getRenameInputProps()}
 					/>
-				</div>
+				) : (
+					<React.Fragment>
+						<div>{itemData?.name}</div>
+						<div className="opacity-0 group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 flex items-center gap-2">
+							<ReactComponents.Button
+								variant="link"
+								size="small"
+								className="p-0 h-4"
+								onClick={(e) => {
+									e.stopPropagation();
+									e.preventDefault();
+									handleAddNewCollectionEntry(
+										itemData?.name,
+										queryClient,
+										setSelectedCollectionItemId,
+										setTabs,
+										tabs,
+									);
+								}}
+								asChild
+							>
+								<span>
+									<Lucide.Plus />
+								</span>
+							</ReactComponents.Button>
+							<ReactComponents.Button
+								variant="link"
+								size="small"
+								className="p-0 h-4 hover:text-fg-link"
+								asChild
+							>
+								<span>
+									<Lucide.Pin />
+								</span>
+							</ReactComponents.Button>
+							<CollectionMoreButton
+								itemData={itemData}
+								queryClient={queryClient}
+								tree={tree}
+								itemId={item.getId()}
+							/>
+						</div>
+					</React.Fragment>
+				)}
 			</div>
 		);
 	} else {
@@ -602,13 +615,27 @@ async function handleRenameSnippet(
 	newTitle: string,
 	queryClient: QueryClient,
 ) {
-	await Auth.AidboxCallWithMeta({
-		method: "PATCH",
-		url: `/ui_snippet/${item.getItemData().meta?.id}`,
-		body: JSON.stringify({
-			title: newTitle,
-		}),
-	});
+	if (item.isFolder()) {
+		const snippetIds = item.getChildren().map((child) => child.getId());
+		await Auth.AidboxCallWithMeta({
+			method: "PATCH",
+			url: `/ui_snippet`,
+			params: {
+				id: snippetIds.join(","),
+			},
+			body: JSON.stringify({
+				collection: newTitle,
+			}),
+		});
+	} else {
+		await Auth.AidboxCallWithMeta({
+			method: "PATCH",
+			url: `/ui_snippet/${item.getItemData().meta?.id}`,
+			body: JSON.stringify({
+				title: newTitle,
+			}),
+		});
+	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
 
