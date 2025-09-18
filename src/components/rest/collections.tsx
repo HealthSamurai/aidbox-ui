@@ -206,17 +206,22 @@ export const SaveButton = ({
 
 function buildTreeView(
 	entries: CollectionEntry[],
+	pinnedCollections: string[],
 ): Record<string, ReactComponents.TreeViewItem<any>> {
 	const tree: Record<string, ReactComponents.TreeViewItem<any>> = {
 		root: {
 			name: "root",
-			children: entries
-				.filter(
-					(entry, idx, arr) =>
-						entry.collection &&
-						arr.findIndex((e) => e.collection === entry.collection) === idx,
-				)
-				.map((entry) => entry.collection!),
+			children: [
+				...[...pinnedCollections].reverse(),
+				...entries
+					.filter((entry) => !pinnedCollections.includes(entry.collection!))
+					.filter(
+						(entry, idx, arr) =>
+							entry.collection &&
+							arr.findIndex((e) => e.collection === entry.collection) === idx,
+					)
+					.map((entry) => entry.collection!),
+			],
 		},
 	};
 
@@ -470,9 +475,13 @@ function customItemView(
 	queryClient: QueryClient,
 	setSelectedCollectionItemId: (id: string) => void,
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>,
+	pinnedCollections: string[],
+	setPinnedCollections: (ids: string[]) => void,
 ) {
 	const isFolder = item.isFolder();
 	const itemData = item.getItemData();
+	const itemId = item.getId();
+	const isPinned = pinnedCollections.includes(itemId);
 	if (isFolder) {
 		return (
 			<div className="flex justify-between items-center w-full">
@@ -485,11 +494,12 @@ function customItemView(
 				) : (
 					<React.Fragment>
 						<div>{itemData?.name}</div>
-						<div className="opacity-0 group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 flex items-center gap-2">
+
+						<div className="flex items-center gap-2">
 							<ReactComponents.Button
+								className="opacity-0 group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 p-0 h-4"
 								variant="link"
 								size="small"
-								className="p-0 h-4"
 								onClick={(e) => {
 									e.stopPropagation();
 									e.preventDefault();
@@ -510,11 +520,22 @@ function customItemView(
 							<ReactComponents.Button
 								variant="link"
 								size="small"
-								className="p-0 h-4 hover:text-fg-link"
+								className={`hover:text-fg-link ${!isPinned ? "opacity-0" : ""} group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 p-0 h-4`}
+								onClick={(e) => {
+									e.stopPropagation();
+									e.preventDefault();
+									if (isPinned) {
+										setPinnedCollections(
+											pinnedCollections.filter((id) => id !== itemId),
+										);
+									} else {
+										setPinnedCollections([...pinnedCollections, itemId]);
+									}
+								}}
 								asChild
 							>
 								<span>
-									<Lucide.Pin />
+									{isPinned ? <ReactComponents.PinIcon /> : <Lucide.Pin />}
 								</span>
 							</ReactComponents.Button>
 							<CollectionMoreButton
@@ -618,13 +639,21 @@ async function handleRenameSnippet(
 	if (item.isFolder()) {
 		const snippetIds = item.getChildren().map((child) => child.getId());
 		await Auth.AidboxCallWithMeta({
-			method: "PATCH",
-			url: `/ui_snippet`,
-			params: {
-				id: snippetIds.join(","),
-			},
+			method: "POST",
+			url: `/`,
 			body: JSON.stringify({
-				collection: newTitle,
+				resourceType: "Bundle",
+				type: "transaction",
+				entry: snippetIds.map((id) => ({
+					request: {
+						method: "PATCH",
+						url: `/ui_snippet/${id}`,
+					},
+					resource: {
+						resourceType: "ui_snippet",
+						collection: newTitle,
+					},
+				})),
 			}),
 		});
 	} else {
@@ -652,7 +681,11 @@ export const CollectionsView = ({
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
 }) => {
-	const tree = buildTreeView(collectionEntries.data ?? []);
+	const [pinnedCollections, setPinnedCollections] = useLocalStorage<string[]>({
+		key: "rest-console-pinned-collections",
+		defaultValue: [],
+	});
+	const tree = buildTreeView(collectionEntries.data ?? [], pinnedCollections);
 	const selectedTab = tabs.find((tab) => tab.selected);
 	const queryClient = useQueryClient();
 
@@ -726,7 +759,7 @@ export const CollectionsView = ({
 					<ReactComponents.TreeView
 						key={
 							queryClient.getQueryState(["rest-console-collections"])
-								?.dataUpdatedAt
+								?.dataUpdatedAt + pinnedCollections.join(",")
 						}
 						rootItemId="root"
 						items={tree}
@@ -746,6 +779,8 @@ export const CollectionsView = ({
 								queryClient,
 								setSelectedCollectionItemId,
 								tree,
+								pinnedCollections,
+								setPinnedCollections,
 							)
 						}
 						onSelectItem={(e) =>
