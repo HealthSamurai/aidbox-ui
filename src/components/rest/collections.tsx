@@ -282,6 +282,23 @@ async function handleDeleteSnippet(
 	ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
 }
 
+async function handleDeleteCollection(
+	itemData: ReactComponents.TreeViewItem<any>,
+	queryClient: QueryClient,
+) {
+	await Auth.AidboxCallWithMeta({
+		method: "DELETE",
+		url: `/ui_snippet`,
+		headers: {
+			"x-conditional-delete": "remove-all",
+		},
+		params: {
+			id: itemData.children?.join(",") ?? "",
+		},
+	});
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+}
+
 function CollectionMoreButton({
 	itemData,
 	queryClient,
@@ -345,7 +362,7 @@ function CollectionMoreButton({
 							variant="primary"
 							danger
 							onClick={() => {
-								// TODO: Delete collection
+								handleDeleteCollection(itemData, queryClient);
 								setIsAlertDialogOpen(false);
 							}}
 							asChild
@@ -458,7 +475,7 @@ function customItemView(
 		return (
 			<div className="flex justify-between items-center w-full">
 				<div>{itemData?.name}</div>
-				<div className="opacity-0 group-hover/tree-item-label:opacity-100 *:data-[state=open]:opacity-100 flex items-center gap-2">
+				<div className="opacity-0 group-hover/tree-item-label:opacity-100 has-aria-expanded:opacity-100 flex items-center gap-2">
 					<ReactComponents.Button
 						variant="link"
 						size="small"
@@ -687,7 +704,10 @@ export const CollectionsView = ({
 						rootItemId="root"
 						items={tree}
 						selectedItemId={selectedCollectionItemId ?? "root"}
-						expandedItemIds={expandedItemIds}
+						expandedItemIds={[
+							...expandedItemIds,
+							selectedTabEntry?.collection ?? "",
+						]}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(item, newTitle, queryClient);
 						}}
