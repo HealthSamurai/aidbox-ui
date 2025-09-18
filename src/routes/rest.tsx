@@ -14,16 +14,13 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
 import {
-	Columns2,
-	Fullscreen,
-	Minimize2,
-	Rows2,
-	Save,
-	Timer,
-} from "lucide-react";
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { Fullscreen, Minimize2, Timer } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
@@ -40,6 +37,7 @@ import {
 	LeftMenuToggle,
 } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
+import { SplitButton, type SplitDirection } from "../components/Split";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
@@ -70,6 +68,9 @@ function RequestLineEditorWrapper({
 }) {
 	return (
 		<RequestLineEditor
+			key={`request-line-editor-${selectedTab.id}`}
+			placeholder="/fhir/Patient"
+			autoFocus={selectedTab.path === ""}
 			className="w-full"
 			method={selectedTab.method}
 			path={selectedTab.path || ""}
@@ -119,8 +120,8 @@ function RequestView({
 	onRawChange,
 	onHeaderRemove,
 	onParamRemove,
-	handleFullscreenPanelChange,
-	fullscreenPanel,
+	onFullScreenToggle,
+	fullScreenState,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
@@ -131,8 +132,8 @@ function RequestView({
 	onRawChange: (rawText: string) => void;
 	onHeaderRemove: (headerIndex: number) => void;
 	onParamRemove: (paramIndex: number) => void;
-	handleFullscreenPanelChange: (panel: "request" | "response") => void;
-	fullscreenPanel: "request" | "response" | null;
+	onFullScreenToggle: (state: "maximized" | "normal") => void;
+	fullScreenState: "maximized" | "normal";
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -161,8 +162,8 @@ function RequestView({
 						</TabsList>
 					</div>
 					<ExpandPane
-						onClick={() => handleFullscreenPanelChange("request")}
-						fullscreenPanel={fullscreenPanel}
+						onToggle={(state) => onFullScreenToggle(state)}
+						state={fullScreenState}
 					/>
 				</div>
 				<TabsContent value="params">
@@ -182,6 +183,7 @@ function RequestView({
 				<TabsContent value="body">
 					<CodeEditor
 						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+						key={`request-editor-${selectedTab.id}`}
 						defaultValue={getEditorValue()}
 						onChange={onBodyChange}
 					/>
@@ -219,80 +221,41 @@ function ResponseStatus({
 	);
 }
 
-type PanelSplitDirection = "horizontal" | "vertical";
-
-type SplitDirectionToggleProps = {
-	direction: PanelSplitDirection;
-	onChange: (direction: PanelSplitDirection) => void;
-};
-
-function HorizontalSplit({ onChange }: { onChange: () => void }) {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button variant="link" onClick={onChange} size="small">
-					<Rows2 />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent>Switch to vertical split</TooltipContent>
-		</Tooltip>
-	);
-}
-
-function VerticalSplit({ onChange }: { onChange: () => void }) {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button variant="link" onClick={onChange} size="small">
-					<Columns2 />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent>Switch to horizontal split</TooltipContent>
-		</Tooltip>
-	);
-}
-
 function ExpandPane({
-	onClick,
-	fullscreenPanel,
+	onToggle,
+	state,
 }: {
-	onClick: () => void;
-	fullscreenPanel: "request" | "response" | null;
+	onToggle: (state: "maximized" | "normal") => void;
+	state: "maximized" | "normal";
 }) {
-	if (fullscreenPanel === null) {
+	if (state === "normal") {
 		return (
-			<Button variant="link" size="small" onClick={onClick}>
+			<Button variant="link" size="small" onClick={() => onToggle("maximized")}>
 				<Fullscreen />
 			</Button>
 		);
 	} else {
 		return (
-			<Button variant="primary" size="small" onClick={onClick}>
-				<Minimize2 />
-			</Button>
+			<div className="flex gap-2 items-center">
+				<span className="typo-body text-text-secondary">Esc</span>
+				<Button
+					variant="primary"
+					size="small"
+					onClick={() => onToggle("normal")}
+				>
+					<Minimize2 />
+				</Button>
+			</div>
 		);
 	}
 }
 
-function SplitDirectionToggle({
-	direction,
-	onChange,
-}: SplitDirectionToggleProps) {
-	if (direction === "horizontal") {
-		return <HorizontalSplit onChange={() => onChange("vertical")} />;
-	} else if (direction === "vertical") {
-		return <VerticalSplit onChange={() => onChange("horizontal")} />;
-	}
-}
-
 type ResponsePaneProps = {
-	panelsMode: PanelSplitDirection;
-	setPanelsMode: (mode: PanelSplitDirection) => void;
 	response: ResponseData | null;
-	activeResponseTab: ResponseTabs;
-	setActiveResponseTab: (tab: ResponseTabs) => void;
-	handleFullscreenPanelChange: (panel: "request" | "response") => void;
-	fullscreenPanel: "request" | "response" | null;
+	splitState: SplitDirection;
+	onSplitChange: (mode: SplitDirection) => void;
+	onFullScreenToggle: (state: "maximized" | "normal") => void;
+	fullScreenState: "maximized" | "normal";
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -365,14 +328,16 @@ function ResponseView({
 }
 
 function ResponsePane({
-	panelsMode,
-	setPanelsMode,
+	splitState,
+	onSplitChange,
 	response,
-	activeResponseTab,
-	setActiveResponseTab,
-	handleFullscreenPanelChange,
-	fullscreenPanel,
+	onFullScreenToggle,
+	fullScreenState,
 }: ResponsePaneProps) {
+	const [activeResponseTab, setActiveResponseTab] = useState<
+		"body" | "headers" | "raw"
+	>("body");
+
 	return (
 		<Tabs
 			value={activeResponseTab}
@@ -395,15 +360,15 @@ function ResponsePane({
 					</div>
 					<div className="flex items-center gap-1">
 						{response && <ResponseInfo response={response} />}
-						{fullscreenPanel === null && (
-							<SplitDirectionToggle
-								direction={panelsMode}
-								onChange={(newMode) => setPanelsMode(newMode)}
+						{fullScreenState === "normal" && (
+							<SplitButton
+								direction={splitState}
+								onChange={(newMode) => onSplitChange(newMode)}
 							/>
 						)}
 						<ExpandPane
-							onClick={() => handleFullscreenPanelChange("response")}
-							fullscreenPanel={fullscreenPanel}
+							onToggle={(state) => onFullScreenToggle(state)}
+							state={fullScreenState}
 						/>
 					</div>
 				</div>
@@ -567,6 +532,22 @@ async function saveToUIHistory(
 	}
 }
 
+function SendButton(
+	props: Omit<React.ComponentProps<typeof Button>, "variant">,
+) {
+	return (
+		<Tooltip delayDuration={600}>
+			<TooltipTrigger asChild>
+				<Button {...props} variant="primary">
+					<PlayIcon />
+					Send
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+		</Tooltip>
+	);
+}
+
 function RouteComponent() {
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -594,9 +575,6 @@ function RouteComponent() {
 	});
 
 	const [response, setResponse] = useState<ResponseData | null>(null);
-	const [activeResponseTab, setActiveResponseTab] = useState<
-		"body" | "headers" | "raw"
-	>("body");
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
 		crypto.randomUUID(),
@@ -611,6 +589,9 @@ function RouteComponent() {
 	}, [tabs]);
 
 	const queryClient = useQueryClient();
+	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
+		string | undefined
+	>(selectedTab.id);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -838,18 +819,22 @@ function RouteComponent() {
 		});
 	}
 
-	const handleFullscreenPanelChange = (panel: "request" | "response") => {
-		if (fullscreenPanel === panel) {
-			setFullscreenPanel(null);
-		} else {
-			setFullscreenPanel(panel);
-		}
-	};
+	const collectionEntries = useQuery({
+		queryKey: ["rest-console-collections"],
+		queryFn: RestCollections.getCollectionsEntries,
+	});
 
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			<div className="flex w-full h-full">
-				<LeftMenu tabs={tabs} setTabs={setTabs} selectedTab={selectedTab} />
+				<LeftMenu
+					tabs={tabs}
+					setTabs={setTabs}
+					selectedTab={selectedTab}
+					collectionEntries={collectionEntries}
+					setSelectedCollectionItemId={setSelectedCollectionItemId}
+					selectedCollectionItemId={selectedCollectionItemId}
+				/>
 				<div className="flex flex-col grow min-w-0">
 					<div className="flex h-10 w-full">
 						<LeftMenuToggle
@@ -873,21 +858,18 @@ function RouteComponent() {
 							}}
 							handleTabMethodChange={handleTabMethodChange}
 						/>
-						<Tooltip delayDuration={600}>
-							<TooltipTrigger asChild>
-								<Button
-									variant="primary"
-									onClick={() =>
-										handleSendRequest(selectedTab, setResponse, queryClient)
-									}
-								>
-									<PlayIcon />
-									Send
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
-						</Tooltip>
-						<RestCollections.SaveButton tab={selectedTab} />
+						<SendButton
+							onClick={() =>
+								handleSendRequest(selectedTab, setResponse, queryClient)
+							}
+						/>
+						<RestCollections.SaveButton
+							tab={selectedTab}
+							collectionEntries={collectionEntries}
+							setSelectedCollectionItemId={setSelectedCollectionItemId}
+							tabs={tabs}
+							setTabs={setTabs}
+						/>
 					</div>
 					<ResizablePanelGroup
 						autoSaveId="rest-console-request-response"
@@ -908,8 +890,12 @@ function RouteComponent() {
 								onRawChange={handleRawChange}
 								onHeaderRemove={handleTabHeaderRemove}
 								onParamRemove={handleTabParamRemove}
-								handleFullscreenPanelChange={handleFullscreenPanelChange}
-								fullscreenPanel={fullscreenPanel}
+								onFullScreenToggle={(state) =>
+									setFullscreenPanel(state === "maximized" ? "request" : null)
+								}
+								fullScreenState={
+									fullscreenPanel === "request" ? "maximized" : "normal"
+								}
 							/>
 						</ResizablePanel>
 						<ResizableHandle />
@@ -919,13 +905,17 @@ function RouteComponent() {
 						>
 							<ResponsePane
 								key={`response-${selectedTab.id}`}
-								panelsMode={panelsMode}
-								setPanelsMode={setPanelsMode}
 								response={response}
-								activeResponseTab={activeResponseTab}
-								setActiveResponseTab={setActiveResponseTab}
-								handleFullscreenPanelChange={handleFullscreenPanelChange}
-								fullscreenPanel={fullscreenPanel}
+								splitState={panelsMode}
+								onSplitChange={setPanelsMode}
+								fullScreenState={
+									fullscreenPanel === "response" ? "maximized" : "normal"
+								}
+								onFullScreenToggle={(state) =>
+									state === "maximized"
+										? setFullscreenPanel("response")
+										: setFullscreenPanel(null)
+								}
 							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>

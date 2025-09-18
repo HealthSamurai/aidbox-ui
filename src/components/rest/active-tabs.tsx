@@ -16,14 +16,14 @@ import {
 
 // Styles
 export const methodColors = {
-	GET: "text-utility-green typo-label",
-	POST: "text-utility-yellow typo-label",
-	PUT: "text-utility-blue typo-label",
-	PATCH: "text-utility-violet typo-label",
-	DELETE: "text-utility-red typo-label",
+	GET: "text-utility-green typo-label-xs",
+	POST: "text-utility-yellow typo-label-xs",
+	PUT: "text-utility-blue typo-label-xs",
+	PATCH: "text-utility-violet typo-label-xs",
+	DELETE: "text-utility-red typo-label-xs",
 };
 
-const tabPathStyle = "typo-label-xs";
+const tabPathStyle = "typo-body-xs";
 
 export type TabId = string;
 
@@ -54,7 +54,7 @@ export const DEFAULT_TAB: Tab = {
 	method: "GET",
 	name: "New request",
 	selected: true,
-	activeSubTab: "body",
+	activeSubTab: "params",
 	headers: [
 		{ id: "1", name: "Content-Type", value: "application/json", enabled: true },
 		{ id: "2", name: "Accept", value: "application/json", enabled: true },
@@ -63,7 +63,7 @@ export const DEFAULT_TAB: Tab = {
 	params: [{ id: "1", name: "", value: "", enabled: true }],
 };
 
-function addTab(
+export function addTab(
 	tabs: Tab[],
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
@@ -72,6 +72,7 @@ function addTab(
 		id: crypto.randomUUID(),
 	};
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
+	return newTab;
 }
 
 export function addTabFromHistory(
@@ -119,7 +120,7 @@ export function addTabFromHistory(
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 }
 
-function forceSelectedTab(tabs: Tab[], tabIndex: number): Tab[] {
+export function forceSelectedTab(tabs: Tab[], tabIndex: number): Tab[] {
 	const hasSelected = tabs.some((tab) => tab.selected);
 	if (!hasSelected && tabs.length > 0) {
 		const safeIndex = Math.min(tabIndex, tabs.length - 1);
