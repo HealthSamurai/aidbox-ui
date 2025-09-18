@@ -41,14 +41,19 @@ async function SaveRequest(
 	tabs: Tab[],
 	collectionName?: string,
 	saveToRootCollection?: boolean,
+	setLeftMenuOpen?: (open: boolean) => void,
 ) {
 	const currentSnippet = collectionEntries.find((entry) => entry.id === tab.id);
 	let collection: string | undefined;
 	let snippetId: string;
 
+	if (!currentSnippet) {
+		setLeftMenuOpen?.(true);
+	}
+
 	if (createNewCollection) {
 		collection = getNewUniqueCollectionName(collectionEntries);
-	} else if (saveToRootCollection) {
+	} else if (saveToRootCollection && !currentSnippet) {
 		collection = undefined;
 	} else {
 		collection =
@@ -103,12 +108,14 @@ export const SaveButton = ({
 	tabs,
 	setSelectedCollectionItemId,
 	setTabs,
+	setLeftMenuOpen,
 }: {
 	tab: Tab;
 	collectionEntries: QueryObserverResult<CollectionEntry[]>;
 	setSelectedCollectionItemId: (id: string) => void;
 	tabs: Tab[];
 	setTabs: (tabs: Tab[]) => void;
+	setLeftMenuOpen: (open: boolean) => void;
 }) => {
 	const queryClient = useQueryClient();
 	return (
@@ -126,6 +133,7 @@ export const SaveButton = ({
 						tabs,
 						undefined,
 						true,
+						setLeftMenuOpen,
 					);
 					ReactComponents.toast("Request saved to collections");
 				}}
@@ -144,7 +152,8 @@ export const SaveButton = ({
 						Save to collection:
 					</ReactComponents.DropdownMenuLabel>
 					<ReactComponents.DropdownMenuSeparator />
-					{collectionEntries.data?.length === 0 ? (
+					{collectionEntries.data?.filter((entry) => entry.collection)
+						?.length === 0 ? (
 						<ReactComponents.DropdownMenuItem disabled>
 							No collections
 						</ReactComponents.DropdownMenuItem>
@@ -696,6 +705,8 @@ export const CollectionsView = ({
 	const selectedTab = tabs.find((tab) => tab.selected);
 	const queryClient = useQueryClient();
 
+	const selectedTabId = tabs.find((tab) => tab.selected)?.id;
+
 	const selectedTabEntry = collectionEntries.data?.find(
 		(entry) => entry.id === selectedCollectionItemId,
 	);
@@ -770,7 +781,7 @@ export const CollectionsView = ({
 						}
 						rootItemId="root"
 						items={tree}
-						selectedItemId={selectedCollectionItemId ?? "root"}
+						selectedItemId={selectedTabId ?? "root"}
 						expandedItemIds={[
 							...expandedItemIds,
 							selectedTabEntry?.collection ?? "",

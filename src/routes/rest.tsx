@@ -869,6 +869,7 @@ function RouteComponent() {
 							setSelectedCollectionItemId={setSelectedCollectionItemId}
 							tabs={tabs}
 							setTabs={setTabs}
+							setLeftMenuOpen={setLeftMenuOpen}
 						/>
 					</div>
 					<ResizablePanelGroup
