@@ -39,6 +39,7 @@ async function SaveRequest(
 	createNewCollection: boolean,
 	setTabs: (tabs: Tab[]) => void,
 	tabs: Tab[],
+	collectionName?: string,
 ) {
 	const currentSnippet = collectionEntries.find((entry) => entry.id === tab.id);
 	let collection: string;
@@ -48,6 +49,7 @@ async function SaveRequest(
 		collection = getNewUniqueCollectionName(collectionEntries);
 	} else {
 		collection =
+			collectionName ||
 			currentSnippet?.collection ||
 			getNewUniqueCollectionName(collectionEntries);
 	}
@@ -137,9 +139,44 @@ export const SaveButton = ({
 						Save to collection:
 					</ReactComponents.DropdownMenuLabel>
 					<ReactComponents.DropdownMenuSeparator />
-					<ReactComponents.DropdownMenuItem disabled>
-						No collections
-					</ReactComponents.DropdownMenuItem>
+					{collectionEntries.data?.length === 0 ? (
+						<ReactComponents.DropdownMenuItem disabled>
+							No collections
+						</ReactComponents.DropdownMenuItem>
+					) : (
+						collectionEntries.data
+							?.map((entry, idx, arr) => {
+								const collectionName = entry.collection;
+								if (
+									collectionName !== undefined &&
+									arr.findIndex((e) => e.collection === collectionName) === idx
+								) {
+									return collectionName;
+								}
+								return undefined;
+							})
+							.filter((collectionName) => collectionName !== undefined)
+							.map((collectionName) => (
+								<ReactComponents.DropdownMenuItem
+									key={collectionName}
+									onClick={() => {
+										SaveRequest(
+											tab,
+											queryClient,
+											collectionEntries.data ?? [],
+											setSelectedCollectionItemId,
+											false,
+											setTabs,
+											tabs,
+											collectionName,
+										);
+									}}
+								>
+									{collectionName}
+								</ReactComponents.DropdownMenuItem>
+							))
+					)}
+
 					<ReactComponents.DropdownMenuSeparator />
 					<ReactComponents.DropdownMenuItem asChild>
 						<ReactComponents.Button
@@ -559,7 +596,10 @@ export const CollectionsView = ({
 			) : (
 				<div className="px-1 py-2">
 					<ReactComponents.TreeView
-						key={collectionEntries.data?.length}
+						key={
+							queryClient.getQueryState(["rest-console-collections"])
+								?.dataUpdatedAt
+						}
 						rootItemId="root"
 						items={tree}
 						selectedItemId={selectedCollectionItemId ?? "root"}
