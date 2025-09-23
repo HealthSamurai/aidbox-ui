@@ -23,6 +23,8 @@ import { useEffect, useMemo, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { FHIRStructureTable } from "../../components/FHIRStructureTable";
+import { useFHIRStructureTable } from "../../components/FHIRStructureTable/useFHIRStructureTable";
 
 interface ViewDefinition {
   resourceType: string;
@@ -637,6 +639,10 @@ function RightPanel({
   const canGoToPrevious = currentResultIndex > 0;
   const canGoToNext = currentResultIndex < searchResults.length - 1;
 
+  // Transform schema data for FHIRStructureTable
+  const fhirElements = useFHIRStructureTable(schemaData);
+  const hasStructuredSchema = fhirElements && fhirElements.length > 0;
+
   // Generate copy text based on current mode and content
   const getCopyText = () => {
     if (!exampleResource) {
@@ -674,7 +680,7 @@ function RightPanel({
             </TabsList>
           </div>
         </div>
-        <TabsContent value="schema">
+        <TabsContent value="schema" className="h-full overflow-auto">
           {isLoadingViewDef || isLoadingSchema ? (
             <div className="flex items-center justify-center h-full text-text-secondary">
               <div className="text-center">
@@ -690,6 +696,10 @@ function RightPanel({
                 </div>
                 <div className="text-sm">{schemaError}</div>
               </div>
+            </div>
+          ) : hasStructuredSchema ? (
+            <div className="p-4 h-full overflow-auto">
+              <FHIRStructureTable elements={fhirElements} />
             </div>
           ) : (
             <CodeEditor
