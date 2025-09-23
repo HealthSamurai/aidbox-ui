@@ -503,8 +503,72 @@ function RightPanel({
     key: `viewDefinition-rightPanel-exampleMode-${routeId}`,
     defaultValue: "json",
   });
+  const [schemaData, setSchemaData] = useState<any>(null);
+  const [isLoadingSchema, setIsLoadingSchema] = useState(false);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
 
   const resourceType = viewDefinition?.resource || "Patient";
+
+  // Fetch schema when activeTab changes to "schema" or resourceType changes
+  useEffect(() => {
+    if (activeTab === "schema" && resourceType && !isLoadingViewDef) {
+      const fetchSchema = async () => {
+        setIsLoadingSchema(true);
+        setSchemaError(null);
+        try {
+          const response = await AidboxCallWithMeta({
+            method: "POST",
+            url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              method: "aidbox.introspector/get-schemas-by-resource-type",
+              params: { "resource-type": resourceType },
+            }),
+          });
+
+          try {
+            const data = JSON.parse(response.body);
+
+            // Extract the object with "default?": true from the result
+            if (data?.result) {
+              const defaultSchema = Object.values(data.result).find(
+                (schema: any) => schema?.["default?"] === true,
+              );
+
+              if (defaultSchema) {
+                // Extract only the differential value from the default schema
+                const differential = (defaultSchema as any)?.differential;
+                setSchemaData(differential || defaultSchema);
+              } else {
+                // If no default schema found, try to use the first one
+                const schemas = Object.values(data.result);
+                const firstSchema = schemas[0] as any;
+                const differential = firstSchema?.differential;
+                setSchemaData(differential || firstSchema || data);
+              }
+            } else {
+              // Fallback to the entire response if no result property
+              setSchemaData(data);
+            }
+          } catch (parseError) {
+            console.error("Failed to parse schema response:", parseError);
+            setSchemaError("Failed to parse schema response");
+          }
+        } catch (error) {
+          console.error("Error fetching schema:", error);
+          setSchemaError(
+            error instanceof Error ? error.message : "Failed to fetch schema",
+          );
+        } finally {
+          setIsLoadingSchema(false);
+        }
+      };
+
+      fetchSchema();
+    }
+  }, [activeTab, resourceType, isLoadingViewDef]);
 
   const handleSearch = async () => {
     if (!viewDefinition?.resource) return;
@@ -611,18 +675,27 @@ function RightPanel({
           </div>
         </div>
         <TabsContent value="schema">
-          {isLoadingViewDef ? (
+          {isLoadingViewDef || isLoadingSchema ? (
             <div className="flex items-center justify-center h-full text-text-secondary">
               <div className="text-center">
                 <div className="text-lg mb-2">Loading schema...</div>
                 <div className="text-sm">Fetching {resourceType} schema</div>
               </div>
             </div>
+          ) : schemaError ? (
+            <div className="flex items-center justify-center h-full text-text-secondary">
+              <div className="text-center">
+                <div className="text-lg mb-2 text-red-600">
+                  Error loading schema
+                </div>
+                <div className="text-sm">{schemaError}</div>
+              </div>
+            </div>
           ) : (
             <CodeEditor
               readOnly
               defaultValue={JSON.stringify(
-                {
+                schemaData || {
                   resourceType,
                   description: `Schema for ${resourceType} resource`,
                   properties: viewDefinition?.select?.[0]?.column || [],
