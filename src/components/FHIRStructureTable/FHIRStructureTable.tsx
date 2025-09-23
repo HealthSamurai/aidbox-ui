@@ -53,13 +53,6 @@ export interface FHIRStructureTableProps {
   options?: Record<string, any>;
 }
 
-// Utility function for combining classes
-function classNames(
-  ...classes: (string | boolean | undefined | null)[]
-): string {
-  return classes.filter(Boolean).join(" ");
-}
-
 // Nest elements by level to create tree structure
 function nestByLevel(items: FHIRElement[]): FHIRElement[] {
   const result: FHIRElement[] = [];
@@ -171,9 +164,9 @@ const NameCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
   };
 
   return (
-    <div className="flex pt-2 pb-1 ml-1">
-      <div className="pt-[2px]">{getIcon()}</div>
-      <div className="pl-2">
+    <div className="flex items-center gap-1">
+      <div className="flex-shrink-0">{getIcon()}</div>
+      <div>
         {element.name}
         {element.union && "[x]"}
       </div>
@@ -184,11 +177,11 @@ const NameCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
 // Flags cell component
 const FlagsCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
   return (
-    <div className="flex flex-row h-full">
+    <div className="flex flex-row items-center h-full">
       {element.flags?.has("mustSupport") && (
         <Tooltip>
           <TooltipTrigger>
-            <span className="px-[2px] max-h-[20px] text-white bg-red-600 rounded">
+            <span className="px-[2px] text-white bg-red-600 rounded text-xs">
               S
             </span>
           </TooltipTrigger>
@@ -200,7 +193,7 @@ const FlagsCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
       {element.flags?.has("summary") && (
         <Tooltip>
           <TooltipTrigger>
-            <span className="px-[2px] max-h-[20px] mr-1">Σ</span>
+            <span className="px-[2px] mr-1 text-xs">Σ</span>
           </TooltipTrigger>
           <TooltipContent>
             <pre>Part of the summary set</pre>
@@ -210,7 +203,7 @@ const FlagsCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
       {element.flags?.has("modifier") && (
         <Tooltip>
           <TooltipTrigger>
-            <span className="px-[2px] max-h-[20px] mr-1">!?</span>
+            <span className="px-[2px] mr-1 text-xs">!?</span>
           </TooltipTrigger>
           <TooltipContent>
             <pre>Modifying element</pre>
@@ -226,7 +219,7 @@ const CardinalityCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
   if (element.lvl === 0) return null;
   const min = element.min ?? 0;
   const max = element.max ?? 1;
-  return <div className="flex flex-row h-full">{`${min}..${max}`}</div>;
+  return <div className="font-mono text-xs">{`${min}..${max}`}</div>;
 };
 
 // Datatype cell component
@@ -239,13 +232,13 @@ const DatatypeCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
         : undefined;
 
     return (
-      <div>
+      <div className="text-xs">
         <a href={href} className={href ? "text-[#358FEA]" : "text-red-700"}>
           {label}
         </a>
         {element.slice_type}
         {element.refers && (
-          <span className="space-x-2">
+          <span className="space-x-1">
             {" ("}
             {element.refers.map((r, idx) => (
               <React.Fragment key={r.name}>
@@ -266,7 +259,7 @@ const DatatypeCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
   }
 
   return (
-    <div>
+    <div className="text-xs">
       {element.element_reference
         ? `see ${element.element_reference}`
         : element.datatype}
@@ -277,7 +270,7 @@ const DatatypeCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
 // Description cell component
 const DescriptionCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
   return (
-    <>
+    <div className="text-xs">
       {element.short && <div>{element.short}</div>}
       {!element.short && element.desc && <div>{element.desc}</div>}
       {element.extension_url && (
@@ -319,6 +312,71 @@ const DescriptionCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
           </a>
         </div>
       )}
+    </div>
+  );
+};
+
+// Tree line component
+const TreeLine: React.FC<{
+  level: number;
+  isLast: boolean;
+  hasChildren: boolean;
+}> = ({ level, isLast, hasChildren }) => {
+  if (level === 0) return null;
+
+  return (
+    <>
+      {Array.from({ length: level }).map((_, i) => (
+        <span
+          key={i}
+          className="tree-indent-level"
+          style={{
+            width: "20px",
+            display: "inline-block",
+            position: "relative",
+            height: "100%",
+          }}
+        >
+          {i === level - 1 ? (
+            <>
+              <span
+                className="tree-vertical"
+                style={{
+                  position: "absolute",
+                  left: "10px",
+                  top: isLast ? "0" : "-50%",
+                  bottom: isLast ? "50%" : "0",
+                  borderLeft: "1px dotted #9ca3af",
+                  width: "1px",
+                }}
+              />
+              <span
+                className="tree-horizontal"
+                style={{
+                  position: "absolute",
+                  left: "10px",
+                  top: "50%",
+                  width: "8px",
+                  borderTop: "1px dotted #9ca3af",
+                  height: "1px",
+                }}
+              />
+            </>
+          ) : (
+            <span
+              className="tree-vertical-through"
+              style={{
+                position: "absolute",
+                left: "10px",
+                top: "0",
+                bottom: "0",
+                borderLeft: "1px dotted #9ca3af",
+                width: "1px",
+              }}
+            />
+          )}
+        </span>
+      ))}
     </>
   );
 };
@@ -326,88 +384,106 @@ const DescriptionCell: React.FC<{ element: FHIRElement }> = ({ element }) => {
 // Tree node component
 const TreeNode: React.FC<{
   element: FHIRElement;
-  lastChilds: FHIRElement[];
-}> = ({ element, lastChilds }) => {
-  const isLastChild = lastChilds.some((lc) => lc.path === element.path);
-
-  if (!element.children || element.children.length === 0) {
-    return (
-      <tr className="group">
-        <td
-          className={classNames(
-            "px-4 py-2 align-top text-[#010205] font-inter flex h-full pl-[15px] py-0",
-          )}
-        >
-          <div className="element flex h-full">
-            {Array.from({ length: element.lvl }).map((_, i) => (
-              <span key={i} className="block li w-[15px] h-auto" />
-            ))}
-          </div>
-          <div className="z-10 bg-white group-even:bg-[#f7f7f8]">
-            <NameCell element={element} />
-            {isLastChild && (
-              <div className="relative -left-[15px] h-full -top-[10px] border-l border-white group-even:border-[#f7f7f8]" />
-            )}
-          </div>
-        </td>
-        <td className="px-4 py-2 align-top text-[#010205] font-inter space-x-2">
-          <FlagsCell element={element} />
-        </td>
-        <td
-          className="px-4 py-2 align-top text-[#010205] font-inter"
-          style={{ fontFamily: "JetBrains Mono" }}
-        >
-          <CardinalityCell element={element} />
-        </td>
-        <td className="px-4 py-2 align-top text-[#010205] font-inter">
-          <DatatypeCell element={element} />
-        </td>
-        <td className="px-4 py-2 align-top text-[#010205] font-inter text-[12px]">
-          <DescriptionCell element={element} />
-        </td>
-      </tr>
-    );
-  }
+  isLast: boolean;
+  parentLevels: boolean[];
+}> = ({ element, isLast, parentLevels }) => {
+  const hasChildren = element.children && element.children.length > 0;
 
   return (
     <>
-      <tr className="group">
-        <td
-          className={classNames(
-            "px-4 py-2 align-top text-[#010205] font-inter flex h-full pl-[15px] py-0",
-          )}
-        >
-          <div className="element flex h-full">
-            {Array.from({ length: element.lvl }).map((_, i) => (
-              <span key={i} className="block li w-[15px] h-auto" />
-            ))}
-          </div>
-          <div className="z-10 bg-white group-even:bg-[#f7f7f8]">
-            <NameCell element={element} />
-            {element.lvl !== 0 && (
-              <div className="ml-[10px] h-[calc(100%-6px)] border-l border-dotted border-[#b3bac0]" />
-            )}
+      <tr className="group fhir-row">
+        <td className="px-2 py-0.5 align-middle">
+          <div className="flex items-center" style={{ minHeight: "28px" }}>
+            <div
+              className="tree-structure"
+              style={{ display: "inline-flex", alignItems: "center" }}
+            >
+              {parentLevels.map((isParentLast, i) => (
+                <span
+                  key={i}
+                  className="tree-indent-level"
+                  style={{
+                    width: "20px",
+                    display: "inline-block",
+                    position: "relative",
+                    height: "28px",
+                  }}
+                >
+                  {!isParentLast && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: "10px",
+                        top: "0",
+                        bottom: "0",
+                        borderLeft: "1px dotted #9ca3af",
+                        width: "1px",
+                      }}
+                    />
+                  )}
+                </span>
+              ))}
+              {element.lvl > 0 && (
+                <span
+                  className="tree-indent-level"
+                  style={{
+                    width: "20px",
+                    display: "inline-block",
+                    position: "relative",
+                    height: "28px",
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: isLast ? "0" : "-100%",
+                      bottom: isLast ? "50%" : "0",
+                      borderLeft: "1px dotted #9ca3af",
+                      width: "1px",
+                      height: isLast ? "14px" : "auto",
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: "14px",
+                      width: "8px",
+                      borderTop: "1px dotted #9ca3af",
+                      height: "1px",
+                    }}
+                  />
+                </span>
+              )}
+            </div>
+            <div className="ml-1">
+              <NameCell element={element} />
+            </div>
           </div>
         </td>
-        <td className="px-4 py-2 align-top text-[#010205] font-inter space-x-2">
+        <td className="px-2 py-0.5 align-middle">
           <FlagsCell element={element} />
         </td>
-        <td
-          className="px-4 py-2 align-top text-[#010205] font-inter"
-          style={{ fontFamily: "JetBrains Mono" }}
-        >
+        <td className="px-2 py-0.5 align-middle">
           <CardinalityCell element={element} />
         </td>
-        <td className="px-4 py-2 align-top text-[#010205] font-inter">
+        <td className="px-2 py-0.5 align-middle">
           <DatatypeCell element={element} />
         </td>
-        <td className="px-4 py-2 align-top text-[#010205] font-inter text-[12px]">
+        <td className="px-2 py-0.5 align-middle">
           <DescriptionCell element={element} />
         </td>
       </tr>
-      {element.children.map((child) => (
-        <TreeNode key={child.name} element={child} lastChilds={lastChilds} />
-      ))}
+      {hasChildren &&
+        element.children!.map((child, index) => (
+          <TreeNode
+            key={`${element.path}.${child.name}`}
+            element={child}
+            isLast={index === element.children!.length - 1}
+            parentLevels={[...parentLevels, isLast]}
+          />
+        ))}
     </>
   );
 };
@@ -419,37 +495,35 @@ export const FHIRStructureTable: React.FC<FHIRStructureTableProps> = ({
 }) => {
   const nestedElements = nestByLevel(elements);
 
-  // Find last childs (elements where next element has lower level or is root)
-  const lastChilds = elements.filter((element, idx) => {
-    const nextElement = elements[idx + 1];
-    if (!nextElement) return false;
-    return nextElement.lvl === 0 || nextElement.lvl === element.lvl - 1;
-  });
-
   return (
-    <table className="w-full h-[1px] font-[Inter] text-[12px] font-normal">
+    <table className="fhir-structure-table w-full font-[Inter] text-[12px] font-normal">
       <thead>
         <tr className="sticky top-0 z-50">
-          <th className="px-4 py-2 text-left font-normal bg-[var(--color-surface-1)] text-[#1D2331]">
+          <th className="px-2 py-1 text-left font-normal bg-gray-50 text-gray-900">
             Name
           </th>
-          <th className="px-4 py-2 text-left font-normal bg-[var(--color-surface-1)] text-[#1D2331]">
+          <th className="px-2 py-1 text-left font-normal bg-gray-50 text-gray-900">
             Flags
           </th>
-          <th className="px-4 py-2 text-left font-normal bg-[var(--color-surface-1)] text-[#1D2331]">
+          <th className="px-2 py-1 text-left font-normal bg-gray-50 text-gray-900">
             Card.
           </th>
-          <th className="px-4 py-2 text-left font-normal bg-[var(--color-surface-1)] text-[#1D2331]">
+          <th className="px-2 py-1 text-left font-normal bg-gray-50 text-gray-900">
             Type
           </th>
-          <th className="px-4 py-2 text-left font-normal bg-[var(--color-surface-1)] text-[#1D2331]">
+          <th className="px-2 py-1 text-left font-normal bg-gray-50 text-gray-900">
             Description
           </th>
         </tr>
       </thead>
-      <tbody className="tree">
-        {nestedElements.map((node) => (
-          <TreeNode key={node.name} element={node} lastChilds={lastChilds} />
+      <tbody>
+        {nestedElements.map((node, index) => (
+          <TreeNode
+            key={node.name}
+            element={node}
+            isLast={index === nestedElements.length - 1}
+            parentLevels={[]}
+          />
         ))}
       </tbody>
     </table>
