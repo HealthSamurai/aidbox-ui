@@ -14,9 +14,26 @@ import {
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { Save } from "lucide-react";
-import { useMemo, useState } from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
+import { useEffect, useMemo, useState } from "react";
+import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+
+interface ViewDefinition {
+	resourceType: string;
+	id?: string;
+	name?: string;
+	status?: string;
+	resource?: string;
+	description?: string;
+	select?: Array<{
+		column?: Array<{
+			name?: string;
+			path?: string;
+			type?: string;
+		}>;
+	}>;
+	[key: string]: any; // Allow additional properties
+}
 
 export const Route = createFileRoute("/ViewDefinition/$id")({
 	component: ViewDefinitionPage,
@@ -29,46 +46,37 @@ function LeftPanel({
 	onRunResponse,
 	routeId,
 	setRunResponseVersion,
+	viewDefinition,
+	isLoadingViewDef,
+	viewDefError,
+	onViewDefinitionUpdate,
 }: {
 	onRunResponse: (response: string | null) => void;
 	routeId: string;
 	setRunResponseVersion: (version: string) => void;
+	viewDefinition: ViewDefinition | null;
+	isLoadingViewDef: boolean;
+	viewDefError: string | null;
+	onViewDefinitionUpdate: (viewDef: ViewDefinition) => void;
 }) {
 	const [activeTab, setActiveTab] = useLocalStorage<"form" | "code" | "sql">({
 		key: `viewDefinition-leftPanel-activeTab-${routeId}`,
 		defaultValue: "form",
 	});
-	const [codeContent, setCodeContent] = useState(
-		JSON.stringify(
-			{
-				resourceType: "ViewDefinition",
-				id: "patient_view",
-				name: "patient_view",
-				status: "draft",
-				resource: "Patient",
-				description: "Patient flat view",
-				select: [
-					{
-						column: [
-							{ name: "id", path: "id", type: "id" },
-							{ name: "birthDate", path: "birthDate", type: "date" },
-							{ name: "gender", path: "gender", type: "code" },
-						],
-					},
-				],
-			},
-			null,
-			2,
-		),
-	);
+	const [codeContent, setCodeContent] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
+
+	useEffect(() => {
+		if (viewDefinition) {
+			setCodeContent(JSON.stringify(viewDefinition, null, 2));
+		}
+	}, [viewDefinition]);
 
 	const handleSave = async () => {
 		setIsSaving(true);
 		try {
-			// Parse the ViewDefinition from the code editor
-			let viewDefinition;
+			let viewDefinition: any;
 			try {
 				viewDefinition = JSON.parse(codeContent);
 			} catch (parseError) {
@@ -90,16 +98,18 @@ function LeftPanel({
 				body: JSON.stringify(viewDefinition),
 			});
 
-			// Parse and format the response
 			try {
 				const parsedBody = JSON.parse(response.body);
 				onRunResponse(JSON.stringify({ saved: true, ...parsedBody }, null, 2));
+				onViewDefinitionUpdate(parsedBody);
 			} catch {
 				onRunResponse(response.body);
 			}
 		} catch (error) {
 			console.error("Error saving ViewDefinition:", error);
-			onRunResponse(JSON.stringify({ error: error.message }, null, 2));
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error occurred";
+			onRunResponse(JSON.stringify({ error: errorMessage }, null, 2));
 		} finally {
 			setIsSaving(false);
 		}
@@ -108,8 +118,7 @@ function LeftPanel({
 	const handleRun = async () => {
 		setIsLoading(true);
 		try {
-			// Parse the ViewDefinition from the code editor
-			let viewDefinition;
+			let viewDefinition: any;
 			try {
 				viewDefinition = JSON.parse(codeContent);
 			} catch (parseError) {
@@ -121,7 +130,6 @@ function LeftPanel({
 				return;
 			}
 
-			// Wrap the ViewDefinition in Parameters object as required by the API
 			const parametersPayload = {
 				resourceType: "Parameters",
 				parameter: [
@@ -146,16 +154,14 @@ function LeftPanel({
 				body: JSON.stringify(parametersPayload),
 			});
 
-			// Parse and format the response
 			try {
-				let parsedBody;
+				let parsedBody: any;
 				const json = JSON.parse(response.body);
 				if (json.data && typeof json.data === "string") {
-					// decode base64
 					try {
 						const decoded = atob(json.data);
 						parsedBody = JSON.parse(decoded);
-					} catch (e) {
+					} catch {
 						parsedBody = json.data;
 					}
 				} else {
@@ -167,7 +173,9 @@ function LeftPanel({
 			}
 		} catch (error) {
 			console.error("Error running ViewDefinition:", error);
-			onRunResponse(JSON.stringify({ error: error.message }, null, 2));
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error occurred";
+			onRunResponse(JSON.stringify({ error: errorMessage }, null, 2));
 		} finally {
 			setRunResponseVersion(crypto.randomUUID());
 			setIsLoading(false);
@@ -207,11 +215,20 @@ function LeftPanel({
 						</div>
 					</TabsContent>
 					<TabsContent value="code" className="grow min-h-0">
-						<CodeEditor
-							defaultValue={codeContent}
-							onChange={(value) => setCodeContent(value || "")}
-							mode="json"
-						/>
+						{isLoadingViewDef ? (
+							<div className="flex items-center justify-center h-full text-text-secondary">
+								<div className="text-center">
+									<div className="text-lg mb-2">Loading ViewDefinition...</div>
+									<div className="text-sm">Fetching content from Aidbox</div>
+								</div>
+							</div>
+						) : (
+							<CodeEditor
+								currentValue={codeContent}
+								onChange={(value) => setCodeContent(value || "")}
+								mode="json"
+							/>
+						)}
 					</TabsContent>
 					<TabsContent value="sql" className="grow min-h-0">
 						<CodeEditor readOnly={true} currentValue="" mode="sql" />
@@ -232,11 +249,21 @@ function LeftPanel({
 	);
 }
 
-function RightPanel({ routeId }: { routeId: string }) {
+function RightPanel({
+	routeId,
+	viewDefinition,
+	isLoadingViewDef,
+}: {
+	routeId: string;
+	viewDefinition: ViewDefinition | null;
+	isLoadingViewDef: boolean;
+}) {
 	const [activeTab, setActiveTab] = useLocalStorage<"schema" | "examples">({
 		key: `viewDefinition-rightPanel-activeTab-${routeId}`,
 		defaultValue: "schema",
 	});
+
+	const resourceType = viewDefinition?.resource || "Patient";
 
 	return (
 		<div className="flex flex-col h-full">
@@ -258,10 +285,53 @@ function RightPanel({ routeId }: { routeId: string }) {
 					</div>
 				</div>
 				<TabsContent value="schema">
-					<CodeEditor readOnly defaultValue="{}" mode="json" />
+					{isLoadingViewDef ? (
+						<div className="flex items-center justify-center h-full text-text-secondary">
+							<div className="text-center">
+								<div className="text-lg mb-2">Loading schema...</div>
+								<div className="text-sm">Fetching {resourceType} schema</div>
+							</div>
+						</div>
+					) : (
+						<CodeEditor
+							readOnly
+							defaultValue={JSON.stringify(
+								{
+									resourceType,
+									description: `Schema for ${resourceType} resource`,
+									properties: viewDefinition?.select?.[0]?.column || [],
+								},
+								null,
+								2,
+							)}
+							mode="json"
+						/>
+					)}
 				</TabsContent>
 				<TabsContent value="examples">
-					<CodeEditor readOnly defaultValue="{}" mode="json" />
+					{isLoadingViewDef ? (
+						<div className="flex items-center justify-center h-full text-text-secondary">
+							<div className="text-center">
+								<div className="text-lg mb-2">Loading examples...</div>
+								<div className="text-sm">Fetching {resourceType} examples</div>
+							</div>
+						</div>
+					) : (
+						<CodeEditor
+							readOnly
+							defaultValue={JSON.stringify(
+								{
+									resourceType,
+									examples: [
+										`Example ${resourceType} instances would be shown here`,
+									],
+								},
+								null,
+								2,
+							)}
+							mode="json"
+						/>
+					)}
 				</TabsContent>
 			</Tabs>
 		</div>
@@ -295,19 +365,19 @@ function BottomPanel({
 				});
 
 				// Create column definitions
-				const columns: ColumnDef<any, any>[] = Array.from(allKeys).map(
-					(key) => ({
-						accessorKey: key,
-						header: key.charAt(0).toUpperCase() + key.slice(1),
-						cell: ({ getValue }) => {
-							const value = getValue();
-							if (value === null || value === undefined) {
-								return <span className="text-text-tertiary">null</span>;
-							}
-							return String(value);
-						},
-					}),
-				);
+				const columns: ColumnDef<Record<string, any>, any>[] = Array.from(
+					allKeys,
+				).map((key) => ({
+					accessorKey: key,
+					header: key.charAt(0).toUpperCase() + key.slice(1),
+					cell: ({ getValue }) => {
+						const value = getValue();
+						if (value === null || value === undefined) {
+							return <span className="text-text-tertiary">null</span>;
+						}
+						return String(value);
+					},
+				}));
 
 				return { tableData: parsedResponse, columns };
 			}
@@ -356,6 +426,53 @@ function ViewDefinitionPage() {
 		crypto.randomUUID(),
 	);
 
+	// ViewDefinition state management
+	const [viewDefinition, setViewDefinition] = useState<ViewDefinition | null>(
+		null,
+	);
+	const [isLoadingViewDef, setIsLoadingViewDef] = useState(false);
+	const [viewDefError, setViewDefError] = useState<string | null>(null);
+
+	// Fetch ViewDefinition content on mount
+	useEffect(() => {
+		const fetchViewDefinition = async () => {
+			setIsLoadingViewDef(true);
+			setViewDefError(null);
+			try {
+				const fetchedViewDefinition = await AidboxCall<ViewDefinition>({
+					method: "GET",
+					url: `/fhir/ViewDefinition/${id}`,
+					headers: {
+						"Content-Type": "application/json",
+						Accept: "application/json",
+					},
+				});
+
+				if (fetchedViewDefinition) {
+					setViewDefinition(fetchedViewDefinition);
+				}
+			} catch (error) {
+				console.error("Error fetching ViewDefinition:", error);
+				const errorMessage =
+					error instanceof Error ? error.message : "Unknown error occurred";
+				setViewDefError(`Failed to fetch ViewDefinition: ${errorMessage}`);
+				setRunResponse(
+					JSON.stringify(
+						{ error: `Failed to fetch ViewDefinition: ${errorMessage}` },
+						null,
+						2,
+					),
+				);
+			} finally {
+				setIsLoadingViewDef(false);
+			}
+		};
+
+		if (id) {
+			fetchViewDefinition();
+		}
+	}, [id]);
+
 	return (
 		<div className="flex flex-col h-full">
 			<ResizablePanelGroup
@@ -374,11 +491,19 @@ function ViewDefinitionPage() {
 								onRunResponse={setRunResponse}
 								routeId={id}
 								setRunResponseVersion={setRunResponseVersion}
+								viewDefinition={viewDefinition}
+								isLoadingViewDef={isLoadingViewDef}
+								viewDefError={viewDefError}
+								onViewDefinitionUpdate={setViewDefinition}
 							/>
 						</ResizablePanel>
 						<ResizableHandle />
 						<ResizablePanel defaultSize={50} className="min-w-[200px]">
-							<RightPanel routeId={id} />
+							<RightPanel
+								routeId={id}
+								viewDefinition={viewDefinition}
+								isLoadingViewDef={isLoadingViewDef}
+							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>
 				</ResizablePanel>
