@@ -37,6 +37,7 @@
 		"js-cookie": "^3.0.5",
 		"lucide-react": "^0.539.0",
 		"react": "^19.1.1",
-		"react-dom": "^19.1.1"
+		"react-dom": "^19.1.1",
+		"sql-formatter": "^15.6.9"
 	}
 }
