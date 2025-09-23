@@ -18,7 +18,7 @@ import {
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, TextQuote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
@@ -52,10 +52,12 @@ const CodeEditorMenu = ({
   mode,
   onModeChange,
   copyText,
+  onFormat,
 }: {
   mode: "json" | "yaml";
   onModeChange: (mode: "json" | "yaml") => void;
   copyText: string;
+  onFormat: () => void;
 }) => {
   return (
     <div className="flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary">
@@ -67,6 +69,14 @@ const CodeEditorMenu = ({
         <SegmentControlItem value="json">JSON</SegmentControlItem>
         <SegmentControlItem value="yaml">YAML</SegmentControlItem>
       </SegmentControl>
+      <Button
+        variant="ghost"
+        size="small"
+        onClick={onFormat}
+        title="Format code"
+      >
+        <TextQuote className="w-4 h-4" />
+      </Button>
       <Button variant="ghost" size="small" asChild>
         <CopyIcon text={copyText} />
       </Button>
@@ -163,6 +173,23 @@ function LeftPanel({
       }
     }
   }, [viewDefinition, codeMode]);
+
+  const handleFormatCode = () => {
+    try {
+      if (codeMode === "yaml") {
+        // Parse and re-dump YAML to format it
+        const parsed = yaml.load(codeContent);
+        setCodeContent(yaml.dump(parsed, { indent: 2 }));
+      } else {
+        // Parse and re-stringify JSON to format it
+        const parsed = JSON.parse(codeContent);
+        setCodeContent(JSON.stringify(parsed, null, 2));
+      }
+    } catch (error) {
+      // If parsing fails, leave content as is
+      console.error(`Failed to format ${codeMode.toUpperCase()}:`, error);
+    }
+  };
 
   useEffect(() => {
     const fetchSQL = async () => {
@@ -404,6 +431,7 @@ function LeftPanel({
                     mode={codeMode}
                     onModeChange={setCodeMode}
                     copyText={codeContent}
+                    onFormat={handleFormatCode}
                   />
                 </div>
                 <CodeEditor
