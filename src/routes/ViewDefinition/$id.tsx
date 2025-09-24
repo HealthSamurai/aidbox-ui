@@ -15,6 +15,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  FHIRStructureView,
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
@@ -23,8 +24,6 @@ import { useEffect, useMemo, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { FHIRStructureTable } from "../../components/FHIRStructureTable";
-import { useFHIRStructureTable } from "../../components/FHIRStructureTable/useFHIRStructureTable";
 
 interface ViewDefinition {
   resourceType: string;
@@ -541,7 +540,7 @@ function RightPanel({
 
               if (defaultSchema) {
                 // Extract only the differential value from the default schema
-                const differential = (defaultSchema as any)?.differential;
+                const differential = (defaultSchema as any)?.snapshot;
                 setSchemaData(differential || defaultSchema);
               } else {
                 // If no default schema found, try to use the first one
@@ -639,9 +638,296 @@ function RightPanel({
   const canGoToPrevious = currentResultIndex > 0;
   const canGoToNext = currentResultIndex < searchResults.length - 1;
 
-  // Transform schema data for FHIRStructureTable
-  const fhirElements = useFHIRStructureTable(schemaData);
-  const hasStructuredSchema = fhirElements && fhirElements.length > 0;
+  // Transform differential data to tree format for FHIRStructureView
+  const transformDifferentialToTree = (data: any) => {
+    console.log("Transforming data:", data);
+
+    // Handle different possible data structures
+    let elements: any[] = [];
+
+    // Check if data.snapshot is an array (prioritize snapshot over differential)
+    if (data?.snapshot && Array.isArray(data.snapshot)) {
+      elements = data.snapshot;
+    } else if (Array.isArray(data)) {
+      elements = data;
+    } else if (data?.element && Array.isArray(data.element)) {
+      elements = data.element;
+    } else if (
+      data?.snapshot?.element &&
+      Array.isArray(data.snapshot.element)
+    ) {
+      elements = data.snapshot.element;
+    } else if (
+      data?.differential?.element &&
+      Array.isArray(data.differential.element)
+    ) {
+      elements = data.differential.element;
+    } else {
+      const possibleArrays = Object.values(data || {}).filter((v) =>
+        Array.isArray(v),
+      );
+      if (possibleArrays.length > 0) {
+        elements = possibleArrays[0] as any[];
+      }
+    }
+
+    if (!elements || elements.length === 0) {
+      console.log("No elements found after checking all possible paths");
+      console.log("Data keys:", Object.keys(data || {}));
+      return {};
+    }
+
+    console.log("Found elements:", elements.length, "items");
+    console.log("First element sample:", elements[0]);
+
+    const tree: Record<string, any> = {};
+    const childrenMap: Record<string, string[]> = {};
+
+    // First pass: create all nodes and collect parent-child relationships
+    elements.forEach((element: any) => {
+      // Skip root elements that are just type indicators
+      if (element.type === "root") return;
+
+      const path = element.path || element.id;
+      if (!path) return;
+
+      const parts = path.split(".");
+      const name = element.name || parts[parts.length - 1];
+
+      // Handle union types (elements ending with [x] or with union? flag)
+      const isUnion = element["union?"] === true;
+      const displayName =
+        isUnion && !name.includes("[x]") ? `${name}[x]` : name;
+
+      // Create the node
+      const node: any = {
+        name: displayName,
+        meta: {},
+      };
+
+      // Map properties from the new differential format to meta
+      if (element.min !== undefined && element.min !== null) {
+        node.meta.min = String(element.min);
+      }
+      if (element.max !== undefined && element.max !== null) {
+        node.meta.max = element.max === "*" ? "*" : String(element.max);
+      }
+
+      // Use short for description, fallback to desc
+      if (element.short) {
+        node.meta.description = element.short;
+      } else if (element.desc) {
+        node.meta.description = element.desc;
+      }
+
+      // Set the datatype
+      if (isUnion) {
+        node.meta.type = "union";
+      } else if (element.datatype) {
+        node.meta.type = element.datatype;
+      } else if (element.type === "complex") {
+        node.meta.type = element.datatype || "BackboneElement";
+      } else if (element.type) {
+        node.meta.type = element.type;
+      }
+
+      // Handle flags array
+      if (element.flags && Array.isArray(element.flags)) {
+        element.flags.forEach((flag: string) => {
+          if (flag === "summary") node.meta.isSummary = true;
+          if (flag === "modifier") node.meta.isModifier = true;
+        });
+      }
+
+      tree[path] = node;
+
+      // Track parent-child relationships based on lvl or path structure
+      // But we need to be careful with union children
+      if (parts.length > 1) {
+        const lastPart = parts[parts.length - 1];
+
+        // Check all possible parent paths to find if this is a union child
+        let addedToUnionParent = false;
+
+        // For a path like "Patient.deceasedBoolean", check if there's a union "Patient.deceased"
+        // We need to find union elements whose path could be a parent of this element
+        elements.forEach((potentialParent: any) => {
+          if (
+            !addedToUnionParent &&
+            potentialParent["union?"] === true &&
+            potentialParent.path
+          ) {
+            const unionParts = potentialParent.path.split(".");
+            const unionName = unionParts[unionParts.length - 1];
+
+            // For "Patient.deceasedBoolean" to be a child of "Patient.deceased":
+            // 1. The element name "deceasedBoolean" must start with "deceased"
+            // 2. The element must be at the same level as where the union would be
+            if (lastPart.startsWith(unionName) && lastPart !== unionName) {
+              // Check if this union could be our parent
+              // We replace our last part with just the union name and see if it matches
+              const possibleUnionPath =
+                parts.slice(0, -1).join(".") + "." + unionName;
+
+              if (potentialParent.path === possibleUnionPath) {
+                // This element is a child of the union!
+                if (!childrenMap[potentialParent.path]) {
+                  childrenMap[potentialParent.path] = [];
+                }
+                // Only add if not already present (prevent duplicates)
+                if (!childrenMap[potentialParent.path].includes(path)) {
+                  childrenMap[potentialParent.path].push(path);
+                }
+                addedToUnionParent = true;
+              }
+            }
+          }
+        });
+
+        // Only add to the regular parent if we didn't add it to a union parent
+        if (!addedToUnionParent) {
+          const parentPath = parts.slice(0, -1).join(".");
+          if (!childrenMap[parentPath]) {
+            childrenMap[parentPath] = [];
+          }
+          // Only add if not already present (prevent duplicates)
+          if (!childrenMap[parentPath].includes(path)) {
+            childrenMap[parentPath].push(path);
+          }
+        }
+      }
+    });
+
+    // Second pass: add children arrays and mark last nodes
+    Object.entries(childrenMap).forEach(([parentPath, children]) => {
+      if (tree[parentPath]) {
+        tree[parentPath].children = children;
+
+        // Mark the last child node
+        if (children.length > 0) {
+          const lastChildPath = children[children.length - 1];
+          if (
+            tree[lastChildPath] &&
+            (!childrenMap[lastChildPath] ||
+              childrenMap[lastChildPath].length === 0)
+          ) {
+            tree[lastChildPath].meta.lastNode = true;
+          }
+        }
+      }
+    });
+
+    // Union children are now handled in the first pass above where we build the childrenMap
+
+    // Identify the resource type - look for the root element or the first path without dots
+    let resourceType = "";
+
+    // First try to find a root type element
+    const rootElement = elements.find((e: any) => e.type === "root");
+    if (rootElement && rootElement.name) {
+      resourceType = rootElement.name;
+    } else {
+      // Otherwise find the first element with a single-part path
+      elements.forEach((element: any) => {
+        const path = element.path || element.id;
+        if (path && !path.includes(".")) {
+          resourceType = path;
+        }
+      });
+
+      // If still not found, extract from first path
+      if (!resourceType && elements.length > 0) {
+        const firstPath = elements.find((e: any) => e.path)?.path;
+        if (firstPath) {
+          resourceType = firstPath.split(".")[0];
+        }
+      }
+    }
+
+    // Create or update the main resource node
+    if (resourceType) {
+      // Find all direct children of the resource
+      // But exclude union children (e.g., exclude Patient.deceasedBoolean if Patient.deceased is a union)
+      const directChildren: string[] = [];
+      Object.keys(tree).forEach((path) => {
+        const parts = path.split(".");
+        if (parts.length === 2 && parts[0] === resourceType) {
+          // Check if this is a union child (but not the union itself)
+          const elementName = parts[1];
+          let isUnionChild = false;
+
+          // Look for a union parent that this could belong to
+          elements.forEach((element: any) => {
+            if (element["union?"] === true && element.path) {
+              const unionName = element.path.split(".").pop();
+              // If this element's name starts with a union name AND is not the union itself, it's a union child
+              if (
+                elementName.startsWith(unionName) &&
+                elementName !== unionName && // Don't exclude the union itself
+                element.path === `${resourceType}.${unionName}`
+              ) {
+                isUnionChild = true;
+              }
+            }
+          });
+
+          if (!isUnionChild && !directChildren.includes(path)) {
+            directChildren.push(path);
+          }
+        }
+      });
+
+      // If the main resource node doesn't exist in the tree, create it
+      if (!tree[resourceType]) {
+        const resourceElement = elements.find(
+          (e: any) =>
+            e.path === resourceType ||
+            (e.type === "root" && e.name === resourceType),
+        );
+
+        tree[resourceType] = {
+          name: resourceType,
+          meta: {
+            type: "Resource",
+            min: "0",
+            max: "*",
+            description:
+              resourceElement?.short ||
+              resourceElement?.desc ||
+              `Information about ${resourceType}`,
+          },
+          children: directChildren,
+        };
+      } else {
+        // Update children if the resource exists
+        if (
+          !tree[resourceType].children ||
+          tree[resourceType].children.length === 0
+        ) {
+          tree[resourceType].children = directChildren;
+        }
+      }
+    }
+
+    // Always create a root node that points to the main resource
+    tree.root = {
+      name: "Root",
+      children: resourceType ? [resourceType] : [],
+    };
+
+    console.log("Generated tree with", Object.keys(tree).length, "nodes");
+    console.log("Root children:", tree.root.children);
+    return tree;
+  };
+
+  const fhirStructureTree = useMemo(() => {
+    if (schemaData) {
+      return transformDifferentialToTree(schemaData);
+    }
+    return {};
+  }, [schemaData]);
+
+  console.log(JSON.stringify(fhirStructureTree));
 
   // Generate copy text based on current mode and content
   const getCopyText = () => {
@@ -697,24 +983,10 @@ function RightPanel({
                 <div className="text-sm">{schemaError}</div>
               </div>
             </div>
-          ) : hasStructuredSchema ? (
-            <div className="p-4 h-full overflow-auto">
-              <FHIRStructureTable elements={fhirElements} />
-            </div>
           ) : (
-            <CodeEditor
-              readOnly
-              defaultValue={JSON.stringify(
-                schemaData || {
-                  resourceType,
-                  description: `Schema for ${resourceType} resource`,
-                  properties: viewDefinition?.select?.[0]?.column || [],
-                },
-                null,
-                2,
-              )}
-              mode="json"
-            />
+            <div className="p-4 h-full overflow-auto">
+              <FHIRStructureView tree={fhirStructureTree} />
+            </div>
           )}
         </TabsContent>
         <TabsContent value="examples" className="flex flex-col h-full">
