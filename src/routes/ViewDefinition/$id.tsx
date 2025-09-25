@@ -658,20 +658,32 @@ const ViewDefinitionForm = ({
   const InputView = ({
     placeholder,
     className,
-    defaultValue,
-    onChange,
+    value,
+    onBlur,
   }: {
     placeholder: string;
     className?: string;
-    defaultValue?: string;
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    value?: string;
+    onBlur?: (value: string) => void;
   }) => {
+    const [localValue, setLocalValue] = useState(value || "");
+
+    // Update local value when prop changes
+    useEffect(() => {
+      setLocalValue(value || "");
+    }, [value]);
+
     return (
       <Input
         className={`h-6 py-0 px-1.5 ${className}`}
         placeholder={placeholder}
-        defaultValue={defaultValue}
-        onChange={onChange}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={() => {
+          if (onBlur && localValue !== value) {
+            onBlur(localValue);
+          }
+        }}
       />
     );
   };
@@ -686,8 +698,8 @@ const ViewDefinitionForm = ({
             <div className="w-[50%]">
               <InputView
                 placeholder="ViewDefinition name"
-                defaultValue={viewDefinition.name || ""}
-                onChange={(e) => updateName(e.target.value)}
+                value={viewDefinition.name || ""}
+                onBlur={(value) => updateName(value)}
               />
             </div>
           </div>
@@ -744,16 +756,16 @@ const ViewDefinitionForm = ({
             </span>
             <InputView
               placeholder="Column name"
-              defaultValue={columnData.name}
-              onChange={(e) =>
-                updateSelectColumn(columnData.id, "name", e.target.value)
+              value={columnData.name}
+              onBlur={(value) =>
+                updateSelectColumn(columnData.id, "name", value)
               }
             />
             <InputView
               placeholder="Path"
-              defaultValue={columnData.path}
-              onChange={(e) =>
-                updateSelectColumn(columnData.id, "path", e.target.value)
+              value={columnData.path}
+              onBlur={(value) =>
+                updateSelectColumn(columnData.id, "path", value)
               }
             />
             <Button
@@ -797,16 +809,16 @@ const ViewDefinitionForm = ({
             </span>
             <InputView
               placeholder="Where name"
-              defaultValue={whereData.name}
-              onChange={(e) =>
-                updateWhereCondition(whereData.id, "name", e.target.value)
+              value={whereData.name}
+              onBlur={(value) =>
+                updateWhereCondition(whereData.id, "name", value)
               }
             />
             <InputView
               placeholder="Where value"
-              defaultValue={whereData.value}
-              onChange={(e) =>
-                updateWhereCondition(whereData.id, "value", e.target.value)
+              value={whereData.value}
+              onBlur={(value) =>
+                updateWhereCondition(whereData.id, "value", value)
               }
             />
             <Button
@@ -849,16 +861,14 @@ const ViewDefinitionForm = ({
             </span>
             <InputView
               placeholder="Name"
-              defaultValue={constantData.name}
-              onChange={(e) =>
-                updateConstant(constantData.id, "name", e.target.value)
-              }
+              value={constantData.name}
+              onBlur={(value) => updateConstant(constantData.id, "name", value)}
             />
             <InputView
               placeholder="Value"
-              defaultValue={constantData.valueString}
-              onChange={(e) =>
-                updateConstant(constantData.id, "valueString", e.target.value)
+              value={constantData.valueString}
+              onBlur={(value) =>
+                updateConstant(constantData.id, "valueString", value)
               }
             />
 
