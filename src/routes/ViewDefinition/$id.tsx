@@ -34,7 +34,7 @@ import {
   TextQuote,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
@@ -158,6 +158,9 @@ const ViewDefinitionForm = ({
   viewDefinition: ViewDefinition;
   onUpdate?: (updatedViewDef: ViewDefinition) => void;
 }) => {
+  // Debounce timer ref
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // State for resource types dropdown
   const [resourceTypes, setResourceTypes] = useState<ComboboxOption[]>([]);
   const [isLoadingResourceTypes, setIsLoadingResourceTypes] = useState(false);
@@ -311,6 +314,89 @@ const ViewDefinitionForm = ({
     }
   }, [viewDefinition]);
 
+  // Function to update ViewDefinition with new constants and where conditions
+  const updateViewDefinition = useCallback(
+    (
+      updatedConstants?: Array<{
+        id: string;
+        name: string;
+        valueString: string;
+      }>,
+      updatedWhere?: Array<{ id: string; name: string; value: string }>,
+      updatedFields?: { name?: string; resource?: string },
+      updatedSelect?: Array<{
+        id: string;
+        name: string;
+        path: string;
+      }>,
+    ) => {
+      if (onUpdate) {
+        const constantArray = (updatedConstants || constants).map((c) => ({
+          name: c.name,
+          valueString: c.valueString,
+        }));
+
+        const whereArray = (updatedWhere || whereConditions).map((w) => ({
+          name: w.name,
+          value: w.value,
+        }));
+
+        const selectArray = (updatedSelect || selectColumns).map((col) => ({
+          name: col.name,
+          path: col.path,
+        }));
+
+        const updatedViewDef = {
+          ...viewDefinition,
+          ...(updatedFields || {}),
+          constant: constantArray,
+          where: whereArray,
+          select: selectArray.length > 0 ? [{ column: selectArray }] : [],
+        };
+
+        onUpdate(updatedViewDef);
+      }
+    },
+    [viewDefinition, constants, whereConditions, selectColumns, onUpdate],
+  );
+
+  // Debounced version of updateViewDefinition
+  const debouncedUpdateViewDefinition = useCallback(
+    (
+      updatedConstants?: Array<{
+        id: string;
+        name: string;
+        valueString: string;
+      }>,
+      updatedWhere?: Array<{ id: string; name: string; value: string }>,
+      updatedFields?: { name?: string; resource?: string },
+      updatedSelect?: Array<{ id: string; name: string; path: string }>,
+    ) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        updateViewDefinition(
+          updatedConstants,
+          updatedWhere,
+          updatedFields,
+          updatedSelect,
+        );
+      }, 300); // 300ms delay
+    },
+    [updateViewDefinition],
+  );
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   // Function to add a new constant
   const addConstant = () => {
     const newConstant = {
@@ -323,45 +409,6 @@ const ViewDefinitionForm = ({
     updateViewDefinition(updatedConstants);
   };
 
-  // Function to update ViewDefinition with new constants and where conditions
-  const updateViewDefinition = (
-    updatedConstants?: Array<{ id: string; name: string; valueString: string }>,
-    updatedWhere?: Array<{ id: string; name: string; value: string }>,
-    updatedFields?: { name?: string; resource?: string },
-    updatedSelect?: Array<{
-      id: string;
-      name: string;
-      path: string;
-    }>,
-  ) => {
-    if (onUpdate) {
-      const constantArray = (updatedConstants || constants).map((c) => ({
-        name: c.name,
-        valueString: c.valueString,
-      }));
-
-      const whereArray = (updatedWhere || whereConditions).map((w) => ({
-        name: w.name,
-        value: w.value,
-      }));
-
-      const selectArray = (updatedSelect || selectColumns).map((col) => ({
-        name: col.name,
-        path: col.path,
-      }));
-
-      const updatedViewDef = {
-        ...viewDefinition,
-        ...(updatedFields || {}),
-        constant: constantArray,
-        where: whereArray,
-        select: selectArray.length > 0 ? [{ column: selectArray }] : [],
-      };
-
-      onUpdate(updatedViewDef);
-    }
-  };
-
   // Function to update a specific constant
   const updateConstant = (
     id: string,
@@ -372,7 +419,7 @@ const ViewDefinitionForm = ({
       c.id === id ? { ...c, [field]: value } : c,
     );
     setConstants(updatedConstants);
-    updateViewDefinition(updatedConstants);
+    debouncedUpdateViewDefinition(updatedConstants);
   };
 
   // Function to remove a constant
@@ -404,7 +451,7 @@ const ViewDefinitionForm = ({
       w.id === id ? { ...w, [field]: value } : w,
     );
     setWhereConditions(updatedWhere);
-    updateViewDefinition(undefined, updatedWhere);
+    debouncedUpdateViewDefinition(undefined, updatedWhere);
   };
 
   // Function to remove a where condition
@@ -416,12 +463,12 @@ const ViewDefinitionForm = ({
 
   // Function to update name field
   const updateName = (name: string) => {
-    updateViewDefinition(undefined, undefined, { name });
+    debouncedUpdateViewDefinition(undefined, undefined, { name });
   };
 
   // Function to update resource field
   const updateResource = (resource: string) => {
-    updateViewDefinition(undefined, undefined, { resource });
+    debouncedUpdateViewDefinition(undefined, undefined, { resource });
   };
 
   // Function to add a new select column
@@ -446,7 +493,12 @@ const ViewDefinitionForm = ({
       col.id === id ? { ...col, [field]: value } : col,
     );
     setSelectColumns(updatedColumns);
-    updateViewDefinition(undefined, undefined, undefined, updatedColumns);
+    debouncedUpdateViewDefinition(
+      undefined,
+      undefined,
+      undefined,
+      updatedColumns,
+    );
   };
 
   // Function to remove a select column
@@ -869,6 +921,9 @@ function LeftPanel({
     defaultValue: "json",
   });
 
+  // Debounce timer ref for code editor
+  const codeDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (viewDefinition) {
       if (codeMode === "yaml") {
@@ -879,28 +934,48 @@ function LeftPanel({
     }
   }, [viewDefinition, codeMode]);
 
-  // Update ViewDefinition when code content changes
-  const handleCodeContentChange = (value: string) => {
-    setCodeContent(value || "");
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (codeDebounceTimerRef.current) {
+        clearTimeout(codeDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
-    // Try to parse and update ViewDefinition
-    try {
-      let parsedViewDef: any;
-      if (codeMode === "yaml") {
-        parsedViewDef = yaml.load(value || "");
-      } else {
-        parsedViewDef = JSON.parse(value || "{}");
+  // Update ViewDefinition when code content changes (with debounce)
+  const handleCodeContentChange = useCallback(
+    (value: string) => {
+      setCodeContent(value || "");
+
+      // Clear existing timer
+      if (codeDebounceTimerRef.current) {
+        clearTimeout(codeDebounceTimerRef.current);
       }
 
-      // Only update if parsing was successful and it's a valid ViewDefinition
-      if (parsedViewDef && typeof parsedViewDef === "object") {
-        onViewDefinitionUpdate(parsedViewDef);
-      }
-    } catch (error) {
-      // Ignore parsing errors - user might still be typing
-      console.debug("Parsing error (expected while typing):", error);
-    }
-  };
+      // Set new timer for debounced update
+      codeDebounceTimerRef.current = setTimeout(() => {
+        // Try to parse and update ViewDefinition
+        try {
+          let parsedViewDef: any;
+          if (codeMode === "yaml") {
+            parsedViewDef = yaml.load(value || "");
+          } else {
+            parsedViewDef = JSON.parse(value || "{}");
+          }
+
+          // Only update if parsing was successful and it's a valid ViewDefinition
+          if (parsedViewDef && typeof parsedViewDef === "object") {
+            onViewDefinitionUpdate(parsedViewDef);
+          }
+        } catch (error) {
+          // Ignore parsing errors - user might still be typing
+          console.debug("Parsing error (expected while typing):", error);
+        }
+      }, 300); // 300ms delay to match Form tab debounce
+    },
+    [codeMode, onViewDefinitionUpdate],
+  );
 
   const handleFormatCode = () => {
     try {
