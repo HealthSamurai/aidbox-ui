@@ -293,8 +293,6 @@ function LeftPanel({
         body: JSON.stringify(viewDefinition),
       });
 
-      console.log("Save response:", response); // Debug log to see response structure
-
       // Check if the response indicates success
       // Try multiple ways to detect success since response structure might vary
       const status = response.meta?.status || response.status;
@@ -703,8 +701,6 @@ function RightPanel({
 
   // Transform differential data to tree format for FHIRStructureView
   const transformDifferentialToTree = (data: any) => {
-    console.log("Transforming data:", data);
-
     // Handle different possible data structures
     let elements: any[] = [];
 
@@ -735,13 +731,8 @@ function RightPanel({
     }
 
     if (!elements || elements.length === 0) {
-      console.log("No elements found after checking all possible paths");
-      console.log("Data keys:", Object.keys(data || {}));
       return {};
     }
-
-    console.log("Found elements:", elements.length, "items");
-    console.log("First element sample:", elements[0]);
 
     const tree: Record<string, any> = {};
     const childrenMap: Record<string, string[]> = {};
@@ -998,8 +989,6 @@ function RightPanel({
       children: resourceType ? [resourceType] : [],
     };
 
-    console.log("Generated tree with", Object.keys(tree).length, "nodes");
-    console.log("Root children:", tree.root.children);
     return tree;
   };
 
@@ -1009,8 +998,6 @@ function RightPanel({
     }
     return {};
   }, [schemaData]);
-
-  console.log(JSON.stringify(fhirStructureTree));
 
   // Generate copy text based on current mode and content
   const getCopyText = () => {
