@@ -346,13 +346,29 @@ const ViewDefinitionForm = ({
           path: col.path,
         }));
 
-        const updatedViewDef = {
+        const updatedViewDef: any = {
           ...viewDefinition,
           ...(updatedFields || {}),
-          constant: constantArray,
-          where: whereArray,
-          select: selectArray.length > 0 ? [{ column: selectArray }] : [],
         };
+
+        // Only add arrays if they have content
+        if (constantArray.length > 0) {
+          updatedViewDef.constant = constantArray;
+        } else {
+          delete updatedViewDef.constant;
+        }
+
+        if (whereArray.length > 0) {
+          updatedViewDef.where = whereArray;
+        } else {
+          delete updatedViewDef.where;
+        }
+
+        if (selectArray.length > 0) {
+          updatedViewDef.select = [{ column: selectArray }];
+        } else {
+          delete updatedViewDef.select;
+        }
 
         onUpdate(updatedViewDef);
       }
@@ -1217,17 +1233,61 @@ function LeftPanel({
       try {
         let parsedBody: any;
         const json = JSON.parse(response.body);
-        if (json.data && typeof json.data === "string") {
+
+        // Check if response is an OperationOutcome with errors
+        if (json.resourceType === "OperationOutcome" && json.issue) {
+          // Collect all diagnostic messages from issues
+          const diagnostics = json.issue
+            .filter((issue: any) => issue.diagnostics)
+            .map((issue: any) => issue.diagnostics);
+
+          if (diagnostics.length > 0) {
+            // Display error toast with all diagnostic messages
+            toast.error(
+              <div className="flex flex-col gap-1">
+                <span className="typo-body">Failed to run ViewDefinition</span>
+                <div className="flex flex-col gap-1">
+                  {diagnostics.map((diagnostic: string, index: number) => (
+                    <span key={index} className="typo-code text-text-secondary">
+                      • {diagnostic}
+                    </span>
+                  ))}
+                </div>
+              </div>,
+              { duration: 5000 },
+            );
+          } else {
+            // Generic error message if no diagnostics available
+            toast.error(
+              <div className="flex flex-col gap-1">
+                <span className="typo-body">Failed to run ViewDefinition</span>
+                <span className="typo-code text-text-secondary">
+                  {json.issue[0]?.code || "Unknown error occurred"}
+                </span>
+              </div>,
+              { duration: 5000 },
+            );
+          }
+
+          // Still show the error in the response panel for debugging
+          onRunResponse(JSON.stringify(json, null, 2));
+        } else if (json.data && typeof json.data === "string") {
+          // Handle successful response with base64 encoded data
           try {
             const decoded = atob(json.data);
             parsedBody = JSON.parse(decoded);
           } catch {
             parsedBody = json.data;
           }
-        } else {
+          onRunResponse(JSON.stringify(parsedBody, null, 2));
+        } else if (json.data) {
+          // Handle successful response with direct data
           parsedBody = json.data;
+          onRunResponse(JSON.stringify(parsedBody, null, 2));
+        } else {
+          // Handle other response formats
+          onRunResponse(JSON.stringify(json, null, 2));
         }
-        onRunResponse(JSON.stringify(parsedBody, null, 2));
       } catch {
         onRunResponse(response.body);
       }
