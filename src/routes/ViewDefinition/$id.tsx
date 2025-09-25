@@ -736,6 +736,7 @@ function RightPanel({
         element.flags.forEach((flag: string) => {
           if (flag === "summary") node.meta.isSummary = true;
           if (flag === "modifier") node.meta.isModifier = true;
+          if (flag === "mustSupport") node.meta.mustSupport = true;
         });
       }
 
