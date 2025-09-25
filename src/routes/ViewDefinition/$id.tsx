@@ -158,9 +158,6 @@ const ViewDefinitionForm = ({
   viewDefinition: ViewDefinition;
   onUpdate?: (updatedViewDef: ViewDefinition) => void;
 }) => {
-  // Debounce timer ref
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
   // State for resource types dropdown
   const [resourceTypes, setResourceTypes] = useState<ComboboxOption[]>([]);
   const [isLoadingResourceTypes, setIsLoadingResourceTypes] = useState(false);
@@ -376,43 +373,6 @@ const ViewDefinitionForm = ({
     [viewDefinition, constants, whereConditions, selectColumns, onUpdate],
   );
 
-  // Debounced version of updateViewDefinition
-  const debouncedUpdateViewDefinition = useCallback(
-    (
-      updatedConstants?: Array<{
-        id: string;
-        name: string;
-        valueString: string;
-      }>,
-      updatedWhere?: Array<{ id: string; name: string; value: string }>,
-      updatedFields?: { name?: string; resource?: string },
-      updatedSelect?: Array<{ id: string; name: string; path: string }>,
-    ) => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-
-      debounceTimerRef.current = setTimeout(() => {
-        updateViewDefinition(
-          updatedConstants,
-          updatedWhere,
-          updatedFields,
-          updatedSelect,
-        );
-      }, 300); // 300ms delay
-    },
-    [updateViewDefinition],
-  );
-
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
-
   // Function to add a new constant
   const addConstant = () => {
     const newConstant = {
@@ -435,7 +395,7 @@ const ViewDefinitionForm = ({
       c.id === id ? { ...c, [field]: value } : c,
     );
     setConstants(updatedConstants);
-    debouncedUpdateViewDefinition(updatedConstants);
+    updateViewDefinition(updatedConstants);
   };
 
   // Function to remove a constant
@@ -467,7 +427,7 @@ const ViewDefinitionForm = ({
       w.id === id ? { ...w, [field]: value } : w,
     );
     setWhereConditions(updatedWhere);
-    debouncedUpdateViewDefinition(undefined, updatedWhere);
+    updateViewDefinition(undefined, updatedWhere);
   };
 
   // Function to remove a where condition
@@ -479,12 +439,12 @@ const ViewDefinitionForm = ({
 
   // Function to update name field
   const updateName = (name: string) => {
-    debouncedUpdateViewDefinition(undefined, undefined, { name });
+    updateViewDefinition(undefined, undefined, { name });
   };
 
   // Function to update resource field
   const updateResource = (resource: string) => {
-    debouncedUpdateViewDefinition(undefined, undefined, { resource });
+    updateViewDefinition(undefined, undefined, { resource });
   };
 
   // Function to add a new select column
@@ -509,12 +469,7 @@ const ViewDefinitionForm = ({
       col.id === id ? { ...col, [field]: value } : col,
     );
     setSelectColumns(updatedColumns);
-    debouncedUpdateViewDefinition(
-      undefined,
-      undefined,
-      undefined,
-      updatedColumns,
-    );
+    updateViewDefinition(undefined, undefined, undefined, updatedColumns);
   };
 
   // Function to remove a select column
@@ -947,60 +902,82 @@ function LeftPanel({
     defaultValue: "json",
   });
 
-  // Debounce timer ref for code editor
-  const codeDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Local state for Form tab - doesn't sync until tab switch
+  const [localFormViewDef, setLocalFormViewDef] =
+    useState<ViewDefinition | null>(viewDefinition);
+  // Local state for Code tab - stores the pending changes
+  const [pendingCodeViewDef, setPendingCodeViewDef] =
+    useState<ViewDefinition | null>(null);
 
+  // Update local form state when parent viewDefinition changes
   useEffect(() => {
-    if (viewDefinition) {
+    setLocalFormViewDef(viewDefinition);
+  }, [viewDefinition]);
+
+  // Sync code content with viewDefinition only when switching TO code tab or changing code mode
+  useEffect(() => {
+    if (activeTab === "code" && viewDefinition) {
       if (codeMode === "yaml") {
         setCodeContent(yaml.dump(viewDefinition, { indent: 2 }));
       } else {
         setCodeContent(JSON.stringify(viewDefinition, null, 2));
       }
     }
-  }, [viewDefinition, codeMode]);
+  }, [activeTab, codeMode]);
 
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (codeDebounceTimerRef.current) {
-        clearTimeout(codeDebounceTimerRef.current);
+  // Handle tab changes with synchronization
+  const handleTabChange = (newTab: string) => {
+    const typedTab = newTab as "form" | "code" | "sql";
+
+    // Sync data when switching tabs
+    if (activeTab === "form" && typedTab === "code") {
+      // Switching from Form to Code - sync form changes to parent
+      if (localFormViewDef) {
+        onViewDefinitionUpdate(localFormViewDef);
+        // Update code content with the latest form data
+        if (codeMode === "yaml") {
+          setCodeContent(yaml.dump(localFormViewDef, { indent: 2 }));
+        } else {
+          setCodeContent(JSON.stringify(localFormViewDef, null, 2));
+        }
       }
-    };
-  }, []);
+    } else if (activeTab === "code" && typedTab === "form") {
+      // Switching from Code to Form - sync code changes to parent
+      if (pendingCodeViewDef) {
+        onViewDefinitionUpdate(pendingCodeViewDef);
+        setLocalFormViewDef(pendingCodeViewDef);
+        setPendingCodeViewDef(null); // Clear pending changes
+      }
+    }
 
-  // Update ViewDefinition when code content changes (with debounce)
+    setActiveTab(typedTab);
+  };
+
+  // Update ViewDefinition when code content changes (store locally, don't sync)
   const handleCodeContentChange = useCallback(
     (value: string) => {
       setCodeContent(value || "");
 
-      // Clear existing timer
-      if (codeDebounceTimerRef.current) {
-        clearTimeout(codeDebounceTimerRef.current);
-      }
-
-      // Set new timer for debounced update
-      codeDebounceTimerRef.current = setTimeout(() => {
-        // Try to parse and update ViewDefinition
-        try {
-          let parsedViewDef: any;
-          if (codeMode === "yaml") {
-            parsedViewDef = yaml.load(value || "");
-          } else {
-            parsedViewDef = JSON.parse(value || "{}");
-          }
-
-          // Only update if parsing was successful and it's a valid ViewDefinition
-          if (parsedViewDef && typeof parsedViewDef === "object") {
-            onViewDefinitionUpdate(parsedViewDef);
-          }
-        } catch (error) {
-          // Ignore parsing errors - user might still be typing
-          console.debug("Parsing error (expected while typing):", error);
+      // Try to parse and store locally - don't sync until tab switch
+      try {
+        let parsedViewDef: any;
+        if (codeMode === "yaml") {
+          parsedViewDef = yaml.load(value || "");
+        } else {
+          parsedViewDef = JSON.parse(value || "{}");
         }
-      }, 300); // 300ms delay to match Form tab debounce
+
+        // Only store if parsing was successful and it's a valid ViewDefinition
+        if (parsedViewDef && typeof parsedViewDef === "object") {
+          setPendingCodeViewDef(parsedViewDef);
+        }
+      } catch (error) {
+        // Ignore parsing errors - user might still be typing
+        console.debug("Parsing error (expected while typing):", error);
+        setPendingCodeViewDef(null); // Clear pending if invalid
+      }
     },
-    [codeMode, onViewDefinitionUpdate],
+    [codeMode],
   );
 
   const handleFormatCode = () => {
@@ -1304,12 +1281,7 @@ function LeftPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) =>
-          setActiveTab(value as "form" | "code" | "sql")
-        }
-      >
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
           <div className="flex items-center gap-8">
             <span className="typo-label text-text-secondary truncate">
@@ -1330,10 +1302,10 @@ function LeftPanel({
         </div>
         <div className="flex flex-col grow min-h-0">
           <TabsContent value="form" className="grow min-h-0">
-            {viewDefinition && (
+            {localFormViewDef && (
               <ViewDefinitionForm
-                viewDefinition={viewDefinition}
-                onUpdate={onViewDefinitionUpdate}
+                viewDefinition={localFormViewDef}
+                onUpdate={setLocalFormViewDef}
               />
             )}
           </TabsContent>
