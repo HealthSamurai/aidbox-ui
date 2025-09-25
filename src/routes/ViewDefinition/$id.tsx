@@ -21,6 +21,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight, Save, TextQuote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
@@ -269,12 +270,14 @@ function LeftPanel({
           `Invalid ${codeMode.toUpperCase()} in code editor:`,
           parseError,
         );
-        onRunResponse(
-          JSON.stringify(
-            { error: `Invalid ${codeMode.toUpperCase()} in code editor` },
-            null,
-            2,
-          ),
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="typo-body">Failed to save</span>
+            <span className="typo-code text-text-secondary">
+              Invalid {codeMode.toUpperCase()} in code editor
+            </span>
+          </div>,
+          { duration: 3000 },
         );
         setIsSaving(false);
         return;
@@ -290,18 +293,63 @@ function LeftPanel({
         body: JSON.stringify(viewDefinition),
       });
 
-      try {
-        const parsedBody = JSON.parse(response.body);
-        onRunResponse(JSON.stringify({ saved: true, ...parsedBody }, null, 2));
-        onViewDefinitionUpdate(parsedBody);
-      } catch {
-        onRunResponse(response.body);
+      console.log("Save response:", response); // Debug log to see response structure
+
+      // Check if the response indicates success
+      // Try multiple ways to detect success since response structure might vary
+      const status = response.meta?.status || response.status;
+      const isSuccess =
+        (status && status >= 200 && status < 300) ||
+        response.meta?.ok === true ||
+        (!response.meta?.status && response.body); // If no status, assume success if there's a body
+
+      if (isSuccess) {
+        try {
+          const parsedBody = JSON.parse(response.body);
+          onViewDefinitionUpdate(parsedBody);
+        } catch {
+          // If parsing fails, still update with the original viewDefinition
+          onViewDefinitionUpdate(viewDefinition);
+        }
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span className="typo-body">Successfully saved</span>
+            <span className="typo-code text-text-secondary">
+              ViewDefinition/{routeId}
+            </span>
+          </div>,
+          { duration: 2000 },
+        );
+      } else {
+        // Error response
+        let errorMessage = "Failed to save ViewDefinition";
+        try {
+          const errorBody = JSON.parse(response.body);
+          errorMessage = errorBody.error || errorBody.message || errorMessage;
+        } catch {
+          errorMessage = response.body || errorMessage;
+        }
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="typo-body">Failed to save</span>
+            <span className="typo-code text-text-secondary">
+              {errorMessage}
+            </span>
+          </div>,
+          { duration: 3000 },
+        );
       }
     } catch (error) {
       console.error("Error saving ViewDefinition:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      onRunResponse(JSON.stringify({ error: errorMessage }, null, 2));
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="typo-body">Failed to save</span>
+          <span className="typo-code text-text-secondary">{errorMessage}</span>
+        </div>,
+        { duration: 3000 },
+      );
     } finally {
       setIsSaving(false);
     }
@@ -571,13 +619,28 @@ function RightPanel({
     }
   }, [activeTab, resourceType, isLoadingViewDef]);
 
-  const handleSearch = async () => {
+  // Auto-fetch examples when tab changes to "examples" and no data exists
+  useEffect(() => {
+    if (
+      activeTab === "examples" &&
+      viewDefinition?.resource &&
+      !exampleResource &&
+      !searchResults.length &&
+      !isLoadingExample
+    ) {
+      // Perform initial search without parameters to get all available instances
+      handleSearch("");
+    }
+  }, [activeTab, viewDefinition?.resource]);
+
+  const handleSearch = async (query?: string) => {
     if (!viewDefinition?.resource) return;
 
     setIsLoadingExample(true);
     try {
-      const url = searchQuery.trim()
-        ? `/fhir/${viewDefinition.resource}?${searchQuery}`
+      const searchParams = query !== undefined ? query : searchQuery;
+      const url = searchParams.trim()
+        ? `/fhir/${viewDefinition.resource}?${searchParams}`
         : `/fhir/${viewDefinition.resource}`;
 
       const response = await AidboxCall<{
@@ -715,10 +778,13 @@ function RightPanel({
 
       // Use short for description, fallback to desc
       if (element.short) {
-        node.meta.description = element.short;
-      } else if (element.desc) {
-        node.meta.description = element.desc;
+        node.meta.short = element.short;
       }
+      if (element.desc) {
+        node.meta.desc = element.desc;
+      }
+      // Set description to short or desc for backward compatibility
+      node.meta.description = element.short || element.desc;
 
       // Set the datatype
       if (isUnion) {
@@ -738,6 +804,22 @@ function RightPanel({
           if (flag === "modifier") node.meta.isModifier = true;
           if (flag === "mustSupport") node.meta.mustSupport = true;
         });
+      }
+
+      // Handle extension metadata
+      if (element["extension-url"]) {
+        node.meta.extensionUrl = element["extension-url"];
+      }
+      if (element["extension-coordinate"]) {
+        node.meta.extensionCoordinate = element["extension-coordinate"];
+      }
+
+      // Handle binding metadata
+      if (element.binding) {
+        node.meta.binding = element.binding;
+      }
+      if (element["vs-coordinate"]) {
+        node.meta.vsCoordinate = element["vs-coordinate"];
       }
 
       tree[path] = node;
@@ -1147,7 +1229,8 @@ function BottomPanel({
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-center bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
         <span className="typo-label text-text-secondary">
-          View Definition Result:
+          View Definition Result: {tableData.length} row
+          {tableData.length !== 1 ? "s" : ""}
         </span>
       </div>
       {response ? (
