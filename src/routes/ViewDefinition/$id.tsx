@@ -625,6 +625,29 @@ function LeftPanel({
 		}
 	}, [viewDefinition, codeMode]);
 
+	// Update ViewDefinition when code content changes
+	const handleCodeContentChange = (value: string) => {
+		setCodeContent(value || "");
+
+		// Try to parse and update ViewDefinition
+		try {
+			let parsedViewDef: any;
+			if (codeMode === "yaml") {
+				parsedViewDef = yaml.load(value || "");
+			} else {
+				parsedViewDef = JSON.parse(value || "{}");
+			}
+
+			// Only update if parsing was successful and it's a valid ViewDefinition
+			if (parsedViewDef && typeof parsedViewDef === "object") {
+				onViewDefinitionUpdate(parsedViewDef);
+			}
+		} catch (error) {
+			// Ignore parsing errors - user might still be typing
+			console.debug("Parsing error (expected while typing):", error);
+		}
+	};
+
 	const handleFormatCode = () => {
 		try {
 			if (codeMode === "yaml") {
@@ -935,7 +958,7 @@ function LeftPanel({
 								</div>
 								<CodeEditor
 									currentValue={codeContent}
-									onChange={(value) => setCodeContent(value || "")}
+									onChange={handleCodeContentChange}
 									mode={codeMode === "yaml" ? "yaml" : "json"}
 								/>
 							</div>
