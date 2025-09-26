@@ -68,6 +68,661 @@ interface ViewDefinition {
   [key: string]: any;
 }
 
+// Helper functions for ViewDefinitionForm
+const fetchResourceTypes = async (): Promise<ComboboxOption[]> => {
+  try {
+    const response = await AidboxCall<Record<string, any>>({
+      method: "GET",
+      url: "/$resource-types",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (response) {
+      const options: ComboboxOption[] = Object.keys(response)
+        .sort()
+        .map((resourceType) => ({
+          value: resourceType,
+          label: resourceType,
+        }));
+      return options;
+    }
+  } catch (error) {
+    console.error("Failed to fetch resource types:", error);
+    const defaultTypes = [
+      "Patient",
+      "Practitioner",
+      "Organization",
+      "Observation",
+      "Condition",
+      "Procedure",
+      "Encounter",
+      "Medication",
+      "MedicationRequest",
+      "AllergyIntolerance",
+    ];
+    return defaultTypes.map((type) => ({ value: type, label: type }));
+  }
+  return [];
+};
+
+const parseSelectItems = (items: any[], parentId = ""): any[] => {
+  return items
+    .map((item, index) => {
+      const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+
+      if (item.column) {
+        return {
+          id,
+          type: "column" as const,
+          columns: item.column.map((c: any, idx: number) => ({
+            id: `${id}-col-${idx}-${crypto.randomUUID()}`,
+            name: c.name || "",
+            path: c.path || "",
+          })),
+        };
+      } else if (item.forEach !== undefined) {
+        return {
+          id,
+          type: "forEach" as const,
+          expression: item.forEach,
+          children: item.select
+            ? parseSelectItems(item.select, `${id}-`)
+            : [],
+        };
+      } else if (item.forEachOrNull !== undefined) {
+        return {
+          id,
+          type: "forEachOrNull" as const,
+          expression: item.forEachOrNull,
+          children: item.select
+            ? parseSelectItems(item.select, `${id}-`)
+            : [],
+        };
+      } else if (item.unionAll) {
+        return {
+          id,
+          type: "unionAll" as const,
+          children: parseSelectItems(item.unionAll, `${id}-`),
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+};
+
+const buildSelectArray = (items: any[]): any[] => {
+  return items
+    .map((item) => {
+      if (item.type === "column" && item.columns) {
+        return {
+          column: item.columns.map((col: any) => ({
+            name: col.name,
+            path: col.path,
+          })),
+        };
+      } else if (item.type === "forEach") {
+        const result: any = { forEach: item.expression || "" };
+        if (item.children && item.children.length > 0) {
+          result.select = buildSelectArray(item.children);
+        }
+        return result;
+      } else if (item.type === "forEachOrNull") {
+        const result: any = { forEachOrNull: item.expression || "" };
+        if (item.children && item.children.length > 0) {
+          result.select = buildSelectArray(item.children);
+        }
+        return result;
+      } else if (item.type === "unionAll") {
+        return {
+          unionAll: item.children
+            ? buildSelectArray(item.children)
+            : [],
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+};
+
+const findPath = (
+  items: any[],
+  targetId: string,
+  path: string[] = [],
+): string[] | null => {
+  for (const item of items) {
+    if (item.id === targetId) {
+      return path;
+    }
+    if (item.children) {
+      const result = findPath(item.children, targetId, [
+        ...path,
+        item.id,
+      ]);
+      if (result) return result;
+    }
+  }
+  return null;
+};
+
+// Helper functions for LeftPanel
+const formatCode = (content: string, mode: "json" | "yaml"): string => {
+  try {
+    if (mode === "yaml") {
+      const parsed = yaml.load(content);
+      return yaml.dump(parsed, { indent: 2 });
+    } else {
+      const parsed = JSON.parse(content);
+      return JSON.stringify(parsed, null, 2);
+    }
+  } catch (error) {
+    console.error(`Failed to format ${mode.toUpperCase()}:`, error);
+    return content;
+  }
+};
+
+const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
+  try {
+    const parametersPayload = {
+      resourceType: "Parameters",
+      parameter: [
+        {
+          name: "viewResource",
+          resource: viewDefinition,
+        },
+      ],
+    };
+
+    const response = await AidboxCallWithMeta({
+      method: "POST",
+      url: "/fhir/ViewDefinition/$sql",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/fhir+json",
+      },
+      body: JSON.stringify(parametersPayload),
+    });
+
+    try {
+      const json = JSON.parse(response.body);
+      if (json.issue) {
+        return `-- Error: ${json.issue[0]?.diagnostics || "Unknown error"}`;
+      } else if (json.parameter && json.parameter[0]?.valueString) {
+        try {
+          return formatSQL(json.parameter[0].valueString, {
+            language: "postgresql",
+            keywordCase: "upper",
+            linesBetweenQueries: 2,
+          });
+        } catch {
+          return json.parameter[0].valueString;
+        }
+      } else {
+        return response.body;
+      }
+    } catch {
+      return response.body;
+    }
+  } catch (error) {
+    console.error("Error fetching SQL:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    return `-- Error fetching SQL: ${errorMessage}`;
+  }
+};
+
+const parseViewDefinition = (content: string, mode: "json" | "yaml"): any => {
+  if (mode === "yaml") {
+    return yaml.load(content);
+  } else {
+    return JSON.parse(content);
+  }
+};
+
+const runViewDefinition = async (viewDefinitionToRun: any): Promise<any> => {
+  const parametersPayload = {
+    resourceType: "Parameters",
+    parameter: [
+      {
+        name: "viewResource",
+        resource: viewDefinitionToRun,
+      },
+      {
+        name: "_format",
+        valueCode: "json",
+      },
+    ],
+  };
+
+  const response = await AidboxCallWithMeta({
+    method: "POST",
+    url: "/fhir/ViewDefinition/$run",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/fhir+json",
+    },
+    body: JSON.stringify(parametersPayload),
+  });
+
+  return response;
+};
+
+const processRunResponse = (response: any): { success: boolean; data: any; diagnostics?: string[] } => {
+  try {
+    const json = JSON.parse(response.body);
+
+    if (json.resourceType === "OperationOutcome" && json.issue) {
+      const diagnostics = json.issue
+        .filter((issue: any) => issue.diagnostics)
+        .map((issue: any) => issue.diagnostics);
+
+      return {
+        success: false,
+        data: json,
+        diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
+      };
+    } else if (json.data && typeof json.data === "string") {
+      try {
+        const decoded = atob(json.data);
+        return { success: true, data: JSON.parse(decoded) };
+      } catch {
+        return { success: true, data: json.data };
+      }
+    } else if (json.data) {
+      return { success: true, data: json.data };
+    } else {
+      return { success: true, data: json };
+    }
+  } catch {
+    return { success: true, data: response.body };
+  }
+};
+
+const saveViewDefinition = async (viewDefinitionToSave: any, routeId: string): Promise<any> => {
+  const response = await AidboxCallWithMeta({
+    method: "PUT",
+    url: `/fhir/ViewDefinition/${routeId}`,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(viewDefinitionToSave),
+  });
+
+  return response;
+};
+
+const checkSaveSuccess = (response: any): boolean => {
+  const status = response.meta?.status || response.status;
+  return (
+    (status && status >= 200 && status < 300) ||
+    response.meta?.ok === true ||
+    (!response.meta?.status && response.body)
+  );
+};
+
+// Helper functions for RightPanel
+const fetchSchema = async (resourceType: string): Promise<any> => {
+  try {
+    const response = await AidboxCallWithMeta({
+      method: "POST",
+      url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        method: "aidbox.introspector/get-schemas-by-resource-type",
+        params: { "resource-type": resourceType },
+      }),
+    });
+
+    const data = JSON.parse(response.body);
+
+    if (data?.result) {
+      const defaultSchema = Object.values(data.result).find(
+        (schema: any) => schema?.["default?"] === true,
+      );
+
+      if (defaultSchema) {
+        const differential = (defaultSchema as any)?.snapshot;
+        return differential || defaultSchema;
+      } else {
+        const schemas = Object.values(data.result);
+        const firstSchema = schemas[0] as any;
+        const differential = firstSchema?.differential;
+        return differential || firstSchema || data;
+      }
+    } else {
+      return data;
+    }
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to fetch schema",
+    );
+  }
+};
+
+const searchResources = async (resourceType: string, searchParams: string): Promise<Record<string, unknown>[]> => {
+  const url = searchParams.trim()
+    ? `/fhir/${resourceType}?${searchParams}`
+    : `/fhir/${resourceType}`;
+
+  const response = await AidboxCall<{
+    entry?: Array<{ resource: Record<string, unknown> }>;
+  }>({
+    method: "GET",
+    url: url,
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (response?.entry && response.entry.length > 0) {
+    return response.entry.map((entry) => entry.resource);
+  } else {
+    return [];
+  }
+};
+
+const transformDifferentialToTree = (data: any): Record<string, any> => {
+  let elements: any[] = [];
+
+  if (data?.snapshot && Array.isArray(data.snapshot)) {
+    elements = data.snapshot;
+  } else if (Array.isArray(data)) {
+    elements = data;
+  } else if (data?.element && Array.isArray(data.element)) {
+    elements = data.element;
+  } else if (
+    data?.snapshot?.element &&
+    Array.isArray(data.snapshot.element)
+  ) {
+    elements = data.snapshot.element;
+  } else if (
+    data?.differential?.element &&
+    Array.isArray(data.differential.element)
+  ) {
+    elements = data.differential.element;
+  } else {
+    const possibleArrays = Object.values(data || {}).filter((v) =>
+      Array.isArray(v),
+    );
+    if (possibleArrays.length > 0) {
+      elements = possibleArrays[0] as any[];
+    }
+  }
+
+  if (!elements || elements.length === 0) {
+    return {};
+  }
+
+  const tree: Record<string, any> = {};
+  const childrenMap: Record<string, string[]> = {};
+
+  // First pass: create all nodes and collect parent-child relationships
+  elements.forEach((element: any) => {
+    if (element.type === "root") return;
+
+    const path = element.path || element.id;
+    if (!path) return;
+
+    const parts = path.split(".");
+    const name = element.name || parts[parts.length - 1];
+
+    const isUnion = element["union?"] === true;
+    const displayName =
+      isUnion && !name.includes("[x]") ? `${name}[x]` : name;
+
+    const node: any = {
+      name: displayName,
+      meta: {},
+    };
+
+    if (element.min !== undefined && element.min !== null) {
+      node.meta.min = String(element.min);
+    }
+    if (element.max !== undefined && element.max !== null) {
+      node.meta.max = element.max === "*" ? "*" : String(element.max);
+    }
+
+    if (element.short) {
+      node.meta.short = element.short;
+    }
+    if (element.desc) {
+      node.meta.desc = element.desc;
+    }
+    node.meta.description = element.short || element.desc;
+
+    if (isUnion) {
+      node.meta.type = "union";
+    } else if (element.datatype) {
+      node.meta.type = element.datatype;
+    } else if (element.type === "complex") {
+      node.meta.type = element.datatype || "BackboneElement";
+    } else if (element.type) {
+      node.meta.type = element.type;
+    }
+
+    if (element.flags && Array.isArray(element.flags)) {
+      element.flags.forEach((flag: string) => {
+        if (flag === "summary") node.meta.isSummary = true;
+        if (flag === "modifier") node.meta.isModifier = true;
+        if (flag === "mustSupport") node.meta.mustSupport = true;
+      });
+    }
+
+    if (element["extension-url"]) {
+      node.meta.extensionUrl = element["extension-url"];
+    }
+    if (element["extension-coordinate"]) {
+      node.meta.extensionCoordinate = element["extension-coordinate"];
+    }
+
+    if (element.binding) {
+      node.meta.binding = element.binding;
+    }
+    if (element["vs-coordinate"]) {
+      node.meta.vsCoordinate = element["vs-coordinate"];
+    }
+
+    tree[path] = node;
+
+    if (parts.length > 1) {
+      const lastPart = parts[parts.length - 1];
+      let addedToUnionParent = false;
+
+      elements.forEach((potentialParent: any) => {
+        if (
+          !addedToUnionParent &&
+          potentialParent["union?"] === true &&
+          potentialParent.path
+        ) {
+          const unionParts = potentialParent.path.split(".");
+          const unionName = unionParts[unionParts.length - 1];
+
+          if (lastPart.startsWith(unionName) && lastPart !== unionName) {
+            const possibleUnionPath =
+              parts.slice(0, -1).join(".") + "." + unionName;
+
+            if (potentialParent.path === possibleUnionPath) {
+              if (!childrenMap[potentialParent.path]) {
+                childrenMap[potentialParent.path] = [];
+              }
+              if (!childrenMap[potentialParent.path].includes(path)) {
+                childrenMap[potentialParent.path].push(path);
+              }
+              addedToUnionParent = true;
+            }
+          }
+        }
+      });
+
+      if (!addedToUnionParent) {
+        const parentPath = parts.slice(0, -1).join(".");
+        if (!childrenMap[parentPath]) {
+          childrenMap[parentPath] = [];
+        }
+        if (!childrenMap[parentPath].includes(path)) {
+          childrenMap[parentPath].push(path);
+        }
+      }
+    }
+  });
+
+  // Second pass: add children arrays and mark last nodes
+  Object.entries(childrenMap).forEach(([parentPath, children]) => {
+    if (tree[parentPath]) {
+      tree[parentPath].children = children;
+
+      if (children.length > 0) {
+        const lastChildPath = children[children.length - 1];
+        if (
+          tree[lastChildPath] &&
+          (!childrenMap[lastChildPath] ||
+            childrenMap[lastChildPath].length === 0)
+        ) {
+          tree[lastChildPath].meta.lastNode = true;
+        }
+      }
+    }
+  });
+
+  let resourceType = "";
+
+  const rootElement = elements.find((e: any) => e.type === "root");
+  if (rootElement && rootElement.name) {
+    resourceType = rootElement.name;
+  } else {
+    elements.forEach((element: any) => {
+      const path = element.path || element.id;
+      if (path && !path.includes(".")) {
+        resourceType = path;
+      }
+    });
+
+    if (!resourceType && elements.length > 0) {
+      const firstPath = elements.find((e: any) => e.path)?.path;
+      if (firstPath) {
+        resourceType = firstPath.split(".")[0];
+      }
+    }
+  }
+
+  if (resourceType) {
+    const directChildren: string[] = [];
+    Object.keys(tree).forEach((path) => {
+      const parts = path.split(".");
+      if (parts.length === 2 && parts[0] === resourceType) {
+        const elementName = parts[1];
+        let isUnionChild = false;
+
+        elements.forEach((element: any) => {
+          if (element["union?"] === true && element.path) {
+            const unionName = element.path.split(".").pop();
+            if (
+              elementName.startsWith(unionName) &&
+              elementName !== unionName &&
+              element.path === `${resourceType}.${unionName}`
+            ) {
+              isUnionChild = true;
+            }
+          }
+        });
+
+        if (!isUnionChild && !directChildren.includes(path)) {
+          directChildren.push(path);
+        }
+      }
+    });
+
+    if (!tree[resourceType]) {
+      const resourceElement = elements.find(
+        (e: any) =>
+          e.path === resourceType ||
+          (e.type === "root" && e.name === resourceType),
+      );
+
+      tree[resourceType] = {
+        name: resourceType,
+        meta: {
+          type: "Resource",
+          min: "0",
+          max: "*",
+          description:
+            resourceElement?.short ||
+            resourceElement?.desc ||
+            `Information about ${resourceType}`,
+        },
+        children: directChildren,
+      };
+    } else {
+      if (
+        !tree[resourceType].children ||
+        tree[resourceType].children.length === 0
+      ) {
+        tree[resourceType].children = directChildren;
+      }
+    }
+  }
+
+  tree.root = {
+    name: "Root",
+    children: resourceType ? [resourceType] : [],
+  };
+
+  return tree;
+};
+
+// Helper functions for BottomPanel
+const processTableData = (response: string | null): {
+  tableData: any[];
+  columns: ColumnDef<Record<string, any>, any>[];
+  isEmptyArray: boolean;
+} => {
+  if (!response) {
+    return { tableData: [], columns: [], isEmptyArray: false };
+  }
+
+  try {
+    const parsedResponse = JSON.parse(response);
+
+    if (Array.isArray(parsedResponse) && parsedResponse.length === 0) {
+      return { tableData: [], columns: [], isEmptyArray: true };
+    }
+
+    if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
+      const allKeys = new Set<string>();
+      parsedResponse.forEach((row) => {
+        if (typeof row === "object" && row !== null) {
+          Object.keys(row).forEach((key) => allKeys.add(key));
+        }
+      });
+
+      const columns: ColumnDef<Record<string, any>, any>[] = Array.from(
+        allKeys,
+      ).map((key) => ({
+        accessorKey: key,
+        header: key.charAt(0).toUpperCase() + key.slice(1),
+        cell: ({ getValue }) => {
+          const value = getValue();
+          if (value === null || value === undefined) {
+            return <span className="text-text-tertiary">null</span>;
+          }
+          return String(value);
+        },
+      }));
+
+      return { tableData: parsedResponse, columns, isEmptyArray: false };
+    }
+  } catch (error) {
+    console.error("Error parsing response:", error);
+  }
+
+  return { tableData: [], columns: [], isEmptyArray: false };
+};
+
 export const Route = createFileRoute("/ViewDefinition/$id")({
   component: ViewDefinitionPage,
   staticData: {
@@ -224,52 +879,14 @@ const ViewDefinitionForm = ({
 
   // Fetch resource types on component mount
   useEffect(() => {
-    const fetchResourceTypes = async () => {
+    const loadResourceTypes = async () => {
       setIsLoadingResourceTypes(true);
-      try {
-        const response = await AidboxCall<Record<string, any>>({
-          method: "GET",
-          url: "/$resource-types",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        });
-
-        if (response) {
-          // Convert the response object keys to ComboboxOption format
-          const options: ComboboxOption[] = Object.keys(response)
-            .sort() // Sort alphabetically for better UX
-            .map((resourceType) => ({
-              value: resourceType,
-              label: resourceType,
-            }));
-          setResourceTypes(options);
-        }
-      } catch (error) {
-        console.error("Failed to fetch resource types:", error);
-        // Set some default FHIR resource types as fallback
-        const defaultTypes = [
-          "Patient",
-          "Practitioner",
-          "Organization",
-          "Observation",
-          "Condition",
-          "Procedure",
-          "Encounter",
-          "Medication",
-          "MedicationRequest",
-          "AllergyIntolerance",
-        ];
-        setResourceTypes(
-          defaultTypes.map((type) => ({ value: type, label: type })),
-        );
-      } finally {
-        setIsLoadingResourceTypes(false);
-      }
+      const options = await fetchResourceTypes();
+      setResourceTypes(options);
+      setIsLoadingResourceTypes(false);
     };
 
-    fetchResourceTypes();
+    loadResourceTypes();
   }, []);
 
   // Initialize constants from viewDefinition
@@ -313,51 +930,6 @@ const ViewDefinitionForm = ({
 
     // Initialize select items from viewDefinition
     if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
-      const parseSelectItems = (items: any[], parentId = ""): any[] => {
-        return items
-          .map((item, index) => {
-            const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
-
-            if (item.column) {
-              return {
-                id,
-                type: "column" as const,
-                columns: item.column.map((c: any, idx: number) => ({
-                  id: `${id}-col-${idx}-${crypto.randomUUID()}`,
-                  name: c.name || "",
-                  path: c.path || "",
-                })),
-              };
-            } else if (item.forEach !== undefined) {
-              return {
-                id,
-                type: "forEach" as const,
-                expression: item.forEach,
-                children: item.select
-                  ? parseSelectItems(item.select, `${id}-`)
-                  : [],
-              };
-            } else if (item.forEachOrNull !== undefined) {
-              return {
-                id,
-                type: "forEachOrNull" as const,
-                expression: item.forEachOrNull,
-                children: item.select
-                  ? parseSelectItems(item.select, `${id}-`)
-                  : [],
-              };
-            } else if (item.unionAll) {
-              return {
-                id,
-                type: "unionAll" as const,
-                children: parseSelectItems(item.unionAll, `${id}-`),
-              };
-            }
-            return null;
-          })
-          .filter(Boolean);
-      };
-
       setSelectItems(parseSelectItems(viewDefinition.select));
     } else {
       setSelectItems([]);
@@ -388,39 +960,6 @@ const ViewDefinitionForm = ({
         }));
 
         // Convert selectItems to proper JSON structure
-        const buildSelectArray = (items: any[]): any[] => {
-          return items
-            .map((item) => {
-              if (item.type === "column" && item.columns) {
-                return {
-                  column: item.columns.map((col: any) => ({
-                    name: col.name,
-                    path: col.path,
-                  })),
-                };
-              } else if (item.type === "forEach") {
-                const result: any = { forEach: item.expression || "" };
-                if (item.children && item.children.length > 0) {
-                  result.select = buildSelectArray(item.children);
-                }
-                return result;
-              } else if (item.type === "forEachOrNull") {
-                const result: any = { forEachOrNull: item.expression || "" };
-                if (item.children && item.children.length > 0) {
-                  result.select = buildSelectArray(item.children);
-                }
-                return result;
-              } else if (item.type === "unionAll") {
-                return {
-                  unionAll: item.children
-                    ? buildSelectArray(item.children)
-                    : [],
-                };
-              }
-              return null;
-            })
-            .filter(Boolean);
-        };
 
         const selectArray = buildSelectArray(updatedSelectItems || selectItems);
 
@@ -1114,26 +1653,6 @@ const ViewDefinitionForm = ({
             <DropdownMenuContent align="start">
               <DropdownMenuItem
                 onSelect={() => {
-                  // Find parent path
-                  const findPath = (
-                    items: any[],
-                    targetId: string,
-                    path: string[] = [],
-                  ): string[] | null => {
-                    for (const item of items) {
-                      if (item.id === targetId) {
-                        return path;
-                      }
-                      if (item.children) {
-                        const result = findPath(item.children, targetId, [
-                          ...path,
-                          item.id,
-                        ]);
-                        if (result) return result;
-                      }
-                    }
-                    return null;
-                  };
                   const path = findPath(selectItems, parentId);
                   addSelectItem(
                     "column",
@@ -1145,25 +1664,6 @@ const ViewDefinitionForm = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
-                  const findPath = (
-                    items: any[],
-                    targetId: string,
-                    path: string[] = [],
-                  ): string[] | null => {
-                    for (const item of items) {
-                      if (item.id === targetId) {
-                        return path;
-                      }
-                      if (item.children) {
-                        const result = findPath(item.children, targetId, [
-                          ...path,
-                          item.id,
-                        ]);
-                        if (result) return result;
-                      }
-                    }
-                    return null;
-                  };
                   const path = findPath(selectItems, parentId);
                   addSelectItem(
                     "forEach",
@@ -1175,25 +1675,6 @@ const ViewDefinitionForm = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
-                  const findPath = (
-                    items: any[],
-                    targetId: string,
-                    path: string[] = [],
-                  ): string[] | null => {
-                    for (const item of items) {
-                      if (item.id === targetId) {
-                        return path;
-                      }
-                      if (item.children) {
-                        const result = findPath(item.children, targetId, [
-                          ...path,
-                          item.id,
-                        ]);
-                        if (result) return result;
-                      }
-                    }
-                    return null;
-                  };
                   const path = findPath(selectItems, parentId);
                   addSelectItem(
                     "forEachOrNull",
@@ -1205,25 +1686,6 @@ const ViewDefinitionForm = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
-                  const findPath = (
-                    items: any[],
-                    targetId: string,
-                    path: string[] = [],
-                  ): string[] | null => {
-                    for (const item of items) {
-                      if (item.id === targetId) {
-                        return path;
-                      }
-                      if (item.children) {
-                        const result = findPath(item.children, targetId, [
-                          ...path,
-                          item.id,
-                        ]);
-                        if (result) return result;
-                      }
-                    }
-                    return null;
-                  };
                   const path = findPath(selectItems, parentId);
                   addSelectItem(
                     "unionAll",
@@ -1579,82 +2041,21 @@ function LeftPanel({
   );
 
   const handleFormatCode = () => {
-    try {
-      if (codeMode === "yaml") {
-        // Parse and re-dump YAML to format it
-        const parsed = yaml.load(codeContent);
-        setCodeContent(yaml.dump(parsed, { indent: 2 }));
-      } else {
-        // Parse and re-stringify JSON to format it
-        const parsed = JSON.parse(codeContent);
-        setCodeContent(JSON.stringify(parsed, null, 2));
-      }
-    } catch (error) {
-      // If parsing fails, leave content as is
-      console.error(`Failed to format ${codeMode.toUpperCase()}:`, error);
-    }
+    const formattedContent = formatCode(codeContent, codeMode);
+    setCodeContent(formattedContent);
   };
 
   useEffect(() => {
-    const fetchSQL = async () => {
+    const loadSQL = async () => {
       if (activeTab === "sql" && viewDefinition) {
         setIsLoadingSQL(true);
-        try {
-          const parametersPayload = {
-            resourceType: "Parameters",
-            parameter: [
-              {
-                name: "viewResource",
-                resource: viewDefinition,
-              },
-            ],
-          };
-
-          const response = await AidboxCallWithMeta({
-            method: "POST",
-            url: "/fhir/ViewDefinition/$sql",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/fhir+json",
-            },
-            body: JSON.stringify(parametersPayload),
-          });
-
-          try {
-            const json = JSON.parse(response.body);
-            if (json.issue) {
-              setSqlContent(
-                `-- Error: ${json.issue[0]?.diagnostics || "Unknown error"}`,
-              );
-            } else if (json.parameter && json.parameter[0]?.valueString) {
-              try {
-                const formattedSQL = formatSQL(json.parameter[0].valueString, {
-                  language: "postgresql",
-                  keywordCase: "upper",
-                  linesBetweenQueries: 2,
-                });
-                setSqlContent(formattedSQL);
-              } catch {
-                setSqlContent(json.parameter[0].valueString);
-              }
-            } else {
-              setSqlContent(response.body);
-            }
-          } catch {
-            setSqlContent(response.body);
-          }
-        } catch (error) {
-          console.error("Error fetching SQL:", error);
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error occurred";
-          setSqlContent(`-- Error fetching SQL: ${errorMessage}`);
-        } finally {
-          setIsLoadingSQL(false);
-        }
+        const sqlContent = await fetchSQL(viewDefinition);
+        setSqlContent(sqlContent);
+        setIsLoadingSQL(false);
       }
     };
 
-    fetchSQL();
+    loadSQL();
   }, [activeTab, viewDefinition]);
 
   const handleSave = async () => {
@@ -1664,16 +2065,10 @@ function LeftPanel({
 
       // Use the current tab's state
       if (activeTab === "form") {
-        // Use form's local state
         viewDefinitionToSave = localFormViewDef;
       } else if (activeTab === "code") {
-        // Parse and use code editor's content
         try {
-          if (codeMode === "yaml") {
-            viewDefinitionToSave = yaml.load(codeContent);
-          } else {
-            viewDefinitionToSave = JSON.parse(codeContent);
-          }
+          viewDefinitionToSave = parseViewDefinition(codeContent, codeMode);
         } catch (parseError) {
           console.error(
             `Invalid ${codeMode.toUpperCase()} in code editor:`,
@@ -1692,29 +2087,13 @@ function LeftPanel({
           return;
         }
       } else {
-        // SQL tab - shouldn't save from here
         toast.error("Cannot save from SQL tab");
         setIsSaving(false);
         return;
       }
 
-      const response = await AidboxCallWithMeta({
-        method: "PUT",
-        url: `/fhir/ViewDefinition/${routeId}`,
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(viewDefinitionToSave),
-      });
-
-      // Check if the response indicates success
-      // Try multiple ways to detect success since response structure might vary
-      const status = response.meta?.status || response.status;
-      const isSuccess =
-        (status && status >= 200 && status < 300) ||
-        response.meta?.ok === true ||
-        (!response.meta?.status && response.body); // If no status, assume success if there's a body
+      const response = await saveViewDefinition(viewDefinitionToSave, routeId);
+      const isSuccess = checkSaveSuccess(response);
 
       if (isSuccess) {
         try {
@@ -1780,16 +2159,10 @@ function LeftPanel({
 
       // Use the current tab's state
       if (activeTab === "form") {
-        // Use form's local state
         viewDefinitionToRun = localFormViewDef;
       } else if (activeTab === "code") {
-        // Parse and use code editor's content
         try {
-          if (codeMode === "yaml") {
-            viewDefinitionToRun = yaml.load(codeContent);
-          } else {
-            viewDefinitionToRun = JSON.parse(codeContent);
-          }
+          viewDefinitionToRun = parseViewDefinition(codeContent, codeMode);
         } catch (parseError) {
           console.error(
             `Invalid ${codeMode.toUpperCase()} in code editor:`,
@@ -1806,97 +2179,41 @@ function LeftPanel({
           return;
         }
       } else {
-        // SQL tab - can't run from here
         toast.error("Cannot run from SQL tab");
         setIsLoading(false);
         return;
       }
 
-      const parametersPayload = {
-        resourceType: "Parameters",
-        parameter: [
-          {
-            name: "viewResource",
-            resource: viewDefinitionToRun,
-          },
-          {
-            name: "_format",
-            valueCode: "json",
-          },
-        ],
-      };
+      const response = await runViewDefinition(viewDefinitionToRun);
+      const result = processRunResponse(response);
 
-      const response = await AidboxCallWithMeta({
-        method: "POST",
-        url: "/fhir/ViewDefinition/$run",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/fhir+json",
-        },
-        body: JSON.stringify(parametersPayload),
-      });
-
-      try {
-        let parsedBody: any;
-        const json = JSON.parse(response.body);
-
-        // Check if response is an OperationOutcome with errors
-        if (json.resourceType === "OperationOutcome" && json.issue) {
-          // Collect all diagnostic messages from issues
-          const diagnostics = json.issue
-            .filter((issue: any) => issue.diagnostics)
-            .map((issue: any) => issue.diagnostics);
-
-          if (diagnostics.length > 0) {
-            // Display error toast with all diagnostic messages
-            toast.error(
-              <div className="flex flex-col gap-1">
-                <span className="typo-body">Failed to run ViewDefinition</span>
-                <div className="flex flex-col gap-1">
-                  {diagnostics.map((diagnostic: string, index: number) => (
-                    <span key={index} className="typo-code text-text-secondary">
-                      • {diagnostic}
-                    </span>
-                  ))}
-                </div>
-              </div>,
-              { duration: 5000 },
-            );
-          } else {
-            // Generic error message if no diagnostics available
-            toast.error(
-              <div className="flex flex-col gap-1">
-                <span className="typo-body">Failed to run ViewDefinition</span>
-                <span className="typo-code text-text-secondary">
-                  {json.issue[0]?.code || "Unknown error occurred"}
+      if (!result.success && result.diagnostics) {
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="typo-body">Failed to run ViewDefinition</span>
+            <div className="flex flex-col gap-1">
+              {result.diagnostics.map((diagnostic: string, index: number) => (
+                <span key={index} className="typo-code text-text-secondary">
+                  • {diagnostic}
                 </span>
-              </div>,
-              { duration: 5000 },
-            );
-          }
-
-          // Still show the error in the response panel for debugging
-          onRunResponse(JSON.stringify(json, null, 2));
-        } else if (json.data && typeof json.data === "string") {
-          // Handle successful response with base64 encoded data
-          try {
-            const decoded = atob(json.data);
-            parsedBody = JSON.parse(decoded);
-          } catch {
-            parsedBody = json.data;
-          }
-          onRunResponse(JSON.stringify(parsedBody, null, 2));
-        } else if (json.data) {
-          // Handle successful response with direct data
-          parsedBody = json.data;
-          onRunResponse(JSON.stringify(parsedBody, null, 2));
-        } else {
-          // Handle other response formats
-          onRunResponse(JSON.stringify(json, null, 2));
-        }
-      } catch {
-        onRunResponse(response.body);
+              ))}
+            </div>
+          </div>,
+          { duration: 5000 },
+        );
+      } else if (!result.success) {
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="typo-body">Failed to run ViewDefinition</span>
+            <span className="typo-code text-text-secondary">
+              {(result.data as any)?.issue?.[0]?.code || "Unknown error occurred"}
+            </span>
+          </div>,
+          { duration: 5000 },
+        );
       }
+
+      onRunResponse(JSON.stringify(result.data, null, 2));
     } catch (error) {
       console.error("Error running ViewDefinition:", error);
       const errorMessage =
@@ -2034,50 +2351,12 @@ function RightPanel({
   // Fetch schema when activeTab changes to "schema" or resourceType changes
   useEffect(() => {
     if (activeTab === "schema" && resourceType && !isLoadingViewDef) {
-      const fetchSchema = async () => {
+      const loadSchema = async () => {
         setIsLoadingSchema(true);
         setSchemaError(null);
         try {
-          const response = await AidboxCallWithMeta({
-            method: "POST",
-            url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              method: "aidbox.introspector/get-schemas-by-resource-type",
-              params: { "resource-type": resourceType },
-            }),
-          });
-
-          try {
-            const data = JSON.parse(response.body);
-
-            // Extract the object with "default?": true from the result
-            if (data?.result) {
-              const defaultSchema = Object.values(data.result).find(
-                (schema: any) => schema?.["default?"] === true,
-              );
-
-              if (defaultSchema) {
-                // Extract only the differential value from the default schema
-                const differential = (defaultSchema as any)?.snapshot;
-                setSchemaData(differential || defaultSchema);
-              } else {
-                // If no default schema found, try to use the first one
-                const schemas = Object.values(data.result);
-                const firstSchema = schemas[0] as any;
-                const differential = firstSchema?.differential;
-                setSchemaData(differential || firstSchema || data);
-              }
-            } else {
-              // Fallback to the entire response if no result property
-              setSchemaData(data);
-            }
-          } catch (parseError) {
-            console.error("Failed to parse schema response:", parseError);
-            setSchemaError("Failed to parse schema response");
-          }
+          const data = await fetchSchema(resourceType);
+          setSchemaData(data);
         } catch (error) {
           setSchemaError(
             error instanceof Error ? error.message : "Failed to fetch schema",
@@ -2087,7 +2366,7 @@ function RightPanel({
         }
       };
 
-      fetchSchema();
+      loadSchema();
     }
   }, [activeTab, resourceType, isLoadingViewDef]);
 
@@ -2100,7 +2379,6 @@ function RightPanel({
       !searchResults.length &&
       !isLoadingExample
     ) {
-      // Perform initial search without parameters to get all available instances
       handleSearch("");
     }
   }, [activeTab, viewDefinition?.resource]);
@@ -2111,22 +2389,9 @@ function RightPanel({
     setIsLoadingExample(true);
     try {
       const searchParams = query !== undefined ? query : searchQuery;
-      const url = searchParams.trim()
-        ? `/fhir/${viewDefinition.resource}?${searchParams}`
-        : `/fhir/${viewDefinition.resource}`;
+      const resources = await searchResources(viewDefinition.resource, searchParams);
 
-      const response = await AidboxCall<{
-        entry?: Array<{ resource: Record<string, unknown> }>;
-      }>({
-        method: "GET",
-        url: url,
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (response?.entry && response.entry.length > 0) {
-        const resources = response.entry.map((entry) => entry.resource);
+      if (resources.length > 0) {
         setSearchResults(resources);
         setCurrentResultIndex(0);
         setExampleResource(resources[0] || null);
@@ -2173,297 +2438,6 @@ function RightPanel({
   const canGoToNext = currentResultIndex < searchResults.length - 1;
 
   // Transform differential data to tree format for FHIRStructureView
-  const transformDifferentialToTree = (data: any) => {
-    // Handle different possible data structures
-    let elements: any[] = [];
-
-    // Check if data.snapshot is an array (prioritize snapshot over differential)
-    if (data?.snapshot && Array.isArray(data.snapshot)) {
-      elements = data.snapshot;
-    } else if (Array.isArray(data)) {
-      elements = data;
-    } else if (data?.element && Array.isArray(data.element)) {
-      elements = data.element;
-    } else if (
-      data?.snapshot?.element &&
-      Array.isArray(data.snapshot.element)
-    ) {
-      elements = data.snapshot.element;
-    } else if (
-      data?.differential?.element &&
-      Array.isArray(data.differential.element)
-    ) {
-      elements = data.differential.element;
-    } else {
-      const possibleArrays = Object.values(data || {}).filter((v) =>
-        Array.isArray(v),
-      );
-      if (possibleArrays.length > 0) {
-        elements = possibleArrays[0] as any[];
-      }
-    }
-
-    if (!elements || elements.length === 0) {
-      return {};
-    }
-
-    const tree: Record<string, any> = {};
-    const childrenMap: Record<string, string[]> = {};
-
-    // First pass: create all nodes and collect parent-child relationships
-    elements.forEach((element: any) => {
-      // Skip root elements that are just type indicators
-      if (element.type === "root") return;
-
-      const path = element.path || element.id;
-      if (!path) return;
-
-      const parts = path.split(".");
-      const name = element.name || parts[parts.length - 1];
-
-      // Handle union types (elements ending with [x] or with union? flag)
-      const isUnion = element["union?"] === true;
-      const displayName =
-        isUnion && !name.includes("[x]") ? `${name}[x]` : name;
-
-      // Create the node
-      const node: any = {
-        name: displayName,
-        meta: {},
-      };
-
-      // Map properties from the new differential format to meta
-      if (element.min !== undefined && element.min !== null) {
-        node.meta.min = String(element.min);
-      }
-      if (element.max !== undefined && element.max !== null) {
-        node.meta.max = element.max === "*" ? "*" : String(element.max);
-      }
-
-      // Use short for description, fallback to desc
-      if (element.short) {
-        node.meta.short = element.short;
-      }
-      if (element.desc) {
-        node.meta.desc = element.desc;
-      }
-      // Set description to short or desc for backward compatibility
-      node.meta.description = element.short || element.desc;
-
-      // Set the datatype
-      if (isUnion) {
-        node.meta.type = "union";
-      } else if (element.datatype) {
-        node.meta.type = element.datatype;
-      } else if (element.type === "complex") {
-        node.meta.type = element.datatype || "BackboneElement";
-      } else if (element.type) {
-        node.meta.type = element.type;
-      }
-
-      // Handle flags array
-      if (element.flags && Array.isArray(element.flags)) {
-        element.flags.forEach((flag: string) => {
-          if (flag === "summary") node.meta.isSummary = true;
-          if (flag === "modifier") node.meta.isModifier = true;
-          if (flag === "mustSupport") node.meta.mustSupport = true;
-        });
-      }
-
-      // Handle extension metadata
-      if (element["extension-url"]) {
-        node.meta.extensionUrl = element["extension-url"];
-      }
-      if (element["extension-coordinate"]) {
-        node.meta.extensionCoordinate = element["extension-coordinate"];
-      }
-
-      // Handle binding metadata
-      if (element.binding) {
-        node.meta.binding = element.binding;
-      }
-      if (element["vs-coordinate"]) {
-        node.meta.vsCoordinate = element["vs-coordinate"];
-      }
-
-      tree[path] = node;
-
-      // Track parent-child relationships based on lvl or path structure
-      // But we need to be careful with union children
-      if (parts.length > 1) {
-        const lastPart = parts[parts.length - 1];
-
-        // Check all possible parent paths to find if this is a union child
-        let addedToUnionParent = false;
-
-        // For a path like "Patient.deceasedBoolean", check if there's a union "Patient.deceased"
-        // We need to find union elements whose path could be a parent of this element
-        elements.forEach((potentialParent: any) => {
-          if (
-            !addedToUnionParent &&
-            potentialParent["union?"] === true &&
-            potentialParent.path
-          ) {
-            const unionParts = potentialParent.path.split(".");
-            const unionName = unionParts[unionParts.length - 1];
-
-            // For "Patient.deceasedBoolean" to be a child of "Patient.deceased":
-            // 1. The element name "deceasedBoolean" must start with "deceased"
-            // 2. The element must be at the same level as where the union would be
-            if (lastPart.startsWith(unionName) && lastPart !== unionName) {
-              // Check if this union could be our parent
-              // We replace our last part with just the union name and see if it matches
-              const possibleUnionPath =
-                parts.slice(0, -1).join(".") + "." + unionName;
-
-              if (potentialParent.path === possibleUnionPath) {
-                // This element is a child of the union!
-                if (!childrenMap[potentialParent.path]) {
-                  childrenMap[potentialParent.path] = [];
-                }
-                // Only add if not already present (prevent duplicates)
-                if (!childrenMap[potentialParent.path].includes(path)) {
-                  childrenMap[potentialParent.path].push(path);
-                }
-                addedToUnionParent = true;
-              }
-            }
-          }
-        });
-
-        // Only add to the regular parent if we didn't add it to a union parent
-        if (!addedToUnionParent) {
-          const parentPath = parts.slice(0, -1).join(".");
-          if (!childrenMap[parentPath]) {
-            childrenMap[parentPath] = [];
-          }
-          // Only add if not already present (prevent duplicates)
-          if (!childrenMap[parentPath].includes(path)) {
-            childrenMap[parentPath].push(path);
-          }
-        }
-      }
-    });
-
-    // Second pass: add children arrays and mark last nodes
-    Object.entries(childrenMap).forEach(([parentPath, children]) => {
-      if (tree[parentPath]) {
-        tree[parentPath].children = children;
-
-        // Mark the last child node
-        if (children.length > 0) {
-          const lastChildPath = children[children.length - 1];
-          if (
-            tree[lastChildPath] &&
-            (!childrenMap[lastChildPath] ||
-              childrenMap[lastChildPath].length === 0)
-          ) {
-            tree[lastChildPath].meta.lastNode = true;
-          }
-        }
-      }
-    });
-
-    // Union children are now handled in the first pass above where we build the childrenMap
-
-    // Identify the resource type - look for the root element or the first path without dots
-    let resourceType = "";
-
-    // First try to find a root type element
-    const rootElement = elements.find((e: any) => e.type === "root");
-    if (rootElement && rootElement.name) {
-      resourceType = rootElement.name;
-    } else {
-      // Otherwise find the first element with a single-part path
-      elements.forEach((element: any) => {
-        const path = element.path || element.id;
-        if (path && !path.includes(".")) {
-          resourceType = path;
-        }
-      });
-
-      // If still not found, extract from first path
-      if (!resourceType && elements.length > 0) {
-        const firstPath = elements.find((e: any) => e.path)?.path;
-        if (firstPath) {
-          resourceType = firstPath.split(".")[0];
-        }
-      }
-    }
-
-    // Create or update the main resource node
-    if (resourceType) {
-      // Find all direct children of the resource
-      // But exclude union children (e.g., exclude Patient.deceasedBoolean if Patient.deceased is a union)
-      const directChildren: string[] = [];
-      Object.keys(tree).forEach((path) => {
-        const parts = path.split(".");
-        if (parts.length === 2 && parts[0] === resourceType) {
-          // Check if this is a union child (but not the union itself)
-          const elementName = parts[1];
-          let isUnionChild = false;
-
-          // Look for a union parent that this could belong to
-          elements.forEach((element: any) => {
-            if (element["union?"] === true && element.path) {
-              const unionName = element.path.split(".").pop();
-              // If this element's name starts with a union name AND is not the union itself, it's a union child
-              if (
-                elementName.startsWith(unionName) &&
-                elementName !== unionName && // Don't exclude the union itself
-                element.path === `${resourceType}.${unionName}`
-              ) {
-                isUnionChild = true;
-              }
-            }
-          });
-
-          if (!isUnionChild && !directChildren.includes(path)) {
-            directChildren.push(path);
-          }
-        }
-      });
-
-      // If the main resource node doesn't exist in the tree, create it
-      if (!tree[resourceType]) {
-        const resourceElement = elements.find(
-          (e: any) =>
-            e.path === resourceType ||
-            (e.type === "root" && e.name === resourceType),
-        );
-
-        tree[resourceType] = {
-          name: resourceType,
-          meta: {
-            type: "Resource",
-            min: "0",
-            max: "*",
-            description:
-              resourceElement?.short ||
-              resourceElement?.desc ||
-              `Information about ${resourceType}`,
-          },
-          children: directChildren,
-        };
-      } else {
-        // Update children if the resource exists
-        if (
-          !tree[resourceType].children ||
-          tree[resourceType].children.length === 0
-        ) {
-          tree[resourceType].children = directChildren;
-        }
-      }
-    }
-
-    // Always create a root node that points to the main resource
-    tree.root = {
-      name: "Root",
-      children: resourceType ? [resourceType] : [],
-    };
-
-    return tree;
-  };
 
   const fhirStructureTree = useMemo(() => {
     if (schemaData) {
@@ -2643,46 +2617,7 @@ function BottomPanel({
   version: string;
 }) {
   const { tableData, columns, isEmptyArray } = useMemo(() => {
-    if (!response) {
-      return { tableData: [], columns: [], isEmptyArray: false };
-    }
-
-    try {
-      const parsedResponse = JSON.parse(response);
-
-      if (Array.isArray(parsedResponse) && parsedResponse.length === 0) {
-        return { tableData: [], columns: [], isEmptyArray: true };
-      }
-
-      if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
-        const allKeys = new Set<string>();
-        parsedResponse.forEach((row) => {
-          if (typeof row === "object" && row !== null) {
-            Object.keys(row).forEach((key) => allKeys.add(key));
-          }
-        });
-
-        const columns: ColumnDef<Record<string, any>, any>[] = Array.from(
-          allKeys,
-        ).map((key) => ({
-          accessorKey: key,
-          header: key.charAt(0).toUpperCase() + key.slice(1),
-          cell: ({ getValue }) => {
-            const value = getValue();
-            if (value === null || value === undefined) {
-              return <span className="text-text-tertiary">null</span>;
-            }
-            return String(value);
-          },
-        }));
-
-        return { tableData: parsedResponse, columns, isEmptyArray: false };
-      }
-    } catch (error) {
-      console.error("Error parsing response:", error);
-    }
-
-    return { tableData: [], columns: [], isEmptyArray: false };
+    return processTableData(response);
   }, [response]);
 
   return (
