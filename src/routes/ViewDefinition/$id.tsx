@@ -6,6 +6,10 @@ import {
   type ComboboxOption,
   CopyIcon,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   FHIRStructureView,
   Input,
   type ItemInstance,
@@ -25,6 +29,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Funnel,
@@ -40,6 +45,18 @@ import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 
+interface SelectItem {
+  column?: Array<{
+    name?: string;
+    path?: string;
+    type?: string;
+  }>;
+  forEach?: string;
+  forEachOrNull?: string;
+  unionAll?: SelectItem[];
+  select?: SelectItem[];
+}
+
 interface ViewDefinition {
   resourceType: string;
   id?: string;
@@ -47,13 +64,7 @@ interface ViewDefinition {
   status?: string;
   resource?: string;
   description?: string;
-  select?: Array<{
-    column?: Array<{
-      name?: string;
-      path?: string;
-      type?: string;
-    }>;
-  }>;
+  select?: SelectItem[];
   [key: string]: any;
 }
 
@@ -180,12 +191,21 @@ const ViewDefinitionForm = ({
     }>
   >([]);
 
-  // State for managing select columns dynamically
-  const [selectColumns, setSelectColumns] = useState<
+  // State for managing select items dynamically (nested structure)
+  const [selectItems, setSelectItems] = useState<
     Array<{
       id: string;
-      name: string;
-      path: string;
+      type: "column" | "forEach" | "forEachOrNull" | "unionAll";
+      // For column type
+      columns?: Array<{
+        id: string;
+        name: string;
+        path: string;
+      }>;
+      // For forEach/forEachOrNull types
+      expression?: string;
+      // For nested selects
+      children?: any[];
     }>
   >([]);
 
@@ -194,9 +214,10 @@ const ViewDefinitionForm = ({
     key: `viewDefinition-form-expanded-${viewDefinition?.id || "default"}`,
     defaultValue: [
       "viewDefinition",
+      "_name",
+      "_resource",
       "_constant",
       "_select",
-      "_column",
       "_where",
     ],
   });
@@ -290,24 +311,56 @@ const ViewDefinitionForm = ({
       setWhereConditions([]);
     }
 
-    // Initialize select columns from viewDefinition
-    if (
-      viewDefinition?.select &&
-      Array.isArray(viewDefinition.select) &&
-      viewDefinition.select.length > 0 &&
-      viewDefinition.select[0]?.column
-    ) {
-      const columnsWithIds = viewDefinition.select[0].column.map(
-        (c: any, index: number) => ({
-          id: `column-${index}-${crypto.randomUUID()}`,
-          name: c.name || "",
-          path: c.path || "",
-        }),
-      );
-      setSelectColumns(columnsWithIds);
+    // Initialize select items from viewDefinition
+    if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
+      const parseSelectItems = (items: any[], parentId = ""): any[] => {
+        return items
+          .map((item, index) => {
+            const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+
+            if (item.column) {
+              return {
+                id,
+                type: "column" as const,
+                columns: item.column.map((c: any, idx: number) => ({
+                  id: `${id}-col-${idx}-${crypto.randomUUID()}`,
+                  name: c.name || "",
+                  path: c.path || "",
+                })),
+              };
+            } else if (item.forEach !== undefined) {
+              return {
+                id,
+                type: "forEach" as const,
+                expression: item.forEach,
+                children: item.select
+                  ? parseSelectItems(item.select, `${id}-`)
+                  : [],
+              };
+            } else if (item.forEachOrNull !== undefined) {
+              return {
+                id,
+                type: "forEachOrNull" as const,
+                expression: item.forEachOrNull,
+                children: item.select
+                  ? parseSelectItems(item.select, `${id}-`)
+                  : [],
+              };
+            } else if (item.unionAll) {
+              return {
+                id,
+                type: "unionAll" as const,
+                children: parseSelectItems(item.unionAll, `${id}-`),
+              };
+            }
+            return null;
+          })
+          .filter(Boolean);
+      };
+
+      setSelectItems(parseSelectItems(viewDefinition.select));
     } else {
-      // Start with empty array - columns will be added by clicking the add button
-      setSelectColumns([]);
+      setSelectItems([]);
     }
   }, [viewDefinition]);
 
@@ -321,11 +374,7 @@ const ViewDefinitionForm = ({
       }>,
       updatedWhere?: Array<{ id: string; name: string; value: string }>,
       updatedFields?: { name?: string; resource?: string },
-      updatedSelect?: Array<{
-        id: string;
-        name: string;
-        path: string;
-      }>,
+      updatedSelectItems?: any[],
     ) => {
       if (onUpdate) {
         const constantArray = (updatedConstants || constants).map((c) => ({
@@ -338,10 +387,42 @@ const ViewDefinitionForm = ({
           value: w.value,
         }));
 
-        const selectArray = (updatedSelect || selectColumns).map((col) => ({
-          name: col.name,
-          path: col.path,
-        }));
+        // Convert selectItems to proper JSON structure
+        const buildSelectArray = (items: any[]): any[] => {
+          return items
+            .map((item) => {
+              if (item.type === "column" && item.columns) {
+                return {
+                  column: item.columns.map((col: any) => ({
+                    name: col.name,
+                    path: col.path,
+                  })),
+                };
+              } else if (item.type === "forEach") {
+                const result: any = { forEach: item.expression || "" };
+                if (item.children && item.children.length > 0) {
+                  result.select = buildSelectArray(item.children);
+                }
+                return result;
+              } else if (item.type === "forEachOrNull") {
+                const result: any = { forEachOrNull: item.expression || "" };
+                if (item.children && item.children.length > 0) {
+                  result.select = buildSelectArray(item.children);
+                }
+                return result;
+              } else if (item.type === "unionAll") {
+                return {
+                  unionAll: item.children
+                    ? buildSelectArray(item.children)
+                    : [],
+                };
+              }
+              return null;
+            })
+            .filter(Boolean);
+        };
+
+        const selectArray = buildSelectArray(updatedSelectItems || selectItems);
 
         const updatedViewDef: any = {
           ...viewDefinition,
@@ -362,7 +443,7 @@ const ViewDefinitionForm = ({
         }
 
         if (selectArray.length > 0) {
-          updatedViewDef.select = [{ column: selectArray }];
+          updatedViewDef.select = selectArray;
         } else {
           delete updatedViewDef.select;
         }
@@ -370,7 +451,7 @@ const ViewDefinitionForm = ({
         onUpdate(updatedViewDef);
       }
     },
-    [viewDefinition, constants, whereConditions, selectColumns, onUpdate],
+    [viewDefinition, constants, whereConditions, selectItems, onUpdate],
   );
 
   // Function to add a new constant
@@ -382,6 +463,20 @@ const ViewDefinitionForm = ({
     };
     const updatedConstants = [...constants, newConstant];
     setConstants(updatedConstants);
+
+    // Add new constant ID to expandedItemIds
+    const newExpandedIds = [...expandedItemIds];
+
+    // Ensure parent _constant node is expanded
+    if (!newExpandedIds.includes("_constant")) {
+      newExpandedIds.push("_constant");
+    }
+
+    if (!newExpandedIds.includes(newConstant.id)) {
+      newExpandedIds.push(newConstant.id);
+    }
+    setExpandedItemIds(newExpandedIds);
+
     updateViewDefinition(updatedConstants);
   };
 
@@ -414,6 +509,20 @@ const ViewDefinitionForm = ({
     };
     const updatedWhere = [...whereConditions, newWhere];
     setWhereConditions(updatedWhere);
+
+    // Add new where condition ID to expandedItemIds
+    const newExpandedIds = [...expandedItemIds];
+
+    // Ensure parent _where node is expanded
+    if (!newExpandedIds.includes("_where")) {
+      newExpandedIds.push("_where");
+    }
+
+    if (!newExpandedIds.includes(newWhere.id)) {
+      newExpandedIds.push(newWhere.id);
+    }
+    setExpandedItemIds(newExpandedIds);
+
     updateViewDefinition(undefined, updatedWhere);
   };
 
@@ -447,36 +556,215 @@ const ViewDefinitionForm = ({
     updateViewDefinition(undefined, undefined, { resource });
   };
 
-  // Function to add a new select column
-  const addSelectColumn = () => {
-    const newColumn = {
-      id: `column-${selectColumns.length}-${crypto.randomUUID()}`,
-      name: "",
-      path: "",
+  // Function to add a new select item
+  const addSelectItem = (
+    type: "column" | "forEach" | "forEachOrNull" | "unionAll",
+    parentPath?: string[],
+  ) => {
+    const newItem: any = {
+      id: `${type}-${Date.now()}-${crypto.randomUUID()}`,
+      type,
     };
-    const updatedColumns = [...selectColumns, newColumn];
-    setSelectColumns(updatedColumns);
-    updateViewDefinition(undefined, undefined, undefined, updatedColumns);
+
+    if (type === "column") {
+      newItem.columns = [
+        {
+          id: `col-${Date.now()}-${crypto.randomUUID()}`,
+          name: "",
+          path: "",
+        },
+      ];
+    } else if (type === "forEach" || type === "forEachOrNull") {
+      newItem.expression = "";
+      newItem.children = [];
+    } else if (type === "unionAll") {
+      newItem.children = [];
+    }
+
+    // Add new item ID and related IDs to expandedItemIds
+    const newExpandedIds = [...expandedItemIds];
+
+    // Add all parent IDs in the path to ensure they're expanded
+    if (parentPath) {
+      parentPath.forEach(parentId => {
+        if (!newExpandedIds.includes(parentId)) {
+          newExpandedIds.push(parentId);
+        }
+      });
+    }
+
+    // Always ensure the _select node is expanded
+    if (!newExpandedIds.includes("_select")) {
+      newExpandedIds.push("_select");
+    }
+
+    newExpandedIds.push(newItem.id);
+
+    // If it's a column type, also expand the column children container
+    if (type === "column" && newItem.columns) {
+      newItem.columns.forEach((col: any) => {
+        newExpandedIds.push(col.id);
+      });
+      newExpandedIds.push(`${newItem.id}_add_column`);
+    } else if (type === "forEach" || type === "forEachOrNull" || type === "unionAll") {
+      // Add the "add select" button ID
+      newExpandedIds.push(`${newItem.id}_add_select`);
+    }
+
+    setExpandedItemIds(newExpandedIds);
+
+    if (parentPath) {
+      // Add to nested location
+      const updatedItems = JSON.parse(JSON.stringify(selectItems));
+      let target = updatedItems;
+      for (const id of parentPath) {
+        const item = target.find((i: any) => i.id === id);
+        if (item && item.children) {
+          target = item.children;
+        }
+      }
+      target.push(newItem);
+      setSelectItems(updatedItems);
+      updateViewDefinition(undefined, undefined, undefined, updatedItems);
+    } else {
+      // Add to root level
+      const updatedItems = [...selectItems, newItem];
+      setSelectItems(updatedItems);
+      updateViewDefinition(undefined, undefined, undefined, updatedItems);
+    }
   };
 
-  // Function to update a specific select column
+  // Function to add a column to a column-type select item
+  const addColumnToSelectItem = (selectItemId: string) => {
+    const newColumnId = `col-${Date.now()}-${crypto.randomUUID()}`;
+    const updatedItems = selectItems.map((item) => {
+      if (item.id === selectItemId && item.type === "column") {
+        return {
+          ...item,
+          columns: [
+            ...(item.columns || []),
+            {
+              id: newColumnId,
+              name: "",
+              path: "",
+            },
+          ],
+        };
+      }
+      return item;
+    });
+
+    // Add new column ID to expandedItemIds
+    const newExpandedIds = [...expandedItemIds];
+
+    // Ensure parent select item is expanded
+    if (!newExpandedIds.includes(selectItemId)) {
+      newExpandedIds.push(selectItemId);
+    }
+
+    // Ensure _select node is expanded
+    if (!newExpandedIds.includes("_select")) {
+      newExpandedIds.push("_select");
+    }
+
+    if (!newExpandedIds.includes(newColumnId)) {
+      newExpandedIds.push(newColumnId);
+    }
+    setExpandedItemIds(newExpandedIds);
+
+    setSelectItems(updatedItems);
+    updateViewDefinition(undefined, undefined, undefined, updatedItems);
+  };
+
+  // Function to update a column in a select item
   const updateSelectColumn = (
-    id: string,
+    selectItemId: string,
+    columnId: string,
     field: "name" | "path",
     value: string,
   ) => {
-    const updatedColumns = selectColumns.map((col) =>
-      col.id === id ? { ...col, [field]: value } : col,
-    );
-    setSelectColumns(updatedColumns);
-    updateViewDefinition(undefined, undefined, undefined, updatedColumns);
+    const updateColumns = (items: any[]): any[] => {
+      return items.map((item) => {
+        if (item.id === selectItemId && item.columns) {
+          return {
+            ...item,
+            columns: item.columns.map((col: any) =>
+              col.id === columnId ? { ...col, [field]: value } : col,
+            ),
+          };
+        }
+        if (item.children) {
+          return { ...item, children: updateColumns(item.children) };
+        }
+        return item;
+      });
+    };
+
+    const updatedItems = updateColumns(selectItems);
+    setSelectItems(updatedItems);
+    updateViewDefinition(undefined, undefined, undefined, updatedItems);
   };
 
-  // Function to remove a select column
-  const removeSelectColumn = (id: string) => {
-    const updatedColumns = selectColumns.filter((col) => col.id !== id);
-    setSelectColumns(updatedColumns);
-    updateViewDefinition(undefined, undefined, undefined, updatedColumns);
+  // Function to update expression for forEach/forEachOrNull
+  const updateSelectExpression = (selectItemId: string, expression: string) => {
+    const updateExpression = (items: any[]): any[] => {
+      return items.map((item) => {
+        if (
+          item.id === selectItemId &&
+          (item.type === "forEach" || item.type === "forEachOrNull")
+        ) {
+          return { ...item, expression };
+        }
+        if (item.children) {
+          return { ...item, children: updateExpression(item.children) };
+        }
+        return item;
+      });
+    };
+
+    const updatedItems = updateExpression(selectItems);
+    setSelectItems(updatedItems);
+    updateViewDefinition(undefined, undefined, undefined, updatedItems);
+  };
+
+  // Function to remove a column from a select item
+  const removeSelectColumn = (selectItemId: string, columnId: string) => {
+    const removeColumn = (items: any[]): any[] => {
+      return items.map((item) => {
+        if (item.id === selectItemId && item.columns) {
+          return {
+            ...item,
+            columns: item.columns.filter((col: any) => col.id !== columnId),
+          };
+        }
+        if (item.children) {
+          return { ...item, children: removeColumn(item.children) };
+        }
+        return item;
+      });
+    };
+
+    const updatedItems = removeColumn(selectItems);
+    setSelectItems(updatedItems);
+    updateViewDefinition(undefined, undefined, undefined, updatedItems);
+  };
+
+  // Function to remove a select item
+  const removeSelectItem = (itemId: string) => {
+    const removeItem = (items: any[]): any[] => {
+      return items
+        .filter((item) => item.id !== itemId)
+        .map((item) => {
+          if (item.children) {
+            return { ...item, children: removeItem(item.children) };
+          }
+          return item;
+        });
+    };
+
+    const updatedItems = removeItem(selectItems);
+    setSelectItems(updatedItems);
+    updateViewDefinition(undefined, undefined, undefined, updatedItems);
   };
 
   // Dynamic tree generation based on current constants and where conditions
@@ -489,11 +777,81 @@ const ViewDefinitionForm = ({
       whereConditions.length > 0 ? whereConditions.map((w) => w.id) : [];
     whereChildren.push("_where_add");
 
-    const selectChildren =
-      selectColumns.length > 0 ? selectColumns.map((col) => col.id) : [];
-    selectChildren.push("_select_add");
+    // Initialize tree structure first
+    const treeStructure: Record<string, TreeViewItem<any>> = {};
 
-    const treeStructure: Record<string, TreeViewItem<any>> = {
+    // Build tree for nested select items
+    const buildSelectTree = (items: any[], parentId = ""): string[] => {
+      const children: string[] = [];
+
+      items.forEach((item) => {
+        children.push(item.id);
+
+        // Add item to tree structure
+        treeStructure[item.id] = {
+          name: item.id,
+          meta: {
+            type: `select-${item.type}`,
+            selectData: item,
+          },
+          children: [],
+        };
+
+        if (item.type === "column" && item.columns) {
+          const columnChildren: string[] = [];
+          item.columns.forEach((col: any) => {
+            columnChildren.push(col.id);
+            treeStructure[col.id] = {
+              name: col.id,
+              meta: {
+                type: "column-item",
+                columnData: col,
+                selectItemId: item.id,
+              },
+            };
+          });
+          columnChildren.push(`${item.id}_add_column`);
+          treeStructure[`${item.id}_add_column`] = {
+            name: `${item.id}_add_column`,
+            meta: {
+              type: "column-add",
+              selectItemId: item.id,
+            },
+          };
+          treeStructure[item.id].children = columnChildren;
+        } else if (
+          item.type === "forEach" ||
+          item.type === "forEachOrNull" ||
+          item.type === "unionAll"
+        ) {
+          // Handle forEach, forEachOrNull, and unionAll nodes
+          const nodeChildren: string[] = [];
+
+          // If there are existing children, add them to the tree
+          if (item.children && item.children.length > 0) {
+            const nestedChildren = buildSelectTree(item.children, item.id);
+            nodeChildren.push(...nestedChildren);
+          }
+
+          // Always add the "add select" button for these types
+          nodeChildren.push(`${item.id}_add_select`);
+          treeStructure[`${item.id}_add_select`] = {
+            name: `${item.id}_add_select`,
+            meta: {
+              type: "select-add-nested",
+              parentId: item.id,
+            },
+          };
+
+          treeStructure[item.id].children = nodeChildren;
+        }
+      });
+
+      return children;
+    };
+
+    // Now populate the base structure
+    Object.assign(treeStructure, {
       root: {
         name: "root",
         children: ["viewDefinition"],
@@ -545,14 +903,7 @@ const ViewDefinitionForm = ({
         meta: {
           type: "select",
         },
-        children: ["_column"],
-      },
-      _column: {
-        name: "_column",
-        meta: {
-          type: "column",
-        },
-        children: selectChildren,
+        children: [...buildSelectTree(selectItems), "_select_add"],
       },
       _select_add: {
         name: "_select_add",
@@ -560,7 +911,7 @@ const ViewDefinitionForm = ({
           type: "select-add",
         },
       },
-    };
+    });
 
     // Add each constant as a tree node
     constants.forEach((constant, index) => {
@@ -586,28 +937,34 @@ const ViewDefinitionForm = ({
       };
     });
 
-    // Add each select column as a tree node
-    selectColumns.forEach((column, index) => {
-      treeStructure[column.id] = {
-        name: column.id,
-        meta: {
-          type: "select-column",
-          lastNode: index === selectColumns.length - 1,
-          columnData: column,
-        },
-      };
-    });
-
     return treeStructure;
-  }, [constants, whereConditions, selectColumns]);
+  }, [constants, whereConditions, selectItems]);
+
 
   const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
     const metaType = item.getItemData()?.meta?.type;
+    const selectData = item.getItemData()?.meta?.selectData;
     let additionalClass = "";
+    let label = metaType;
 
     if (metaType === "column") {
       // Green color scheme for column
       additionalClass = "text-[#009906] bg-[#E5FAE8]";
+    } else if (metaType?.startsWith("select-")) {
+      // For select nodes, use the type as label
+      if (selectData?.type === "column") {
+        label = "column";
+        additionalClass = "text-[#009906] bg-[#E5FAE8]";
+      } else if (selectData?.type === "forEach") {
+        label = "forEach";
+        additionalClass = "text-[#5C8DD6] bg-[#E8F2FC]";
+      } else if (selectData?.type === "forEachOrNull") {
+        label = "forEachOrNull";
+        additionalClass = "text-[#5C8DD6] bg-[#E8F2FC]";
+      } else if (selectData?.type === "unionAll") {
+        label = "unionAll";
+        additionalClass = "text-[#E07B39] bg-[#FFF4EC]";
+      }
     } else if (
       metaType === "name" ||
       metaType === "resource" ||
@@ -621,7 +978,7 @@ const ViewDefinitionForm = ({
 
     return (
       <span className={`uppercase px-1.5 py-0.5 rounded-md ${additionalClass}`}>
-        {metaType}
+        {label}
       </span>
     );
   };
@@ -703,22 +1060,245 @@ const ViewDefinitionForm = ({
         return <div>{labelView(item)}</div>;
       case "select-add":
         return (
-          <Button
-            variant="link"
-            size="small"
-            className="px-0"
-            onClick={addSelectColumn}
-            asChild
-          >
-            <span>
-              <PlusIcon size={16} strokeWidth={3} />
-              <span className="typo-label">Column</span>
-            </span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="link" size="small" className="px-0">
+                <PlusIcon size={16} strokeWidth={3} />
+                <span className="typo-label">Select</span>
+                <ChevronDown size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onSelect={() => {
+                  addSelectItem("column");
+                }}
+              >
+                Column
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  addSelectItem("forEach");
+                }}
+              >
+                forEach
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  addSelectItem("forEachOrNull");
+                }}
+              >
+                forEachOrNull
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  addSelectItem("unionAll");
+                }}
+              >
+                unionAll
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
+      case "select-add-nested": {
+        const parentId = item.getItemData()?.meta?.parentId;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="link" size="small" className="px-0">
+                <PlusIcon size={16} strokeWidth={3} />
+                <span className="typo-label">Select</span>
+                <ChevronDown size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onSelect={() => {
+                  // Find parent path
+                  const findPath = (
+                    items: any[],
+                    targetId: string,
+                    path: string[] = [],
+                  ): string[] | null => {
+                    for (const item of items) {
+                      if (item.id === targetId) {
+                        return path;
+                      }
+                      if (item.children) {
+                        const result = findPath(item.children, targetId, [
+                          ...path,
+                          item.id,
+                        ]);
+                        if (result) return result;
+                      }
+                    }
+                    return null;
+                  };
+                  const path = findPath(selectItems, parentId);
+                  addSelectItem(
+                    "column",
+                    path ? [...path, parentId] : [parentId],
+                  );
+                }}
+              >
+                Column
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  const findPath = (
+                    items: any[],
+                    targetId: string,
+                    path: string[] = [],
+                  ): string[] | null => {
+                    for (const item of items) {
+                      if (item.id === targetId) {
+                        return path;
+                      }
+                      if (item.children) {
+                        const result = findPath(item.children, targetId, [
+                          ...path,
+                          item.id,
+                        ]);
+                        if (result) return result;
+                      }
+                    }
+                    return null;
+                  };
+                  const path = findPath(selectItems, parentId);
+                  addSelectItem(
+                    "forEach",
+                    path ? [...path, parentId] : [parentId],
+                  );
+                }}
+              >
+                forEach
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  const findPath = (
+                    items: any[],
+                    targetId: string,
+                    path: string[] = [],
+                  ): string[] | null => {
+                    for (const item of items) {
+                      if (item.id === targetId) {
+                        return path;
+                      }
+                      if (item.children) {
+                        const result = findPath(item.children, targetId, [
+                          ...path,
+                          item.id,
+                        ]);
+                        if (result) return result;
+                      }
+                    }
+                    return null;
+                  };
+                  const path = findPath(selectItems, parentId);
+                  addSelectItem(
+                    "forEachOrNull",
+                    path ? [...path, parentId] : [parentId],
+                  );
+                }}
+              >
+                forEachOrNull
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  const findPath = (
+                    items: any[],
+                    targetId: string,
+                    path: string[] = [],
+                  ): string[] | null => {
+                    for (const item of items) {
+                      if (item.id === targetId) {
+                        return path;
+                      }
+                      if (item.children) {
+                        const result = findPath(item.children, targetId, [
+                          ...path,
+                          item.id,
+                        ]);
+                        if (result) return result;
+                      }
+                    }
+                    return null;
+                  };
+                  const path = findPath(selectItems, parentId);
+                  addSelectItem(
+                    "unionAll",
+                    path ? [...path, parentId] : [parentId],
+                  );
+                }}
+              >
+                unionAll
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
       case "select-column": {
+        const selectData = item.getItemData()?.meta?.selectData;
+        if (!selectData || selectData.type !== "column") return null;
+
+        return <div>{labelView(item)}</div>;
+      }
+      case "select-forEach":
+      case "select-forEachOrNull": {
+        const selectData = item.getItemData()?.meta?.selectData;
+        if (!selectData) return null;
+
+        const type =
+          selectData.type === "forEach" ? "forEach" : "forEachOrNull";
+
+        return (
+          <div className="flex items-center w-full gap-2">
+            {labelView(item)}
+            <InputView
+              placeholder="Expression"
+              value={selectData.expression || ""}
+              onBlur={(value) => updateSelectExpression(selectData.id, value)}
+              className="flex-1"
+            />
+            <Button
+              variant="link"
+              size="small"
+              className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
+              onClick={() => removeSelectItem(selectData.id)}
+              asChild
+            >
+              <span>
+                <X size={14} />
+              </span>
+            </Button>
+          </div>
+        );
+      }
+      case "select-unionAll": {
+        const selectData = item.getItemData()?.meta?.selectData;
+        if (!selectData) return null;
+
+        return (
+          <div className="flex items-center w-full gap-2">
+            {labelView(item)}
+            <Button
+              variant="link"
+              size="small"
+              className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity ml-auto"
+              onClick={() => removeSelectItem(selectData.id)}
+              asChild
+            >
+              <span>
+                <X size={14} />
+              </span>
+            </Button>
+          </div>
+        );
+      }
+      case "column-item": {
         const columnData = item.getItemData()?.meta?.columnData;
-        if (!columnData) return null;
+        const selectItemId = item.getItemData()?.meta?.selectItemId;
+        if (!columnData || !selectItemId) return null;
 
         return (
           <div className="flex items-center w-full gap-2">
@@ -729,21 +1309,21 @@ const ViewDefinitionForm = ({
               placeholder="Column name"
               value={columnData.name}
               onBlur={(value) =>
-                updateSelectColumn(columnData.id, "name", value)
+                updateSelectColumn(selectItemId, columnData.id, "name", value)
               }
             />
             <InputView
               placeholder="Path"
               value={columnData.path}
               onBlur={(value) =>
-                updateSelectColumn(columnData.id, "path", value)
+                updateSelectColumn(selectItemId, columnData.id, "path", value)
               }
             />
             <Button
               variant="link"
               size="small"
               className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
-              onClick={() => removeSelectColumn(columnData.id)}
+              onClick={() => removeSelectColumn(selectItemId, columnData.id)}
               asChild
             >
               <span>
@@ -751,6 +1331,23 @@ const ViewDefinitionForm = ({
               </span>
             </Button>
           </div>
+        );
+      }
+      case "column-add": {
+        const selectItemId = item.getItemData()?.meta?.selectItemId;
+        return (
+          <Button
+            variant="link"
+            size="small"
+            className="px-0"
+            onClick={() => addColumnToSelectItem(selectItemId)}
+            asChild
+          >
+            <span>
+              <PlusIcon size={16} strokeWidth={3} />
+              <span className="typo-label">Column</span>
+            </span>
+          </Button>
         );
       }
       case "where-add":
@@ -772,7 +1369,6 @@ const ViewDefinitionForm = ({
         const whereData = item.getItemData()?.meta?.whereData;
         if (!whereData) return null;
 
-        console.log("WHERE rerender");
         return (
           <div className="flex items-center w-full gap-2">
             <span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
@@ -861,10 +1457,12 @@ const ViewDefinitionForm = ({
   };
   return (
     <TreeView
+      key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
       items={tree}
       rootItemId="root"
       expandedItemIds={expandedItemIds}
-      onExpandedItemsChange={(newExpandedIds, _) => {
+      onExpandedItemsChange={(newExpandedIds, changeType) => {
+        // Save the manually expanded/collapsed items
         setExpandedItemIds(newExpandedIds);
       }}
       customItemView={customItemView}
