@@ -1062,27 +1062,40 @@ function LeftPanel({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      let viewDefinition: any;
-      try {
-        if (codeMode === "yaml") {
-          viewDefinition = yaml.load(codeContent);
-        } else {
-          viewDefinition = JSON.parse(codeContent);
+      let viewDefinitionToSave: any;
+
+      // Use the current tab's state
+      if (activeTab === "form") {
+        // Use form's local state
+        viewDefinitionToSave = localFormViewDef;
+      } else if (activeTab === "code") {
+        // Parse and use code editor's content
+        try {
+          if (codeMode === "yaml") {
+            viewDefinitionToSave = yaml.load(codeContent);
+          } else {
+            viewDefinitionToSave = JSON.parse(codeContent);
+          }
+        } catch (parseError) {
+          console.error(
+            `Invalid ${codeMode.toUpperCase()} in code editor:`,
+            parseError,
+          );
+          toast.error(
+            <div className="flex flex-col gap-1">
+              <span className="typo-body">Failed to save</span>
+              <span className="typo-code text-text-secondary">
+                Invalid {codeMode.toUpperCase()} in code editor
+              </span>
+            </div>,
+            { duration: 3000 },
+          );
+          setIsSaving(false);
+          return;
         }
-      } catch (parseError) {
-        console.error(
-          `Invalid ${codeMode.toUpperCase()} in code editor:`,
-          parseError,
-        );
-        toast.error(
-          <div className="flex flex-col gap-1">
-            <span className="typo-body">Failed to save</span>
-            <span className="typo-code text-text-secondary">
-              Invalid {codeMode.toUpperCase()} in code editor
-            </span>
-          </div>,
-          { duration: 3000 },
-        );
+      } else {
+        // SQL tab - shouldn't save from here
+        toast.error("Cannot save from SQL tab");
         setIsSaving(false);
         return;
       }
@@ -1094,7 +1107,7 @@ function LeftPanel({
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify(viewDefinition),
+        body: JSON.stringify(viewDefinitionToSave),
       });
 
       // Check if the response indicates success
@@ -1109,9 +1122,14 @@ function LeftPanel({
         try {
           const parsedBody = JSON.parse(response.body);
           onViewDefinitionUpdate(parsedBody);
+          // Also update local states to reflect saved data
+          setLocalFormViewDef(parsedBody);
+          setPendingCodeViewDef(null);
         } catch {
           // If parsing fails, still update with the original viewDefinition
-          onViewDefinitionUpdate(viewDefinition);
+          onViewDefinitionUpdate(viewDefinitionToSave);
+          setLocalFormViewDef(viewDefinitionToSave);
+          setPendingCodeViewDef(null);
         }
         toast.success(
           <div className="flex flex-col gap-1">
@@ -1160,25 +1178,38 @@ function LeftPanel({
   const handleRun = async () => {
     setIsLoading(true);
     try {
-      let viewDefinition: any;
-      try {
-        if (codeMode === "yaml") {
-          viewDefinition = yaml.load(codeContent);
-        } else {
-          viewDefinition = JSON.parse(codeContent);
+      let viewDefinitionToRun: any;
+
+      // Use the current tab's state
+      if (activeTab === "form") {
+        // Use form's local state
+        viewDefinitionToRun = localFormViewDef;
+      } else if (activeTab === "code") {
+        // Parse and use code editor's content
+        try {
+          if (codeMode === "yaml") {
+            viewDefinitionToRun = yaml.load(codeContent);
+          } else {
+            viewDefinitionToRun = JSON.parse(codeContent);
+          }
+        } catch (parseError) {
+          console.error(
+            `Invalid ${codeMode.toUpperCase()} in code editor:`,
+            parseError,
+          );
+          onRunResponse(
+            JSON.stringify(
+              { error: `Invalid ${codeMode.toUpperCase()} in code editor` },
+              null,
+              2,
+            ),
+          );
+          setIsLoading(false);
+          return;
         }
-      } catch (parseError) {
-        console.error(
-          `Invalid ${codeMode.toUpperCase()} in code editor:`,
-          parseError,
-        );
-        onRunResponse(
-          JSON.stringify(
-            { error: `Invalid ${codeMode.toUpperCase()} in code editor` },
-            null,
-            2,
-          ),
-        );
+      } else {
+        // SQL tab - can't run from here
+        toast.error("Cannot run from SQL tab");
         setIsLoading(false);
         return;
       }
@@ -1188,7 +1219,7 @@ function LeftPanel({
         parameter: [
           {
             name: "viewResource",
-            resource: viewDefinition,
+            resource: viewDefinitionToRun,
           },
           {
             name: "_format",
