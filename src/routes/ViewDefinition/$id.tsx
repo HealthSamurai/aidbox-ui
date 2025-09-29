@@ -1971,16 +1971,17 @@ function LeftPanel({
 		setLocalFormViewDef(viewDefinition);
 	}, [viewDefinition]);
 
-	// Sync code content with viewDefinition only when switching TO code tab or changing code mode
+	// Sync code content with viewDefinition only when switching TO code tab
 	useEffect(() => {
 		if (activeTab === "code" && viewDefinition) {
+			// Only update content when switching to code tab, not when changing format mode
 			if (codeMode === "yaml") {
 				setCodeContent(yaml.dump(viewDefinition, { indent: 2 }));
 			} else {
 				setCodeContent(JSON.stringify(viewDefinition, null, 2));
 			}
 		}
-	}, [activeTab, codeMode]);
+	}, [activeTab]); // Remove codeMode from dependencies to prevent overwriting on format change
 
 	// Handle tab changes with synchronization
 	const handleTabChange = (newTab: string) => {
@@ -2257,7 +2258,31 @@ function LeftPanel({
 								<div className="absolute top-2 right-3 z-10">
 									<CodeEditorMenu
 										mode={codeMode}
-										onModeChange={setCodeMode}
+										onModeChange={(newMode) => {
+											// Parse current content and convert to new format
+											try {
+												const parsed = parseViewDefinition(
+													codeContent,
+													codeMode,
+												);
+												if (newMode === "yaml") {
+													setCodeContent(yaml.dump(parsed, { indent: 2 }));
+												} else {
+													setCodeContent(JSON.stringify(parsed, null, 2));
+												}
+												// Update the pending view definition
+												setPendingCodeViewDef(parsed);
+												// Update the parent view definition immediately
+												onViewDefinitionUpdate(parsed);
+											} catch (error) {
+												// If parsing fails, just switch mode without converting
+												console.error(
+													"Failed to parse content for format conversion:",
+													error,
+												);
+											}
+											setCodeMode(newMode);
+										}}
 										copyText={codeContent}
 										onFormat={handleFormatCode}
 									/>
