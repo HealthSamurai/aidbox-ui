@@ -44,7 +44,7 @@ function Breadcrumbs() {
       ) {
         items.push({
           title: match.params.id as string,
-          path: match.pathname,
+          path: `${match.pathname}#id`,
         });
       }
 
