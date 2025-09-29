@@ -90,7 +90,6 @@ const fetchResourceTypes = async (): Promise<ComboboxOption[]> => {
       return options;
     }
   } catch (error) {
-    console.error("Failed to fetch resource types:", error);
     const defaultTypes = [
       "Patient",
       "Practitioner",
@@ -209,7 +208,6 @@ const formatCode = (content: string, mode: "json" | "yaml"): string => {
       return JSON.stringify(parsed, null, 2);
     }
   } catch (error) {
-    console.error(`Failed to format ${mode.toUpperCase()}:`, error);
     return content;
   }
 };
@@ -257,7 +255,6 @@ const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
       return response.body;
     }
   } catch (error) {
-    console.error("Error fetching SQL:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     return `-- Error fetching SQL: ${errorMessage}`;
@@ -714,7 +711,7 @@ const processTableData = (
       return { tableData: parsedResponse, columns, isEmptyArray: false };
     }
   } catch (error) {
-    console.error("Error parsing response:", error);
+    // Error parsing response
   }
 
   return { tableData: [], columns: [], isEmptyArray: false };
@@ -2033,7 +2030,6 @@ function LeftPanel({
         }
       } catch (error) {
         // Ignore parsing errors - user might still be typing
-        console.debug("Parsing error (expected while typing):", error);
         setPendingCodeViewDef(null); // Clear pending if invalid
       }
     },
@@ -2070,10 +2066,7 @@ function LeftPanel({
         try {
           viewDefinitionToSave = parseViewDefinition(codeContent, codeMode);
         } catch (parseError) {
-          console.error(
-            `Invalid ${codeMode.toUpperCase()} in code editor:`,
-            parseError,
-          );
+          // Invalid JSON/YAML in code editor
           toast.error(
             <div className="flex flex-col gap-1">
               <span className="typo-body">Failed to save</span>
@@ -2137,7 +2130,6 @@ function LeftPanel({
         );
       }
     } catch (error) {
-      console.error("Error saving ViewDefinition:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
       toast.error(
@@ -2164,10 +2156,7 @@ function LeftPanel({
         try {
           viewDefinitionToRun = parseViewDefinition(codeContent, codeMode);
         } catch (parseError) {
-          console.error(
-            `Invalid ${codeMode.toUpperCase()} in code editor:`,
-            parseError,
-          );
+          // Invalid JSON/YAML in code editor
           onRunResponse(
             JSON.stringify(
               { error: `Invalid ${codeMode.toUpperCase()} in code editor` },
@@ -2216,7 +2205,6 @@ function LeftPanel({
 
       onRunResponse(JSON.stringify(result.data, null, 2));
     } catch (error) {
-      console.error("Error running ViewDefinition:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
       onRunResponse(JSON.stringify({ error: errorMessage }, null, 2));
