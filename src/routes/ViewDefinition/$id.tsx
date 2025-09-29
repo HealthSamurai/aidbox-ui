@@ -1971,17 +1971,27 @@ function LeftPanel({
 		setLocalFormViewDef(viewDefinition);
 	}, [viewDefinition]);
 
-	// Sync code content with viewDefinition only when switching TO code tab
+	// Track previous activeTab to detect tab switches
+	const prevActiveTabRef = useRef(activeTab);
+
+	// Initialize code content on mount when Code tab is active or when switching to Code tab
 	useEffect(() => {
-		if (activeTab === "code" && viewDefinition) {
-			// Only update content when switching to code tab, not when changing format mode
+		const isInitialLoad =
+			prevActiveTabRef.current === activeTab && activeTab === "code";
+		const isSwitchingToCode =
+			prevActiveTabRef.current !== "code" && activeTab === "code";
+
+		if ((isInitialLoad || isSwitchingToCode) && viewDefinition) {
+			// Set content from viewDefinition when initially loading or switching to Code tab
 			if (codeMode === "yaml") {
 				setCodeContent(yaml.dump(viewDefinition, { indent: 2 }));
 			} else {
 				setCodeContent(JSON.stringify(viewDefinition, null, 2));
 			}
 		}
-	}, [activeTab]); // Remove codeMode from dependencies to prevent overwriting on format change
+
+		prevActiveTabRef.current = activeTab;
+	}, [activeTab, viewDefinition, codeMode]);
 
 	// Handle tab changes with synchronization
 	const handleTabChange = (newTab: string) => {
