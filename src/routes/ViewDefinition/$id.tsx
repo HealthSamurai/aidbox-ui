@@ -40,7 +40,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@health-samurai/react-components";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
@@ -128,18 +128,14 @@ const parseSelectItems = (items: any[], parentId = ""): any[] => {
           id,
           type: "forEach" as const,
           expression: item.forEach,
-          children: item.select
-            ? parseSelectItems(item.select, `${id}-`)
-            : [],
+          children: item.select ? parseSelectItems(item.select, `${id}-`) : [],
         };
       } else if (item.forEachOrNull !== undefined) {
         return {
           id,
           type: "forEachOrNull" as const,
           expression: item.forEachOrNull,
-          children: item.select
-            ? parseSelectItems(item.select, `${id}-`)
-            : [],
+          children: item.select ? parseSelectItems(item.select, `${id}-`) : [],
         };
       } else if (item.unionAll) {
         return {
@@ -177,9 +173,7 @@ const buildSelectArray = (items: any[]): any[] => {
         return result;
       } else if (item.type === "unionAll") {
         return {
-          unionAll: item.children
-            ? buildSelectArray(item.children)
-            : [],
+          unionAll: item.children ? buildSelectArray(item.children) : [],
         };
       }
       return null;
@@ -197,10 +191,7 @@ const findPath = (
       return path;
     }
     if (item.children) {
-      const result = findPath(item.children, targetId, [
-        ...path,
-        item.id,
-      ]);
+      const result = findPath(item.children, targetId, [...path, item.id]);
       if (result) return result;
     }
   }
@@ -309,7 +300,9 @@ const runViewDefinition = async (viewDefinitionToRun: any): Promise<any> => {
   return response;
 };
 
-const processRunResponse = (response: any): { success: boolean; data: any; diagnostics?: string[] } => {
+const processRunResponse = (
+  response: any,
+): { success: boolean; data: any; diagnostics?: string[] } => {
   try {
     const json = JSON.parse(response.body);
 
@@ -340,7 +333,10 @@ const processRunResponse = (response: any): { success: boolean; data: any; diagn
   }
 };
 
-const saveViewDefinition = async (viewDefinitionToSave: any, routeId: string): Promise<any> => {
+const saveViewDefinition = async (
+  viewDefinitionToSave: any,
+  routeId: string,
+): Promise<any> => {
   const response = await AidboxCallWithMeta({
     method: "PUT",
     url: `/fhir/ViewDefinition/${routeId}`,
@@ -404,7 +400,10 @@ const fetchSchema = async (resourceType: string): Promise<any> => {
   }
 };
 
-const searchResources = async (resourceType: string, searchParams: string): Promise<Record<string, unknown>[]> => {
+const searchResources = async (
+  resourceType: string,
+  searchParams: string,
+): Promise<Record<string, unknown>[]> => {
   const url = searchParams.trim()
     ? `/fhir/${resourceType}?${searchParams}`
     : `/fhir/${resourceType}`;
@@ -435,10 +434,7 @@ const transformDifferentialToTree = (data: any): Record<string, any> => {
     elements = data;
   } else if (data?.element && Array.isArray(data.element)) {
     elements = data.element;
-  } else if (
-    data?.snapshot?.element &&
-    Array.isArray(data.snapshot.element)
-  ) {
+  } else if (data?.snapshot?.element && Array.isArray(data.snapshot.element)) {
     elements = data.snapshot.element;
   } else if (
     data?.differential?.element &&
@@ -472,8 +468,7 @@ const transformDifferentialToTree = (data: any): Record<string, any> => {
     const name = element.name || parts[parts.length - 1];
 
     const isUnion = element["union?"] === true;
-    const displayName =
-      isUnion && !name.includes("[x]") ? `${name}[x]` : name;
+    const displayName = isUnion && !name.includes("[x]") ? `${name}[x]` : name;
 
     const node: any = {
       name: displayName,
@@ -676,7 +671,9 @@ const transformDifferentialToTree = (data: any): Record<string, any> => {
 };
 
 // Helper functions for BottomPanel
-const processTableData = (response: string | null): {
+const processTableData = (
+  response: string | null,
+): {
   tableData: any[];
   columns: ColumnDef<Record<string, any>, any>[];
   isEmptyArray: boolean;
@@ -1125,7 +1122,7 @@ const ViewDefinitionForm = ({
 
     // Add all parent IDs in the path to ensure they're expanded
     if (parentPath) {
-      parentPath.forEach(parentId => {
+      parentPath.forEach((parentId) => {
         if (!newExpandedIds.includes(parentId)) {
           newExpandedIds.push(parentId);
         }
@@ -1145,7 +1142,11 @@ const ViewDefinitionForm = ({
         newExpandedIds.push(col.id);
       });
       newExpandedIds.push(`${newItem.id}_add_column`);
-    } else if (type === "forEach" || type === "forEachOrNull" || type === "unionAll") {
+    } else if (
+      type === "forEach" ||
+      type === "forEachOrNull" ||
+      type === "unionAll"
+    ) {
       // Add the "add select" button ID
       newExpandedIds.push(`${newItem.id}_add_select`);
     }
@@ -1478,7 +1479,6 @@ const ViewDefinitionForm = ({
 
     return treeStructure;
   }, [constants, whereConditions, selectItems]);
-
 
   const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
     const metaType = item.getItemData()?.meta?.type;
@@ -2206,7 +2206,8 @@ function LeftPanel({
           <div className="flex flex-col gap-1">
             <span className="typo-body">Failed to run ViewDefinition</span>
             <span className="typo-code text-text-secondary">
-              {(result.data as any)?.issue?.[0]?.code || "Unknown error occurred"}
+              {(result.data as any)?.issue?.[0]?.code ||
+                "Unknown error occurred"}
             </span>
           </div>,
           { duration: 5000 },
@@ -2389,7 +2390,10 @@ function RightPanel({
     setIsLoadingExample(true);
     try {
       const searchParams = query !== undefined ? query : searchQuery;
-      const resources = await searchResources(viewDefinition.resource, searchParams);
+      const resources = await searchResources(
+        viewDefinition.resource,
+        searchParams,
+      );
 
       if (resources.length > 0) {
         setSearchResults(resources);
