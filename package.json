@@ -28,15 +28,18 @@
 		"vite": "^7.1.2"
 	},
 	"dependencies": {
-		"@health-samurai/react-components": "file:health-samurai-react-components-0.0.0-alpha.5.tgz",
+		"@health-samurai/react-components": "file:./health-samurai-react-components-0.0.0-alpha.5.tgz",
 		"@tanstack/react-query": "^5.85.3",
 		"@tanstack/react-query-devtools": "^5.85.3",
 		"@tanstack/react-router": "^1.131.13",
 		"@tanstack/react-router-devtools": "^1.131.13",
 		"@types/js-cookie": "^3.0.6",
+		"@types/js-yaml": "^4.0.9",
 		"js-cookie": "^3.0.5",
+		"js-yaml": "^4.1.0",
 		"lucide-react": "^0.539.0",
 		"react": "^19.1.1",
-		"react-dom": "^19.1.1"
+		"react-dom": "^19.1.1",
+		"sql-formatter": "^15.6.9"
 	}
 }

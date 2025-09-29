@@ -28,10 +28,28 @@ function Breadcrumbs() {
 	const matches = useMatches();
 	const breadcrumbs = matches
 		.filter((match) => match.staticData?.title)
-		.map((match) => ({
-			title: match.staticData.title as string,
-			path: match.pathname,
-		}));
+		.flatMap((match) => {
+			const items = [
+				{
+					title: match.staticData.title as string,
+					path: match.pathname,
+				},
+			];
+
+			// If the route has params and it's ViewDefinition, add ID as separate breadcrumb
+			if (
+				match.params &&
+				"id" in match.params &&
+				match.pathname.includes("/ViewDefinition/")
+			) {
+				items.push({
+					title: match.params.id as string,
+					path: match.pathname,
+				});
+			}
+
+			return items;
+		});
 
 	if (breadcrumbs.length === 0) {
 		return null;
@@ -41,7 +59,7 @@ function Breadcrumbs() {
 		<Breadcrumb>
 			<BreadcrumbList>
 				{breadcrumbs.map((crumb, index) => (
-					<React.Fragment key={crumb.path}>
+					<React.Fragment key={`${crumb.path}-${index}`}>
 						{index > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
 						<BreadcrumbItem>
 							{index === breadcrumbs.length - 1 ? (
