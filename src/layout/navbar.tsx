@@ -44,7 +44,7 @@ function Breadcrumbs() {
 			) {
 				items.push({
 					title: match.params.id as string,
-					path: `${match.pathname}#id`,
+					path: match.pathname,
 				});
 			}
 
@@ -59,7 +59,7 @@ function Breadcrumbs() {
 		<Breadcrumb>
 			<BreadcrumbList>
 				{breadcrumbs.map((crumb, index) => (
-					<React.Fragment key={crumb.path}>
+					<React.Fragment key={`${crumb.path}-${index}`}>
 						{index > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
 						<BreadcrumbItem>
 							{index === breadcrumbs.length - 1 ? (
