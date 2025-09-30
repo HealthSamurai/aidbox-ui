@@ -2547,7 +2547,7 @@ function RightPanel({
 							</div>
 						</div>
 					) : (
-						<div className="p-4 h-full overflow-auto">
+						<div className="px-4 h-full w-full overflow-auto">
 							<FHIRStructureView tree={fhirStructureTree} />
 						</div>
 					)}
