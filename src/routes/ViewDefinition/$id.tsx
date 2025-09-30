@@ -43,6 +43,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
+import ViewDefinitionPage from "../../components/ViewDefinition/page";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 
 interface SelectItem {
@@ -718,7 +719,7 @@ const processTableData = (
 };
 
 export const Route = createFileRoute("/ViewDefinition/$id")({
-	component: ViewDefinitionPage,
+	component: PageComponent,
 	staticData: {
 		title: "View Definitions",
 	},
@@ -2718,92 +2719,97 @@ function BottomPanel({
 	);
 }
 
-function ViewDefinitionPage() {
+const PageComponent = () => {
 	const { id } = Route.useParams();
-	const [runResponse, setRunResponse] = useState<string | null>(null);
-	const [runResponseVersion, setRunResponseVersion] = useState<string>(
-		crypto.randomUUID(),
-	);
+	return <ViewDefinitionPage id={id} />;
+};
 
-	const [viewDefinition, setViewDefinition] = useState<ViewDefinition | null>(
-		null,
-	);
-	const [isLoadingViewDef, setIsLoadingViewDef] = useState(false);
+// function PageComponent() {
+// 	const { id } = Route.useParams();
+// 	const [runResponse, setRunResponse] = useState<string | null>(null);
+// 	const [runResponseVersion, setRunResponseVersion] = useState<string>(
+// 		crypto.randomUUID(),
+// 	);
 
-	useEffect(() => {
-		const fetchViewDefinition = async () => {
-			setIsLoadingViewDef(true);
-			try {
-				const fetchedViewDefinition = await AidboxCall<ViewDefinition>({
-					method: "GET",
-					url: `/fhir/ViewDefinition/${id}`,
-					headers: {
-						"Content-Type": "application/json",
-						Accept: "application/json",
-					},
-				});
+// 	const [viewDefinition, setViewDefinition] = useState<ViewDefinition | null>(
+// 		null,
+// 	);
+// 	const [isLoadingViewDef, setIsLoadingViewDef] = useState(false);
 
-				if (fetchedViewDefinition) {
-					setViewDefinition(fetchedViewDefinition);
-				}
-			} catch (error) {
-				const errorMessage =
-					error instanceof Error ? error.message : "Unknown error occurred";
-				setRunResponse(
-					JSON.stringify(
-						{ error: `Failed to fetch ViewDefinition: ${errorMessage}` },
-						null,
-						2,
-					),
-				);
-			} finally {
-				setIsLoadingViewDef(false);
-			}
-		};
+// 	useEffect(() => {
+// 		const fetchViewDefinition = async () => {
+// 			setIsLoadingViewDef(true);
+// 			try {
+// 				const fetchedViewDefinition = await AidboxCall<ViewDefinition>({
+// 					method: "GET",
+// 					url: `/fhir/ViewDefinition/${id}`,
+// 					headers: {
+// 						"Content-Type": "application/json",
+// 						Accept: "application/json",
+// 					},
+// 				});
 
-		if (id) {
-			fetchViewDefinition();
-		}
-	}, [id]);
+// 				if (fetchedViewDefinition) {
+// 					setViewDefinition(fetchedViewDefinition);
+// 				}
+// 			} catch (error) {
+// 				const errorMessage =
+// 					error instanceof Error ? error.message : "Unknown error occurred";
+// 				setRunResponse(
+// 					JSON.stringify(
+// 						{ error: `Failed to fetch ViewDefinition: ${errorMessage}` },
+// 						null,
+// 						2,
+// 					),
+// 				);
+// 			} finally {
+// 				setIsLoadingViewDef(false);
+// 			}
+// 		};
 
-	return (
-		<div className="flex flex-col h-full">
-			<ResizablePanelGroup
-				direction="vertical"
-				className="grow"
-				autoSaveId={`view-definition-vertical-${id}`}
-			>
-				<ResizablePanel defaultSize={70} className="min-h-[200px]">
-					<ResizablePanelGroup
-						direction="horizontal"
-						className="h-full"
-						autoSaveId={`view-definition-horizontal-${id}`}
-					>
-						<ResizablePanel defaultSize={50} minSize={20}>
-							<LeftPanel
-								onRunResponse={setRunResponse}
-								routeId={id}
-								setRunResponseVersion={setRunResponseVersion}
-								viewDefinition={viewDefinition}
-								isLoadingViewDef={isLoadingViewDef}
-								onViewDefinitionUpdate={setViewDefinition}
-							/>
-						</ResizablePanel>
-						<ResizableHandle />
-						<ResizablePanel defaultSize={50} minSize={20}>
-							<RightPanel
-								routeId={id}
-								viewDefinition={viewDefinition}
-								isLoadingViewDef={isLoadingViewDef}
-							/>
-						</ResizablePanel>
-					</ResizablePanelGroup>
-				</ResizablePanel>
-				<ResizableHandle />
-				<ResizablePanel defaultSize={30} className="min-h-[150px]">
-					<BottomPanel response={runResponse} version={runResponseVersion} />
-				</ResizablePanel>
-			</ResizablePanelGroup>
-		</div>
-	);
-}
+// 		if (id) {
+// 			fetchViewDefinition();
+// 		}
+// 	}, [id]);
+
+// 	return (
+// 		<div className="flex flex-col h-full">
+// 			<ResizablePanelGroup
+// 				direction="vertical"
+// 				className="grow"
+// 				autoSaveId={`view-definition-vertical-${id}`}
+// 			>
+// 				<ResizablePanel defaultSize={70} className="min-h-[200px]">
+// 					<ResizablePanelGroup
+// 						direction="horizontal"
+// 						className="h-full"
+// 						autoSaveId={`view-definition-horizontal-${id}`}
+// 					>
+// 						<ResizablePanel defaultSize={50} minSize={20}>
+// 							<LeftPanel
+// 								onRunResponse={setRunResponse}
+// 								routeId={id}
+// 								setRunResponseVersion={setRunResponseVersion}
+// 								viewDefinition={viewDefinition}
+// 								isLoadingViewDef={isLoadingViewDef}
+// 								onViewDefinitionUpdate={setViewDefinition}
+// 							/>
+// 						</ResizablePanel>
+// 						<ResizableHandle />
+// 						<ResizablePanel defaultSize={50} minSize={20}>
+// 							<RightPanel
+// 								routeId={id}
+// 								viewDefinition={viewDefinition}
+// 								isLoadingViewDef={isLoadingViewDef}
+// 							/>
+// 						</ResizablePanel>
+// 					</ResizablePanelGroup>
+// 				</ResizablePanel>
+// 				<ResizableHandle />
+// 				<ResizablePanel defaultSize={30} className="min-h-[150px]">
+// 					<BottomPanel response={runResponse} version={runResponseVersion} />
+// 				</ResizablePanel>
+// 			</ResizablePanelGroup>
+// 		</div>
+// 	);
+// }
