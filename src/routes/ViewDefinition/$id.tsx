@@ -864,8 +864,8 @@ const ViewDefinitionForm = ({
 		defaultValue: [], // Start with nothing collapsed - tree is fully expanded
 	});
 
-	// Track if we're in the middle of a programmatic update
-	const isProgrammaticUpdateRef = useRef(false);
+	// Track the previous tree structure to detect changes
+	const previousTreeKeysRef = useRef<string>("");
 
 	// Fetch resource types on component mount
 	useEffect(() => {
@@ -989,9 +989,6 @@ const ViewDefinitionForm = ({
 
 	// Function to add a new constant
 	const addConstant = () => {
-		// Mark that we're doing a programmatic update
-		isProgrammaticUpdateRef.current = true;
-
 		const newConstant = {
 			id: `constant-${constants.length}-${crypto.randomUUID()}`,
 			name: "",
@@ -1031,9 +1028,6 @@ const ViewDefinitionForm = ({
 
 	// Function to add a new where condition
 	const addWhereCondition = () => {
-		// Mark that we're doing a programmatic update
-		isProgrammaticUpdateRef.current = true;
-
 		const newWhere = {
 			id: `where-${whereConditions.length}-${crypto.randomUUID()}`,
 			name: "",
@@ -1086,9 +1080,6 @@ const ViewDefinitionForm = ({
 		type: "column" | "forEach" | "forEachOrNull" | "unionAll",
 		parentPath?: string[],
 	) => {
-		// Mark that we're doing a programmatic update
-		isProgrammaticUpdateRef.current = true;
-
 		const newItem: any = {
 			id: `${type}-${Date.now()}-${crypto.randomUUID()}`,
 			type,
@@ -1161,9 +1152,6 @@ const ViewDefinitionForm = ({
 	// Function to add a column to a column-type select item
 	const addColumnToSelectItem = (selectItemId: string) => {
 		const newColumnId = `col-${Date.now()}-${crypto.randomUUID()}`;
-
-		// Mark that we're doing a programmatic update
-		isProgrammaticUpdateRef.current = true;
 
 		// Find the path to the select item to ensure all parents are expanded
 		const parentPath = findPath(selectItems, selectItemId);
@@ -1920,6 +1908,13 @@ const ViewDefinitionForm = ({
 		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
 	}, [tree, collapsedItemIds]);
 
+	// Initialize the tree keys on first render
+	useEffect(() => {
+		if (previousTreeKeysRef.current === "") {
+			previousTreeKeysRef.current = Object.keys(tree).sort().join(",");
+		}
+	}, [tree]);
+
 	return (
 		<TreeView
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
@@ -1927,12 +1922,19 @@ const ViewDefinitionForm = ({
 			rootItemId="root"
 			expandedItemIds={expandedItemIds}
 			onExpandedItemsChange={(newExpandedIds) => {
-				// Skip updates during programmatic changes
-				if (isProgrammaticUpdateRef.current) {
-					isProgrammaticUpdateRef.current = false;
+				// Check if tree structure changed (items added/removed)
+				const currentTreeKeys = Object.keys(tree).sort().join(",");
+				const treeStructureChanged =
+					currentTreeKeys !== previousTreeKeysRef.current;
+
+				if (treeStructureChanged) {
+					// Tree structure changed - this is likely due to adding/removing items
+					// Don't update collapsed state to avoid losing user's manual collapse/expand
+					previousTreeKeysRef.current = currentTreeKeys;
 					return;
 				}
 
+				// Tree structure is the same - this is a user interaction
 				// Calculate which items were collapsed (all items minus expanded ones)
 				const allItemIds = Object.keys(tree);
 				const newCollapsedIds = allItemIds.filter(
