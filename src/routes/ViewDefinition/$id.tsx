@@ -858,18 +858,14 @@ const ViewDefinitionForm = ({
 		}>
 	>([]);
 
-	// State for expanded items using localStorage
-	const [expandedItemIds, setExpandedItemIds] = useLocalStorage<string[]>({
-		key: `viewDefinition-form-expanded-${viewDefinition?.id || "default"}`,
-		defaultValue: [
-			"viewDefinition",
-			"_name",
-			"_resource",
-			"_constant",
-			"_select",
-			"_where",
-		],
+	// State for collapsed items using localStorage - tree renders fully expanded by default
+	const [collapsedItemIds, setCollapsedItemIds] = useLocalStorage<string[]>({
+		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
+		defaultValue: [], // Start with nothing collapsed - tree is fully expanded
 	});
+
+	// Track if we're in the middle of a programmatic update
+	const isProgrammaticUpdateRef = useRef(false);
 
 	// Fetch resource types on component mount
 	useEffect(() => {
@@ -883,52 +879,56 @@ const ViewDefinitionForm = ({
 		loadResourceTypes();
 	}, []);
 
-	// Initialize constants from viewDefinition
+	// Initialize state from viewDefinition - only on initial load or when ID changes
+	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
+
 	useEffect(() => {
-		if (
-			viewDefinition?.constant &&
-			Array.isArray(viewDefinition.constant) &&
-			viewDefinition.constant.length > 0
-		) {
-			const constantsWithIds = viewDefinition.constant.map(
-				(c: any, index: number) => ({
-					id: `constant-${index}-${crypto.randomUUID()}`,
-					name: c.name || "",
-					valueString: c.valueString || "",
-				}),
-			);
-			setConstants(constantsWithIds);
-		} else {
-			// Start with empty array - constants will be added by clicking the add button
-			setConstants([]);
-		}
+		// Initialize when viewDefinition first becomes available or when switching to a different one
+		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
+			setLastViewDefId(viewDefinition.id || null);
+			if (
+				viewDefinition?.constant &&
+				Array.isArray(viewDefinition.constant) &&
+				viewDefinition.constant.length > 0
+			) {
+				const constantsWithIds = viewDefinition.constant.map(
+					(c: any, index: number) => ({
+						id: `constant-${index}-${crypto.randomUUID()}`,
+						name: c.name || "",
+						valueString: c.valueString || "",
+					}),
+				);
+				setConstants(constantsWithIds);
+			} else {
+				setConstants([]);
+			}
 
-		// Initialize where conditions from viewDefinition
-		if (
-			viewDefinition?.where &&
-			Array.isArray(viewDefinition.where) &&
-			viewDefinition.where.length > 0
-		) {
-			const whereWithIds = viewDefinition.where.map(
-				(w: any, index: number) => ({
-					id: `where-${index}-${crypto.randomUUID()}`,
-					name: w.name || "",
-					value: w.value || "",
-				}),
-			);
-			setWhereConditions(whereWithIds);
-		} else {
-			// Start with empty array - where conditions will be added by clicking the add button
-			setWhereConditions([]);
-		}
+			// Initialize where conditions from viewDefinition
+			if (
+				viewDefinition?.where &&
+				Array.isArray(viewDefinition.where) &&
+				viewDefinition.where.length > 0
+			) {
+				const whereWithIds = viewDefinition.where.map(
+					(w: any, index: number) => ({
+						id: `where-${index}-${crypto.randomUUID()}`,
+						name: w.name || "",
+						value: w.value || "",
+					}),
+				);
+				setWhereConditions(whereWithIds);
+			} else {
+				setWhereConditions([]);
+			}
 
-		// Initialize select items from viewDefinition
-		if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
-			setSelectItems(parseSelectItems(viewDefinition.select));
-		} else {
-			setSelectItems([]);
+			// Initialize select items from viewDefinition
+			if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
+				setSelectItems(parseSelectItems(viewDefinition.select));
+			} else {
+				setSelectItems([]);
+			}
 		}
-	}, [viewDefinition]);
+	}, [viewDefinition, lastViewDefId]);
 
 	// Function to update ViewDefinition with new constants and where conditions
 	const updateViewDefinition = useCallback(
@@ -989,6 +989,9 @@ const ViewDefinitionForm = ({
 
 	// Function to add a new constant
 	const addConstant = () => {
+		// Mark that we're doing a programmatic update
+		isProgrammaticUpdateRef.current = true;
+
 		const newConstant = {
 			id: `constant-${constants.length}-${crypto.randomUUID()}`,
 			name: "",
@@ -997,18 +1000,11 @@ const ViewDefinitionForm = ({
 		const updatedConstants = [...constants, newConstant];
 		setConstants(updatedConstants);
 
-		// Add new constant ID to expandedItemIds
-		const newExpandedIds = [...expandedItemIds];
-
-		// Ensure parent _constant node is expanded
-		if (!newExpandedIds.includes("_constant")) {
-			newExpandedIds.push("_constant");
-		}
-
-		if (!newExpandedIds.includes(newConstant.id)) {
-			newExpandedIds.push(newConstant.id);
-		}
-		setExpandedItemIds(newExpandedIds);
+		// Remove the new constant and its parent from collapsed items to ensure they're visible
+		const newCollapsedIds = collapsedItemIds.filter(
+			(id) => id !== newConstant.id && id !== "_constant",
+		);
+		setCollapsedItemIds(newCollapsedIds);
 
 		updateViewDefinition(updatedConstants);
 	};
@@ -1035,6 +1031,9 @@ const ViewDefinitionForm = ({
 
 	// Function to add a new where condition
 	const addWhereCondition = () => {
+		// Mark that we're doing a programmatic update
+		isProgrammaticUpdateRef.current = true;
+
 		const newWhere = {
 			id: `where-${whereConditions.length}-${crypto.randomUUID()}`,
 			name: "",
@@ -1043,18 +1042,11 @@ const ViewDefinitionForm = ({
 		const updatedWhere = [...whereConditions, newWhere];
 		setWhereConditions(updatedWhere);
 
-		// Add new where condition ID to expandedItemIds
-		const newExpandedIds = [...expandedItemIds];
-
-		// Ensure parent _where node is expanded
-		if (!newExpandedIds.includes("_where")) {
-			newExpandedIds.push("_where");
-		}
-
-		if (!newExpandedIds.includes(newWhere.id)) {
-			newExpandedIds.push(newWhere.id);
-		}
-		setExpandedItemIds(newExpandedIds);
+		// Remove the new where condition and its parent from collapsed items to ensure they're visible
+		const newCollapsedIds = collapsedItemIds.filter(
+			(id) => id !== newWhere.id && id !== "_where",
+		);
+		setCollapsedItemIds(newCollapsedIds);
 
 		updateViewDefinition(undefined, updatedWhere);
 	};
@@ -1094,6 +1086,9 @@ const ViewDefinitionForm = ({
 		type: "column" | "forEach" | "forEachOrNull" | "unionAll",
 		parentPath?: string[],
 	) => {
+		// Mark that we're doing a programmatic update
+		isProgrammaticUpdateRef.current = true;
+
 		const newItem: any = {
 			id: `${type}-${Date.now()}-${crypto.randomUUID()}`,
 			type,
@@ -1114,41 +1109,33 @@ const ViewDefinitionForm = ({
 			newItem.children = [];
 		}
 
-		// Add new item ID and related IDs to expandedItemIds
-		const newExpandedIds = [...expandedItemIds];
+		// Remove newly added items from collapsed list to ensure they're visible
+		const idsToRemove = [newItem.id, "_select"];
 
-		// Add all parent IDs in the path to ensure they're expanded
+		// Also remove parent path IDs from collapsed list
 		if (parentPath) {
-			parentPath.forEach((parentId) => {
-				if (!newExpandedIds.includes(parentId)) {
-					newExpandedIds.push(parentId);
-				}
-			});
+			idsToRemove.push(...parentPath);
 		}
 
-		// Always ensure the _select node is expanded
-		if (!newExpandedIds.includes("_select")) {
-			newExpandedIds.push("_select");
-		}
-
-		newExpandedIds.push(newItem.id);
-
-		// If it's a column type, also expand the column children container
+		// If it's a column type, ensure columns and add button are visible
 		if (type === "column" && newItem.columns) {
 			newItem.columns.forEach((col: any) => {
-				newExpandedIds.push(col.id);
+				idsToRemove.push(col.id);
 			});
-			newExpandedIds.push(`${newItem.id}_add_column`);
+			idsToRemove.push(`${newItem.id}_add_column`);
 		} else if (
 			type === "forEach" ||
 			type === "forEachOrNull" ||
 			type === "unionAll"
 		) {
-			// Add the "add select" button ID
-			newExpandedIds.push(`${newItem.id}_add_select`);
+			// Ensure the "add select" button is visible
+			idsToRemove.push(`${newItem.id}_add_select`);
 		}
 
-		setExpandedItemIds(newExpandedIds);
+		const newCollapsedIds = collapsedItemIds.filter(
+			(id) => !idsToRemove.includes(id),
+		);
+		setCollapsedItemIds(newCollapsedIds);
 
 		if (parentPath) {
 			// Add to nested location
@@ -1174,40 +1161,52 @@ const ViewDefinitionForm = ({
 	// Function to add a column to a column-type select item
 	const addColumnToSelectItem = (selectItemId: string) => {
 		const newColumnId = `col-${Date.now()}-${crypto.randomUUID()}`;
-		const updatedItems = selectItems.map((item) => {
-			if (item.id === selectItemId && item.type === "column") {
-				return {
-					...item,
-					columns: [
-						...(item.columns || []),
-						{
-							id: newColumnId,
-							name: "",
-							path: "",
-						},
-					],
-				};
-			}
-			return item;
-		});
 
-		// Add new column ID to expandedItemIds
-		const newExpandedIds = [...expandedItemIds];
+		// Mark that we're doing a programmatic update
+		isProgrammaticUpdateRef.current = true;
 
-		// Ensure parent select item is expanded
-		if (!newExpandedIds.includes(selectItemId)) {
-			newExpandedIds.push(selectItemId);
+		// Find the path to the select item to ensure all parents are expanded
+		const parentPath = findPath(selectItems, selectItemId);
+
+		// Recursive function to update nested items
+		const addColumnRecursive = (items: any[]): any[] => {
+			return items.map((item) => {
+				if (item.id === selectItemId && item.type === "column") {
+					return {
+						...item,
+						columns: [
+							...(item.columns || []),
+							{
+								id: newColumnId,
+								name: "",
+								path: "",
+							},
+						],
+					};
+				}
+				// Recursively check children
+				if (item.children) {
+					return {
+						...item,
+						children: addColumnRecursive(item.children),
+					};
+				}
+				return item;
+			});
+		};
+
+		const updatedItems = addColumnRecursive(selectItems);
+
+		// Remove new column, parent items, and path items from collapsed list to ensure they're visible
+		const idsToRemove = [newColumnId, selectItemId, "_select"];
+		if (parentPath) {
+			idsToRemove.push(...parentPath);
 		}
 
-		// Ensure _select node is expanded
-		if (!newExpandedIds.includes("_select")) {
-			newExpandedIds.push("_select");
-		}
-
-		if (!newExpandedIds.includes(newColumnId)) {
-			newExpandedIds.push(newColumnId);
-		}
-		setExpandedItemIds(newExpandedIds);
+		const newCollapsedIds = collapsedItemIds.filter(
+			(id) => !idsToRemove.includes(id),
+		);
+		setCollapsedItemIds(newCollapsedIds);
 
 		setSelectItems(updatedItems);
 		updateViewDefinition(undefined, undefined, undefined, updatedItems);
@@ -1914,15 +1913,33 @@ const ViewDefinitionForm = ({
 			}
 		}
 	};
+
+	// Calculate expandedItemIds: all tree item IDs except those in collapsedItemIds
+	const expandedItemIds = useMemo(() => {
+		const allItemIds = Object.keys(tree);
+		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
+	}, [tree, collapsedItemIds]);
+
 	return (
 		<TreeView
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
 			items={tree}
 			rootItemId="root"
 			expandedItemIds={expandedItemIds}
-			onExpandedItemsChange={(newExpandedIds, changeType) => {
-				// Save the manually expanded/collapsed items
-				setExpandedItemIds(newExpandedIds);
+			onExpandedItemsChange={(newExpandedIds) => {
+				// Skip updates during programmatic changes
+				if (isProgrammaticUpdateRef.current) {
+					isProgrammaticUpdateRef.current = false;
+					return;
+				}
+
+				// Calculate which items were collapsed (all items minus expanded ones)
+				const allItemIds = Object.keys(tree);
+				const newCollapsedIds = allItemIds.filter(
+					(id) => !newExpandedIds.includes(id),
+				);
+
+				setCollapsedItemIds(newCollapsedIds);
 			}}
 			customItemView={customItemView}
 			disableHover={true}
