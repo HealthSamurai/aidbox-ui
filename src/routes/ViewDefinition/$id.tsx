@@ -25,6 +25,7 @@ import {
 	TabsTrigger,
 	TreeView,
 	type TreeViewItem,
+	toast,
 } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
@@ -40,7 +41,6 @@ import {
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "@health-samurai/react-components";
 import { format as formatSQL } from "sql-formatter";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
