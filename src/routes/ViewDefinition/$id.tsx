@@ -1439,10 +1439,15 @@ const ViewDefinitionForm = ({
 	}, [constants, whereConditions, selectItems]);
 
 	const onSelectTreeItem = (item: ItemInstance<TreeViewItem<any>>) => {
-		if (item.isExpanded()) {
-			setCollapsedItemIds(collapsedItemIds.filter((id) => id !== item.getId()));
-		} else {
-			setCollapsedItemIds([...collapsedItemIds, item.getId()]);
+		if (item.isFolder()) {
+			if (item.isExpanded()) {
+				const newItems = collapsedItemIds.filter((id) => id !== item.getId());
+				if (newItems.length !== collapsedItemIds.length) {
+					setCollapsedItemIds(newItems);
+				}
+			} else {
+				setCollapsedItemIds([...collapsedItemIds, item.getId()]);
+			}
 		}
 	};
 
