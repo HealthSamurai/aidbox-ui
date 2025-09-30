@@ -818,10 +818,6 @@ const ViewDefinitionForm = ({
 	viewDefinition: ViewDefinition;
 	onUpdate?: (updatedViewDef: ViewDefinition) => void;
 }) => {
-	// State for resource types dropdown
-	const [resourceTypes, setResourceTypes] = useState<ComboboxOption[]>([]);
-	const [isLoadingResourceTypes, setIsLoadingResourceTypes] = useState(false);
-
 	// State for managing constants dynamically
 	const [constants, setConstants] = useState<
 		Array<{
@@ -866,18 +862,6 @@ const ViewDefinitionForm = ({
 
 	// Track the previous tree structure to detect changes
 	const previousTreeKeysRef = useRef<string>("");
-
-	// Fetch resource types on component mount
-	useEffect(() => {
-		const loadResourceTypes = async () => {
-			setIsLoadingResourceTypes(true);
-			const options = await fetchResourceTypes();
-			setResourceTypes(options);
-			setIsLoadingResourceTypes(false);
-		};
-
-		loadResourceTypes();
-	}, []);
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
@@ -939,7 +923,7 @@ const ViewDefinitionForm = ({
 				valueString: string;
 			}>,
 			updatedWhere?: Array<{ id: string; name: string; value: string }>,
-			updatedFields?: { name?: string; resource?: string },
+			updatedFields?: { name?: string },
 			updatedSelectItems?: any[],
 		) => {
 			if (onUpdate) {
@@ -1068,11 +1052,6 @@ const ViewDefinitionForm = ({
 	// Function to update name field
 	const updateName = (name: string) => {
 		updateViewDefinition(undefined, undefined, { name });
-	};
-
-	// Function to update resource field
-	const updateResource = (resource: string) => {
-		updateViewDefinition(undefined, undefined, { resource });
 	};
 
 	// Function to add a new select item
@@ -1383,18 +1362,12 @@ const ViewDefinitionForm = ({
 			},
 			viewDefinition: {
 				name: "ViewDefinition",
-				children: ["_name", "_resource", "_constant", "_where", "_select"],
+				children: ["_name", "_constant", "_where", "_select"],
 			},
 			_name: {
 				name: "_name",
 				meta: {
 					type: "name",
-				},
-			},
-			_resource: {
-				name: "_resource",
-				meta: {
-					type: "resource",
 				},
 			},
 			_constant: {
@@ -1576,24 +1549,6 @@ const ViewDefinitionForm = ({
 						</div>
 					</div>
 				);
-			case "resource":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<Combobox
-								options={resourceTypes}
-								value={viewDefinition.resource || ""}
-								onValueChange={(value) => updateResource(value)}
-								placeholder="Select resource type..."
-								searchPlaceholder="Search resources..."
-								emptyText="No resource types found"
-								disabled={isLoadingResourceTypes}
-								className="h-6"
-							/>
-						</div>
-					</div>
-				);
 			case "constant":
 				return <div>{labelView(item)}</div>;
 			case "select":
@@ -1606,10 +1561,12 @@ const ViewDefinitionForm = ({
 				return (
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="link" size="small" className="px-0">
-								<PlusIcon size={16} strokeWidth={3} />
-								<span className="typo-label">Select</span>
-								<ChevronDown size={14} />
+							<Button variant="link" size="small" className="px-0" asChild>
+								<span className="flex items-center gap-1">
+									<PlusIcon size={16} strokeWidth={3} />
+									<span className="typo-label">Select</span>
+									<ChevronDown size={14} />
+								</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="start">
@@ -1978,6 +1935,10 @@ function LeftPanel({
 		defaultValue: "json",
 	});
 
+	// State for resource types dropdown
+	const [resourceTypes, setResourceTypes] = useState<ComboboxOption[]>([]);
+	const [isLoadingResourceTypes, setIsLoadingResourceTypes] = useState(false);
+
 	// Local state for Form tab - doesn't sync until tab switch
 	const [localFormViewDef, setLocalFormViewDef] =
 		useState<ViewDefinition | null>(viewDefinition);
@@ -1989,6 +1950,18 @@ function LeftPanel({
 	useEffect(() => {
 		setLocalFormViewDef(viewDefinition);
 	}, [viewDefinition]);
+
+	// Fetch resource types on component mount
+	useEffect(() => {
+		const loadResourceTypes = async () => {
+			setIsLoadingResourceTypes(true);
+			const options = await fetchResourceTypes();
+			setResourceTypes(options);
+			setIsLoadingResourceTypes(false);
+		};
+
+		loadResourceTypes();
+	}, []);
 
 	// Track previous activeTab to detect tab switches
 	const prevActiveTabRef = useRef(activeTab);
@@ -2244,8 +2217,41 @@ function LeftPanel({
 		}
 	};
 
+	// Function to update resource field
+	const updateResource = (resource: string) => {
+		if (activeTab === "form") {
+			setLocalFormViewDef((prev) => ({
+				...(prev || viewDefinition || { resourceType: "ViewDefinition" }),
+				resource,
+			}));
+		} else {
+			onViewDefinitionUpdate({
+				...(viewDefinition || { resourceType: "ViewDefinition" }),
+				resource,
+			});
+		}
+	};
+
 	return (
 		<div className="flex flex-col h-full">
+			<div className="flex items-center gap-2 bg-bg-secondary px-4 py-3 border-b">
+				<span className="typo-label text-text-secondary whitespace-nowrap">
+					View definition resource type:
+				</span>
+				<Combobox
+					options={resourceTypes}
+					value={
+						(activeTab === "form" ? localFormViewDef : viewDefinition)
+							?.resource || ""
+					}
+					onValueChange={(value) => updateResource(value)}
+					placeholder="Select resource type..."
+					searchPlaceholder="Search resources..."
+					emptyText="No resource types found"
+					disabled={isLoadingResourceTypes}
+					className="h-8 flex-1 max-w-xs"
+				/>
+			</div>
 			<Tabs value={activeTab} onValueChange={handleTabChange}>
 				<div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
 					<div className="flex items-center gap-8">
