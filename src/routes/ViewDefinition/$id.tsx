@@ -1126,6 +1126,7 @@ const ViewDefinitionForm = ({
 		const newCollapsedIds = collapsedItemIds.filter(
 			(id) => !idsToRemove.includes(id),
 		);
+
 		setCollapsedItemIds(newCollapsedIds);
 
 		if (parentPath) {
@@ -1464,6 +1465,14 @@ const ViewDefinitionForm = ({
 		return treeStructure;
 	}, [constants, whereConditions, selectItems]);
 
+	const onSelectTreeItem = (item: ItemInstance<TreeViewItem<any>>) => {
+		if (item.isExpanded()) {
+			setCollapsedItemIds(collapsedItemIds.filter((id) => id !== item.getId()));
+		} else {
+			setCollapsedItemIds([...collapsedItemIds, item.getId()]);
+		}
+	};
+
 	const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 		const selectData = item.getItemData()?.meta?.selectData;
@@ -1499,8 +1508,20 @@ const ViewDefinitionForm = ({
 			additionalClass = "text-[#765FC9] bg-[#F1EFFA]";
 		}
 
+		const onLabelClickFn = () => {
+			if (item.isExpanded()) {
+				item.collapse();
+			} else {
+				item.expand();
+			}
+			onSelectTreeItem(item);
+		};
+
 		return (
-			<span className={`uppercase px-1.5 py-0.5 rounded-md ${additionalClass}`}>
+			<span
+				className={`uppercase px-1.5 py-0.5 rounded-md ${additionalClass}`}
+				onClick={onLabelClickFn}
+			>
 				{label}
 			</span>
 		);
@@ -1918,31 +1939,10 @@ const ViewDefinitionForm = ({
 	return (
 		<TreeView
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
+			onSelectItem={onSelectTreeItem}
 			items={tree}
 			rootItemId="root"
 			expandedItemIds={expandedItemIds}
-			onExpandedItemsChange={(newExpandedIds) => {
-				// Check if tree structure changed (items added/removed)
-				const currentTreeKeys = Object.keys(tree).sort().join(",");
-				const treeStructureChanged =
-					currentTreeKeys !== previousTreeKeysRef.current;
-
-				if (treeStructureChanged) {
-					// Tree structure changed - this is likely due to adding/removing items
-					// Don't update collapsed state to avoid losing user's manual collapse/expand
-					previousTreeKeysRef.current = currentTreeKeys;
-					return;
-				}
-
-				// Tree structure is the same - this is a user interaction
-				// Calculate which items were collapsed (all items minus expanded ones)
-				const allItemIds = Object.keys(tree);
-				const newCollapsedIds = allItemIds.filter(
-					(id) => !newExpandedIds.includes(id),
-				);
-
-				setCollapsedItemIds(newCollapsedIds);
-			}}
 			customItemView={customItemView}
 			disableHover={true}
 		/>
