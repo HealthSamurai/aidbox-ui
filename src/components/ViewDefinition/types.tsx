@@ -21,6 +21,7 @@ export interface ViewDefinition {
 export interface ViewDefinitionContextProps {
 	viewDefinition: ViewDefinition | undefined;
 	setViewDefinition: (viewDefinition: ViewDefinition) => void;
+	isLoadingViewDef: boolean;
 }
 
 export type ViewDefinitionEditorTab = "form" | "code" | "sql";

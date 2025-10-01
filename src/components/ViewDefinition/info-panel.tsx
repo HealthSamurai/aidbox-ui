@@ -17,7 +17,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { SearchBar } from "./search-bar";
-import type { ViewDefinition } from "./types";
+import { ViewDefinitionContext } from "./page";
+import { useContext } from "react";
 
 const fetchSchema = async (resourceType: string): Promise<any> => {
 	try {
@@ -381,13 +382,10 @@ const ExampleTabEditorMenu = ({
 	);
 };
 
-export function InfoPanel({
-	viewDefinition,
-	isLoadingViewDef,
-}: {
-	viewDefinition: ViewDefinition | undefined;
-	isLoadingViewDef: boolean;
-}) {
+export function InfoPanel() {
+	const viewDefinitionContext = useContext(ViewDefinitionContext);
+	const viewDefinition = viewDefinitionContext.viewDefinition;
+	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 	const [activeTab, setActiveTab] = useLocalStorage<"schema" | "examples">({
 		key: `viewDefinition-infoPanel-activeTab`,
 		defaultValue: "schema",
@@ -501,7 +499,9 @@ export function InfoPanel({
 
 	const fhirStructureTree = useMemo(() => {
 		if (schemaData) {
-			return transformSnapshotToTree(schemaData);
+			const v = transformSnapshotToTree(schemaData);
+			console.log(JSON.stringify(v));
+			return v;
 		}
 		return {};
 	}, [schemaData]);

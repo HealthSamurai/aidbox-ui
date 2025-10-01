@@ -18,6 +18,7 @@ export const ViewDefinitionContext =
 	React.createContext<Types.ViewDefinitionContextProps>({
 		viewDefinition: undefined,
 		setViewDefinition: () => {},
+		isLoadingViewDef: true,
 	});
 
 export const ViewDefinitionErrorPage = ({
@@ -63,6 +64,7 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 			value={{
 				viewDefinition: viewDefinition,
 				setViewDefinition: setViewDefinition,
+				isLoadingViewDef: viewDefinitionQuery.isLoading,
 			}}
 		>
 			<HSComp.ResizablePanelGroup
@@ -79,10 +81,7 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 						</HSComp.ResizablePanel>
 						<HSComp.ResizableHandle />
 						<HSComp.ResizablePanel minSize={20}>
-							<InfoPanel
-								viewDefinition={viewDefinition}
-								isLoadingViewDef={viewDefinitionQuery.isLoading}
-							/>
+							<InfoPanel />
 						</HSComp.ResizablePanel>
 					</HSComp.ResizablePanelGroup>
 				</HSComp.ResizablePanel>
