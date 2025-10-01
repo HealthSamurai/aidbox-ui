@@ -1,10 +1,10 @@
-import { useState, useEffect, useContext, useMemo } from "react";
-import { ViewDefinitionContext } from "./page";
-import { AidboxCallWithMeta } from "../../api/auth";
 import {
-	TabsContent,
 	FHIRStructureView,
+	TabsContent,
 } from "@health-samurai/react-components";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { AidboxCallWithMeta } from "../../api/auth";
+import { ViewDefinitionContext } from "./page";
 
 const fetchSchema = async (resourceType: string): Promise<any> => {
 	try {

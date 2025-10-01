@@ -1,18 +1,18 @@
-import { useState, useEffect, useContext } from "react";
-import { useLocalStorage } from "../../hooks";
-import { SearchBar } from "./search-bar";
-import * as yaml from "js-yaml";
-import { ViewDefinitionContext } from "./page";
-import { AidboxCall } from "../../api/auth";
 import {
-	TabsContent,
-	SegmentControlItem,
-	SegmentControl,
 	Button,
 	CodeEditor,
 	CopyIcon,
+	SegmentControl,
+	SegmentControlItem,
+	TabsContent,
 } from "@health-samurai/react-components";
+import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useContext, useEffect, useState } from "react";
+import { AidboxCall } from "../../api/auth";
+import { useLocalStorage } from "../../hooks";
+import { ViewDefinitionContext } from "./page";
+import { SearchBar } from "./search-bar";
 
 const searchResources = async (
 	resourceType: string,

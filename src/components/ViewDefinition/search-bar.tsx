@@ -1,5 +1,5 @@
 import { Button, Input } from "@health-samurai/react-components";
-import { useState, useContext } from "react";
+import { useContext, useState } from "react";
 import { ViewDefinitionContext } from "./page";
 
 const handleKeyPress = (
