@@ -1,4 +1,3 @@
-import type { ComboboxOption } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
@@ -19,13 +18,23 @@ const fetchResourceTypes = () => {
 	});
 };
 
-const ResourceTypeSelect = ({
-	comboboxOptions,
-}: {
-	comboboxOptions: ComboboxOption[];
-}) => {
+export const ResourceTypeSelect = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const [open, setOpen] = React.useState(false);
+
+	const { data, isLoading, error } = useQuery({
+		queryKey: [Constants.PageID, "resource-types"],
+		queryFn: async () => await fetchResourceTypes(),
+	});
+
+	const comboboxOptions = React.useMemo(
+		() =>
+			Object.keys(data || {}).map((resourceType) => ({
+				value: resourceType,
+				label: resourceType,
+			})),
+		[data],
+	);
 
 	const handleOnSelect = (value: string) => {
 		setOpen(false);
@@ -39,6 +48,9 @@ const ResourceTypeSelect = ({
 	};
 
 	const currentResourceType = viewDefinitionContext.viewDefinition?.resource;
+
+	if (isLoading) return <div>Loading...</div>;
+	if (error) return <div>Error: {error.message}</div>;
 
 	return (
 		<HSComp.Popover open={open} onOpenChange={setOpen}>
@@ -81,34 +93,5 @@ const ResourceTypeSelect = ({
 				</HSComp.Command>
 			</HSComp.PopoverContent>
 		</HSComp.Popover>
-	);
-};
-
-// TODO useQuery to Resource type select component
-export const ResourceTypeHeaderMenu = () => {
-	const { data, isLoading, error } = useQuery({
-		queryKey: [Constants.PageID, "resource-types"],
-		queryFn: async () => await fetchResourceTypes(),
-	});
-
-	const comboboxOptions = React.useMemo(
-		() =>
-			Object.keys(data || {}).map((resourceType) => ({
-				value: resourceType,
-				label: resourceType,
-			})),
-		[data],
-	);
-
-	if (isLoading) return <div>Loading...</div>;
-	if (error) return <div>Error: {error.message}</div>;
-
-	return (
-		<div className="flex items-center gap-2 bg-bg-secondary px-4 py-3 border-b">
-			<span className="typo-label text-text-secondary whitespace-nowrap">
-				Resource type:
-			</span>
-			<ResourceTypeSelect comboboxOptions={comboboxOptions} />
-		</div>
 	);
 };
