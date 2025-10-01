@@ -1,6 +1,7 @@
 import { Tabs, TabsList, TabsTrigger } from "@health-samurai/react-components";
 import React from "react";
 import { useLocalStorage } from "../../hooks";
+import { CodeTabContent } from "./code-tab-content";
 import { ResourceTypeSelect } from "./resource-type-select";
 import type * as Types from "./types";
 
@@ -67,6 +68,7 @@ export const EditorPanelContent = () => {
 			value={{ selectedTab, setSelectedTab }}
 		>
 			<EditorHeaderMenu />
+			{selectedTab === "code" && <CodeTabContent />}
 		</ViewDefinitionEditorContext.Provider>
 	);
 };

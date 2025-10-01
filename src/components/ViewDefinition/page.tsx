@@ -1,5 +1,5 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import React, { useCallback } from "react";
 import { AidboxCall } from "../../api/auth";
 import * as Constants from "./constants";
@@ -20,22 +20,43 @@ export const ViewDefinitionContext =
 		setViewDefinition: () => {},
 	});
 
+export const ViewDefinitionErrorPage = ({
+	viewDefinitionError,
+}: {
+	viewDefinitionError: Error;
+}) => {
+	return (
+		<div className="px-4 py-5">
+			<div className="text-text-secondary">
+				Error while fetching View Definition:
+			</div>
+			<div className="text-text-error-primary">
+				{viewDefinitionError.message}
+			</div>
+		</div>
+	);
+};
+
 const ViewDefinitionPage = ({ id }: { id: string }) => {
-	const { data, isLoading, error } = useQuery({
+	const [viewDefinition, setViewDefinition] =
+		React.useState<Types.ViewDefinition>();
+
+	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
-		queryFn: async () => await fetchViewDefinition(id),
+		queryFn: async () => {
+			const response = await fetchViewDefinition(id);
+			setViewDefinition(response);
+			return response;
+		},
+		retry: false,
 	});
 
-	const [viewDefinition, setViewDefinition] = React.useState<
-		Types.ViewDefinition | undefined
-	>(data);
-
-	React.useEffect(() => {
-		setViewDefinition(data);
-	}, [data]);
-
-	if (isLoading) return <div>Loading...</div>;
-	if (error) return <div>Error: {error.message}</div>;
+	if (viewDefinitionQuery.error)
+		return (
+			<ViewDefinitionErrorPage
+				viewDefinitionError={viewDefinitionQuery.error}
+			/>
+		);
 
 	return (
 		<ViewDefinitionContext.Provider

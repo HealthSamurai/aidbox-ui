@@ -21,7 +21,7 @@ const fetchResourceTypes = () => {
 export const ResourceTypeSelect = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 
-	const { data, isLoading, error } = useQuery({
+	const { data, isLoading, isFetching } = useQuery({
 		queryKey: [Constants.PageID, "resource-types"],
 		queryFn: async () => await fetchResourceTypes(),
 	});
@@ -51,15 +51,10 @@ export const ResourceTypeSelect = () => {
 		],
 	);
 
-	console.log(
-		"RE_RENDER ResourceTypeSelect",
-		viewDefinitionContext.setViewDefinition,
-	);
-
 	const currentResourceType = viewDefinitionContext.viewDefinition?.resource;
 
-	if (isLoading) return <div>Loading...</div>;
-	if (error) return <div>Error: {error.message}</div>;
+	if (isLoading)
+		return <HSComp.Skeleton className="rounded-full min-w-21 h-6" />;
 
 	return (
 		<HSComp.ButtonDropdown
