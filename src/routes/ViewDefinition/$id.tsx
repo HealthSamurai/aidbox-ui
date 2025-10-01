@@ -417,12 +417,12 @@ export const Route = createFileRoute("/ViewDefinition/$id")({
 const CodeEditorMenu = ({
 	mode,
 	onModeChange,
-	copyText,
+	textToCopy,
 	onFormat,
 }: {
 	mode: "json" | "yaml";
 	onModeChange: (mode: "json" | "yaml") => void;
-	copyText: string;
+	textToCopy: string;
 	onFormat: () => void;
 }) => {
 	return (
@@ -444,7 +444,7 @@ const CodeEditorMenu = ({
 				<TextQuote className="w-4 h-4" />
 			</Button>
 			<Button variant="ghost" size="small" asChild>
-				<CopyIcon text={copyText} />
+				<CopyIcon text={textToCopy} />
 			</Button>
 		</div>
 	);
@@ -1962,7 +1962,7 @@ function LeftPanel({
 											}
 											setCodeMode(newMode);
 										}}
-										copyText={codeContent}
+										textToCopy={codeContent}
 										onFormat={handleFormatCode}
 									/>
 								</div>

@@ -25,6 +25,7 @@ export interface ViewDefinitionContextProps {
 }
 
 export type ViewDefinitionEditorTab = "form" | "code" | "sql";
+export type ViewDefinitionEditorMode = "json" | "yaml";
 
 export interface ViewDefinitionEditorContextProps {
 	selectedTab: ViewDefinitionEditorTab;

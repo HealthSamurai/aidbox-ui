@@ -38,7 +38,7 @@ export const EditorTabs = () => {
 
 export const EditorHeaderMenu = () => {
 	return (
-		<div className="flex items-center justify-between gap-4 bg-bg-secondary px-6 border-b h-10">
+		<div className="flex items-center justify-between gap-4 bg-bg-secondary px-6 border-b h-10 flex-none">
 			<div className="flex items-center gap-3">
 				<span className="typo-label text-text-secondary text-nowrap">
 					View Definition:
@@ -67,8 +67,10 @@ export const EditorPanelContent = () => {
 		<ViewDefinitionEditorContext.Provider
 			value={{ selectedTab, setSelectedTab }}
 		>
-			<EditorHeaderMenu />
-			{selectedTab === "code" && <CodeTabContent />}
+			<div className="flex flex-col h-full">
+				<EditorHeaderMenu />
+				{selectedTab === "code" && <CodeTabContent />}
+			</div>
 		</ViewDefinitionEditorContext.Provider>
 	);
 };

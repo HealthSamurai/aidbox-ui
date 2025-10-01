@@ -13,12 +13,11 @@ import {
 } from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { SearchBar } from "./search-bar";
 import { ViewDefinitionContext } from "./page";
-import { useContext } from "react";
+import { SearchBar } from "./search-bar";
 
 const fetchSchema = async (resourceType: string): Promise<any> => {
 	try {
@@ -334,7 +333,7 @@ const transformSnapshotToTree = (data: any): Record<string, any> => {
 const ExampleTabEditorMenu = ({
 	mode,
 	onModeChange,
-	copyText,
+	textToCopy,
 	onPrevious,
 	onNext,
 	canGoToPrevious,
@@ -342,7 +341,7 @@ const ExampleTabEditorMenu = ({
 }: {
 	mode: "json" | "yaml";
 	onModeChange: (mode: "json" | "yaml") => void;
-	copyText: string;
+	textToCopy: string;
 	onPrevious: () => void;
 	onNext: () => void;
 	canGoToPrevious: boolean;
@@ -359,7 +358,7 @@ const ExampleTabEditorMenu = ({
 				<SegmentControlItem value="yaml">YAML</SegmentControlItem>
 			</SegmentControl>
 			<Button variant="ghost" size="small" asChild>
-				<CopyIcon text={copyText} />
+				<CopyIcon text={textToCopy} />
 			</Button>
 			<div className="border-l h-6" />
 			<Button
@@ -596,7 +595,7 @@ export function InfoPanel() {
 									<ExampleTabEditorMenu
 										mode={exampleMode}
 										onModeChange={setExampleMode}
-										copyText={getCopyText()}
+										textToCopy={getCopyText()}
 										onPrevious={handlePrevious}
 										onNext={handleNext}
 										canGoToPrevious={canGoToPrevious}
