@@ -1,40 +1,9 @@
-import { Tabs, TabsList, TabsTrigger } from "@health-samurai/react-components";
+import * as HSComp from "@health-samurai/react-components";
 import React from "react";
 import { useLocalStorage } from "../../hooks";
 import { CodeTabContent } from "./code-tab-content";
 import { ResourceTypeSelect } from "./resource-type-select";
 import type * as Types from "./types";
-
-export const ViewDefinitionEditorContext =
-	React.createContext<Types.ViewDefinitionEditorContextProps>({
-		selectedTab: "form",
-		setSelectedTab: () => {},
-	});
-
-export const EditorTabs = () => {
-	const viewDefinitionEditorContext = React.useContext(
-		ViewDefinitionEditorContext,
-	);
-
-	const handleOnTabSelect = (value: string) => {
-		viewDefinitionEditorContext.setSelectedTab(
-			value as Types.ViewDefinitionEditorTab,
-		);
-	};
-
-	return (
-		<Tabs
-			defaultValue={viewDefinitionEditorContext.selectedTab}
-			onValueChange={handleOnTabSelect}
-		>
-			<TabsList>
-				<TabsTrigger value="form">Form</TabsTrigger>
-				<TabsTrigger value="code">Code</TabsTrigger>
-				<TabsTrigger value="sql">SQL</TabsTrigger>
-			</TabsList>
-		</Tabs>
-	);
-};
 
 export const EditorHeaderMenu = () => {
 	return (
@@ -43,7 +12,11 @@ export const EditorHeaderMenu = () => {
 				<span className="typo-label text-text-secondary text-nowrap">
 					View Definition:
 				</span>
-				<EditorTabs />
+				<HSComp.TabsList>
+					<HSComp.TabsTrigger value="form">Form</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="code">Code</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
+				</HSComp.TabsList>
 			</div>
 			<div className="flex items-center gap-2">
 				<span className="typo-label text-text-secondary text-nowrap">
@@ -63,14 +36,18 @@ export const EditorPanelContent = () => {
 			defaultValue: "form",
 		});
 
+	const handleOnTabSelect = (value: string) => {
+		setSelectedTab(value as Types.ViewDefinitionEditorTab);
+	};
+
 	return (
-		<ViewDefinitionEditorContext.Provider
-			value={{ selectedTab, setSelectedTab }}
-		>
-			<div className="flex flex-col h-full">
-				<EditorHeaderMenu />
-				{selectedTab === "code" && <CodeTabContent />}
-			</div>
-		</ViewDefinitionEditorContext.Provider>
+		<HSComp.Tabs defaultValue={selectedTab} onValueChange={handleOnTabSelect}>
+			<EditorHeaderMenu />
+			<HSComp.TabsContent value="form">Form</HSComp.TabsContent>
+			<HSComp.TabsContent value="code">
+				<CodeTabContent />
+			</HSComp.TabsContent>
+			<HSComp.TabsContent value="sql">SQL</HSComp.TabsContent>
+		</HSComp.Tabs>
 	);
 };
