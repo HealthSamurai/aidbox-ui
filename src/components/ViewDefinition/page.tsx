@@ -5,6 +5,7 @@ import { AidboxCall } from "../../api/auth";
 import * as Constants from "./constants";
 import { EditorPanelContent } from "./editor-panel-content";
 import type * as Types from "./types";
+import { InfoPanel } from "./info-panel";
 
 const fetchViewDefinition = (id: string) => {
 	return AidboxCall<Types.ViewDefinition>({
@@ -57,7 +58,10 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 						</HSComp.ResizablePanel>
 						<HSComp.ResizableHandle />
 						<HSComp.ResizablePanel minSize={20}>
-							<div>Right Panel</div>
+							<InfoPanel
+								viewDefinition={viewDefinition}
+								isLoadingViewDef={isLoading}
+							/>
 						</HSComp.ResizablePanel>
 					</HSComp.ResizablePanelGroup>
 				</HSComp.ResizablePanel>
