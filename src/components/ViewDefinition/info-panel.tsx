@@ -16,8 +16,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AidboxCall, AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import type { ViewDefinition } from "./types";
 import { SearchBar } from "./search-bar";
+import type { ViewDefinition } from "./types";
 
 const fetchSchema = async (resourceType: string): Promise<any> => {
 	try {
@@ -385,7 +385,7 @@ export function InfoPanel({
 	viewDefinition,
 	isLoadingViewDef,
 }: {
-	viewDefinition: ViewDefinition | null;
+	viewDefinition: ViewDefinition | undefined;
 	isLoadingViewDef: boolean;
 }) {
 	const [activeTab, setActiveTab] = useLocalStorage<"schema" | "examples">({
