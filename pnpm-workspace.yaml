@@ -1,3 +1,6 @@
 onlyBuiltDependencies:
-  - "@tailwindcss/oxide"
+  - '@tailwindcss/oxide'
   - esbuild
+
+overrides:
+  '@health-samurai/react-components': link:../../.local/share/pnpm/global/5/node_modules/@health-samurai/react-components
