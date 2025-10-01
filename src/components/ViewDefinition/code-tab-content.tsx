@@ -3,35 +3,64 @@ import React from "react";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import { ViewDefinitionContext } from "./page";
 
+export const ViewDefinitionCodeEditor = () => {
+	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+	const [editorValue, setEditorValue] = React.useState<string>("");
+
+	const handleEditorValueChange = (value: string) => {
+		setEditorValue(value);
+	};
+
+	React.useEffect(() => {
+		if (viewDefinitionContext.viewDefinition) {
+			setEditorValue(
+				JSON.stringify(viewDefinitionContext.viewDefinition, null, 2),
+			);
+		}
+	}, [viewDefinitionContext.viewDefinition]);
+
+	return (
+		<HSComp.CodeEditor
+			currentValue={editorValue}
+			mode="json"
+			onChange={handleEditorValueChange}
+			//mode={codeMode === "yaml" ? "yaml" : "json"}
+		/>
+	);
+};
+
 export const CodeTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 
-	const codeContent = JSON.stringify(
-		viewDefinitionContext.viewDefinition,
-		null,
-		2,
-	);
+	if (viewDefinitionContext.isLoadingViewDef) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Loading ViewDefinition...</div>
+				</div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="grow overflow-hidden relative">
+		<div className="h-full overflow-hidden relative">
 			<div className="absolute top-2 right-3 z-10">
 				<CodeEditorMenubar
 					mode="json"
 					onModeChange={(newMode) => {
 						// Handle mode change
 					}}
-					textToCopy={codeContent}
+					textToCopy={
+						viewDefinitionContext.viewDefinition
+							? JSON.stringify(viewDefinitionContext.viewDefinition, null, 2)
+							: ""
+					}
 					onFormat={() => {
 						// Handle format
 					}}
 				/>
 			</div>
-			<HSComp.CodeEditor
-				currentValue={codeContent}
-				mode="json"
-				//onChange={handleCodeContentChange}
-				//mode={codeMode === "yaml" ? "yaml" : "json"}
-			/>
+			<ViewDefinitionCodeEditor />
 		</div>
 	);
 };

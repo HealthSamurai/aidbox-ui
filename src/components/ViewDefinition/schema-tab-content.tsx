@@ -329,7 +329,6 @@ export function SchemaTabContent({ activeTab }: { activeTab: string }) {
 	const fhirStructureTree = useMemo(() => {
 		if (schemaData) {
 			const v = transformSnapshotToTree(schemaData);
-			console.log(JSON.stringify(v));
 			return v;
 		}
 		return {};
