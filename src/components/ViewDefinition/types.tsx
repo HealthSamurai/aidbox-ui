@@ -23,6 +23,13 @@ export interface ViewDefinitionContextProps {
 	setViewDefinition: (viewDefinition: ViewDefinition) => void;
 }
 
+export type ViewDefinitionEditorTab = "form" | "code" | "sql";
+
+export interface ViewDefinitionEditorContextProps {
+	selectedTab: ViewDefinitionEditorTab;
+	setSelectedTab: (selectedTab: ViewDefinitionEditorTab) => void;
+}
+
 export interface ResourceTypesResponse {
 	[key: string]: {
 		"default-profile": string;

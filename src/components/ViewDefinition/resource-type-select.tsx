@@ -20,7 +20,6 @@ const fetchResourceTypes = () => {
 
 export const ResourceTypeSelect = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const [open, setOpen] = React.useState(false);
 
 	const { data, isLoading, error } = useQuery({
 		queryKey: [Constants.PageID, "resource-types"],
@@ -36,16 +35,26 @@ export const ResourceTypeSelect = () => {
 		[data],
 	);
 
-	const handleOnSelect = (value: string) => {
-		setOpen(false);
-		if (viewDefinitionContext.viewDefinition) {
-			const newViewDefinition: Types.ViewDefinition = {
-				...viewDefinitionContext.viewDefinition,
-				resource: value,
-			};
-			viewDefinitionContext.setViewDefinition(newViewDefinition);
-		}
-	};
+	const handleOnSelect = React.useCallback(
+		(value: string) => {
+			if (viewDefinitionContext.viewDefinition) {
+				const newViewDefinition: Types.ViewDefinition = {
+					...viewDefinitionContext.viewDefinition,
+					resource: value,
+				};
+				viewDefinitionContext.setViewDefinition(newViewDefinition);
+			}
+		},
+		[
+			viewDefinitionContext.viewDefinition,
+			viewDefinitionContext.setViewDefinition,
+		],
+	);
+
+	console.log(
+		"RE_RENDER ResourceTypeSelect",
+		viewDefinitionContext.setViewDefinition,
+	);
 
 	const currentResourceType = viewDefinitionContext.viewDefinition?.resource;
 
@@ -53,45 +62,10 @@ export const ResourceTypeSelect = () => {
 	if (error) return <div>Error: {error.message}</div>;
 
 	return (
-		<HSComp.Popover open={open} onOpenChange={setOpen}>
-			<HSComp.PopoverTrigger>
-				<HSComp.Button
-					variant="link"
-					className="text-text-secondary bg-gray-100 rounded-full px-2 h-6"
-				>
-					<span className="typo-body">
-						{viewDefinitionContext.viewDefinition?.resource}
-					</span>
-					<Lucide.ChevronDownIcon />
-				</HSComp.Button>
-			</HSComp.PopoverTrigger>
-			<HSComp.PopoverContent className="p-0">
-				<HSComp.Command>
-					<HSComp.CommandInput></HSComp.CommandInput>
-					<HSComp.CommandList>
-						{comboboxOptions.map((option) => (
-							<HSComp.CommandItem
-								key={option.value}
-								data-state={
-									currentResourceType === option.value ? "checked" : undefined
-								}
-								value={option.value}
-								onSelect={handleOnSelect}
-							>
-								{option.label}
-								<Lucide.CheckIcon
-									className={HSComp.cn(
-										"ml-auto size-4",
-										currentResourceType === option.value
-											? "opacity-100"
-											: "opacity-0",
-									)}
-								/>
-							</HSComp.CommandItem>
-						))}
-					</HSComp.CommandList>
-				</HSComp.Command>
-			</HSComp.PopoverContent>
-		</HSComp.Popover>
+		<HSComp.ButtonDropdown
+			options={comboboxOptions}
+			onSelectItem={handleOnSelect}
+			{...(currentResourceType ? { selectedValue: currentResourceType } : {})}
+		/>
 	);
 };
