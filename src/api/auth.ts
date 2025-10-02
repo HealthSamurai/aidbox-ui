@@ -59,7 +59,9 @@ export async function AidboxCall<T = unknown>({
 			window.location.href = `${baseURL}/auth/login?redirect_to=${encodedLocation}`;
 			throw new Error("Authentication required");
 		}
-		throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		throw Error(`HTTP ${response.status}: ${response.statusText}`, {
+			cause: await response.json(),
+		});
 	}
 
 	const contentType = response.headers.get("content-type");

@@ -6,12 +6,17 @@ import {
 	SegmentControlItem,
 	TabsContent,
 } from "@health-samurai/react-components";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { AidboxCall } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
-import { ViewDefinitionResourceTypeContext } from "./page";
+import * as Constants from "./constants";
+import {
+	ViewDefinitionContext,
+	ViewDefinitionResourceTypeContext,
+} from "./page";
 import { SearchBar } from "./search-bar";
 
 const searchResources = async (
@@ -90,103 +95,59 @@ const ExampleTabEditorMenu = ({
 	);
 };
 
-export function ExampleTabContent({ activeTab }: { activeTab: string }) {
-	const viewDefinitionContext = useContext(ViewDefinitionResourceTypeContext);
+export function ExampleTabContent() {
+	const viewDefinitionContext = useContext(ViewDefinitionContext);
+	const viewDefinitionTypeContext = useContext(
+		ViewDefinitionResourceTypeContext,
+	);
 	const viewDefinitionResourceType =
-		viewDefinitionContext.viewDefinitionResourceType;
+		viewDefinitionTypeContext.viewDefinitionResourceType;
 	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 
-	const [exampleResource, setExampleResource] = useState<Record<
-		string,
-		unknown
-	> | null>(null);
-	const [isLoadingExample, setIsLoadingExample] = useState(false);
-	const [searchResults, setSearchResults] = useState<Record<string, unknown>[]>(
-		[],
-	);
 	const [currentResultIndex, setCurrentResultIndex] = useState(0);
 	const [exampleMode, setExampleMode] = useLocalStorage<"json" | "yaml">({
 		key: `viewDefinition-infoPanel-exampleMode`,
 		defaultValue: "json",
 	});
 
-	useEffect(() => {
-		if (
-			activeTab === "examples" &&
-			viewDefinitionResourceType &&
-			!exampleResource &&
-			!searchResults.length &&
-			!isLoadingExample
-		) {
-			handleSearch("");
-		}
-	}, [activeTab, viewDefinitionResourceType]);
+	const [query, setQuery] = useState("");
+	const queryClient = useQueryClient();
 
-	const handleSearch = async (query?: string) => {
-		if (!viewDefinitionResourceType) return;
-
-		setIsLoadingExample(true);
-		try {
-			const searchParams = query !== undefined ? query : "";
+	const { isLoading, data, status, error } = useQuery({
+		queryKey: [Constants.PageID, query],
+		queryFn: async () => {
+			if (!viewDefinitionResourceType) return;
 			const resources = await searchResources(
 				viewDefinitionResourceType,
-				searchParams,
+				query,
 			);
-
-			if (resources.length > 0) {
-				setSearchResults(resources);
-				setCurrentResultIndex(0);
-				setExampleResource(resources[0] || null);
-			} else {
-				setSearchResults([]);
-				setCurrentResultIndex(0);
-				setExampleResource({ message: "No results found" });
-			}
-		} catch (error) {
-			setSearchResults([]);
 			setCurrentResultIndex(0);
-			setExampleResource({
-				error: "Failed to fetch resource",
-				details: error instanceof Error ? error.message : "Unknown error",
-			});
-		} finally {
-			setIsLoadingExample(false);
-		}
-	};
+			return resources;
+		},
+		retry: false,
+	});
 
 	const handlePrevious = () => {
-		if (currentResultIndex > 0 && searchResults.length > 0) {
+		if (currentResultIndex > 0 && data && data.length > 0) {
 			const newIndex = currentResultIndex - 1;
 			setCurrentResultIndex(newIndex);
-			setExampleResource(searchResults[newIndex] || null);
 		}
 	};
 
 	const handleNext = () => {
-		if (currentResultIndex < searchResults.length - 1) {
+		if (data && currentResultIndex < data.length - 1) {
 			const newIndex = currentResultIndex + 1;
 			setCurrentResultIndex(newIndex);
-			setExampleResource(searchResults[newIndex] || null);
 		}
 	};
 
 	const canGoToPrevious = currentResultIndex > 0;
-	const canGoToNext = currentResultIndex < searchResults.length - 1;
+	const canGoToNext = data ? currentResultIndex < data.length - 1 : false;
 
 	const resourceType = viewDefinitionResourceType || "Patient";
+	const exampleResource = data ? data[currentResultIndex] : null;
 
 	const getCopyText = () => {
-		if (!exampleResource) {
-			const defaultContent = {
-				resourceType,
-				hint: `Press Enter in the search bar above to search for ${resourceType} instances`,
-				examples: ["_id=<resource-id>", "name=<name>", "_count=10"],
-			};
-			return exampleMode === "yaml"
-				? yaml.dump(defaultContent, { indent: 2 })
-				: JSON.stringify(defaultContent, null, 2);
-		}
-
 		return exampleMode === "yaml"
 			? yaml.dump(exampleResource, { indent: 2 })
 			: JSON.stringify(exampleResource, null, 2);
@@ -195,8 +156,13 @@ export function ExampleTabContent({ activeTab }: { activeTab: string }) {
 	return (
 		<TabsContent value="examples" className="flex flex-col h-full">
 			<SearchBar
-				handleSearch={handleSearch}
-				isLoadingExample={isLoadingExample}
+				handleSearch={(q?: string) => {
+					setQuery(q || "");
+					queryClient.invalidateQueries({
+						queryKey: [Constants.PageID, q || ""],
+					});
+				}}
+				isLoadingExample={isLoading}
 			/>
 			<div className="flex-1 overflow-auto">
 				{isLoadingViewDef ? (
@@ -206,7 +172,7 @@ export function ExampleTabContent({ activeTab }: { activeTab: string }) {
 							<div className="text-sm">Fetching {resourceType} examples</div>
 						</div>
 					</div>
-				) : isLoadingExample ? (
+				) : isLoading ? (
 					<div className="flex items-center justify-center h-full text-text-secondary">
 						<div className="text-center">
 							<div className="text-lg mb-2">Searching...</div>
@@ -226,42 +192,31 @@ export function ExampleTabContent({ activeTab }: { activeTab: string }) {
 								canGoToNext={canGoToNext}
 							/>
 						</div>
-						<CodeEditor
-							readOnly
-							currentValue={
-								exampleResource
-									? exampleMode === "yaml"
+						{exampleResource ? (
+							<CodeEditor
+								readOnly
+								currentValue={
+									exampleMode === "yaml"
 										? yaml.dump(exampleResource, { indent: 2 })
 										: JSON.stringify(exampleResource, null, 2)
-									: exampleMode === "yaml"
-										? yaml.dump(
-												{
-													resourceType,
-													hint: `Press Enter in the search bar above to search for ${resourceType} instances`,
-													examples: [
-														"_id=<resource-id>",
-														"name=<name>",
-														"_count=10",
-													],
-												},
-												{ indent: 2 },
-											)
-										: JSON.stringify(
-												{
-													resourceType,
-													hint: `Press Enter in the search bar above to search for ${resourceType} instances`,
-													examples: [
-														"_id=<resource-id>",
-														"name=<name>",
-														"_count=10",
-													],
-												},
-												null,
-												2,
-											)
-							}
-							mode={exampleMode}
-						/>
+								}
+								mode={exampleMode}
+							/>
+						) : status === "error" ? (
+							<CodeEditor
+								readOnly
+								currentValue={
+									exampleMode === "yaml"
+										? yaml.dump(error.cause, { indent: 2 })
+										: JSON.stringify(error.cause, null, 2)
+								}
+								mode={exampleMode}
+							/>
+						) : (
+							<div>
+								<span>Resource not found</span>
+							</div>
+						)}
 					</div>
 				)}
 			</div>
