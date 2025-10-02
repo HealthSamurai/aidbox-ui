@@ -1,3 +1,4 @@
+import type { TreeViewItem } from "@health-samurai/react-components";
 import {
 	FHIRStructureView,
 	TabsContent,
@@ -8,7 +9,45 @@ import { AidboxCallWithMeta } from "../../api/auth";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
 
-const fetchSchema = async (resourceType: string): Promise<any> => {
+interface Snapshot {
+	type: string | null;
+	lvl: number;
+	name: string;
+	path?: string;
+	short?: string;
+	desc?: string;
+	id: string;
+	"union?"?: boolean;
+	min?: number | string;
+	max?: number | string;
+	datatype?: string;
+	flags?: string[];
+	"extension-url"?: string;
+	"extension-coordinate"?: { label: string };
+	binding?: { strength: string; valueSet: string };
+	"vs-coordinate"?: {
+		label: string;
+		id: string;
+		"package-spec": {
+			name: string;
+			version: string;
+		};
+	};
+}
+
+interface Schema {
+	differential: Array<Snapshot>;
+	snapshot: Array<Snapshot>;
+	"default?": boolean;
+}
+
+interface SchemaData {
+	result: Record<string, Schema>;
+}
+
+const fetchSchema = async (
+	resourceType: string,
+): Promise<Array<Snapshot> | undefined> => {
 	try {
 		const response = await AidboxCallWithMeta({
 			method: "POST",
@@ -22,24 +61,16 @@ const fetchSchema = async (resourceType: string): Promise<any> => {
 			}),
 		});
 
-		const data = JSON.parse(response.body);
+		const data: SchemaData = JSON.parse(response.body);
 
 		if (data?.result) {
 			const defaultSchema = Object.values(data.result).find(
-				(schema: any) => schema?.["default?"] === true,
+				(schema: Schema) => schema?.["default?"] === true,
 			);
-
-			if (defaultSchema) {
-				const differential = (defaultSchema as any)?.snapshot;
-				return differential || defaultSchema;
-			} else {
-				const schemas = Object.values(data.result);
-				const firstSchema = schemas[0] as any;
-				const differential = firstSchema?.differential;
-				return differential || firstSchema || data;
-			}
+			const snapshot = defaultSchema?.snapshot;
+			return snapshot;
 		} else {
-			return data;
+			return undefined;
 		}
 	} catch (error) {
 		throw new Error(
@@ -48,117 +79,123 @@ const fetchSchema = async (resourceType: string): Promise<any> => {
 	}
 };
 
-const transformSnapshotToTree = (data: any): Record<string, any> => {
-	let elements: any[] = [];
+interface Meta {
+	type?: string;
+	description?: string | undefined;
+	min?: number | string;
+	max?: number | string;
+	short?: string;
+	isSummary?: boolean;
+	isModifier?: boolean;
+	mustSupport?: boolean;
+	desc?: string;
+	extensionUrl?: string;
+	extensionCoordinate?: { label: string };
+	binding?: { strength: string; valueSet: string };
+	vsCoordinate?: {
+		label: string;
+		id: string;
+		"package-spec": { name: string; version: string };
+	};
+	lastNode?: boolean;
+}
 
-	if (data?.snapshot && Array.isArray(data.snapshot)) {
-		elements = data.snapshot;
-	} else if (Array.isArray(data)) {
-		elements = data;
-	} else if (data?.element && Array.isArray(data.element)) {
-		elements = data.element;
-	} else if (data?.snapshot?.element && Array.isArray(data.snapshot.element)) {
-		elements = data.snapshot.element;
-	} else if (
-		data?.differential?.element &&
-		Array.isArray(data.differential.element)
-	) {
-		elements = data.differential.element;
-	} else {
-		const possibleArrays = Object.values(data || {}).filter((v) =>
-			Array.isArray(v),
-		);
-		if (possibleArrays.length > 0) {
-			elements = possibleArrays[0] as any[];
-		}
-	}
+const transformSnapshotToTree = (
+	data: Array<Snapshot> | undefined,
+): Record<string, TreeViewItem<Meta>> => {
+	if (!data) return {};
+
+	const elements: Snapshot[] = data;
 
 	if (!elements || elements.length === 0) {
 		return {};
 	}
 
-	const tree: Record<string, any> = {};
+	const tree: Record<string, TreeViewItem<Meta>> = {};
 	const childrenMap: Record<string, string[]> = {};
 
 	// First pass: create all nodes and collect parent-child relationships
-	elements.forEach((element: any) => {
+	elements.forEach((element: Snapshot) => {
 		if (element.type === "root") return;
 
 		const path = element.path || element.id;
 		if (!path) return;
 
 		const parts = path.split(".");
-		const name = element.name || parts[parts.length - 1];
+		const name = element.name || parts[parts.length - 1] || "";
 
 		const isUnion = element["union?"] === true;
 		const displayName = isUnion && !name.includes("[x]") ? `${name}[x]` : name;
 
-		const node: any = {
+		const node: TreeViewItem<Meta> = {
 			name: displayName,
 			meta: {},
 		};
 
-		if (element.min !== undefined && element.min !== null) {
+		if (node.meta && element.min !== undefined && element.min !== null) {
 			node.meta.min = String(element.min);
 		}
-		if (element.max !== undefined && element.max !== null) {
+		if (node.meta && element.max !== undefined && element.max !== null) {
 			node.meta.max = element.max === "*" ? "*" : String(element.max);
 		}
 
-		if (element.short) {
+		if (node.meta && element.short) {
 			node.meta.short = element.short;
 		}
-		if (element.desc) {
+		if (node.meta && element.desc) {
 			node.meta.desc = element.desc;
 		}
-		node.meta.description = element.short || element.desc;
 
-		if (isUnion) {
+		if (node.meta) {
+			node.meta.description = element.short || element.desc;
+		}
+
+		if (node.meta && isUnion) {
 			node.meta.type = "union";
-		} else if (element.datatype) {
+		} else if (node.meta && element.datatype) {
 			node.meta.type = element.datatype;
-		} else if (element.type === "complex") {
+		} else if (node.meta && element.type === "complex") {
 			node.meta.type = element.datatype || "BackboneElement";
-		} else if (element.type) {
+		} else if (node.meta && element.type) {
 			node.meta.type = element.type;
 		}
 
 		if (element.flags && Array.isArray(element.flags)) {
 			element.flags.forEach((flag: string) => {
-				if (flag === "summary") node.meta.isSummary = true;
-				if (flag === "modifier") node.meta.isModifier = true;
-				if (flag === "mustSupport") node.meta.mustSupport = true;
+				if (node.meta && flag === "summary") node.meta.isSummary = true;
+				if (node.meta && flag === "modifier") node.meta.isModifier = true;
+				if (node.meta && flag === "mustSupport") node.meta.mustSupport = true;
 			});
 		}
 
-		if (element["extension-url"]) {
+		if (node.meta && element["extension-url"]) {
 			node.meta.extensionUrl = element["extension-url"];
 		}
-		if (element["extension-coordinate"]) {
+		if (node.meta && element["extension-coordinate"]) {
 			node.meta.extensionCoordinate = element["extension-coordinate"];
 		}
 
-		if (element.binding) {
+		if (node.meta && element.binding) {
 			node.meta.binding = element.binding;
 		}
-		if (element["vs-coordinate"]) {
+		if (node.meta && element["vs-coordinate"]) {
 			node.meta.vsCoordinate = element["vs-coordinate"];
 		}
 
 		tree[path] = node;
 
 		if (parts.length > 1) {
-			const lastPart = parts[parts.length - 1];
+			const lastPart = parts[parts.length - 1] || "unreachable";
 			let addedToUnionParent = false;
 
-			elements.forEach((potentialParent: any) => {
+			elements.forEach((potentialParent: Snapshot) => {
 				if (
 					!addedToUnionParent &&
 					potentialParent["union?"] === true &&
 					potentialParent.path
 				) {
 					const unionParts = potentialParent.path.split(".");
-					const unionName = unionParts[unionParts.length - 1];
+					const unionName = unionParts[unionParts.length - 1] || "unreachable";
 
 					if (lastPart.startsWith(unionName) && lastPart !== unionName) {
 						const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
@@ -198,6 +235,7 @@ const transformSnapshotToTree = (data: any): Record<string, any> => {
 				if (
 					lastChildPath &&
 					tree[lastChildPath] &&
+					tree[lastChildPath].meta &&
 					(!childrenMap[lastChildPath] ||
 						childrenMap[lastChildPath].length === 0)
 				) {
@@ -209,80 +247,65 @@ const transformSnapshotToTree = (data: any): Record<string, any> => {
 
 	let resourceType = "";
 
-	const rootElement = elements.find((e: any) => e.type === "root");
+	const rootElement = elements.find((e: Snapshot) => e.type === "root");
+
 	if (rootElement?.name) {
 		resourceType = rootElement.name;
 	} else {
-		elements.forEach((element: any) => {
-			const path = element.path || element.id;
-			if (path && !path.includes(".")) {
-				resourceType = path;
-			}
-		});
-
-		if (!resourceType && elements.length > 0) {
-			const firstPath = elements.find((e: any) => e.path)?.path;
-			if (firstPath) {
-				resourceType = firstPath.split(".")[0];
-			}
-		}
+		throw Error("no Root element");
 	}
 
-	if (resourceType) {
-		const directChildren: string[] = [];
-		Object.keys(tree).forEach((path) => {
-			const parts = path.split(".");
-			if (parts.length === 2 && parts[0] === resourceType) {
-				const elementName = parts[1];
-				let isUnionChild = false;
+	const directChildren: string[] = [];
 
-				elements.forEach((element: any) => {
-					if (element["union?"] === true && element.path) {
-						const unionName = element.path.split(".").pop();
-						if (
-							elementName?.startsWith(unionName) &&
-							elementName !== unionName &&
-							element.path === `${resourceType}.${unionName}`
-						) {
-							isUnionChild = true;
-						}
+	Object.keys(tree).forEach((path) => {
+		const parts = path.split(".");
+		if (parts.length === 2 && parts[0] === resourceType) {
+			const elementName = parts[1];
+			let isUnionChild = false;
+
+			elements.forEach((element: Snapshot) => {
+				if (element["union?"] === true && element.path) {
+					const unionName = element.path.split(".").pop() || "unreachable";
+					if (
+						elementName?.startsWith(unionName) &&
+						elementName !== unionName &&
+						element.path === `${resourceType}.${unionName}`
+					) {
+						isUnionChild = true;
 					}
-				});
-
-				if (!isUnionChild && !directChildren.includes(path)) {
-					directChildren.push(path);
 				}
-			}
-		});
+			});
 
-		if (!tree[resourceType]) {
-			const resourceElement = elements.find(
-				(e: any) =>
-					e.path === resourceType ||
-					(e.type === "root" && e.name === resourceType),
-			);
-
-			tree[resourceType] = {
-				name: resourceType,
-				meta: {
-					type: "Resource",
-					min: "0",
-					max: "*",
-					description:
-						resourceElement?.short ||
-						resourceElement?.desc ||
-						`Information about ${resourceType}`,
-				},
-				children: directChildren,
-			};
-		} else {
-			if (
-				!tree[resourceType].children ||
-				tree[resourceType].children.length === 0
-			) {
-				tree[resourceType].children = directChildren;
+			if (!isUnionChild && !directChildren.includes(path)) {
+				directChildren.push(path);
 			}
 		}
+	});
+
+	const node = tree[resourceType];
+
+	if (node && (!node?.children || node?.children?.length === 0)) {
+		node.children = directChildren;
+	} else if (!tree[resourceType]) {
+		const resourceElement = elements.find(
+			(e: Snapshot) =>
+				e.path === resourceType ||
+				(e.type === "root" && e.name === resourceType),
+		);
+
+		tree[resourceType] = {
+			name: resourceType,
+			meta: {
+				type: "Resource",
+				min: "0",
+				max: "*",
+				description:
+					resourceElement?.short ||
+					resourceElement?.desc ||
+					`Information about ${resourceType}`,
+			},
+			children: directChildren,
+		};
 	}
 
 	tree.root = {
