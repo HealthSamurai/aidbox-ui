@@ -4,7 +4,7 @@ import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCall } from "../../api/auth";
 import * as Constants from "./constants";
-import { ViewDefinitionContext } from "./page";
+import { ViewDefinitionResourceTypeContext } from "./page";
 import type * as Types from "./types";
 
 const fetchResourceTypes = () => {
@@ -19,9 +19,11 @@ const fetchResourceTypes = () => {
 };
 
 export const ResourceTypeSelect = () => {
-	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+	const viewDefinitionResourceTypeContext = React.useContext(
+		ViewDefinitionResourceTypeContext,
+	);
 
-	const { data, isLoading, isFetching } = useQuery({
+	const { data, isLoading } = useQuery({
 		queryKey: [Constants.PageID, "resource-types"],
 		queryFn: async () => await fetchResourceTypes(),
 	});
@@ -35,23 +37,20 @@ export const ResourceTypeSelect = () => {
 		[data],
 	);
 
+	const currentResourceType =
+		viewDefinitionResourceTypeContext.viewDefinitionResourceType;
+
 	const handleOnSelect = React.useCallback(
 		(value: string) => {
-			if (viewDefinitionContext.viewDefinition) {
-				const newViewDefinition: Types.ViewDefinition = {
-					...viewDefinitionContext.viewDefinition,
-					resource: value,
-				};
-				viewDefinitionContext.setViewDefinition(newViewDefinition);
+			if (currentResourceType) {
+				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(value);
 			}
 		},
 		[
-			viewDefinitionContext.viewDefinition,
-			viewDefinitionContext.setViewDefinition,
+			currentResourceType,
+			viewDefinitionResourceTypeContext.setViewDefinitionResourceType,
 		],
 	);
-
-	const currentResourceType = viewDefinitionContext.viewDefinition?.resource;
 
 	if (isLoading)
 		return <HSComp.Skeleton className="rounded-full min-w-21 h-6" />;

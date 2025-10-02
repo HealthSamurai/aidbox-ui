@@ -1,14 +1,34 @@
 import * as HSComp from "@health-samurai/react-components";
 import React from "react";
 import { CodeEditorMenubar } from "./code-editor-menubar";
-import { ViewDefinitionContext } from "./page";
+import {
+	ViewDefinitionContext,
+	ViewDefinitionResourceTypeContext,
+} from "./page";
 
 export const ViewDefinitionCodeEditor = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+	const viewDefinitionResourceTypeContext = React.useContext(
+		ViewDefinitionResourceTypeContext,
+	);
+
 	const [editorValue, setEditorValue] = React.useState<string>("");
 
 	const handleEditorValueChange = (value: string) => {
 		setEditorValue(value);
+
+		const debounceTimeoutRef = (ViewDefinitionCodeEditor as any)
+			.debounceTimeoutRef || { current: null };
+		(ViewDefinitionCodeEditor as any).debounceTimeoutRef = debounceTimeoutRef;
+
+		if (debounceTimeoutRef.current) {
+			clearTimeout(debounceTimeoutRef.current);
+		}
+		debounceTimeoutRef.current = setTimeout(() => {
+			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
+				JSON.parse(value).resource,
+			);
+		}, 300);
 	};
 
 	React.useEffect(() => {

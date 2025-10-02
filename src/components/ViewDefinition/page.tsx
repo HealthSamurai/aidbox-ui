@@ -21,6 +21,12 @@ export const ViewDefinitionContext =
 		isLoadingViewDef: true,
 	});
 
+export const ViewDefinitionResourceTypeContext =
+	React.createContext<Types.ViewDefinitionResourceTypeContextProps>({
+		viewDefinitionResourceType: undefined,
+		setViewDefinitionResourceType: () => {},
+	});
+
 export const ViewDefinitionErrorPage = ({
 	viewDefinitionError,
 }: {
@@ -42,11 +48,15 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 	const [viewDefinition, setViewDefinition] =
 		React.useState<Types.ViewDefinition>();
 
+	const [viewDefinitionResourceType, setViewDefinitionResourceType] =
+		React.useState<string>();
+
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
 		queryFn: async () => {
 			const response = await fetchViewDefinition(id);
 			setViewDefinition(response);
+			setViewDefinitionResourceType(response.resource);
 			return response;
 		},
 		retry: false,
@@ -67,29 +77,36 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 				isLoadingViewDef: viewDefinitionQuery.isLoading,
 			}}
 		>
-			<HSComp.ResizablePanelGroup
-				direction="vertical"
-				autoSaveId="view-definition-vertical-panel"
+			<ViewDefinitionResourceTypeContext.Provider
+				value={{
+					viewDefinitionResourceType: viewDefinitionResourceType,
+					setViewDefinitionResourceType: setViewDefinitionResourceType,
+				}}
 			>
-				<HSComp.ResizablePanel minSize={10}>
-					<HSComp.ResizablePanelGroup
-						direction="horizontal"
-						autoSaveId="view-definition-horizontal-panel"
-					>
-						<HSComp.ResizablePanel minSize={20}>
-							<EditorPanelContent />
-						</HSComp.ResizablePanel>
-						<HSComp.ResizableHandle />
-						<HSComp.ResizablePanel minSize={20}>
-							<InfoPanel />
-						</HSComp.ResizablePanel>
-					</HSComp.ResizablePanelGroup>
-				</HSComp.ResizablePanel>
-				<HSComp.ResizableHandle />
-				<HSComp.ResizablePanel minSize={10}>
-					<div>Bottom Panel</div>
-				</HSComp.ResizablePanel>
-			</HSComp.ResizablePanelGroup>
+				<HSComp.ResizablePanelGroup
+					direction="vertical"
+					autoSaveId="view-definition-vertical-panel"
+				>
+					<HSComp.ResizablePanel minSize={10}>
+						<HSComp.ResizablePanelGroup
+							direction="horizontal"
+							autoSaveId="view-definition-horizontal-panel"
+						>
+							<HSComp.ResizablePanel minSize={20}>
+								<EditorPanelContent />
+							</HSComp.ResizablePanel>
+							<HSComp.ResizableHandle />
+							<HSComp.ResizablePanel minSize={20}>
+								<InfoPanel />
+							</HSComp.ResizablePanel>
+						</HSComp.ResizablePanelGroup>
+					</HSComp.ResizablePanel>
+					<HSComp.ResizableHandle />
+					<HSComp.ResizablePanel minSize={10}>
+						<div>Bottom Panel</div>
+					</HSComp.ResizablePanel>
+				</HSComp.ResizablePanelGroup>
+			</ViewDefinitionResourceTypeContext.Provider>
 		</ViewDefinitionContext.Provider>
 	);
 };

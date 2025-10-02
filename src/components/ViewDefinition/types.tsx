@@ -24,6 +24,11 @@ export interface ViewDefinitionContextProps {
 	isLoadingViewDef: boolean;
 }
 
+export interface ViewDefinitionResourceTypeContextProps {
+	viewDefinitionResourceType: string | undefined;
+	setViewDefinitionResourceType: (viewDefinitionResourceType: string) => void;
+}
+
 export type ViewDefinitionEditorTab = "form" | "code" | "sql";
 export type ViewDefinitionEditorMode = "json" | "yaml";
 

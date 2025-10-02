@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { AidboxCall } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
-import { ViewDefinitionContext } from "./page";
+import { ViewDefinitionResourceTypeContext } from "./page";
 import { SearchBar } from "./search-bar";
 
 const searchResources = async (
@@ -91,8 +91,9 @@ const ExampleTabEditorMenu = ({
 };
 
 export function ExampleTabContent({ activeTab }: { activeTab: string }) {
-	const viewDefinitionContext = useContext(ViewDefinitionContext);
-	const viewDefinition = viewDefinitionContext.viewDefinition;
+	const viewDefinitionContext = useContext(ViewDefinitionResourceTypeContext);
+	const viewDefinitionResourceType =
+		viewDefinitionContext.viewDefinitionResourceType;
 	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 
 	const [exampleResource, setExampleResource] = useState<Record<
@@ -112,23 +113,23 @@ export function ExampleTabContent({ activeTab }: { activeTab: string }) {
 	useEffect(() => {
 		if (
 			activeTab === "examples" &&
-			viewDefinition?.resource &&
+			viewDefinitionResourceType &&
 			!exampleResource &&
 			!searchResults.length &&
 			!isLoadingExample
 		) {
 			handleSearch("");
 		}
-	}, [activeTab, viewDefinition?.resource]);
+	}, [activeTab, viewDefinitionResourceType]);
 
 	const handleSearch = async (query?: string) => {
-		if (!viewDefinition?.resource) return;
+		if (!viewDefinitionResourceType) return;
 
 		setIsLoadingExample(true);
 		try {
 			const searchParams = query !== undefined ? query : "";
 			const resources = await searchResources(
-				viewDefinition.resource,
+				viewDefinitionResourceType,
 				searchParams,
 			);
 
@@ -172,7 +173,7 @@ export function ExampleTabContent({ activeTab }: { activeTab: string }) {
 	const canGoToPrevious = currentResultIndex > 0;
 	const canGoToNext = currentResultIndex < searchResults.length - 1;
 
-	const resourceType = viewDefinition?.resource || "Patient";
+	const resourceType = viewDefinitionResourceType || "Patient";
 
 	const getCopyText = () => {
 		if (!exampleResource) {
