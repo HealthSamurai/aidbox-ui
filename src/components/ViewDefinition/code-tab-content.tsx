@@ -6,6 +6,7 @@ import {
 	ViewDefinitionContext,
 	ViewDefinitionResourceTypeContext,
 } from "./page";
+import type { ViewDefinition } from "./types";
 
 export const ViewDefinitionCodeEditor = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
@@ -17,18 +18,22 @@ export const ViewDefinitionCodeEditor = () => {
 		viewDefinitionResourceTypeContext.viewDefinitionResourceType;
 
 	const [editorValue, setEditorValue] = React.useState<string>("");
+	const EditorValueInitialized = React.useRef(false);
 
 	React.useEffect(() => {
-		if (viewDefinitionContext.viewDefinition) {
+		if (
+			viewDefinitionContext.viewDefinition &&
+			!EditorValueInitialized.current
+		) {
 			setEditorValue(
 				JSON.stringify(viewDefinitionContext.viewDefinition, null, 2),
 			);
+			EditorValueInitialized.current = true;
 		}
 	}, [viewDefinitionContext.viewDefinition]);
 
 	React.useEffect(() => {
 		if (resourceType && editorValue) {
-			console.log("resourceType", resourceType);
 			setEditorValue(
 				JSON.stringify(
 					{
@@ -51,15 +56,26 @@ export const ViewDefinitionCodeEditor = () => {
 		500,
 	);
 
+	const debouncedSetViewDefinition = useDebounce(
+		(viewDefinition: ViewDefinition) => {
+			viewDefinitionContext.setViewDefinition(viewDefinition);
+		},
+		500,
+	);
+
 	const handleEditorValueChange = (value: string) => {
 		setEditorValue(value);
 
 		try {
 			const parsedValue = JSON.parse(value);
 			debouncedSetViewDefinitionResourceType(parsedValue.resource);
-		} catch (error) {
-			console.warn("Invalid JSON in editor:", error);
-		}
+			if (
+				JSON.stringify(parsedValue) !==
+				JSON.stringify(viewDefinitionContext.viewDefinition)
+			) {
+				debouncedSetViewDefinition(parsedValue);
+			}
+		} catch (_error) {}
 	};
 
 	return (
@@ -86,8 +102,8 @@ export const CodeTabContent = () => {
 	}
 
 	return (
-		<div className="overflow-hidden relative">
-			<div className="absolute top-2 right-3 z-10">
+		<div className="relative">
+			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
 				<CodeEditorMenubar
 					mode="json"
 					onModeChange={(_newMode) => {

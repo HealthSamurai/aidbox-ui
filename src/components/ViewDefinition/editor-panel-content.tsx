@@ -1,6 +1,9 @@
 import * as HSComp from "@health-samurai/react-components";
+import { useMutation } from "@tanstack/react-query";
+import { Route } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
+import { AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
 import { CodeTabContent } from "./code-tab-content";
 import { ViewDefinitionContext } from "./page";
@@ -34,13 +37,67 @@ export const EditorPanelActions = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
+	const viewDefinitionMutation = useMutation({
+		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+			return AidboxCallWithMeta({
+				method: "PUT",
+				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
+				body: JSON.stringify(viewDefinition),
+			});
+		},
+		onSuccess: () => {
+			HSComp.toast.success("ViewDefinition saved successfully");
+		},
+		onError: () => {
+			HSComp.toast.error("Failed to save ViewDefinition");
+		},
+	});
+
+	const viewDefinitionRunMutation = useMutation({
+		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+			const parametersPayload = {
+				resourceType: "Parameters",
+				parameter: [
+					{
+						name: "viewResource",
+						resource: viewDefinition,
+					},
+					{
+						name: "_format",
+						valueCode: "json",
+					},
+				],
+			};
+			return AidboxCallWithMeta({
+				method: "POST",
+				url: "/fhir/ViewDefinition/$run",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/fhir+json",
+				},
+				body: JSON.stringify(parametersPayload),
+			});
+		},
+		onSuccess: () => {
+			HSComp.toast.success("ViewDefinition run successfully");
+		},
+		onError: () => {
+			HSComp.toast.error("Failed to run ViewDefinition");
+		},
+	});
+
 	const handleSave = () => {
-		console.log(viewDefinitionResource);
+		if (viewDefinitionResource) {
+			viewDefinitionMutation.mutate(viewDefinitionResource);
+		}
 	};
 
 	const handleRun = () => {
-		console.log("run");
+		if (viewDefinitionResource) {
+			viewDefinitionRunMutation.mutate(viewDefinitionResource);
+		}
 	};
+
 	return (
 		<div className="flex items-center justify-end gap-2 py-3 px-6 border-t">
 			<HSComp.Button variant="secondary" onClick={handleSave}>

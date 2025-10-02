@@ -75,6 +75,7 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 				viewDefinition: viewDefinition,
 				setViewDefinition: setViewDefinition,
 				isLoadingViewDef: viewDefinitionQuery.isLoading,
+				originalId: id,
 			}}
 		>
 			<ViewDefinitionResourceTypeContext.Provider

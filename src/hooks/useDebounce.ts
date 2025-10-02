@@ -1,9 +1,6 @@
 import React from "react";
 
-export const useDebounce = (
-	callback: (resource: string) => void,
-	delay: number,
-) => {
+export const useDebounce = <T>(callback: (value: T) => void, delay: number) => {
 	const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(
 		undefined,
 	);
@@ -14,12 +11,12 @@ export const useDebounce = (
 	}, [callback]);
 
 	return React.useCallback(
-		(resource: string) => {
+		(value: T) => {
 			if (timeoutRef.current) {
 				clearTimeout(timeoutRef.current);
 			}
 			timeoutRef.current = setTimeout(() => {
-				callbackRef.current(resource);
+				callbackRef.current(value);
 			}, delay);
 		},
 		[delay],

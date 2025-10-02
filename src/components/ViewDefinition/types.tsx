@@ -19,6 +19,7 @@ export interface ViewDefinition {
 }
 
 export interface ViewDefinitionContextProps {
+	originalId?: string;
 	viewDefinition: ViewDefinition | undefined;
 	setViewDefinition: (viewDefinition: ViewDefinition) => void;
 	isLoadingViewDef: boolean;
