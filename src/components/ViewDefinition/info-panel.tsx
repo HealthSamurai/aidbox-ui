@@ -28,8 +28,8 @@ export function InfoPanel() {
 						</TabsList>
 					</div>
 				</div>
-				<SchemaTabContent activeTab={activeTab} />
-				<ExampleTabContent activeTab={activeTab} />
+				<SchemaTabContent />
+				<ExampleTabContent />
 			</Tabs>
 		</div>
 	);

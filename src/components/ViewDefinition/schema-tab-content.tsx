@@ -2,9 +2,11 @@ import {
 	FHIRStructureView,
 	TabsContent,
 } from "@health-samurai/react-components";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useContext } from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
-import { ViewDefinitionContext } from "./page";
+import * as Constants from "./constants";
+import { ViewDefinitionResourceTypeContext } from "./page";
 
 const fetchSchema = async (resourceType: string): Promise<any> => {
 	try {
@@ -159,8 +161,7 @@ const transformSnapshotToTree = (data: any): Record<string, any> => {
 					const unionName = unionParts[unionParts.length - 1];
 
 					if (lastPart.startsWith(unionName) && lastPart !== unionName) {
-						const possibleUnionPath =
-							parts.slice(0, -1).join(".") + "." + unionName;
+						const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
 
 						if (potentialParent.path === possibleUnionPath) {
 							if (!childrenMap[potentialParent.path]) {
@@ -209,7 +210,7 @@ const transformSnapshotToTree = (data: any): Record<string, any> => {
 	let resourceType = "";
 
 	const rootElement = elements.find((e: any) => e.type === "root");
-	if (rootElement && rootElement.name) {
+	if (rootElement?.name) {
 		resourceType = rootElement.name;
 	} else {
 		elements.forEach((element: any) => {
@@ -292,69 +293,45 @@ const transformSnapshotToTree = (data: any): Record<string, any> => {
 	return tree;
 };
 
-export function SchemaTabContent({ activeTab }: { activeTab: string }) {
-	const viewDefinitionContext = useContext(ViewDefinitionContext);
+export function SchemaTabContent() {
+	const viewDefinitionTypeContext = useContext(
+		ViewDefinitionResourceTypeContext,
+	);
+	const viewDefinitionResourceType =
+		viewDefinitionTypeContext.viewDefinitionResourceType;
 
-	const viewDefinition = viewDefinitionContext.viewDefinition;
-	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
+	const resourceType = viewDefinitionResourceType || "Patient";
 
-	const [schemaData, setSchemaData] = useState<any>(null);
-	const [isLoadingSchema, setIsLoadingSchema] = useState(false);
-	const [schemaError, setSchemaError] = useState<string | null>(null);
-
-	const resourceType = viewDefinition?.resource || "Patient";
-
-	// Fetch schema when activeTab changes to "schema" or resourceType changes
-	useEffect(() => {
-		if (activeTab === "schema" && resourceType && !isLoadingViewDef) {
-			const loadSchema = async () => {
-				setIsLoadingSchema(true);
-				setSchemaError(null);
-				try {
-					const data = await fetchSchema(resourceType);
-					setSchemaData(data);
-				} catch (error) {
-					setSchemaError(
-						error instanceof Error ? error.message : "Failed to fetch schema",
-					);
-				} finally {
-					setIsLoadingSchema(false);
-				}
-			};
-
-			loadSchema();
-		}
-	}, [activeTab, resourceType, isLoadingViewDef]);
-
-	const fhirStructureTree = useMemo(() => {
-		if (schemaData) {
-			const v = transformSnapshotToTree(schemaData);
-			return v;
-		}
-		return {};
-	}, [schemaData]);
+	const { isLoading, data, status, error } = useQuery({
+		queryKey: [viewDefinitionResourceType, Constants.PageID],
+		queryFn: async () => {
+			if (!viewDefinitionResourceType) return;
+			return await fetchSchema(resourceType);
+		},
+		retry: false,
+	});
 
 	return (
 		<TabsContent value="schema" className="h-full overflow-auto">
-			{isLoadingViewDef || isLoadingSchema ? (
+			{isLoading ? (
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2">Loading schema...</div>
 						<div className="text-sm">Fetching {resourceType} schema</div>
 					</div>
 				</div>
-			) : schemaError ? (
+			) : status === "error" ? (
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2 text-red-600">
 							Error loading schema
 						</div>
-						<div className="text-sm">{schemaError}</div>
+						<div className="text-sm">{error.message}</div>
 					</div>
 				</div>
 			) : (
 				<div className="px-4 h-full w-full overflow-auto">
-					<FHIRStructureView tree={fhirStructureTree} />
+					<FHIRStructureView tree={transformSnapshotToTree(data)} />
 				</div>
 			)}
 		</TabsContent>
