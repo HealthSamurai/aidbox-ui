@@ -1,5 +1,6 @@
 import * as HSComp from "@health-samurai/react-components";
 import React from "react";
+import { useDebounce } from "../../hooks";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import {
 	ViewDefinitionContext,
@@ -12,24 +13,10 @@ export const ViewDefinitionCodeEditor = () => {
 		ViewDefinitionResourceTypeContext,
 	);
 
+	const resourceType =
+		viewDefinitionResourceTypeContext.viewDefinitionResourceType;
+
 	const [editorValue, setEditorValue] = React.useState<string>("");
-
-	const handleEditorValueChange = (value: string) => {
-		setEditorValue(value);
-
-		const debounceTimeoutRef = (ViewDefinitionCodeEditor as any)
-			.debounceTimeoutRef || { current: null };
-		(ViewDefinitionCodeEditor as any).debounceTimeoutRef = debounceTimeoutRef;
-
-		if (debounceTimeoutRef.current) {
-			clearTimeout(debounceTimeoutRef.current);
-		}
-		debounceTimeoutRef.current = setTimeout(() => {
-			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
-				JSON.parse(value).resource,
-			);
-		}, 300);
-	};
 
 	React.useEffect(() => {
 		if (viewDefinitionContext.viewDefinition) {
@@ -38,6 +25,42 @@ export const ViewDefinitionCodeEditor = () => {
 			);
 		}
 	}, [viewDefinitionContext.viewDefinition]);
+
+	React.useEffect(() => {
+		if (resourceType && editorValue) {
+			console.log("resourceType", resourceType);
+			setEditorValue(
+				JSON.stringify(
+					{
+						...JSON.parse(editorValue),
+						resource: resourceType,
+					},
+					null,
+					2,
+				),
+			);
+		}
+	}, [resourceType]);
+
+	const debouncedSetViewDefinitionResourceType = useDebounce(
+		(resourceType: string) => {
+			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
+				resourceType,
+			);
+		},
+		500,
+	);
+
+	const handleEditorValueChange = (value: string) => {
+		setEditorValue(value);
+
+		try {
+			const parsedValue = JSON.parse(value);
+			debouncedSetViewDefinitionResourceType(parsedValue.resource);
+		} catch (error) {
+			console.warn("Invalid JSON in editor:", error);
+		}
+	};
 
 	return (
 		<HSComp.CodeEditor
@@ -63,11 +86,11 @@ export const CodeTabContent = () => {
 	}
 
 	return (
-		<div className="h-full overflow-hidden relative">
+		<div className="overflow-hidden relative">
 			<div className="absolute top-2 right-3 z-10">
 				<CodeEditorMenubar
 					mode="json"
-					onModeChange={(newMode) => {
+					onModeChange={(_newMode) => {
 						// Handle mode change
 					}}
 					textToCopy={
