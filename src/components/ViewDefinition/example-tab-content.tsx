@@ -7,6 +7,7 @@ import {
 	TabsContent,
 } from "@health-samurai/react-components";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext, useState } from "react";
@@ -114,7 +115,7 @@ export function ExampleTabContent() {
 	const queryClient = useQueryClient();
 
 	const { isLoading, data, status, error } = useQuery({
-		queryKey: [Constants.PageID, query],
+		queryKey: [viewDefinitionResourceType, Constants.PageID, query],
 		queryFn: async () => {
 			if (!viewDefinitionResourceType) return;
 			const resources = await searchResources(
@@ -159,7 +160,7 @@ export function ExampleTabContent() {
 				handleSearch={(q?: string) => {
 					setQuery(q || "");
 					queryClient.invalidateQueries({
-						queryKey: [Constants.PageID, q || ""],
+						queryKey: [viewDefinitionResourceType, Constants.PageID, q || ""],
 					});
 				}}
 				isLoadingExample={isLoading}
@@ -181,40 +182,57 @@ export function ExampleTabContent() {
 					</div>
 				) : (
 					<div className="relative h-full w-full">
-						<div className="absolute top-2 right-3 z-10">
-							<ExampleTabEditorMenu
-								mode={exampleMode}
-								onModeChange={setExampleMode}
-								textToCopy={getCopyText()}
-								onPrevious={handlePrevious}
-								onNext={handleNext}
-								canGoToPrevious={canGoToPrevious}
-								canGoToNext={canGoToNext}
-							/>
-						</div>
 						{exampleResource ? (
-							<CodeEditor
-								readOnly
-								currentValue={
-									exampleMode === "yaml"
-										? yaml.dump(exampleResource, { indent: 2 })
-										: JSON.stringify(exampleResource, null, 2)
-								}
-								mode={exampleMode}
-							/>
-						) : status === "error" ? (
-							<CodeEditor
-								readOnly
-								currentValue={
-									exampleMode === "yaml"
-										? yaml.dump(error.cause, { indent: 2 })
-										: JSON.stringify(error.cause, null, 2)
-								}
-								mode={exampleMode}
-							/>
-						) : (
 							<div>
-								<span>Resource not found</span>
+								<div className="absolute top-2 right-3 z-10">
+									<ExampleTabEditorMenu
+										mode={exampleMode}
+										onModeChange={setExampleMode}
+										textToCopy={getCopyText()}
+										onPrevious={handlePrevious}
+										onNext={handleNext}
+										canGoToPrevious={canGoToPrevious}
+										canGoToNext={canGoToNext}
+									/>
+								</div>
+								<CodeEditor
+									readOnly
+									currentValue={
+										exampleMode === "yaml"
+											? yaml.dump(exampleResource, { indent: 2 })
+											: JSON.stringify(exampleResource, null, 2)
+									}
+									mode={exampleMode}
+								/>
+							</div>
+						) : status === "error" ? (
+							<div>
+								<div className="absolute top-2 right-3 z-10">
+									<ExampleTabEditorMenu
+										mode={exampleMode}
+										onModeChange={setExampleMode}
+										textToCopy={getCopyText()}
+										onPrevious={() => {}}
+										onNext={() => {}}
+										canGoToPrevious={false}
+										canGoToNext={false}
+									/>
+								</div>
+								<CodeEditor
+									readOnly
+									currentValue={
+										exampleMode === "yaml"
+											? yaml.dump(error.cause, { indent: 2 })
+											: JSON.stringify(error.cause, null, 2)
+									}
+									mode={exampleMode}
+								/>
+							</div>
+						) : (
+							<div className="flex items-center justify-center h-full text-text-secondary">
+								<div className="text-center">
+									<div className="text-lg mb-2">Resource not found</div>
+								</div>
 							</div>
 						)}
 					</div>

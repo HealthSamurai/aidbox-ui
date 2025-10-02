@@ -1,6 +1,6 @@
 import { Button, Input } from "@health-samurai/react-components";
 import { useContext, useState } from "react";
-import { ViewDefinitionContext } from "./page";
+import { ViewDefinitionResourceTypeContext } from "./page";
 
 const handleKeyPress = (
 	e: React.KeyboardEvent<HTMLInputElement>,
@@ -19,7 +19,9 @@ export function SearchBar({
 	handleSearch: (query?: string) => void;
 	isLoadingExample: boolean;
 }) {
-	const viewDefinitionContext = useContext(ViewDefinitionContext);
+	const viewDefinitionTypeContext = useContext(
+		ViewDefinitionResourceTypeContext,
+	);
 
 	const [searchQuery, setSearchQuery] = useState("");
 
@@ -32,7 +34,7 @@ export function SearchBar({
 					prefixValue={
 						<span className="text-nowrap">
 							<span className="font-medium">GET</span>
-							<span>{`/fhir/${viewDefinitionContext.viewDefinition?.resource}?`}</span>
+							<span>{`/fhir/${viewDefinitionTypeContext.viewDefinitionResourceType}?`}</span>
 						</span>
 					}
 					placeholder={`e.g., _id=123, name=John, _count=10`}
