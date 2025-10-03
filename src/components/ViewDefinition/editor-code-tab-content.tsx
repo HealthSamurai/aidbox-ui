@@ -11,8 +11,12 @@ import type { ViewDefinition, ViewDefinitionEditorMode } from "./types";
 
 export const ViewDefinitionCodeEditor = ({
 	codeMode,
+	editorValue,
+	setEditorValue,
 }: {
 	codeMode: ViewDefinitionEditorMode;
+	editorValue: string;
+	setEditorValue: (value: string) => void;
 }) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResourceTypeContext = React.useContext(
@@ -22,7 +26,6 @@ export const ViewDefinitionCodeEditor = ({
 	const resourceType =
 		viewDefinitionResourceTypeContext.viewDefinitionResourceType;
 
-	const [editorValue, setEditorValue] = React.useState<string>("");
 	const EditorValueInitialized = React.useRef(false);
 
 	React.useEffect(() => {
@@ -108,6 +111,7 @@ export const CodeTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const [codeMode, setCodeMode] =
 		React.useState<ViewDefinitionEditorMode>("json");
+	const [editorValue, setEditorValue] = React.useState<string>("");
 
 	const stringifyViewDefinition = React.useCallback(
 		(viewDefinition: ViewDefinition) => {
@@ -126,6 +130,18 @@ export const CodeTabContent = () => {
 			return "";
 		}
 	}, [viewDefinitionContext.viewDefinition, stringifyViewDefinition]);
+
+	const formatCode = (
+		editorValue: string,
+		codeMode: ViewDefinitionEditorMode,
+	) => {
+		const formattedValue =
+			codeMode === "yaml"
+				? yaml.dump(yaml.load(editorValue), { indent: 2 })
+				: JSON.stringify(JSON.parse(editorValue), null, 2);
+		HSComp.toast.success("Code formatted");
+		return formattedValue;
+	};
 
 	if (viewDefinitionContext.isLoadingViewDef) {
 		return (
@@ -146,10 +162,16 @@ export const CodeTabContent = () => {
 						setCodeMode(newMode);
 					}}
 					textToCopy={textToCopy}
-					onFormat={() => {}}
+					onFormat={() => {
+						setEditorValue(formatCode(editorValue, codeMode));
+					}}
 				/>
 			</div>
-			<ViewDefinitionCodeEditor codeMode={codeMode} />
+			<ViewDefinitionCodeEditor
+				codeMode={codeMode}
+				editorValue={editorValue}
+				setEditorValue={setEditorValue}
+			/>
 		</div>
 	);
 };

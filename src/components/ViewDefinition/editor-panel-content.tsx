@@ -1,11 +1,10 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
-import { Route } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
-import { CodeTabContent } from "./code-tab-content";
+import { CodeTabContent } from "./editor-code-tab-content";
 import { ViewDefinitionContext } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
 import { SQLTab } from "./sql-tab-content";
