@@ -8,6 +8,7 @@ import { useLocalStorage } from "../../hooks";
 import { CodeTabContent } from "./code-tab-content";
 import { ViewDefinitionContext } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
+import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
 
 export const EditorHeaderMenu = () => {
@@ -135,7 +136,7 @@ export const EditorPanelContent = () => {
 			<HSComp.TabsContent value="code">
 				<CodeTabContent />
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value="sql">SQL</HSComp.TabsContent>
+			<SQLTab />
 			<EditorPanelActions />
 		</HSComp.Tabs>
 	);
