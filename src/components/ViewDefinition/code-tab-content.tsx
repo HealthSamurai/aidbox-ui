@@ -1,4 +1,5 @@
 import * as HSComp from "@health-samurai/react-components";
+import * as yaml from "js-yaml";
 import React from "react";
 import { useDebounce } from "../../hooks";
 import { CodeEditorMenubar } from "./code-editor-menubar";
@@ -6,9 +7,13 @@ import {
 	ViewDefinitionContext,
 	ViewDefinitionResourceTypeContext,
 } from "./page";
-import type { ViewDefinition } from "./types";
+import type { ViewDefinition, ViewDefinitionEditorMode } from "./types";
 
-export const ViewDefinitionCodeEditor = () => {
+export const ViewDefinitionCodeEditor = ({
+	codeMode,
+}: {
+	codeMode: ViewDefinitionEditorMode;
+}) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResourceTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
@@ -31,6 +36,18 @@ export const ViewDefinitionCodeEditor = () => {
 			EditorValueInitialized.current = true;
 		}
 	}, [viewDefinitionContext.viewDefinition]);
+
+	React.useEffect(() => {
+		if (codeMode === "yaml") {
+			setEditorValue(
+				yaml.dump(viewDefinitionContext.viewDefinition, { indent: 2 }),
+			);
+		} else {
+			setEditorValue(
+				JSON.stringify(viewDefinitionContext.viewDefinition, null, 2),
+			);
+		}
+	}, [codeMode]);
 
 	React.useEffect(() => {
 		if (resourceType && editorValue) {
@@ -81,15 +98,34 @@ export const ViewDefinitionCodeEditor = () => {
 	return (
 		<HSComp.CodeEditor
 			currentValue={editorValue}
-			mode="json"
+			mode={codeMode}
 			onChange={handleEditorValueChange}
-			//mode={codeMode === "yaml" ? "yaml" : "json"}
 		/>
 	);
 };
 
 export const CodeTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+	const [codeMode, setCodeMode] =
+		React.useState<ViewDefinitionEditorMode>("json");
+
+	const stringifyViewDefinition = React.useCallback(
+		(viewDefinition: ViewDefinition) => {
+			if (codeMode === "yaml") {
+				return yaml.dump(viewDefinition, { indent: 2 });
+			}
+			return JSON.stringify(viewDefinition, null, 2);
+		},
+		[codeMode],
+	);
+
+	const textToCopy = React.useMemo(() => {
+		if (viewDefinitionContext.viewDefinition) {
+			return stringifyViewDefinition(viewDefinitionContext.viewDefinition);
+		} else {
+			return "";
+		}
+	}, [viewDefinitionContext.viewDefinition, stringifyViewDefinition]);
 
 	if (viewDefinitionContext.isLoadingViewDef) {
 		return (
@@ -105,21 +141,15 @@ export const CodeTabContent = () => {
 		<div className="relative">
 			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
 				<CodeEditorMenubar
-					mode="json"
-					onModeChange={(_newMode) => {
-						// Handle mode change
+					mode={codeMode}
+					onModeChange={(newMode) => {
+						setCodeMode(newMode);
 					}}
-					textToCopy={
-						viewDefinitionContext.viewDefinition
-							? JSON.stringify(viewDefinitionContext.viewDefinition, null, 2)
-							: ""
-					}
-					onFormat={() => {
-						// Handle format
-					}}
+					textToCopy={textToCopy}
+					onFormat={() => {}}
 				/>
 			</div>
-			<ViewDefinitionCodeEditor />
+			<ViewDefinitionCodeEditor codeMode={codeMode} />
 		</div>
 	);
 };
