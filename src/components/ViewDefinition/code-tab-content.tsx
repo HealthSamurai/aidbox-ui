@@ -138,7 +138,7 @@ export const CodeTabContent = () => {
 	}
 
 	return (
-		<div className="relative">
+		<div className="relative h-full">
 			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
 				<CodeEditorMenubar
 					mode={codeMode}
