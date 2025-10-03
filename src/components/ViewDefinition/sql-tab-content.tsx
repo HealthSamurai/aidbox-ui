@@ -8,52 +8,39 @@ import { ViewDefinitionContext } from "./page";
 import type { ViewDefinition } from "./types";
 
 const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
-	try {
-		const parametersPayload = {
-			resourceType: "Parameters",
-			parameter: [
-				{
-					name: "viewResource",
-					resource: viewDefinition,
-				},
-			],
-		};
-
-		const response = await AidboxCallWithMeta({
-			method: "POST",
-			url: "/fhir/ViewDefinition/$sql",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/fhir+json",
+	const parametersPayload = {
+		resourceType: "Parameters",
+		parameter: [
+			{
+				name: "viewResource",
+				resource: viewDefinition,
 			},
-			body: JSON.stringify(parametersPayload),
-		});
+		],
+	};
 
-		try {
-			const json = JSON.parse(response.body);
-			if (json.issue) {
-				return `-- Error: ${json.issue[0]?.diagnostics || "Unknown error"}`;
-			} else if (json.parameter[0]?.valueString) {
-				try {
-					return formatSQL(json.parameter[0].valueString, {
-						language: "postgresql",
-						keywordCase: "upper",
-						linesBetweenQueries: 2,
-					});
-				} catch {
-					return json.parameter[0].valueString;
-				}
-			} else {
-				return response.body;
-			}
-		} catch {
-			return response.body;
-		}
-	} catch (error) {
-		const errorMessage =
-			error instanceof Error ? error.message : "Unknown error occurred";
-		return `-- Error fetching SQL: ${errorMessage}`;
+	const response = await AidboxCallWithMeta({
+		method: "POST",
+		url: "/fhir/ViewDefinition/$sql",
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/fhir+json",
+		},
+		body: JSON.stringify(parametersPayload),
+	});
+
+	const json = JSON.parse(response.body);
+	if (json.issue) {
+		throw Error(`${json.issue[0]?.diagnostics || "Unknown error"}`);
 	}
+
+	const value = json.parameter[0]?.valueString;
+	if (!value) throw Error("No SQL in response");
+
+	return formatSQL(value, {
+		language: "postgresql",
+		keywordCase: "upper",
+		linesBetweenQueries: 2,
+	});
 };
 
 export function SQLTab() {
@@ -62,9 +49,9 @@ export function SQLTab() {
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 
 	const { isLoading, data, status, error } = useQuery({
-		queryKey: [Constants.PageID, "sql-tab"],
+		queryKey: [viewDefinition, Constants.PageID, "sql-tab"],
 		queryFn: async () => {
-			if (!viewDefinition) return;
+			if (!viewDefinition) return "";
 			return await fetchSQL(viewDefinition);
 		},
 		retry: false,
