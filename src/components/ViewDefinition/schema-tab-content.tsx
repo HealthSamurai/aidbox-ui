@@ -121,71 +121,64 @@ const transformSnapshotToTree = (
 		const path = element.path || element.id;
 		if (!path) return;
 
-		const parts = path.split(".");
-		const name = element.name || parts[parts.length - 1] || "";
-
 		const isUnion = element["union?"] === true;
+
+		const meta: Meta = {};
+
+		if (element.min !== undefined && element.min !== null) {
+			meta.min = String(element.min);
+		}
+		if (element.max !== undefined && element.max !== null) {
+			meta.max = element.max === "*" ? "*" : String(element.max);
+		}
+
+		if (element.short) meta.short = element.short;
+
+		if (element.desc) meta.desc = element.desc;
+
+		meta.description = element.short || element.desc;
+
+		if (isUnion) {
+			meta.type = "union";
+		} else if (element.datatype) {
+			meta.type = element.datatype;
+		} else if (element.type === "complex") {
+			meta.type = element.datatype || "BackboneElement";
+		} else if (element.type) {
+			meta.type = element.type;
+		}
+
+		if (element.flags) {
+			element.flags.forEach((flag: string) => {
+				if (flag === "summary") meta.isSummary = true;
+				if (flag === "modifier") meta.isModifier = true;
+				if (flag === "mustSupport") meta.mustSupport = true;
+			});
+		}
+
+		if (element["extension-url"]) meta.extensionUrl = element["extension-url"];
+
+		if (element["extension-coordinate"])
+			meta.extensionCoordinate = element["extension-coordinate"];
+
+		if (element.binding) meta.binding = element.binding;
+
+		if (element["vs-coordinate"]) meta.vsCoordinate = element["vs-coordinate"];
+
+		const parts = path.split(".");
+		const name = element.name || parts.at(-1) || "";
 		const displayName = isUnion && !name.includes("[x]") ? `${name}[x]` : name;
 
 		const node: TreeViewItem<Meta> = {
 			name: displayName,
-			meta: {},
+			meta: meta,
 		};
-
-		if (node.meta && element.min !== undefined && element.min !== null) {
-			node.meta.min = String(element.min);
-		}
-		if (node.meta && element.max !== undefined && element.max !== null) {
-			node.meta.max = element.max === "*" ? "*" : String(element.max);
-		}
-
-		if (node.meta && element.short) {
-			node.meta.short = element.short;
-		}
-		if (node.meta && element.desc) {
-			node.meta.desc = element.desc;
-		}
-
-		if (node.meta) {
-			node.meta.description = element.short || element.desc;
-		}
-
-		if (node.meta && isUnion) {
-			node.meta.type = "union";
-		} else if (node.meta && element.datatype) {
-			node.meta.type = element.datatype;
-		} else if (node.meta && element.type === "complex") {
-			node.meta.type = element.datatype || "BackboneElement";
-		} else if (node.meta && element.type) {
-			node.meta.type = element.type;
-		}
-
-		if (element.flags && Array.isArray(element.flags)) {
-			element.flags.forEach((flag: string) => {
-				if (node.meta && flag === "summary") node.meta.isSummary = true;
-				if (node.meta && flag === "modifier") node.meta.isModifier = true;
-				if (node.meta && flag === "mustSupport") node.meta.mustSupport = true;
-			});
-		}
-
-		if (node.meta && element["extension-url"]) {
-			node.meta.extensionUrl = element["extension-url"];
-		}
-		if (node.meta && element["extension-coordinate"]) {
-			node.meta.extensionCoordinate = element["extension-coordinate"];
-		}
-
-		if (node.meta && element.binding) {
-			node.meta.binding = element.binding;
-		}
-		if (node.meta && element["vs-coordinate"]) {
-			node.meta.vsCoordinate = element["vs-coordinate"];
-		}
 
 		tree[path] = node;
 
-		if (parts.length > 1) {
-			const lastPart = parts[parts.length - 1] || "unreachable";
+		const lastPart = parts.at(-1);
+
+		if (lastPart) {
 			let addedToUnionParent = false;
 
 			elements.forEach((potentialParent: Snapshot) => {
@@ -194,8 +187,8 @@ const transformSnapshotToTree = (
 					potentialParent["union?"] === true &&
 					potentialParent.path
 				) {
-					const unionParts = potentialParent.path.split(".");
-					const unionName = unionParts[unionParts.length - 1] || "unreachable";
+					const unionName = potentialParent.path.split(".").at(-1);
+					if (!unionName) throw Error("Union has no name");
 
 					if (lastPart.startsWith(unionName) && lastPart !== unionName) {
 						const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
