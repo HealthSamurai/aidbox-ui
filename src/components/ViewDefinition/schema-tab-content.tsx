@@ -103,22 +103,16 @@ interface Meta {
 const transformSnapshotToTree = (
 	data: Array<Snapshot> | undefined,
 ): Record<string, TreeViewItem<Meta>> => {
-	if (!data) return {};
-
-	const elements: Snapshot[] = data;
-
-	if (!elements || elements.length === 0) {
-		return {};
-	}
+	if (!data || data.length === 0) return {};
 
 	const tree: Record<string, TreeViewItem<Meta>> = {};
 	const childrenMap: Record<string, string[]> = {};
 
 	// First pass: create all nodes and collect parent-child relationships
-	elements.forEach((element: Snapshot) => {
+	data.forEach((element: Snapshot) => {
 		if (element.type === "root") return;
 
-		const path = element.path || element.id;
+		const path = element.path;
 		if (!path) return;
 
 		const isUnion = element["union?"] === true;
@@ -169,19 +163,17 @@ const transformSnapshotToTree = (
 		const name = element.name || parts.at(-1) || "";
 		const displayName = isUnion && !name.includes("[x]") ? `${name}[x]` : name;
 
-		const node: TreeViewItem<Meta> = {
+		tree[path] = {
 			name: displayName,
 			meta: meta,
 		};
-
-		tree[path] = node;
 
 		const lastPart = parts.at(-1);
 
 		if (lastPart) {
 			let addedToUnionParent = false;
 
-			elements.forEach((potentialParent: Snapshot) => {
+			data.forEach((potentialParent: Snapshot) => {
 				if (
 					!addedToUnionParent &&
 					potentialParent["union?"] === true &&
@@ -240,7 +232,7 @@ const transformSnapshotToTree = (
 
 	let resourceType = "";
 
-	const rootElement = elements.find((e: Snapshot) => e.type === "root");
+	const rootElement = data.find((e: Snapshot) => e.type === "root");
 
 	if (rootElement?.name) {
 		resourceType = rootElement.name;
@@ -256,10 +248,11 @@ const transformSnapshotToTree = (
 			const elementName = parts[1];
 			let isUnionChild = false;
 
-			elements.forEach((element: Snapshot) => {
+			data.forEach((element: Snapshot) => {
 				if (element["union?"] === true && element.path) {
-					const unionName = element.path.split(".").pop() || "unreachable";
+					const unionName = element.path.split(".").pop();
 					if (
+						unionName &&
 						elementName?.startsWith(unionName) &&
 						elementName !== unionName &&
 						element.path === `${resourceType}.${unionName}`
@@ -279,8 +272,8 @@ const transformSnapshotToTree = (
 
 	if (node && (!node?.children || node?.children?.length === 0)) {
 		node.children = directChildren;
-	} else if (!tree[resourceType]) {
-		const resourceElement = elements.find(
+	} else if (!node) {
+		const resourceElement = data.find(
 			(e: Snapshot) =>
 				e.path === resourceType ||
 				(e.type === "root" && e.name === resourceType),
