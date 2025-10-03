@@ -100,181 +100,199 @@ interface Meta {
 	lastNode?: boolean;
 }
 
-const transformSnapshotToTree = (
-	data: Array<Snapshot> | undefined,
-): Record<string, TreeViewItem<Meta>> => {
-	if (!data || data.length === 0) return {};
+const buildMeta = (element: Snapshot, isUnion: boolean): Meta => {
+	const meta: Meta = {};
 
-	const tree: Record<string, TreeViewItem<Meta>> = {};
-	const childrenMap: Record<string, string[]> = {};
-
-	// First pass: create all nodes and collect parent-child relationships
-	data.forEach((element: Snapshot) => {
-		if (element.type === "root") return;
-
-		const path = element.path;
-		if (!path) return;
-
-		const isUnion = element["union?"] === true;
-
-		const meta: Meta = {};
-
-		if (element.min !== undefined && element.min !== null) {
-			meta.min = String(element.min);
-		}
-		if (element.max !== undefined && element.max !== null) {
-			meta.max = element.max === "*" ? "*" : String(element.max);
-		}
-
-		if (element.short) meta.short = element.short;
-
-		if (element.desc) meta.desc = element.desc;
-
-		meta.description = element.short || element.desc;
-
-		if (isUnion) {
-			meta.type = "union";
-		} else if (element.datatype) {
-			meta.type = element.datatype;
-		} else if (element.type === "complex") {
-			meta.type = element.datatype || "BackboneElement";
-		} else if (element.type) {
-			meta.type = element.type;
-		}
-
-		if (element.flags) {
-			element.flags.forEach((flag: string) => {
-				if (flag === "summary") meta.isSummary = true;
-				if (flag === "modifier") meta.isModifier = true;
-				if (flag === "mustSupport") meta.mustSupport = true;
-			});
-		}
-
-		if (element["extension-url"]) meta.extensionUrl = element["extension-url"];
-
-		if (element["extension-coordinate"])
-			meta.extensionCoordinate = element["extension-coordinate"];
-
-		if (element.binding) meta.binding = element.binding;
-
-		if (element["vs-coordinate"]) meta.vsCoordinate = element["vs-coordinate"];
-
-		const parts = path.split(".");
-		const name = element.name || parts.at(-1) || "";
-		const displayName = isUnion && !name.includes("[x]") ? `${name}[x]` : name;
-
-		tree[path] = {
-			name: displayName,
-			meta: meta,
-		};
-
-		const lastPart = parts.at(-1);
-
-		if (lastPart) {
-			let addedToUnionParent = false;
-
-			data.forEach((potentialParent: Snapshot) => {
-				if (
-					!addedToUnionParent &&
-					potentialParent["union?"] === true &&
-					potentialParent.path
-				) {
-					const unionName = potentialParent.path.split(".").at(-1);
-					if (!unionName) throw Error("Union has no name");
-
-					if (lastPart.startsWith(unionName) && lastPart !== unionName) {
-						const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
-
-						if (potentialParent.path === possibleUnionPath) {
-							if (!childrenMap[potentialParent.path]) {
-								childrenMap[potentialParent.path] = [];
-							}
-							if (!childrenMap[potentialParent.path]?.includes(path)) {
-								childrenMap[potentialParent.path]?.push(path);
-							}
-							addedToUnionParent = true;
-						}
-					}
-				}
-			});
-
-			if (!addedToUnionParent) {
-				const parentPath = parts.slice(0, -1).join(".");
-				if (!childrenMap[parentPath]) {
-					childrenMap[parentPath] = [];
-				}
-				if (!childrenMap[parentPath].includes(path)) {
-					childrenMap[parentPath].push(path);
-				}
-			}
-		}
-	});
-
-	// Second pass: add children arrays and mark last nodes
-	Object.entries(childrenMap).forEach(([parentPath, children]) => {
-		if (tree[parentPath]) {
-			tree[parentPath].children = children;
-
-			if (children.length > 0) {
-				const lastChildPath = children[children.length - 1];
-				if (
-					lastChildPath &&
-					tree[lastChildPath] &&
-					tree[lastChildPath].meta &&
-					(!childrenMap[lastChildPath] ||
-						childrenMap[lastChildPath].length === 0)
-				) {
-					tree[lastChildPath].meta.lastNode = true;
-				}
-			}
-		}
-	});
-
-	let resourceType = "";
-
-	const rootElement = data.find((e: Snapshot) => e.type === "root");
-
-	if (rootElement?.name) {
-		resourceType = rootElement.name;
-	} else {
-		throw Error("no Root element");
+	if (element.min !== undefined && element.min !== null) {
+		meta.min = String(element.min);
+	}
+	if (element.max !== undefined && element.max !== null) {
+		meta.max = element.max === "*" ? "*" : String(element.max);
 	}
 
-	const directChildren: string[] = [];
+	if (element.short) meta.short = element.short;
+	if (element.desc) meta.desc = element.desc;
 
-	Object.keys(tree).forEach((path) => {
-		const parts = path.split(".");
-		if (parts.length === 2 && parts[0] === resourceType) {
-			const elementName = parts[1];
-			let isUnionChild = false;
+	meta.description = element.short || element.desc;
 
-			data.forEach((element: Snapshot) => {
-				if (element["union?"] === true && element.path) {
-					const unionName = element.path.split(".").pop();
-					if (
-						unionName &&
-						elementName?.startsWith(unionName) &&
-						elementName !== unionName &&
-						element.path === `${resourceType}.${unionName}`
-					) {
-						isUnionChild = true;
-					}
+	if (isUnion) {
+		meta.type = "union";
+	} else if (element.datatype) {
+		meta.type = element.datatype;
+	} else if (element.type === "complex") {
+		meta.type = element.datatype || "BackboneElement";
+	} else if (element.type) {
+		meta.type = element.type;
+	}
+
+	if (element.flags) {
+		for (const flag of element.flags) {
+			if (flag === "summary") meta.isSummary = true;
+			if (flag === "modifier") meta.isModifier = true;
+			if (flag === "mustSupport") meta.mustSupport = true;
+		}
+	}
+
+	if (element["extension-url"]) meta.extensionUrl = element["extension-url"];
+	if (element["extension-coordinate"])
+		meta.extensionCoordinate = element["extension-coordinate"];
+	if (element.binding) meta.binding = element.binding;
+	if (element["vs-coordinate"]) meta.vsCoordinate = element["vs-coordinate"];
+
+	return meta;
+};
+
+const getDisplayName = (
+	element: Snapshot,
+	path: string,
+	isUnion: boolean,
+): string => {
+	const parts = path.split(".");
+	const name = element.name || parts.at(-1) || "";
+	return isUnion && !name.includes("[x]") ? `${name}[x]` : name;
+};
+
+const addChildToMap = (
+	childrenMap: Record<string, string[]>,
+	parentPath: string,
+	childPath: string,
+): void => {
+	if (!childrenMap[parentPath]) {
+		childrenMap[parentPath] = [];
+	}
+	if (!childrenMap[parentPath].includes(childPath)) {
+		childrenMap[parentPath].push(childPath);
+	}
+};
+
+const findUnionParent = (
+	data: Snapshot[],
+	path: string,
+	lastPart: string,
+): string | null => {
+	const parts = path.split(".");
+
+	for (const potentialParent of data) {
+		if (potentialParent["union?"] === true && potentialParent.path) {
+			const unionName = potentialParent.path.split(".").at(-1);
+			if (!unionName) throw Error("Union has no name");
+
+			if (lastPart.startsWith(unionName) && lastPart !== unionName) {
+				const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
+				if (potentialParent.path === possibleUnionPath) {
+					return potentialParent.path;
 				}
-			});
-
-			if (!isUnionChild && !directChildren.includes(path)) {
-				directChildren.push(path);
 			}
 		}
-	});
+	}
 
-	const node = tree[resourceType];
+	return null;
+};
 
-	if (node && (!node?.children || node?.children?.length === 0)) {
-		node.children = directChildren;
-	} else if (!node) {
+const buildParentChildRelationships = (
+	data: Snapshot[],
+	childrenMap: Record<string, string[]>,
+): void => {
+	for (const element of data) {
+		if (element.type === "root" || !element.path) continue;
+
+		const path = element.path;
+		const parts = path.split(".");
+		const lastPart = parts.at(-1);
+
+		if (!lastPart) continue;
+
+		const unionParentPath = findUnionParent(data, path, lastPart);
+
+		if (unionParentPath) {
+			addChildToMap(childrenMap, unionParentPath, path);
+		} else {
+			const parentPath = parts.slice(0, -1).join(".");
+			addChildToMap(childrenMap, parentPath, path);
+		}
+	}
+};
+
+const attachChildrenAndMarkLastNodes = (
+	tree: Record<string, TreeViewItem<Meta>>,
+	childrenMap: Record<string, string[]>,
+): void => {
+	for (const [parentPath, children] of Object.entries(childrenMap)) {
+		const parentNode = tree[parentPath];
+		if (!parentNode) continue;
+
+		parentNode.children = children;
+
+		if (children.length > 0) {
+			const lastChildPath = children[children.length - 1];
+			const lastChildNode = lastChildPath ? tree[lastChildPath] : undefined;
+
+			if (
+				lastChildPath &&
+				lastChildNode?.meta &&
+				(!childrenMap[lastChildPath] || childrenMap[lastChildPath].length === 0)
+			) {
+				lastChildNode.meta.lastNode = true;
+			}
+		}
+	}
+};
+
+const findDirectChildren = (
+	tree: Record<string, TreeViewItem<Meta>>,
+	data: Snapshot[],
+	resourceType: string,
+): string[] => {
+	const directChildren: string[] = [];
+
+	for (const path of Object.keys(tree)) {
+		const parts = path.split(".");
+		if (parts.length !== 2 || parts[0] !== resourceType) continue;
+
+		const elementName = parts[1];
+		if (!elementName) continue;
+
+		let isUnionChild = false;
+
+		for (const element of data) {
+			if (element["union?"] === true && element.path) {
+				const unionName = element.path.split(".").pop();
+				if (
+					unionName &&
+					elementName.startsWith(unionName) &&
+					elementName !== unionName &&
+					element.path === `${resourceType}.${unionName}`
+				) {
+					isUnionChild = true;
+					break;
+				}
+			}
+		}
+
+		if (!isUnionChild && !directChildren.includes(path)) {
+			directChildren.push(path);
+		}
+	}
+
+	return directChildren;
+};
+
+const ensureResourceNode = (
+	tree: Record<string, TreeViewItem<Meta>>,
+	data: Snapshot[],
+	resourceType: string,
+	directChildren: string[],
+): void => {
+	const existingNode = tree[resourceType];
+
+	if (
+		existingNode &&
+		(!existingNode.children || existingNode.children.length === 0)
+	) {
+		existingNode.children = directChildren;
+	} else if (!existingNode) {
 		const resourceElement = data.find(
-			(e: Snapshot) =>
+			(e) =>
 				e.path === resourceType ||
 				(e.type === "root" && e.name === resourceType),
 		);
@@ -293,10 +311,45 @@ const transformSnapshotToTree = (
 			children: directChildren,
 		};
 	}
+};
+
+const transformSnapshotToTree = (
+	data: Snapshot[] | undefined,
+): Record<string, TreeViewItem<Meta>> => {
+	if (!data || data.length === 0) return {};
+
+	const tree: Record<string, TreeViewItem<Meta>> = {};
+	const childrenMap: Record<string, string[]> = {};
+
+	// First pass: create all nodes
+	for (const element of data) {
+		if (element.type === "root" || !element.path) continue;
+
+		const path = element.path;
+		const isUnion = element["union?"] === true;
+
+		tree[path] = {
+			name: getDisplayName(element, path, isUnion),
+			meta: buildMeta(element, isUnion),
+		};
+	}
+
+	buildParentChildRelationships(data, childrenMap);
+	attachChildrenAndMarkLastNodes(tree, childrenMap);
+
+	const rootElement = data.find((e) => e.type === "root");
+	if (!rootElement?.name) {
+		throw Error("no Root element");
+	}
+
+	const resourceType = rootElement.name;
+	const directChildren = findDirectChildren(tree, data, resourceType);
+
+	ensureResourceNode(tree, data, resourceType, directChildren);
 
 	tree.root = {
 		name: "Root",
-		children: resourceType ? [resourceType] : [],
+		children: [resourceType],
 	};
 
 	return tree;
