@@ -29,8 +29,7 @@ interface ConstantItem {
 
 interface WhereItem {
 	id: string;
-	name: string;
-	value: string;
+	path: string;
 }
 
 interface ColumnItem {
@@ -247,8 +246,7 @@ export const FormTabContent = () => {
 				const whereWithIds = (viewDefinition as any).where.map(
 					(w: any, index: number) => ({
 						id: `where-${index}-${crypto.randomUUID()}`,
-						name: w.name || "",
-						value: w.value || "",
+						path: w.path || "",
 					}),
 				);
 				setWhereConditions(whereWithIds);
@@ -280,8 +278,7 @@ export const FormTabContent = () => {
 				}));
 
 				const whereArray = (updatedWhere || whereConditions).map((w) => ({
-					name: w.name,
-					value: w.value,
+					path: w.path,
 				}));
 
 				const selectArray = buildSelectArray(updatedSelectItems || selectItems);
@@ -363,8 +360,7 @@ export const FormTabContent = () => {
 	const addWhereCondition = () => {
 		const newWhere = {
 			id: `where-${whereConditions.length}-${crypto.randomUUID()}`,
-			name: "",
-			value: "",
+			path: "",
 		};
 		const updatedWhere = [...whereConditions, newWhere];
 		setWhereConditions(updatedWhere);
@@ -378,13 +374,9 @@ export const FormTabContent = () => {
 	};
 
 	// Function to update a specific where condition
-	const updateWhereCondition = (
-		id: string,
-		field: "name" | "value",
-		value: string,
-	) => {
+	const updateWhereCondition = (id: string, path: string) => {
 		const updatedWhere = whereConditions.map((w) =>
-			w.id === id ? { ...w, [field]: value } : w,
+			w.id === id ? { ...w, path } : w,
 		);
 		setWhereConditions(updatedWhere);
 		updateViewDefinition(undefined, updatedWhere);
@@ -1110,18 +1102,9 @@ export const FormTabContent = () => {
 							<Funnel size={12} />
 						</span>
 						<InputView
-							placeholder="Where name"
-							value={whereData.name}
-							onChange={(value) =>
-								updateWhereCondition(whereData.id, "name", value)
-							}
-						/>
-						<InputView
-							placeholder="Where value"
-							value={whereData.value}
-							onChange={(value) =>
-								updateWhereCondition(whereData.id, "value", value)
-							}
+							placeholder="Expression"
+							value={whereData.path}
+							onChange={(value) => updateWhereCondition(whereData.id, value)}
 						/>
 						<Button
 							variant="link"
