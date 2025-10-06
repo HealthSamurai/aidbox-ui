@@ -18,6 +18,7 @@ import {
 	SquareTerminal,
 } from "lucide-react";
 import { useEffect } from "react";
+import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 
 const mainMenuItems = [
@@ -54,7 +55,10 @@ export function AidboxSidebar({
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton
 										asChild
-										isActive={currentPath === item.url}
+										isActive={
+											currentPath === item.url ||
+											currentPath === UI_BASE_PATH + "/" + item.url
+										}
 										tooltip={{ sideOffset: 16, children: item.title }}
 										className="text-nowrap"
 									>
