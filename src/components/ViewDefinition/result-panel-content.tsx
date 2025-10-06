@@ -66,7 +66,7 @@ export function ResultPanel() {
 		return processTableData(rows);
 	}, [rows]);
 
-		return (
+	return (
 		<div className="flex flex-col h-full">
 			<div className="flex items-center justify-center bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
 				<span className="typo-label text-text-secondary">
@@ -85,8 +85,8 @@ export function ResultPanel() {
 						</div>
 					</div>
 				) : tableData.length > 0 ? (
-					<div className="flex-1 overflow-auto">
-						<DataTable columns={columns} data={tableData} />
+					<div className="flex-1 overflow-hidden min-h-0">
+						<DataTable columns={columns} data={tableData} stickyHeader />
 					</div>
 				) : (
 					<div className="flex-1 p-4">
