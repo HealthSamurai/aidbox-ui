@@ -5,6 +5,7 @@ import React from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
 import { CodeTabContent } from "./editor-code-tab-content";
+import { FormTabContent } from "./editor-form-tab-content";
 import { ViewDefinitionContext } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
 import { SQLTab } from "./sql-tab-content";
@@ -133,7 +134,9 @@ export const EditorPanelContent = () => {
 			className="grow min-h-0"
 		>
 			<EditorHeaderMenu />
-			<HSComp.TabsContent value="form">Form</HSComp.TabsContent>
+			<HSComp.TabsContent value="form">
+				<FormTabContent />
+			</HSComp.TabsContent>
 			<HSComp.TabsContent value="code">
 				<CodeTabContent />
 			</HSComp.TabsContent>
