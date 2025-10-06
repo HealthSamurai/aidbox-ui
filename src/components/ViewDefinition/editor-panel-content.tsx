@@ -134,7 +134,7 @@ export const EditorPanelContent = () => {
 			className="grow min-h-0"
 		>
 			<EditorHeaderMenu />
-			<HSComp.TabsContent value="form">
+			<HSComp.TabsContent value="form" className="py-1 px-2.5">
 				<FormTabContent />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="code">

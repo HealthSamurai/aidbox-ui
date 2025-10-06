@@ -9,15 +9,14 @@ import {
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import {
-	ChevronDown,
-	Funnel,
-	Pi,
-	PlusIcon,
-	TextQuote,
-	X,
-} from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Funnel, Pi, PlusIcon, TextQuote, X } from "lucide-react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
@@ -186,7 +185,7 @@ const InputView = ({
 
 	return (
 		<Input
-			className={`h-6 py-0 px-1.5 ${className}`}
+			className={`h-7 py-1 px-2 ${className} bg-bg-tertiary border-none focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-quaternary`}
 			placeholder={placeholder}
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
@@ -313,7 +312,13 @@ export const FormTabContent = () => {
 				viewDefinitionContext.setViewDefinition(updatedViewDef);
 			}
 		},
-		[viewDefinition, constants, whereConditions, selectItems, viewDefinitionContext],
+		[
+			viewDefinition,
+			constants,
+			whereConditions,
+			selectItems,
+			viewDefinitionContext,
+		],
 	);
 
 	// Function to add a new constant
@@ -572,7 +577,9 @@ export const FormTabContent = () => {
 
 	// Function to remove a column from a select item
 	const removeSelectColumn = (selectItemId: string, columnId: string) => {
-		const removeColumn = (items: SelectItemInternal[]): SelectItemInternal[] => {
+		const removeColumn = (
+			items: SelectItemInternal[],
+		): SelectItemInternal[] => {
 			return items.map((item) => {
 				if (item.id === selectItemId && item.columns) {
 					return {
@@ -691,11 +698,14 @@ export const FormTabContent = () => {
 		Object.assign(treeStructure, {
 			root: {
 				name: "root",
-				children: ["viewDefinition"],
+				children: ["_properties", "_constant", "_where", "_select"],
 			},
-			viewDefinition: {
-				name: "ViewDefinition",
-				children: ["_name", "_constant", "_where", "_select"],
+			_properties: {
+				name: "_properties",
+				meta: {
+					type: "properties",
+				},
+				children: ["_name"],
 			},
 			_name: {
 				name: "_name",
@@ -789,11 +799,11 @@ export const FormTabContent = () => {
 		let label = metaType;
 
 		if (metaType === "column") {
-			additionalClass = "text-[#009906] bg-[#E5FAE8]";
+			additionalClass = "text-blue-500 bg-blue-100";
 		} else if (metaType?.startsWith("select-")) {
 			if (selectData?.type === "column") {
 				label = "column";
-				additionalClass = "text-[#009906] bg-[#E5FAE8]";
+				additionalClass = "text-blue-500 bg-blue-100";
 			} else if (selectData?.type === "forEach") {
 				label = "forEach";
 				additionalClass = "text-[#5C8DD6] bg-[#E8F2FC]";
@@ -805,13 +815,15 @@ export const FormTabContent = () => {
 				additionalClass = "text-[#E07B39] bg-[#FFF4EC]";
 			}
 		} else if (
-			metaType === "name" ||
 			metaType === "resource" ||
 			metaType === "constant" ||
 			metaType === "select" ||
-			metaType === "where"
+			metaType === "where" ||
+			metaType === "properties"
 		) {
-			additionalClass = "text-[#765FC9] bg-[#F1EFFA]";
+			additionalClass = "text-blue-500 px-1!";
+		} else if (metaType === "name") {
+			additionalClass = "text-blue-500 bg-blue-100";
 		}
 
 		const onLabelClickFn = () => {
@@ -849,6 +861,8 @@ export const FormTabContent = () => {
 						</div>
 					</div>
 				);
+			case "properties":
+				return <div>{labelView(item)}</div>;
 			case "constant":
 				return <div>{labelView(item)}</div>;
 			case "select":
@@ -1150,7 +1164,9 @@ export const FormTabContent = () => {
 						<InputView
 							placeholder="Name"
 							value={constantData.name}
-							onChange={(value) => updateConstant(constantData.id, "name", value)}
+							onChange={(value) =>
+								updateConstant(constantData.id, "name", value)
+							}
 						/>
 						<InputView
 							placeholder="Value"
@@ -1197,6 +1213,20 @@ export const FormTabContent = () => {
 	return (
 		<TreeView
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
+			itemLabelClassFn={(item: ItemInstance<TreeViewItem<any>>) => {
+				const metaType = item.getItemData()?.meta?.type;
+
+				if (
+					metaType === "constant" ||
+					metaType === "select" ||
+					metaType === "where" ||
+					metaType === "properties"
+				) {
+					return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
+				} else {
+					return "pr-0";
+				}
+			}}
 			onSelectItem={onSelectTreeItem}
 			items={tree}
 			rootItemId="root"
