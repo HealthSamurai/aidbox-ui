@@ -1,10 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
-import { type UseQueryResult, useQuery } from "@tanstack/react-query";
-import React, { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import React from "react";
 import { AidboxCall } from "../../api/auth";
 import * as Constants from "./constants";
 import { EditorPanelContent } from "./editor-panel-content";
 import { InfoPanel } from "./info-panel";
+import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
 const fetchViewDefinition = (id: string) => {
@@ -19,6 +20,8 @@ export const ViewDefinitionContext =
 		viewDefinition: undefined,
 		setViewDefinition: () => {},
 		isLoadingViewDef: true,
+		runResult: undefined,
+		setRunResult: () => {},
 	});
 
 export const ViewDefinitionResourceTypeContext =
@@ -51,6 +54,8 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 	const [viewDefinitionResourceType, setViewDefinitionResourceType] =
 		React.useState<string>();
 
+	const [runResult, setRunResult] = React.useState<string>();
+
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
 		queryFn: async () => {
@@ -76,6 +81,8 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 				setViewDefinition: setViewDefinition,
 				isLoadingViewDef: viewDefinitionQuery.isLoading,
 				originalId: id,
+				runResult: runResult,
+				setRunResult: setRunResult,
 			}}
 		>
 			<ViewDefinitionResourceTypeContext.Provider
@@ -104,7 +111,7 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 					</HSComp.ResizablePanel>
 					<HSComp.ResizableHandle />
 					<HSComp.ResizablePanel minSize={10}>
-						<div>Bottom Panel</div>
+						<ResultPanel />
 					</HSComp.ResizablePanel>
 				</HSComp.ResizablePanelGroup>
 			</ViewDefinitionResourceTypeContext.Provider>

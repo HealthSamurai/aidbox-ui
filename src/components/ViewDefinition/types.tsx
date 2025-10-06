@@ -23,6 +23,8 @@ export interface ViewDefinitionContextProps {
 	viewDefinition: ViewDefinition | undefined;
 	setViewDefinition: (viewDefinition: ViewDefinition) => void;
 	isLoadingViewDef: boolean;
+	runResult: string | undefined;
+	setRunResult: (result: string) => void;
 }
 
 export interface ViewDefinitionResourceTypeContextProps {

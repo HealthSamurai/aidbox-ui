@@ -78,7 +78,9 @@ export const EditorPanelActions = () => {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
+			const decodedData = atob(JSON.parse(data.body).data);
+			viewDefinitionContext.setRunResult(decodedData);
 			HSComp.toast.success("ViewDefinition run successfully");
 		},
 		onError: () => {
