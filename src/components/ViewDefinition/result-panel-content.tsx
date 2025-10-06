@@ -1,12 +1,12 @@
-import { useMemo, useContext } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
 	CodeEditor,
 	type ColumnDef,
 	DataTable,
 } from "@health-samurai/react-components";
-import { ViewDefinitionContext } from "./page";
+import { useQuery } from "@tanstack/react-query";
+import { useContext, useMemo } from "react";
 import * as Constants from "./constants";
+import { ViewDefinitionContext } from "./page";
 
 const processTableData = (
 	response: string | undefined,

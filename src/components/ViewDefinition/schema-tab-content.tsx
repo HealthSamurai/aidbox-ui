@@ -48,35 +48,27 @@ interface SchemaData {
 const fetchSchema = async (
 	resourceType: string,
 ): Promise<Array<Snapshot> | undefined> => {
-	try {
-		const response = await AidboxCallWithMeta({
-			method: "POST",
-			url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				method: "aidbox.introspector/get-schemas-by-resource-type",
-				params: { "resource-type": resourceType },
-			}),
-		});
+	const response = await AidboxCallWithMeta({
+		method: "POST",
+		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			method: "aidbox.introspector/get-schemas-by-resource-type",
+			params: { "resource-type": resourceType },
+		}),
+	});
 
-		const data: SchemaData = JSON.parse(response.body);
+	const data: SchemaData = JSON.parse(response.body);
 
-		if (data?.result) {
-			const defaultSchema = Object.values(data.result).find(
-				(schema: Schema) => schema?.["default?"] === true,
-			);
-			const snapshot = defaultSchema?.snapshot;
-			return snapshot;
-		} else {
-			return undefined;
-		}
-	} catch (error) {
-		throw new Error(
-			error instanceof Error ? error.message : "Failed to fetch schema",
-		);
-	}
+	if (!data?.result) return undefined;
+
+	const defaultSchema = Object.values(data.result).find(
+		(schema: Schema) => schema["default?"] === true,
+	);
+
+	return defaultSchema?.snapshot;
 };
 
 interface Meta {
@@ -103,16 +95,12 @@ interface Meta {
 const buildMeta = (element: Snapshot, isUnion: boolean): Meta => {
 	const meta: Meta = {};
 
-	if (element.min !== undefined && element.min !== null) {
-		meta.min = String(element.min);
-	}
-	if (element.max !== undefined && element.max !== null) {
+	if (element.min != null) meta.min = String(element.min);
+	if (element.max != null)
 		meta.max = element.max === "*" ? "*" : String(element.max);
-	}
 
 	if (element.short) meta.short = element.short;
 	if (element.desc) meta.desc = element.desc;
-
 	meta.description = element.short || element.desc;
 
 	if (isUnion) {
@@ -126,11 +114,9 @@ const buildMeta = (element: Snapshot, isUnion: boolean): Meta => {
 	}
 
 	if (element.flags) {
-		for (const flag of element.flags) {
-			if (flag === "summary") meta.isSummary = true;
-			if (flag === "modifier") meta.isModifier = true;
-			if (flag === "mustSupport") meta.mustSupport = true;
-		}
+		meta.isSummary = element.flags.includes("summary");
+		meta.isModifier = element.flags.includes("modifier");
+		meta.mustSupport = element.flags.includes("mustSupport");
 	}
 
 	if (element["extension-url"]) meta.extensionUrl = element["extension-url"];
@@ -173,15 +159,15 @@ const findUnionParent = (
 	const parts = path.split(".");
 
 	for (const potentialParent of data) {
-		if (potentialParent["union?"] === true && potentialParent.path) {
-			const unionName = potentialParent.path.split(".").at(-1);
-			if (!unionName) throw Error("Union has no name");
+		if (!potentialParent["union?"] || !potentialParent.path) continue;
 
-			if (lastPart.startsWith(unionName) && lastPart !== unionName) {
-				const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
-				if (potentialParent.path === possibleUnionPath) {
-					return potentialParent.path;
-				}
+		const unionName = potentialParent.path.split(".").at(-1);
+		if (!unionName) throw Error("Union has no name");
+
+		if (lastPart.startsWith(unionName) && lastPart !== unionName) {
+			const possibleUnionPath = `${parts.slice(0, -1).join(".")}.${unionName}`;
+			if (potentialParent.path === possibleUnionPath) {
+				return potentialParent.path;
 			}
 		}
 	}
@@ -219,21 +205,18 @@ const attachChildrenAndMarkLastNodes = (
 ): void => {
 	for (const [parentPath, children] of Object.entries(childrenMap)) {
 		const parentNode = tree[parentPath];
-		if (!parentNode) continue;
+		if (!parentNode || children.length === 0) continue;
 
 		parentNode.children = children;
 
-		if (children.length > 0) {
-			const lastChildPath = children[children.length - 1];
-			const lastChildNode = lastChildPath ? tree[lastChildPath] : undefined;
+		const lastChildPath = children[children.length - 1];
+		const lastChildNode = tree[lastChildPath];
 
-			if (
-				lastChildPath &&
-				lastChildNode?.meta &&
-				(!childrenMap[lastChildPath] || childrenMap[lastChildPath].length === 0)
-			) {
-				lastChildNode.meta.lastNode = true;
-			}
+		if (
+			lastChildNode?.meta &&
+			(!childrenMap[lastChildPath] || childrenMap[lastChildPath].length === 0)
+		) {
+			lastChildNode.meta.lastNode = true;
 		}
 	}
 };
@@ -252,24 +235,19 @@ const findDirectChildren = (
 		const elementName = parts[1];
 		if (!elementName) continue;
 
-		let isUnionChild = false;
+		const isUnionChild = data.some((element) => {
+			if (!element["union?"] || !element.path) return false;
 
-		for (const element of data) {
-			if (element["union?"] === true && element.path) {
-				const unionName = element.path.split(".").pop();
-				if (
-					unionName &&
-					elementName.startsWith(unionName) &&
-					elementName !== unionName &&
-					element.path === `${resourceType}.${unionName}`
-				) {
-					isUnionChild = true;
-					break;
-				}
-			}
-		}
+			const unionName = element.path.split(".").pop();
+			return (
+				unionName &&
+				elementName.startsWith(unionName) &&
+				elementName !== unionName &&
+				element.path === `${resourceType}.${unionName}`
+			);
+		});
 
-		if (!isUnionChild && !directChildren.includes(path)) {
+		if (!isUnionChild) {
 			directChildren.push(path);
 		}
 	}
@@ -285,32 +263,31 @@ const ensureResourceNode = (
 ): void => {
 	const existingNode = tree[resourceType];
 
-	if (
-		existingNode &&
-		(!existingNode.children || existingNode.children.length === 0)
-	) {
-		existingNode.children = directChildren;
-	} else if (!existingNode) {
-		const resourceElement = data.find(
-			(e) =>
-				e.path === resourceType ||
-				(e.type === "root" && e.name === resourceType),
-		);
-
-		tree[resourceType] = {
-			name: resourceType,
-			meta: {
-				type: "Resource",
-				min: "0",
-				max: "*",
-				description:
-					resourceElement?.short ||
-					resourceElement?.desc ||
-					`Information about ${resourceType}`,
-			},
-			children: directChildren,
-		};
+	if (existingNode) {
+		if (!existingNode.children || existingNode.children.length === 0) {
+			existingNode.children = directChildren;
+		}
+		return;
 	}
+
+	const resourceElement = data.find(
+		(e) =>
+			e.path === resourceType || (e.type === "root" && e.name === resourceType),
+	);
+
+	tree[resourceType] = {
+		name: resourceType,
+		meta: {
+			type: "Resource",
+			min: "0",
+			max: "*",
+			description:
+				resourceElement?.short ||
+				resourceElement?.desc ||
+				`Information about ${resourceType}`,
+		},
+		children: directChildren,
+	};
 };
 
 const transformSnapshotToTree = (
@@ -362,27 +339,33 @@ export function SchemaTabContent() {
 	const viewDefinitionResourceType =
 		viewDefinitionTypeContext.viewDefinitionResourceType;
 
-	const resourceType = viewDefinitionResourceType || "Patient";
-
 	const { isLoading, data, status, error } = useQuery({
 		queryKey: [viewDefinitionResourceType, Constants.PageID],
-		queryFn: async () => {
+		queryFn: () => {
 			if (!viewDefinitionResourceType) return;
-			return await fetchSchema(resourceType);
+			return fetchSchema(viewDefinitionResourceType);
 		},
 		retry: false,
 	});
 
-	return (
-		<TabsContent value="schema" className="h-full overflow-auto">
-			{isLoading ? (
+	if (isLoading) {
+		return (
+			<TabsContent value="schema" className="h-full overflow-auto">
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2">Loading schema...</div>
-						<div className="text-sm">Fetching {resourceType} schema</div>
+						<div className="text-sm">
+							Fetching {viewDefinitionResourceType} schema
+						</div>
 					</div>
 				</div>
-			) : status === "error" ? (
+			</TabsContent>
+		);
+	}
+
+	if (status === "error") {
+		return (
+			<TabsContent value="schema" className="h-full overflow-auto">
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2 text-red-600">
@@ -391,11 +374,15 @@ export function SchemaTabContent() {
 						<div className="text-sm">{error.message}</div>
 					</div>
 				</div>
-			) : (
-				<div className="px-4 h-full w-full overflow-auto">
-					<FHIRStructureView tree={transformSnapshotToTree(data)} />
-				</div>
-			)}
+			</TabsContent>
+		);
+	}
+
+	return (
+		<TabsContent value="schema" className="h-full overflow-auto">
+			<div className="px-4 h-full w-full overflow-auto">
+				<FHIRStructureView tree={transformSnapshotToTree(data)} />
+			</div>
 		</TabsContent>
 	);
 }
