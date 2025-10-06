@@ -171,7 +171,7 @@ const InputView = ({
 			if (onChange && newValue !== value) {
 				onChange(newValue);
 			}
-		}, 500);
+		}, 350);
 	};
 
 	useEffect(() => {
