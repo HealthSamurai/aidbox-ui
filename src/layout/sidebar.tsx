@@ -21,8 +21,8 @@ import { useEffect } from "react";
 import type { SidebarMode } from "../shared/types";
 
 const mainMenuItems = [
-	{ title: "Home", url: "/u/", icon: House },
-	{ title: "REST Console", url: "/u/rest", icon: SquareTerminal },
+	{ title: "Home", url: "/", icon: House },
+	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
 ];
 
 export function AidboxSidebar({
