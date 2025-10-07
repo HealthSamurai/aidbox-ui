@@ -3,106 +3,143 @@ import {
 	type ColumnDef,
 	DataTable,
 } from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
 import { useContext, useMemo } from "react";
-import * as Constants from "./constants";
 import { ViewDefinitionContext } from "./page";
 
-const processTableData = (
-	response: string | undefined,
-): {
+interface ProcessedTableData {
 	tableData: any[];
 	columns: ColumnDef<Record<string, any>, any>[];
 	isEmptyArray: boolean;
-} => {
+}
+
+const parseResponse = (response: string | undefined): any[] | null => {
 	if (!response) {
-		return { tableData: [], columns: [], isEmptyArray: false };
+		return null;
 	}
 
 	try {
-		const parsedResponse = JSON.parse(response);
+		const parsed = JSON.parse(response);
+		return Array.isArray(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+};
 
-		if (Array.isArray(parsedResponse) && parsedResponse.length === 0) {
-			return { tableData: [], columns: [], isEmptyArray: true };
+const extractColumns = (data: any[]): ColumnDef<Record<string, any>, any>[] => {
+	const allKeys = new Set<string>();
+	data.forEach((row) => {
+		if (typeof row === "object" && row !== null) {
+			Object.keys(row).forEach((key) => allKeys.add(key));
 		}
+	});
 
-		if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
-			const allKeys = new Set<string>();
-			parsedResponse.forEach((row) => {
-				if (typeof row === "object" && row !== null) {
-					Object.keys(row).forEach((key) => allKeys.add(key));
-				}
-			});
+	return Array.from(allKeys).map((key) => ({
+		accessorKey: key,
+		header: key.charAt(0).toUpperCase() + key.slice(1),
+		cell: ({ getValue }) => {
+			const value = getValue();
+			if (value === null || value === undefined) {
+				return <span className="text-text-tertiary">null</span>;
+			}
+			return String(value);
+		},
+	}));
+};
 
-			const columns: ColumnDef<Record<string, any>, any>[] = Array.from(
-				allKeys,
-			).map((key) => ({
-				accessorKey: key,
-				header: key.charAt(0).toUpperCase() + key.slice(1),
-				cell: ({ getValue }) => {
-					const value = getValue();
-					if (value === null || value === undefined) {
-						return <span className="text-text-tertiary">null</span>;
-					}
-					return String(value);
-				},
-			}));
+const processTableData = (response: string | undefined): ProcessedTableData => {
+	const parsedData = parseResponse(response);
 
-			return { tableData: parsedResponse, columns, isEmptyArray: false };
-		}
-	} catch (error) {
-		// Error parsing response
+	if (!parsedData) {
+		return { tableData: [], columns: [], isEmptyArray: false };
 	}
 
-	return { tableData: [], columns: [], isEmptyArray: false };
+	if (parsedData.length === 0) {
+		return { tableData: [], columns: [], isEmptyArray: true };
+	}
+
+	const columns = extractColumns(parsedData);
+	return { tableData: parsedData, columns, isEmptyArray: false };
+};
+
+const EmptyState = ({ message, description }: { message: string; description: string }) => (
+	<div className="flex items-center justify-center h-full text-text-secondary bg-bg-primary">
+		<div className="text-center">
+			<div className="text-lg mb-2">{message}</div>
+			<div className="text-sm">{description}</div>
+		</div>
+	</div>
+);
+
+const ResultHeader = ({ rowCount }: { rowCount: number }) => (
+	<div className="flex items-center justify-center bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
+		<span className="typo-label text-text-secondary">
+			View Definition Result: {rowCount} row{rowCount !== 1 ? "s" : ""}
+		</span>
+	</div>
+);
+
+const ResultContent = ({
+	rows,
+	isEmptyArray,
+	tableData,
+	columns,
+}: {
+	rows: string | undefined;
+	isEmptyArray: boolean;
+	tableData: any[];
+	columns: ColumnDef<Record<string, any>, any>[];
+}) => {
+	if (!rows) {
+		return (
+			<EmptyState
+				message="No results yet"
+				description="Click Run to execute the ViewDefinition"
+			/>
+		);
+	}
+
+	if (isEmptyArray) {
+		return (
+			<EmptyState
+				message="No results"
+				description="The query executed successfully but returned no data"
+			/>
+		);
+	}
+
+	if (tableData.length > 0) {
+		return (
+			<div className="flex-1 overflow-hidden min-h-0">
+				<DataTable columns={columns} data={tableData} stickyHeader />
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex-1 p-4">
+			<CodeEditor readOnly={true} currentValue={rows} mode="json" />
+		</div>
+	);
 };
 
 export function ResultPanel() {
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
-
 	const rows = viewDefinitionContext.runResult;
 
-	const { tableData, columns, isEmptyArray } = useMemo(() => {
-		return processTableData(rows);
-	}, [rows]);
+	const { tableData, columns, isEmptyArray } = useMemo(
+		() => processTableData(rows),
+		[rows],
+	);
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="flex items-center justify-center bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
-				<span className="typo-label text-text-secondary">
-					View Definition Result: {tableData.length} row
-					{tableData.length !== 1 ? "s" : ""}
-				</span>
-			</div>
-			{rows ? (
-				isEmptyArray ? (
-					<div className="flex items-center justify-center h-full text-text-secondary bg-bg-primary">
-						<div className="text-center">
-							<div className="text-lg mb-2">No results</div>
-							<div className="text-sm">
-								The query executed successfully but returned no data
-							</div>
-						</div>
-					</div>
-				) : tableData.length > 0 ? (
-					<div className="flex-1 overflow-hidden min-h-0">
-						<DataTable columns={columns} data={tableData} stickyHeader />
-					</div>
-				) : (
-					<div className="flex-1 p-4">
-						<CodeEditor readOnly={true} currentValue={rows} mode="json" />
-					</div>
-				)
-			) : (
-				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-primary">
-					<div className="text-center">
-						<div className="text-lg mb-2">No results yet</div>
-						<div className="text-sm">
-							Click Run to execute the ViewDefinition
-						</div>
-					</div>
-				</div>
-			)}
+			<ResultHeader rowCount={tableData.length} />
+			<ResultContent
+				rows={rows}
+				isEmptyArray={isEmptyArray}
+				tableData={tableData}
+				columns={columns}
+			/>
 		</div>
 	);
 }
