@@ -184,7 +184,8 @@ const InputView = ({
 
 	return (
 		<Input
-			className={`h-7 py-1 px-2 ${className} bg-bg-tertiary border-none focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-quaternary`}
+			className={`h-7 py-1 px-2 ${className} bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary
+			`}
 			placeholder={placeholder}
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
