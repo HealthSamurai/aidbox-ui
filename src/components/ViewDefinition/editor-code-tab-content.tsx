@@ -1,7 +1,7 @@
 import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
-import { useDebounce } from "../../hooks";
+import { useDebounce, useLocalStorage } from "../../hooks";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import {
 	ViewDefinitionContext,
@@ -109,8 +109,13 @@ export const ViewDefinitionCodeEditor = ({
 
 export const CodeTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const [codeMode, setCodeMode] =
-		React.useState<ViewDefinitionEditorMode>("json");
+
+	const [codeMode, setCodeMode] = useLocalStorage<ViewDefinitionEditorMode>({
+		key: "viewDefinition.codeMode",
+		getInitialValueInEffect: false,
+		defaultValue: "json",
+	});
+
 	const [editorValue, setEditorValue] = React.useState<string>("");
 
 	const stringifyViewDefinition = React.useCallback(
