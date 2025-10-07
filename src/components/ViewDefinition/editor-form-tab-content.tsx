@@ -757,6 +757,7 @@ export const FormTabContent = () => {
 					"_copyright",
 					"_experimental",
 					"_fhirVersion",
+					"_identifier",
 				],
 			},
 			_name: {
@@ -811,6 +812,25 @@ export const FormTabContent = () => {
 				name: "_fhirVersion",
 				meta: {
 					type: "fhir version",
+				},
+			},
+			_identifier: {
+				name: "_identifier",
+				children: ["_identifier_system", "_identifier_value"],
+				meta: {
+					type: "identifier",
+				},
+			},
+			_identifier_system: {
+				name: "_identifier_system",
+				meta: {
+					type: "system",
+				},
+			},
+			_identifier_value: {
+				name: "_identifier_value",
+				meta: {
+					type: "value",
 				},
 			},
 			_constant: {
@@ -931,10 +951,12 @@ export const FormTabContent = () => {
 			metaType === "publisher" ||
 			metaType === "copyright" ||
 			metaType === "experimental" ||
-			metaType === "fhir version"
-		) {
+			metaType === "fhir version" ||
+			metaType === "system" ||
+			metaType === "value" ||
+			metaType === "identifier"
+		)
 			additionalClass = "text-blue-500 bg-blue-100";
-		}
 
 		const onLabelClickFn = () => {
 			if (item.isExpanded()) {
@@ -1117,6 +1139,46 @@ export const FormTabContent = () => {
 					</div>
 				);
 			}
+			case "identifier":
+				return <div>{labelView(item)}</div>;
+			case "system":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Identifier system"
+								value={(viewDefinition as any)?.identifier?.[0]?.system || ""}
+								onChange={(value) => {
+									const currentIdentifier =
+										(viewDefinition as any)?.identifier?.[0] || {};
+									updateViewDefinition(undefined, undefined, {
+										identifier: [{ ...currentIdentifier, system: value }],
+									});
+								}}
+							/>
+						</div>
+					</div>
+				);
+			case "value":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Identifier value"
+								value={(viewDefinition as any)?.identifier?.[0]?.value || ""}
+								onChange={(value) => {
+									const currentIdentifier =
+										(viewDefinition as any)?.identifier?.[0] || {};
+									updateViewDefinition(undefined, undefined, {
+										identifier: [{ ...currentIdentifier, value }],
+									});
+								}}
+							/>
+						</div>
+					</div>
+				);
 			case "properties":
 				return <div>{labelView(item)}</div>;
 			case "constant":
