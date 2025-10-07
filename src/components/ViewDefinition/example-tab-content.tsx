@@ -156,7 +156,7 @@ export function ExampleTabContent() {
 	};
 
 	return (
-		<TabsContent value="examples" className="flex flex-col h-full">
+		<TabsContent value="examples" className="flex flex-col h-full bg-bg-secondary">
 			<SearchBar
 				handleSearch={(q?: string) => {
 					setQuery(q || "");
@@ -204,6 +204,7 @@ export function ExampleTabContent() {
 											: JSON.stringify(exampleResource, null, 2)
 									}
 									mode={exampleMode}
+									isReadOnlyTheme={true}
 								/>
 							</div>
 						) : status === "error" ? (
@@ -227,6 +228,7 @@ export function ExampleTabContent() {
 											: JSON.stringify(error.cause, null, 2)
 									}
 									mode={exampleMode}
+									isReadOnlyTheme={true}
 								/>
 							</div>
 						) : (
