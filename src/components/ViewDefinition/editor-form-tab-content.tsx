@@ -1,11 +1,17 @@
 import {
 	Button,
+	Checkbox,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 	Input,
 	type ItemInstance,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
@@ -395,6 +401,48 @@ export const FormTabContent = () => {
 		updateViewDefinition(undefined, undefined, { name });
 	};
 
+	// Function to update title field
+	const updateTitle = (title: string) => {
+		updateViewDefinition(undefined, undefined, { title });
+	};
+
+	// Function to update description field
+	const updateDescription = (description: string) => {
+		updateViewDefinition(undefined, undefined, { description });
+	};
+
+	// Function to update status field
+	const updateStatus = (status: string) => {
+		updateViewDefinition(undefined, undefined, { status });
+	};
+
+	// Function to update url field
+	const updateUrl = (url: string) => {
+		updateViewDefinition(undefined, undefined, { url });
+	};
+
+	// Function to update publisher field
+	const updatePublisher = (publisher: string) => {
+		updateViewDefinition(undefined, undefined, { publisher });
+	};
+
+	// Function to update copyright field
+	const updateCopyright = (copyright: string) => {
+		updateViewDefinition(undefined, undefined, { copyright });
+	};
+
+	// Function to update experimental field
+	const updateExperimental = (experimental: boolean) => {
+		updateViewDefinition(undefined, undefined, { experimental });
+	};
+
+	// Function to update fhirVersion field
+	const updateFhirVersion = (fhirVersion: string) => {
+		updateViewDefinition(undefined, undefined, {
+			fhirVersion: fhirVersion ? [fhirVersion] : [],
+		});
+	};
+
 	// Function to add a new select item
 	const addSelectItem = (
 		type: "column" | "forEach" | "forEachOrNull" | "unionAll",
@@ -698,12 +746,70 @@ export const FormTabContent = () => {
 				meta: {
 					type: "properties",
 				},
-				children: ["_name"],
+				children: [
+					"_name",
+					"_title",
+					"_description",
+					"_status",
+					"_url",
+					"_publisher",
+					"_copyright",
+					"_experimental",
+					"_fhirVersion",
+				],
 			},
 			_name: {
 				name: "_name",
 				meta: {
 					type: "name",
+				},
+			},
+			_title: {
+				name: "_title",
+				meta: {
+					type: "title",
+				},
+			},
+			_description: {
+				name: "_description",
+				meta: {
+					type: "description",
+				},
+			},
+			_status: {
+				name: "_status",
+				meta: {
+					type: "status",
+				},
+			},
+			_url: {
+				name: "_url",
+				meta: {
+					type: "url",
+				},
+			},
+			_publisher: {
+				name: "_publisher",
+				meta: {
+					type: "publisher",
+				},
+			},
+			_copyright: {
+				name: "_copyright",
+				meta: {
+					type: "copyright",
+				},
+			},
+			_experimental: {
+				name: "_experimental",
+				meta: {
+					type: "experimental",
+				},
+			},
+			_fhirVersion: {
+				name: "_fhirVersion",
+				meta: {
+					type: "fhir version",
 				},
 			},
 			_constant: {
@@ -815,7 +921,17 @@ export const FormTabContent = () => {
 			metaType === "properties"
 		) {
 			additionalClass = "text-blue-500 px-1!";
-		} else if (metaType === "name") {
+		} else if (
+			metaType === "name" ||
+			metaType === "title" ||
+			metaType === "description" ||
+			metaType === "status" ||
+			metaType === "url" ||
+			metaType === "publisher" ||
+			metaType === "copyright" ||
+			metaType === "experimental" ||
+			metaType === "fhir version"
+		) {
 			additionalClass = "text-blue-500 bg-blue-100";
 		}
 
@@ -850,6 +966,120 @@ export const FormTabContent = () => {
 								placeholder="ViewDefinition name"
 								value={viewDefinition?.name || ""}
 								onChange={(value) => updateName(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "title":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Title"
+								value={(viewDefinition as any)?.title || ""}
+								onChange={(value) => updateTitle(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "description":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Description"
+								value={(viewDefinition as any)?.description || ""}
+								onChange={(value) => updateDescription(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "status":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<Select
+								value={(viewDefinition as any)?.status || ""}
+								onValueChange={(value) => updateStatus(value)}
+							>
+								<SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
+									<SelectValue placeholder="Select status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="draft">draft</SelectItem>
+									<SelectItem value="active">active</SelectItem>
+									<SelectItem value="retired">retired</SelectItem>
+									<SelectItem value="unknown">unknown</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+				);
+			case "url":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="URL"
+								value={(viewDefinition as any)?.url || ""}
+								onChange={(value) => updateUrl(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "publisher":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Publisher"
+								value={(viewDefinition as any)?.publisher || ""}
+								onChange={(value) => updatePublisher(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "copyright":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Copyright"
+								value={(viewDefinition as any)?.copyright || ""}
+								onChange={(value) => updateCopyright(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "experimental":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%] flex items-center pl-2">
+							<Checkbox
+								checked={(viewDefinition as any)?.experimental || false}
+								onCheckedChange={(checked) =>
+									updateExperimental(checked === true)
+								}
+							/>
+						</div>
+					</div>
+				);
+			case "fhir version":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<InputView
+								placeholder="FHIR Version"
+								value={(viewDefinition as any)?.fhirVersion?.[0] || ""}
+								onChange={(value) => updateFhirVersion(value)}
 							/>
 						</div>
 					</div>
