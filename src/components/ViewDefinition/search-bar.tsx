@@ -30,10 +30,10 @@ export function SearchBar({
 			<div className="flex gap-2">
 				<Input
 					type="text"
-					className="flex-1"
+					className="flex-1 bg-bg-primary"
 					prefixValue={
-						<span className="text-nowrap">
-							<span className="font-medium">GET</span>
+						<span className="flex gap-1 text-nowrap text-elements-assistive">
+							<span className="font-bold">GET</span>
 							<span>{`/fhir/${viewDefinitionTypeContext.viewDefinitionResourceType}?`}</span>
 						</span>
 					}
