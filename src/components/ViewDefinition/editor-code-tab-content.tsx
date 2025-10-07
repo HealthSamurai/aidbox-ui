@@ -23,78 +23,38 @@ export const ViewDefinitionCodeEditor = ({
 		ViewDefinitionResourceTypeContext,
 	);
 
-	const resourceType =
-		viewDefinitionResourceTypeContext.viewDefinitionResourceType;
-
-	const EditorValueInitialized = React.useRef(false);
-
-	React.useEffect(() => {
-		if (
-			viewDefinitionContext.viewDefinition &&
-			!EditorValueInitialized.current
-		) {
-			setEditorValue(
-				JSON.stringify(viewDefinitionContext.viewDefinition, null, 2),
-			);
-			EditorValueInitialized.current = true;
-		}
-	}, [viewDefinitionContext.viewDefinition]);
-
-	React.useEffect(() => {
-		if (codeMode === "yaml") {
-			setEditorValue(
-				yaml.dump(viewDefinitionContext.viewDefinition, { indent: 2 }),
-			);
-		} else {
-			setEditorValue(
-				JSON.stringify(viewDefinitionContext.viewDefinition, null, 2),
-			);
-		}
-	}, [codeMode]);
-
-	React.useEffect(() => {
-		if (resourceType && editorValue) {
-			setEditorValue(
-				JSON.stringify(
-					{
-						...JSON.parse(editorValue),
-						resource: resourceType,
-					},
-					null,
-					2,
-				),
-			);
-		}
-	}, [resourceType]);
-
 	const debouncedSetViewDefinitionResourceType = useDebounce(
 		(resourceType: string) => {
-			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
-				resourceType,
-			);
+			if (
+				resourceType !==
+				viewDefinitionResourceTypeContext.viewDefinitionResourceType
+			) {
+				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
+					resourceType,
+				);
+			}
 		},
 		500,
 	);
 
 	const debouncedSetViewDefinition = useDebounce(
 		(viewDefinition: ViewDefinition) => {
-			viewDefinitionContext.setViewDefinition(viewDefinition);
+			if (
+				JSON.stringify(viewDefinition) !==
+				JSON.stringify(viewDefinitionContext.viewDefinition)
+			) {
+				viewDefinitionContext.setViewDefinition(viewDefinition);
+			}
 		},
 		500,
 	);
 
 	const handleEditorValueChange = (value: string) => {
 		setEditorValue(value);
-
 		try {
 			const parsedValue = JSON.parse(value);
 			debouncedSetViewDefinitionResourceType(parsedValue.resource);
-			if (
-				JSON.stringify(parsedValue) !==
-				JSON.stringify(viewDefinitionContext.viewDefinition)
-			) {
-				debouncedSetViewDefinition(parsedValue);
-			}
+			debouncedSetViewDefinition(parsedValue);
 		} catch (_error) {}
 	};
 
@@ -109,6 +69,9 @@ export const ViewDefinitionCodeEditor = ({
 
 export const CodeTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+	const viewDefinitionResourceTypeContext = React.useContext(
+		ViewDefinitionResourceTypeContext,
+	);
 
 	const [codeMode, setCodeMode] = useLocalStorage<ViewDefinitionEditorMode>({
 		key: "viewDefinition.codeMode",
@@ -127,6 +90,25 @@ export const CodeTabContent = () => {
 		},
 		[codeMode],
 	);
+
+	React.useEffect(() => {
+		if (
+			viewDefinitionContext.viewDefinition &&
+			viewDefinitionResourceTypeContext.viewDefinitionResourceType
+		) {
+			setEditorValue(
+				stringifyViewDefinition({
+					...viewDefinitionContext.viewDefinition,
+					resource:
+						viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+				}),
+			);
+		}
+	}, [
+		viewDefinitionContext.viewDefinition,
+		viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+		stringifyViewDefinition,
+	]);
 
 	const textToCopy = React.useMemo(() => {
 		if (viewDefinitionContext.viewDefinition) {
