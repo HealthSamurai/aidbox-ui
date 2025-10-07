@@ -77,9 +77,12 @@ const EmptyState = ({
 );
 
 const ResultHeader = ({ rowCount }: { rowCount: number }) => (
-	<div className="flex items-center justify-center bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
+	<div className="flex gap-1 items-center justify-left bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
 		<span className="typo-label text-text-secondary">
-			View Definition Result: {rowCount} row{rowCount !== 1 ? "s" : ""}
+			Result:
+		</span>
+		<span className="typo-label text-text-link">
+			{rowCount} row{rowCount !== 1 ? "s" : ""}
 		</span>
 	</div>
 );
