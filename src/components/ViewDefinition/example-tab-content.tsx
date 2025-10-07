@@ -126,6 +126,7 @@ export function ExampleTabContent() {
 			return resources;
 		},
 		retry: false,
+		refetchOnWindowFocus: false,
 	});
 
 	const handlePrevious = () => {

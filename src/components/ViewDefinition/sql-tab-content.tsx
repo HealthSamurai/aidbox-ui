@@ -55,6 +55,7 @@ export function SQLTab() {
 			return await fetchSQL(viewDefinition);
 		},
 		retry: false,
+		refetchOnWindowFocus: false,
 	});
 
 	return (

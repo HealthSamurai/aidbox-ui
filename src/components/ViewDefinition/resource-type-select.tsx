@@ -26,6 +26,7 @@ export const ResourceTypeSelect = () => {
 	const { data, isLoading } = useQuery({
 		queryKey: [Constants.PageID, "resource-types"],
 		queryFn: async () => await fetchResourceTypes(),
+		refetchOnWindowFocus: false,
 	});
 
 	const comboboxOptions = React.useMemo(

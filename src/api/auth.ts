@@ -163,6 +163,7 @@ export function useUserInfo() {
 	return useQuery({
 		queryKey: ["userInfo"],
 		queryFn: fetchUserInfo,
+		refetchOnWindowFocus: false,
 	});
 }
 

@@ -65,6 +65,7 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 			return response;
 		},
 		retry: false,
+		refetchOnWindowFocus: false,
 	});
 
 	if (viewDefinitionQuery.error)

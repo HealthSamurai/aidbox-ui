@@ -346,6 +346,7 @@ export function SchemaTabContent() {
 			return fetchSchema(viewDefinitionResourceType);
 		},
 		retry: false,
+		refetchOnWindowFocus: false,
 	});
 
 	if (isLoading) {

@@ -822,6 +822,7 @@ function RouteComponent() {
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
 		queryFn: RestCollections.getCollectionsEntries,
+		refetchOnWindowFocus: false,
 	});
 
 	return (
