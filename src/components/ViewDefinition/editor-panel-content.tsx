@@ -66,6 +66,9 @@ export const EditorPanelActions = () => {
 
 	const viewDefinitionRunMutation = useMutation({
 		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+			viewDefinitionContext.setRunResultPage(1);
+			viewDefinitionContext.setRunViewDefinition(viewDefinition);
+
 			const parametersPayload = {
 				resourceType: "Parameters",
 				parameter: [
@@ -76,6 +79,14 @@ export const EditorPanelActions = () => {
 					{
 						name: "_format",
 						valueCode: "json",
+					},
+					{
+						name: "_limit",
+						valueInteger: viewDefinitionContext.runResultPageSize,
+					},
+					{
+						name: "_page",
+						valueInteger: 1,
 					},
 				],
 			};

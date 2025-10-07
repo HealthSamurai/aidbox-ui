@@ -25,6 +25,12 @@ export interface ViewDefinitionContextProps {
 	isLoadingViewDef: boolean;
 	runResult: string | undefined;
 	setRunResult: (result: string) => void;
+	runResultPageSize: number | undefined;
+	setRunResultPageSize: (result: number) => void;
+	runResultPage: number | undefined;
+	setRunResultPage: (result: number) => void;
+	runViewDefinition: ViewDefinition | undefined;
+	setRunViewDefinition: (viewDefinition: ViewDefinition) => void;
 }
 
 export interface ViewDefinitionResourceTypeContextProps {

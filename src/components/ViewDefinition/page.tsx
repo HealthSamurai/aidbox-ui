@@ -22,6 +22,12 @@ export const ViewDefinitionContext =
 		isLoadingViewDef: true,
 		runResult: undefined,
 		setRunResult: () => {},
+		runResultPageSize: 30,
+		setRunResultPageSize: () => {},
+		runResultPage: 1,
+		setRunResultPage: () => {},
+		runViewDefinition: undefined,
+		setRunViewDefinition: () => {},
 	});
 
 export const ViewDefinitionResourceTypeContext =
@@ -51,10 +57,17 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 	const [viewDefinition, setViewDefinition] =
 		React.useState<Types.ViewDefinition>();
 
+	const [runViewDefinition, setRunViewDefinition] =
+		React.useState<Types.ViewDefinition>();
+
 	const [viewDefinitionResourceType, setViewDefinitionResourceType] =
 		React.useState<string>();
 
 	const [runResult, setRunResult] = React.useState<string>();
+
+	const [runResultPage, setRunResultPage] = React.useState(1);
+
+	const [runResultPageSize, setRunResultPageSize] = React.useState(30);
 
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
@@ -84,6 +97,12 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 				originalId: id,
 				runResult: runResult,
 				setRunResult: setRunResult,
+				runResultPage: runResultPage,
+				setRunResultPage: setRunResultPage,
+				runResultPageSize: runResultPageSize,
+				setRunResultPageSize: setRunResultPageSize,
+				runViewDefinition: runViewDefinition,
+				setRunViewDefinition: setRunViewDefinition,
 			}}
 		>
 			<ViewDefinitionResourceTypeContext.Provider

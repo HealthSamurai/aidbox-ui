@@ -1,6 +1,6 @@
 import type { TreeViewItem } from "@health-samurai/react-components";
 import {
-	FHIRStructureView,
+	FhirStructureView,
 	TabsContent,
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
@@ -382,7 +382,7 @@ export function SchemaTabContent() {
 	return (
 		<TabsContent value="schema" className="h-full overflow-auto">
 			<div className="px-4 h-full w-full overflow-auto">
-				<FHIRStructureView tree={transformSnapshotToTree(data)} />
+				<FhirStructureView tree={transformSnapshotToTree(data)} />
 			</div>
 		</TabsContent>
 	);

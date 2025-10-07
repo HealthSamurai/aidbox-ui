@@ -3,10 +3,18 @@ import {
 	CodeEditor,
 	type ColumnDef,
 	DataTable,
+	Pagination,
+	PaginationContent,
+	PaginationNext,
+	PaginationPageSizeSelector,
+	PaginationPrevious,
 } from "@health-samurai/react-components";
+import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
+import { AidboxCallWithMeta } from "../../api/auth";
 import { ViewDefinitionContext } from "./page";
+import type * as Types from "./types";
 
 interface ProcessedTableData {
 	tableData: any[];
@@ -148,6 +156,74 @@ const ResultContent = ({
 	);
 };
 
+const ResultPagination = ({
+	onPageChange,
+	onPageSizeChange,
+	hasResults,
+	resultCount,
+}: {
+	onPageChange: (direction: "next" | "previous") => void;
+	onPageSizeChange: (pageSize: number) => void;
+	hasResults: boolean;
+	resultCount: number;
+}) => {
+	const viewDefinitionContext = useContext(ViewDefinitionContext);
+	const currentPage = viewDefinitionContext.runResultPage || 1;
+	const pageSize = viewDefinitionContext.runResultPageSize || 30;
+
+	const isLastPage = !hasResults || resultCount < pageSize;
+
+	return (
+		<div className="flex items-center justify-end bg-bg-secondary px-6 py-3 border-t h-12">
+			<div className="flex items-center gap-4">
+				<Pagination>
+					<PaginationPageSizeSelector
+						pageSize={pageSize}
+						onPageSizeChange={onPageSizeChange}
+						pageSizeOptions={[30, 50, 100]}
+					/>
+					<PaginationContent>
+						<PaginationPrevious
+							href="#"
+							onClick={(e) => {
+								e.preventDefault();
+								onPageChange("previous");
+							}}
+							aria-disabled={currentPage <= 1}
+							style={
+								currentPage <= 1
+									? {
+											pointerEvents: "none",
+											opacity: 0.5,
+											cursor: "not-allowed",
+										}
+									: { cursor: "pointer" }
+							}
+						/>
+						<PaginationNext
+							href="#"
+							onClick={(e) => {
+								e.preventDefault();
+								onPageChange("next");
+							}}
+							aria-disabled={isLastPage}
+							style={
+								isLastPage
+									? {
+											pointerEvents: "none",
+											opacity: 0.5,
+											cursor: "not-allowed",
+										}
+									: { cursor: "pointer" }
+							}
+						/>
+					</PaginationContent>
+				</Pagination>
+			</div>
+		</div>
+	);
+};
+
 export function ResultPanel() {
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const rows = viewDefinitionContext.runResult;
@@ -157,6 +233,84 @@ export function ResultPanel() {
 		() => processTableData(rows),
 		[rows],
 	);
+
+	const viewDefinitionRunMutation = useMutation({
+		mutationFn: ({
+			viewDefinition,
+			page,
+			pageSize,
+		}: {
+			viewDefinition: Types.ViewDefinition | undefined;
+			page: number;
+			pageSize: number;
+		}) => {
+			const parametersPayload = {
+				resourceType: "Parameters",
+				parameter: [
+					{
+						name: "viewResource",
+						resource: viewDefinition,
+					},
+					{
+						name: "_format",
+						valueCode: "json",
+					},
+					{
+						name: "_limit",
+						valueInteger: pageSize,
+					},
+					{
+						name: "_page",
+						valueInteger: page,
+					},
+				],
+			};
+			return AidboxCallWithMeta({
+				method: "POST",
+				url: "/fhir/ViewDefinition/$run",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/fhir+json",
+				},
+				body: JSON.stringify(parametersPayload),
+			});
+		},
+		onSuccess: (data) => {
+			const decodedData = atob(JSON.parse(data.body).data);
+			viewDefinitionContext.setRunResult(decodedData);
+		},
+		onError: () => {},
+	});
+
+	const handlePageChange = (direction: "next" | "previous") => {
+		const currentPage = viewDefinitionContext.runResultPage || 1;
+		const newPage = direction === "next" ? currentPage + 1 : currentPage - 1;
+
+		if (newPage < 1) return;
+
+		viewDefinitionContext.setRunResultPage(newPage);
+
+		if (viewDefinitionContext.runViewDefinition) {
+			viewDefinitionRunMutation.mutate({
+				viewDefinition: viewDefinitionContext.runViewDefinition,
+				page: newPage,
+				pageSize: viewDefinitionContext.runResultPageSize || 30,
+			});
+		}
+	};
+
+	const handlePageSizeChange = (pageSize: number) => {
+		viewDefinitionContext.setRunResultPageSize(pageSize);
+		viewDefinitionContext.setRunResultPage(1);
+
+		if (viewDefinitionContext.runViewDefinition) {
+			viewDefinitionRunMutation.mutate({
+				viewDefinition: viewDefinitionContext.runViewDefinition,
+				page: 1,
+				pageSize: pageSize,
+			});
+		}
+	};
 
 	const toggleMaximize = () => {
 		setIsMaximized((prev) => !prev);
@@ -193,6 +347,14 @@ export function ResultPanel() {
 				tableData={tableData}
 				columns={columns}
 			/>
+			{rows && (
+				<ResultPagination
+					onPageChange={handlePageChange}
+					onPageSizeChange={handlePageSizeChange}
+					hasResults={tableData.length > 0}
+					resultCount={tableData.length}
+				/>
+			)}
 		</div>
 	);
 }
