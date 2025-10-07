@@ -7,6 +7,7 @@ import {
 	DropdownMenuTrigger,
 	Input,
 	type ItemInstance,
+	MultiCombobox,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -437,9 +438,9 @@ export const FormTabContent = () => {
 	};
 
 	// Function to update fhirVersion field
-	const updateFhirVersion = (fhirVersion: string) => {
+	const updateFhirVersions = (fhirVersions: string[]) => {
 		updateViewDefinition(undefined, undefined, {
-			fhirVersion: fhirVersion ? [fhirVersion] : [],
+			fhirVersion: fhirVersions.length > 0 ? fhirVersions : undefined,
 		});
 	};
 
@@ -1071,19 +1072,51 @@ export const FormTabContent = () => {
 						</div>
 					</div>
 				);
-			case "fhir version":
+			case "fhir version": {
+				const fhirVersionOptions = [
+					{ value: "6.0.0-ballot3", label: "6.0.0-ballot3" },
+					{ value: "6.0.0-ballot2", label: "6.0.0-ballot2" },
+					{ value: "6.0.0-ballot1", label: "6.0.0-ballot1" },
+					{ value: "5.0.0", label: "5.0.0" },
+					{ value: "5.0.0-draft-final", label: "5.0.0-draft-final" },
+					{ value: "5.0.0-snapshot3", label: "5.0.0-snapshot3" },
+					{ value: "5.0.0-ballot", label: "5.0.0-ballot" },
+					{ value: "5.0.0-snapshot1", label: "5.0.0-snapshot1" },
+					{ value: "4.6.0", label: "4.6.0" },
+					{ value: "4.5.0", label: "4.5.0" },
+					{ value: "4.4.0", label: "4.4.0" },
+					{ value: "4.3.0", label: "4.3.0" },
+					{ value: "4.3.0-snapshot1", label: "4.3.0-snapshot1" },
+					{ value: "4.2.0", label: "4.2.0" },
+					{ value: "4.1.0", label: "4.1.0" },
+					{ value: "4.0.1", label: "4.0.1" },
+					{ value: "4.0.0", label: "4.0.0" },
+					{ value: "3.5a.0", label: "3.5a.0" },
+					{ value: "3.5.0", label: "3.5.0" },
+					{ value: "3.3.0", label: "3.3.0" },
+					{ value: "3.2.0", label: "3.2.0" },
+					{ value: "3.0.2", label: "3.0.2" },
+					{ value: "3.0.1", label: "3.0.1" },
+					{ value: "3.0.0", label: "3.0.0" },
+				];
+				const selectedVersions = (viewDefinition as any)?.fhirVersion || [];
+
 				return (
 					<div className="flex w-full items-center justify-between">
 						{labelView(item)}
 						<div className="w-[50%]">
-							<InputView
-								placeholder="FHIR Version"
-								value={(viewDefinition as any)?.fhirVersion?.[0] || ""}
-								onChange={(value) => updateFhirVersion(value)}
+							<MultiCombobox
+								options={fhirVersionOptions}
+								value={selectedVersions}
+								onValueChange={updateFhirVersions}
+								placeholder="Select FHIR versions"
+								searchPlaceholder="Search versions..."
+								className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary"
 							/>
 						</div>
 					</div>
 				);
+			}
 			case "properties":
 				return <div>{labelView(item)}</div>;
 			case "constant":
