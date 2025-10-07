@@ -47,10 +47,20 @@ export const EditorPanelActions = () => {
 			});
 		},
 		onSuccess: () => {
-			HSComp.toast.success("ViewDefinition saved successfully");
+			HSComp.toast.success("ViewDefinition saved successfully", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
 		},
 		onError: () => {
-			HSComp.toast.error("Failed to save ViewDefinition");
+			HSComp.toast.error("Failed to save ViewDefinition", {
+				position: "bottom-right",
+				style: {
+					margin: "1rem",
+					backgroundColor: "var(--destructive)",
+					color: "var(--accent)",
+				},
+			});
 		},
 	});
 
@@ -82,10 +92,20 @@ export const EditorPanelActions = () => {
 		onSuccess: (data) => {
 			const decodedData = atob(JSON.parse(data.body).data);
 			viewDefinitionContext.setRunResult(decodedData);
-			HSComp.toast.success("ViewDefinition run successfully");
+			HSComp.toast.success("ViewDefinition run successfully", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
 		},
 		onError: () => {
-			HSComp.toast.error("Failed to run ViewDefinition");
+			HSComp.toast.error("Failed to run ViewDefinition", {
+				position: "bottom-right",
+				style: {
+					margin: "1rem",
+					backgroundColor: "var(--destructive)",
+					color: "var(--accent)",
+				},
+			});
 		},
 	});
 

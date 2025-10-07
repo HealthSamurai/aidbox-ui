@@ -144,7 +144,10 @@ export const CodeTabContent = () => {
 			codeMode === "yaml"
 				? yaml.dump(yaml.load(editorValue), { indent: 2 })
 				: JSON.stringify(JSON.parse(editorValue), null, 2);
-		HSComp.toast.success("Code formatted");
+		HSComp.toast.success("Code formatted", {
+			position: "bottom-right",
+			style: { margin: "1rem" },
+		});
 		return formattedValue;
 	};
 

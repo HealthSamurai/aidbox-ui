@@ -61,7 +61,13 @@ const processTableData = (response: string | undefined): ProcessedTableData => {
 	return { tableData: parsedData, columns, isEmptyArray: false };
 };
 
-const EmptyState = ({ message, description }: { message: string; description: string }) => (
+const EmptyState = ({
+	message,
+	description,
+}: {
+	message: string;
+	description: string;
+}) => (
 	<div className="flex items-center justify-center h-full text-text-secondary bg-bg-primary">
 		<div className="text-center">
 			<div className="text-lg mb-2">{message}</div>
