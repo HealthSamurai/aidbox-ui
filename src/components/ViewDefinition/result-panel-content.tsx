@@ -1,9 +1,11 @@
 import {
+	Button,
 	CodeEditor,
 	type ColumnDef,
 	DataTable,
 } from "@health-samurai/react-components";
-import { useContext, useMemo } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { ViewDefinitionContext } from "./page";
 
 interface ProcessedTableData {
@@ -76,14 +78,29 @@ const EmptyState = ({
 	</div>
 );
 
-const ResultHeader = ({ rowCount }: { rowCount: number }) => (
-	<div className="flex gap-1 items-center justify-left bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
-		<span className="typo-label text-text-secondary">
-			Result:
-		</span>
-		<span className="typo-label text-text-link">
-			{rowCount} row{rowCount !== 1 ? "s" : ""}
-		</span>
+const ResultHeader = ({
+	rowCount,
+	isMaximized,
+	onToggleMaximize,
+}: {
+	rowCount: number;
+	isMaximized: boolean;
+	onToggleMaximize: () => void;
+}) => (
+	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
+		<div className="flex gap-1 items-center">
+			<span className="typo-label text-text-secondary">Result:</span>
+			<span className="typo-label text-text-link">
+				{rowCount} row{rowCount !== 1 ? "s" : ""}
+			</span>
+		</div>
+		<Button variant="ghost" size="small" onClick={onToggleMaximize}>
+			{isMaximized ? (
+				<Minimize2 className="w-4 h-4" />
+			) : (
+				<Maximize2 className="w-4 h-4" />
+			)}
+		</Button>
 	</div>
 );
 
@@ -134,15 +151,42 @@ const ResultContent = ({
 export function ResultPanel() {
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const rows = viewDefinitionContext.runResult;
+	const [isMaximized, setIsMaximized] = useState(false);
 
 	const { tableData, columns, isEmptyArray } = useMemo(
 		() => processTableData(rows),
 		[rows],
 	);
 
+	const toggleMaximize = () => {
+		setIsMaximized((prev) => !prev);
+	};
+
+	useEffect(() => {
+		const handleEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape" && isMaximized) {
+				setIsMaximized(false);
+			}
+		};
+
+		if (isMaximized) {
+			document.addEventListener("keydown", handleEscape);
+		}
+
+		return () => {
+			document.removeEventListener("keydown", handleEscape);
+		};
+	}, [isMaximized]);
+
 	return (
-		<div className="flex flex-col h-full">
-			<ResultHeader rowCount={tableData.length} />
+		<div
+			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-[100] overflow-auto bg-bg-primary" : ""}`}
+		>
+			<ResultHeader
+				rowCount={tableData.length}
+				isMaximized={isMaximized}
+				onToggleMaximize={toggleMaximize}
+			/>
 			<ResultContent
 				rows={rows}
 				isEmptyArray={isEmptyArray}

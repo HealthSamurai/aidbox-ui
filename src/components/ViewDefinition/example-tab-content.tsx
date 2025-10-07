@@ -156,7 +156,10 @@ export function ExampleTabContent() {
 	};
 
 	return (
-		<TabsContent value="examples" className="flex flex-col h-full bg-bg-secondary">
+		<TabsContent
+			value="examples"
+			className="flex flex-col h-full bg-bg-secondary"
+		>
 			<SearchBar
 				handleSearch={(q?: string) => {
 					setQuery(q || "");
