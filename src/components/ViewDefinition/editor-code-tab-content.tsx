@@ -52,7 +52,8 @@ export const ViewDefinitionCodeEditor = ({
 	const handleEditorValueChange = (value: string) => {
 		setEditorValue(value);
 		try {
-			const parsedValue = JSON.parse(value);
+			const parsedValue =
+				codeMode === "json" ? JSON.parse(value) : yaml.load(value);
 			debouncedSetViewDefinitionResourceType(parsedValue.resource);
 			debouncedSetViewDefinition(parsedValue);
 		} catch (_error) {}

@@ -24,7 +24,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { useLocalStorage } from "../../hooks";
+import { useDebounce, useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
 
@@ -161,33 +161,21 @@ const InputView = ({
 	onChange?: (value: string) => void;
 }) => {
 	const [localValue, setLocalValue] = useState(value || "");
-	const debounceTimerRef = useRef<NodeJS.Timeout>();
 
 	useEffect(() => {
 		setLocalValue(value || "");
 	}, [value]);
 
+	const debouncedOnChange = useDebounce((newValue: string) => {
+		if (onChange && newValue !== value) {
+			onChange(newValue);
+		}
+	}, 350);
+
 	const handleChange = (newValue: string) => {
 		setLocalValue(newValue);
-
-		if (debounceTimerRef.current) {
-			clearTimeout(debounceTimerRef.current);
-		}
-
-		debounceTimerRef.current = setTimeout(() => {
-			if (onChange && newValue !== value) {
-				onChange(newValue);
-			}
-		}, 350);
+		debouncedOnChange(newValue);
 	};
-
-	useEffect(() => {
-		return () => {
-			if (debounceTimerRef.current) {
-				clearTimeout(debounceTimerRef.current);
-			}
-		};
-	}, []);
 
 	return (
 		<Input
