@@ -53,7 +53,7 @@ export const ViewDefinitionErrorPage = ({
 	);
 };
 
-const ViewDefinitionPage = ({ id }: { id: string }) => {
+const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const [viewDefinition, setViewDefinition] =
 		React.useState<Types.ViewDefinition>();
 
@@ -72,7 +72,16 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
 		queryFn: async () => {
-			const response = await fetchViewDefinition(id);
+			let response: Types.ViewDefinition;
+			if (id) {
+				response = await fetchViewDefinition(id);
+			} else {
+				response = {
+					resource: "Patient",
+					resourceType: "Patient",
+					select: [],
+				};
+			}
 			setViewDefinition(response);
 			setViewDefinitionResourceType(response.resource);
 			return response;

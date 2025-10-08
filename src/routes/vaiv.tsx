@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/vaiv')({
-  component: RouteComponent,
-})
+export const Route = createFileRoute("/vaiv")({
+	component: RouteComponent,
+});
 
 function RouteComponent() {
-  return <div>Hello "/vaiv"!</div>
+	return <div>Hello "/vaiv"!</div>;
 }

@@ -141,7 +141,10 @@ function ResourcesTab() {
 			accessorKey: "id",
 			header: "ID",
 			cell: (info: any) => (
-				<a href={`/u/ViewDefinition/${info.getValue()}`} className="text-blue-500 hover:underline">
+				<a
+					href={`/u/ViewDefinition/${info.getValue()}`}
+					className="text-blue-500 hover:underline"
+				>
 					{info.getValue()}
 				</a>
 			),
@@ -214,6 +217,13 @@ function ResourcesTab() {
 					>
 						Search
 					</HSComp.Button>
+					<HSComp.Button
+						onClick={() => {
+							window.location.href = "/u/ViewDefinition/new";
+						}}
+					>
+						Create
+					</HSComp.Button>
 				</div>
 			</div>
 			<div className="flex-1 min-h-0">
@@ -221,7 +231,7 @@ function ResourcesTab() {
 					<div>Loading...</div>
 				) : (
 					<div className="h-full">
-						<HSComp.DataTable columns={columns} data={tableData} stickyHeader/>
+						<HSComp.DataTable columns={columns} data={tableData} stickyHeader />
 					</div>
 				)}
 			</div>
