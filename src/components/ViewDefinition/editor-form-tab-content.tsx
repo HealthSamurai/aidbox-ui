@@ -1492,7 +1492,9 @@ export const FormTabContent = () => {
 
 	// Calculate expandedItemIds: all tree item IDs except those in collapsedItemIds
 	const expandedItemIds = useMemo(() => {
-		const allItemIds = Object.keys(tree);
+		const allItemIds = Object.keys(tree).filter(
+			(item) => item !== "_properties",
+		);
 		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
 	}, [tree, collapsedItemIds]);
 
