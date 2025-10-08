@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ViewDefinitionPage from "../../../components/ViewDefinition/page";
+import ViewDefinitionPage from "../components/ViewDefinition/page";
 
 const PageComponent = () => {
 	const { id, resourceType } = Route.useParams();
@@ -14,6 +14,6 @@ const PageComponent = () => {
 export const Route = createFileRoute("/resource-types/$resourceType/$id")({
 	component: PageComponent,
 	staticData: {
-		title: "View Definitions",
+		title: "View Definition",
 	},
 });
