@@ -74,9 +74,18 @@ export const EditorPanelActions = () => {
 		},
 		onSuccess: (data) => {
 			const id = JSON.parse(data.body).id;
-			console.log(1);
-			window.location.assign(`/u/ViewDefinition/${id}`);
-			console.log(2);
+			if (id) {
+				window.location.assign(`/u/ViewDefinition/${id}`);
+			} else {
+				HSComp.toast.error("Failed to create ViewDefinition", {
+					position: "bottom-right",
+					style: {
+						margin: "1rem",
+						backgroundColor: "var(--destructive)",
+						color: "var(--accent)",
+					},
+				});
+			}
 		},
 		onError: () => {
 			HSComp.toast.error("Failed to create ViewDefinition", {
