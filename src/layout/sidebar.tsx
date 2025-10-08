@@ -23,7 +23,11 @@ import type { SidebarMode } from "../shared/types";
 
 const mainMenuItems = [
 	{ title: "Home", url: "/", icon: House },
-	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
+	{ title: "REST Console", url: "/rest", icon: SquareTerminal },{
+		title: "ViewDefinition browser",
+		url: "/resourceType/ViewDefinition",
+		icon: SquareTerminal,
+	}
 ];
 
 export function AidboxSidebar({
