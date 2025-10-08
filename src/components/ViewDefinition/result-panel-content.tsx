@@ -17,12 +17,12 @@ import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
 
 interface ProcessedTableData {
-	tableData: any[];
-	columns: ColumnDef<Record<string, any>, any>[];
+	tableData: unknown[];
+	columns: ColumnDef<Record<string, unknown>, unknown>[];
 	isEmptyArray: boolean;
 }
 
-const parseResponse = (response: string | undefined): any[] | null => {
+const parseResponse = (response: string | undefined): unknown[] | null => {
 	if (!response) {
 		return null;
 	}
@@ -35,7 +35,9 @@ const parseResponse = (response: string | undefined): any[] | null => {
 	}
 };
 
-const extractColumns = (data: any[]): ColumnDef<Record<string, any>, any>[] => {
+const extractColumns = (
+	data: unknown[],
+): ColumnDef<Record<string, unknown>, unknown>[] => {
 	const allKeys = new Set<string>();
 	data.forEach((row) => {
 		if (typeof row === "object" && row !== null) {
@@ -87,20 +89,15 @@ const EmptyState = ({
 );
 
 const ResultHeader = ({
-	rowCount,
 	isMaximized,
 	onToggleMaximize,
 }: {
-	rowCount: number;
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
 }) => (
-	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
+	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-2 pr-2 py-3 border-b h-10">
 		<div className="flex gap-1 items-center">
 			<span className="typo-label text-text-secondary">Result:</span>
-			<span className="typo-label text-text-link">
-				{rowCount} row{rowCount !== 1 ? "s" : ""}
-			</span>
 		</div>
 		<Button variant="ghost" size="small" onClick={onToggleMaximize}>
 			{isMaximized ? (
@@ -120,8 +117,8 @@ const ResultContent = ({
 }: {
 	rows: string | undefined;
 	isEmptyArray: boolean;
-	tableData: any[];
-	columns: ColumnDef<Record<string, any>, any>[];
+	tableData: unknown[];
+	columns: ColumnDef<Record<string, unknown>, unknown>[];
 }) => {
 	if (!rows) {
 		return (
@@ -229,10 +226,11 @@ export function ResultPanel() {
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
 
-	const { tableData, columns, isEmptyArray } = useMemo(
-		() => processTableData(rows),
-		[rows],
-	);
+	const { tableData, columns, isEmptyArray } = useMemo(() => {
+		const data = processTableData(rows);
+		console.log(data);
+		return data;
+	}, [rows]);
 
 	const viewDefinitionRunMutation = useMutation({
 		mutationFn: ({
@@ -337,7 +335,6 @@ export function ResultPanel() {
 			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-10 overflow-auto bg-bg-primary" : ""}`}
 		>
 			<ResultHeader
-				rowCount={tableData.length}
 				isMaximized={isMaximized}
 				onToggleMaximize={toggleMaximize}
 			/>
