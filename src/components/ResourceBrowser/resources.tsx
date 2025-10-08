@@ -10,9 +10,10 @@ import {
 	PaginationPrevious,
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { AidboxCallWithMeta } from "../../../api/auth";
+import { useState } from "react";
+import { AidboxCallWithMeta } from "../../api/auth";
 
 interface BundleEntry {
 	resource: {
@@ -46,17 +47,17 @@ const handleKeyPress = (
 	}
 };
 
-function ResourcesTab() {
+function ResourcesTab({ resourceType }: { resourceType: string }) {
 	const [searchQuery, setSearchQuery] = useState("_count=30&_page=1");
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageSize, setPageSize] = useState(30);
 
 	const { data, isLoading, refetch } = useQuery({
-		queryKey: ["viewDefinitions", searchQuery],
+		queryKey: ["resource-browser-resources", searchQuery],
 		queryFn: async () => {
 			const response = await AidboxCallWithMeta({
 				method: "GET",
-				url: `/fhir/ViewDefinition?${searchQuery}`,
+				url: `/fhir/${resourceType}?${searchQuery}`,
 			});
 			return JSON.parse(response.body) as Bundle;
 		},
@@ -142,12 +143,11 @@ function ResourcesTab() {
 			accessorKey: "id",
 			header: "ID",
 			cell: (info: any) => (
-				<a
-					href={`/u/ViewDefinition/${info.getValue()}`}
-					className="text-blue-500 hover:underline"
-				>
-					{info.getValue()}
-				</a>
+				<Link to={`/resource-types/${resourceType}/${info.getValue()}`}>
+					<span className="text-blue-500 hover:underline">
+						{info.getValue()}
+					</span>
+				</Link>
 			),
 		},
 		{
@@ -199,7 +199,7 @@ function ResourcesTab() {
 						prefixValue={
 							<span className="flex gap-1 text-nowrap text-elements-assistive">
 								<span className="font-bold">GET</span>
-								<span>/fhir/ViewDefinition?</span>
+								<span>/fhir/${resourceType}?</span>
 							</span>
 						}
 						placeholder="e.g. _count=30&_page=1&_sort=_id&_ilike="
@@ -220,15 +220,12 @@ function ResourcesTab() {
 							Search
 						</HSComp.Button>
 						<div className="h-6 border-l border-border-primary" />
-						<HSComp.Button
-							variant="secondary"
-							onClick={() => {
-								window.location.href = "/u/ViewDefinition/new";
-							}}
-						>
-							<Lucide.PlusIcon className="text-fg-brand-primary" />
-							Create
-						</HSComp.Button>
+						<Link to={`/resource-types/${resourceType}/new`} asChild>
+							<HSComp.Button variant="secondary">
+								<Lucide.PlusIcon className="text-fg-brand-primary" />
+								Create
+							</HSComp.Button>
+						</Link>
 					</div>
 				</div>
 			</div>
@@ -317,7 +314,7 @@ function ResourcesTab() {
 	);
 }
 
-export function Resources() {
+export function Resources({ resourceType }: { resourceType: string }) {
 	const [selectedTab, setSelectedTab] = useState("resources");
 
 	return (
@@ -335,7 +332,7 @@ export function Resources() {
 				</HSComp.TabsList>
 			</div>
 			<HSComp.TabsContent value="resources" className="flex-1 min-h-0">
-				<ResourcesTab />
+				<ResourcesTab resourceType={resourceType} />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="profiles">
 				{/* Profiles content */}
