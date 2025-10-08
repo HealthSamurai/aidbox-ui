@@ -65,7 +65,7 @@ function Breadcrumbs() {
 							{index === breadcrumbs.length - 1 ? (
 								<BreadcrumbPage>{crumb.title}</BreadcrumbPage>
 							) : (
-								<BreadcrumbLink asChild>
+								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>
 								</BreadcrumbLink>
 							)}
