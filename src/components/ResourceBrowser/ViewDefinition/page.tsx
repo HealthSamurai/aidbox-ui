@@ -217,6 +217,13 @@ function ResourcesTab() {
 					>
 						Search
 					</HSComp.Button>
+					<HSComp.Button
+						onClick={() => {
+							window.location.href = "/u/ViewDefinition/new";
+						}}
+					>
+						Create
+					</HSComp.Button>
 				</div>
 			</div>
 			<div className="flex-1 min-h-0">

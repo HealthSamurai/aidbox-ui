@@ -14,12 +14,12 @@ export interface ViewDefinition {
 	resourceType: string;
 	resource: string;
 	name?: string;
-	id: string;
+	id?: string;
 	select: ViewDefinitionSelectItem[];
 }
 
 export interface ViewDefinitionContextProps {
-	originalId?: string;
+	originalId?: string | undefined;
 	viewDefinition: ViewDefinition | undefined;
 	setViewDefinition: (viewDefinition: ViewDefinition) => void;
 	isLoadingViewDef: boolean;

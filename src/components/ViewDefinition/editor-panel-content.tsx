@@ -64,6 +64,32 @@ export const EditorPanelActions = () => {
 		},
 	});
 
+	const viewDefinitionCreateMutation = useMutation({
+		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+			return AidboxCallWithMeta({
+				method: "POST",
+				url: `/fhir/ViewDefinition/`,
+				body: JSON.stringify(viewDefinition),
+			});
+		},
+		onSuccess: (data) => {
+			const id = JSON.parse(data.body).id;
+			console.log(1);
+			window.location.assign(`/u/ViewDefinition/${id}`);
+			console.log(2);
+		},
+		onError: () => {
+			HSComp.toast.error("Failed to create ViewDefinition", {
+				position: "bottom-right",
+				style: {
+					margin: "1rem",
+					backgroundColor: "var(--destructive)",
+					color: "var(--accent)",
+				},
+			});
+		},
+	});
+
 	const viewDefinitionRunMutation = useMutation({
 		mutationFn: (viewDefinition: Types.ViewDefinition) => {
 			viewDefinitionContext.setRunResultPage(1);
@@ -132,12 +158,25 @@ export const EditorPanelActions = () => {
 		}
 	};
 
+	const handleCreate = () => {
+		if (viewDefinitionResource) {
+			viewDefinitionCreateMutation.mutate(viewDefinitionResource);
+		}
+	};
+
 	return (
 		<div className="flex items-center justify-end gap-2 py-3 px-6 border-t">
-			<HSComp.Button variant="secondary" onClick={handleSave}>
-				<Lucide.SaveIcon className="w-4 h-4" />
-				Save
-			</HSComp.Button>
+			{viewDefinitionContext.originalId ? (
+				<HSComp.Button variant="secondary" onClick={handleSave}>
+					<Lucide.SaveIcon className="w-4 h-4" />
+					Save
+				</HSComp.Button>
+			) : (
+				<HSComp.Button variant="secondary" onClick={handleCreate}>
+					<Lucide.SaveIcon className="w-4 h-4" />
+					Create
+				</HSComp.Button>
+			)}
 			<HSComp.Button onClick={handleRun}>
 				<Lucide.PlayIcon />
 				Run
