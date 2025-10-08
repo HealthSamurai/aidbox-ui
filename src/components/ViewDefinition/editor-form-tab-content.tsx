@@ -1,6 +1,7 @@
 import {
 	Button,
 	Checkbox,
+	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -13,10 +14,19 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
+	type TreeInstance,
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import { ChevronDown, Funnel, Pi, PlusIcon, TextQuote, X } from "lucide-react";
+import {
+	ChevronDown,
+	Funnel,
+	GripVertical,
+	Pi,
+	PlusIcon,
+	TextQuote,
+	X,
+} from "lucide-react";
 import React, {
 	useCallback,
 	useEffect,
@@ -900,6 +910,162 @@ export const FormTabContent = () => {
 		}
 	};
 
+	const onDropTreeItem = (
+		tree: TreeInstance<TreeViewItem<any>>,
+		item: ItemInstance<TreeViewItem<any>>,
+		newChildren: string[],
+	) => {
+		item.getItemData().children = newChildren;
+
+		const itemId = item.getId();
+		const itemMeta = item.getItemData()?.meta;
+
+		// Handle reordering of constants
+		if (itemId === "_constant") {
+			// Filter out the add button and reorder constants
+			const reorderedConstantIds = newChildren.filter(
+				(id) => id !== "_constant_add",
+			);
+			const reorderedConstants: ConstantItem[] = [];
+
+			for (const id of reorderedConstantIds) {
+				const constant = constants.find((c) => c.id === id);
+				if (constant) {
+					reorderedConstants.push(constant);
+				}
+			}
+
+			if (reorderedConstants.length === constants.length) {
+				setConstants(reorderedConstants);
+				updateViewDefinition(reorderedConstants);
+			}
+		}
+
+		// Handle reordering of where conditions
+		else if (itemId === "_where") {
+			// Filter out the add button and reorder where conditions
+			const reorderedWhereIds = newChildren.filter((id) => id !== "_where_add");
+			const reorderedWhere: WhereItem[] = [];
+
+			for (const id of reorderedWhereIds) {
+				const where = whereConditions.find((w) => w.id === id);
+				if (where) {
+					reorderedWhere.push(where);
+				}
+			}
+
+			if (reorderedWhere.length === whereConditions.length) {
+				setWhereConditions(reorderedWhere);
+				updateViewDefinition(undefined, reorderedWhere);
+			}
+		}
+
+		// Handle reordering of top-level select items
+		else if (itemId === "_select") {
+			// Filter out the add button and reorder select items
+			const reorderedSelectIds = newChildren.filter(
+				(id) => id !== "_select_add",
+			);
+
+			const reorderSelectItems = (
+				items: SelectItemInternal[],
+				orderedIds: string[],
+			): SelectItemInternal[] => {
+				const reordered: SelectItemInternal[] = [];
+				for (const id of orderedIds) {
+					const item = items.find((i) => i.id === id);
+					if (item) {
+						reordered.push(item);
+					}
+				}
+				return reordered;
+			};
+
+			const reorderedSelect = reorderSelectItems(
+				selectItems,
+				reorderedSelectIds,
+			);
+			if (reorderedSelect.length === selectItems.length) {
+				setSelectItems(reorderedSelect);
+				updateViewDefinition(undefined, undefined, undefined, reorderedSelect);
+			}
+		}
+
+		// Handle reordering within a select item (columns or nested selects)
+		else {
+			// First, try to find the item in the flat structure (could be a column node or nested select)
+			const findAndUpdateItems = (
+				items: SelectItemInternal[],
+			): { updated: boolean; items: SelectItemInternal[] } => {
+				let wasUpdated = false;
+				const updatedItems = items.map((item) => {
+					// Check if this item matches
+					if (item.id === itemId) {
+						if (item.type === "column" && item.columns) {
+							// Reorder columns
+							const reorderedColumnIds = newChildren.filter(
+								(id) => !id.endsWith("_add_column"),
+							);
+							const reorderedColumns: ColumnItem[] = [];
+
+							for (const id of reorderedColumnIds) {
+								const column = item.columns.find((c) => c.id === id);
+								if (column) {
+									reorderedColumns.push(column);
+								}
+							}
+
+							if (reorderedColumns.length === item.columns.length) {
+								wasUpdated = true;
+								return { ...item, columns: reorderedColumns };
+							}
+						} else if (
+							(item.type === "forEach" ||
+								item.type === "forEachOrNull" ||
+								item.type === "unionAll") &&
+							item.children
+						) {
+							// Reorder nested select items
+							const reorderedChildIds = newChildren.filter(
+								(id) => !id.endsWith("_add_select"),
+							);
+							const reorderedChildren: SelectItemInternal[] = [];
+
+							for (const id of reorderedChildIds) {
+								const child = item.children.find((c) => c.id === id);
+								if (child) {
+									reorderedChildren.push(child);
+								}
+							}
+
+							if (reorderedChildren.length === item.children.length) {
+								wasUpdated = true;
+								return { ...item, children: reorderedChildren };
+							}
+						}
+					}
+					// If not matched, check children recursively
+					else if (item.children && item.children.length > 0) {
+						const result = findAndUpdateItems(item.children);
+						if (result.updated) {
+							wasUpdated = true;
+							return { ...item, children: result.items };
+						}
+					}
+					return item;
+				});
+
+				return { updated: wasUpdated, items: updatedItems };
+			};
+
+			const result = findAndUpdateItems(selectItems);
+			if (result.updated) {
+				setSelectItems(result.items);
+				updateViewDefinition(undefined, undefined, undefined, result.items);
+			}
+		}
+	};
+
 	const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 		const selectData = item.getItemData()?.meta?.selectData;
@@ -967,6 +1133,37 @@ export const FormTabContent = () => {
 
 	const customItemView = (item: ItemInstance<TreeViewItem<any>>) => {
 		const metaType = item.getItemData()?.meta?.type;
+		const itemId = item.getId();
+		const itemProps = item.getProps();
+
+		// Helper function to render drag handle for draggable items
+		const renderDragHandle = () => {
+			// Only show drag handle for items that can be reordered
+			const isDraggable =
+				metaType === "constant-value" ||
+				metaType === "where-value" ||
+				metaType === "column-item" ||
+				metaType?.startsWith("select-");
+
+			if (!isDraggable) return null;
+
+			return (
+				<Button
+					draggable
+					data-slot="drag-handle"
+					variant="link"
+					size="small"
+					className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
+					onMouseDown={(e) => e.stopPropagation()}
+					asChild
+				>
+					<span>
+						<GripVertical size={16} />
+					</span>
+				</Button>
+			);
+		};
+
 		switch (metaType) {
 			case "name":
 				return (
@@ -1285,7 +1482,22 @@ export const FormTabContent = () => {
 				const selectData = item.getItemData()?.meta?.selectData;
 				if (!selectData || selectData.type !== "column") return null;
 
-				return <div>{labelView(item)}</div>;
+				return (
+					<div className="flex items-center w-full gap-2">
+						{labelView(item)}
+						<Button
+							variant="link"
+							size="small"
+							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity ml-auto"
+							onClick={() => removeSelectItem(selectData.id)}
+							asChild
+						>
+							<span>
+								<X size={14} />
+							</span>
+						</Button>
+					</div>
+				);
 			}
 			case "select-forEach":
 			case "select-forEachOrNull": {
@@ -1371,6 +1583,7 @@ export const FormTabContent = () => {
 								<X size={14} />
 							</span>
 						</Button>
+						{renderDragHandle()}
 					</div>
 				);
 			}
@@ -1431,6 +1644,7 @@ export const FormTabContent = () => {
 								<X size={14} />
 							</span>
 						</Button>
+						{renderDragHandle()}
 					</div>
 				);
 			}
@@ -1484,6 +1698,7 @@ export const FormTabContent = () => {
 								<X size={14} />
 							</span>
 						</Button>
+						{renderDragHandle()}
 					</div>
 				);
 			}
@@ -1514,6 +1729,7 @@ export const FormTabContent = () => {
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
 			itemLabelClassFn={(item: ItemInstance<TreeViewItem<any>>) => {
 				const metaType = item.getItemData()?.meta?.type;
+
 				if (
 					metaType === "constant" ||
 					metaType === "select" ||
@@ -1522,9 +1738,12 @@ export const FormTabContent = () => {
 				) {
 					return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 				} else {
-					console.log(metaType);
-					if (metaType === "column-item" || metaType === "constant-value") {
-						return "pl-0! pr-0! ml-2.5 border-b";
+					if (
+						metaType === "column-item" ||
+						metaType === "constant-value" ||
+						metaType === "where-value"
+					) {
+						return "pl-0! pr-0! ml-2.5 border-y border-t-transparent";
 					} else {
 						return "pr-0";
 					}
@@ -1536,6 +1755,8 @@ export const FormTabContent = () => {
 			expandedItemIds={expandedItemIds}
 			customItemView={customItemView}
 			disableHover={true}
+			canReorder={true}
+			onDropFn={onDropTreeItem}
 		/>
 	);
 };
