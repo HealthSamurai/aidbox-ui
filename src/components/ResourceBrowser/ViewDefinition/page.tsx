@@ -10,6 +10,7 @@ import {
 	PaginationPrevious,
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
+import * as Lucide from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AidboxCallWithMeta } from "../../../api/auth";
 
@@ -190,7 +191,7 @@ function ResourcesTab() {
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="p-3 border-b flex-none">
+			<div className="p-4 border-b flex-none">
 				<div className="flex gap-2">
 					<HSComp.Input
 						type="text"
@@ -208,22 +209,27 @@ function ResourcesTab() {
 							handleKeyPress(e, handleSearch, searchQuery);
 						}}
 					/>
-					<HSComp.Button
-						variant="secondary"
-						onClick={() => {
-							handleSearch(searchQuery);
-						}}
-						disabled={isLoading}
-					>
-						Search
-					</HSComp.Button>
-					<HSComp.Button
-						onClick={() => {
-							window.location.href = "/u/ViewDefinition/new";
-						}}
-					>
-						Create
-					</HSComp.Button>
+					<div className="flex gap-4 items-center">
+						<HSComp.Button
+							variant="primary"
+							onClick={() => {
+								handleSearch(searchQuery);
+							}}
+							disabled={isLoading}
+						>
+							Search
+						</HSComp.Button>
+						<div className="h-6 border-l border-border-primary" />
+						<HSComp.Button
+							variant="secondary"
+							onClick={() => {
+								window.location.href = "/u/ViewDefinition/new";
+							}}
+						>
+							<Lucide.PlusIcon className="text-fg-brand-primary" />
+							Create
+						</HSComp.Button>
+					</div>
 				</div>
 			</div>
 			<div className="flex-1 min-h-0">
@@ -320,7 +326,7 @@ export function Resources() {
 			onValueChange={setSelectedTab}
 			className="grow min-h-0 flex flex-col"
 		>
-			<div className="flex items-center gap-4 bg-bg-secondary px-6 border-b h-10 flex-none">
+			<div className="flex items-center gap-4 bg-bg-secondary px-4 border-b h-10 flex-none">
 				<HSComp.TabsList>
 					<HSComp.TabsTrigger value="resources">Resources</HSComp.TabsTrigger>
 					<HSComp.TabsTrigger value="profiles">Profiles</HSComp.TabsTrigger>

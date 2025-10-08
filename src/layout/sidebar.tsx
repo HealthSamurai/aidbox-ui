@@ -10,8 +10,14 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "@health-samurai/react-components";
-import { Link, useRouterState } from "@tanstack/react-router";
 import {
+	Link,
+	type RouteMatch,
+	useParentMatches,
+	useRouterState,
+} from "@tanstack/react-router";
+import {
+	Columns3Cog,
 	House,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -27,9 +33,21 @@ const mainMenuItems = [
 	{
 		title: "ViewDefinition browser",
 		url: "/resourceType/ViewDefinition",
-		icon: SquareTerminal,
+		icon: Columns3Cog,
 	},
 ];
+
+const isActiveNavItem = (
+	item: (typeof mainMenuItems)[number],
+	currentPath: string,
+) => {
+	console.log(currentPath, item.url);
+	return (
+		currentPath === item.url ||
+		(currentPath.startsWith(item.url) && item.url !== "/") ||
+		currentPath === UI_BASE_PATH + "/" + item.url
+	);
+};
 
 export function AidboxSidebar({
 	sidebarMode,
@@ -60,10 +78,7 @@ export function AidboxSidebar({
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton
 										asChild
-										isActive={
-											currentPath === item.url ||
-											currentPath === UI_BASE_PATH + "/" + item.url
-										}
+										isActive={isActiveNavItem(item, currentPath)}
 										tooltip={{ sideOffset: 16, children: item.title }}
 										className="text-nowrap"
 									>
