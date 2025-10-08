@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/resource-types/")({
 	component: RouteComponent,
 	staticData: {
 		title: "Resources",
@@ -8,5 +8,5 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-	return <div></div>;
+	return <div>Hello "/re-types"!</div>;
 }
