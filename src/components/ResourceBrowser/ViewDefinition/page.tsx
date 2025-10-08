@@ -1,6 +1,16 @@
 import * as HSComp from "@health-samurai/react-components";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPageSizeSelector,
+	PaginationPrevious,
+} from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AidboxCallWithMeta } from "../../../api/auth";
 
 interface BundleEntry {
@@ -37,6 +47,8 @@ const handleKeyPress = (
 
 function ResourcesTab() {
 	const [searchQuery, setSearchQuery] = useState("_count=30&_page=1");
+	const [currentPage, setCurrentPage] = useState(1);
+	const [pageSize, setPageSize] = useState(30);
 
 	const { data, isLoading, refetch } = useQuery({
 		queryKey: ["viewDefinitions", searchQuery],
@@ -53,6 +65,76 @@ function ResourcesTab() {
 		setSearchQuery(query || "");
 		refetch();
 	};
+
+	const handlePageChange = (page: number) => {
+		setCurrentPage(page);
+		const params = new URLSearchParams(searchQuery);
+		params.set("_page", page.toString());
+		setSearchQuery(params.toString());
+	};
+
+	const handlePageSizeChange = (size: number) => {
+		setPageSize(size);
+		setCurrentPage(1);
+		const params = new URLSearchParams(searchQuery);
+		params.set("_count", size.toString());
+		params.set("_page", "1");
+		setSearchQuery(params.toString());
+	};
+
+	const totalItems = data?.total || 0;
+	const totalPages = Math.ceil(totalItems / pageSize);
+
+	const getPageNumbers = () => {
+		const pages: (number | "ellipsis")[] = [];
+		const maxButtons = 5;
+
+		if (totalPages <= maxButtons) {
+			// Show all pages if total is less than or equal to max buttons
+			for (let i = 1; i <= totalPages; i++) {
+				pages.push(i);
+			}
+		} else {
+			// Always show first page
+			pages.push(1);
+
+			if (currentPage <= 3) {
+				// Near the beginning
+				for (let i = 2; i <= 4; i++) {
+					pages.push(i);
+				}
+				pages.push("ellipsis");
+			} else if (currentPage >= totalPages - 2) {
+				// Near the end
+				pages.push("ellipsis");
+				for (let i = totalPages - 3; i <= totalPages - 1; i++) {
+					pages.push(i);
+				}
+			} else {
+				// In the middle
+				pages.push("ellipsis");
+				pages.push(currentPage - 1);
+				pages.push(currentPage);
+				pages.push(currentPage + 1);
+				pages.push("ellipsis");
+			}
+
+			// Always show last page
+			pages.push(totalPages);
+		}
+
+		return pages;
+	};
+
+	const tableData =
+		data?.entry?.map((entry) => ({
+			id: entry.resource.id,
+			name: entry.resource.name,
+			resource: entry.resource.resource,
+			status: entry.resource.status,
+			description: entry.resource.description,
+			lastUpdated: entry.resource.meta?.lastUpdated,
+		})) || [];
 
 	const columns = [
 		{
@@ -106,16 +188,6 @@ function ResourcesTab() {
 		},
 	];
 
-	const tableData =
-		data?.entry?.map((entry) => ({
-			id: entry.resource.id,
-			name: entry.resource.name,
-			resource: entry.resource.resource,
-			status: entry.resource.status,
-			description: entry.resource.description,
-			lastUpdated: entry.resource.meta?.lastUpdated,
-		})) || [];
-
 	return (
 		<div className="flex flex-col h-full">
 			<div className="p-3 border-b flex-none">
@@ -152,9 +224,81 @@ function ResourcesTab() {
 					<div>Loading...</div>
 				) : (
 					<div className="h-full">
-						<HSComp.DataTable columns={columns} data={tableData} />
+						<HSComp.DataTable columns={columns} data={tableData} stickyHeader />
 					</div>
 				)}
+			</div>
+			<div className="flex items-center justify-end px-6 py-3 border-t flex-none">
+				<Pagination>
+					<PaginationContent>
+						<PaginationPrevious
+							href="#"
+							onClick={(e) => {
+								e.preventDefault();
+								if (currentPage > 1) {
+									handlePageChange(currentPage - 1);
+								}
+							}}
+							aria-disabled={currentPage <= 1}
+							style={
+								currentPage <= 1
+									? {
+											pointerEvents: "none",
+											opacity: 0.5,
+											cursor: "not-allowed",
+										}
+									: { cursor: "pointer" }
+							}
+						/>
+						{getPageNumbers().map((page, index) => {
+							if (page === "ellipsis") {
+								return (
+									<PaginationItem key={`ellipsis-${index}`}>
+										<PaginationEllipsis />
+									</PaginationItem>
+								);
+							}
+							return (
+								<PaginationItem key={page}>
+									<PaginationLink
+										href="#"
+										onClick={(e) => {
+											e.preventDefault();
+											handlePageChange(page);
+										}}
+										isActive={currentPage === page}
+									>
+										{page}
+									</PaginationLink>
+								</PaginationItem>
+							);
+						})}
+						<PaginationNext
+							href="#"
+							onClick={(e) => {
+								e.preventDefault();
+								if (currentPage < totalPages) {
+									handlePageChange(currentPage + 1);
+								}
+							}}
+							aria-disabled={currentPage >= totalPages}
+							style={
+								currentPage >= totalPages
+									? {
+											pointerEvents: "none",
+											opacity: 0.5,
+											cursor: "not-allowed",
+										}
+									: { cursor: "pointer" }
+							}
+						/>
+					</PaginationContent>
+					<PaginationPageSizeSelector
+						pageSize={pageSize}
+						onPageSizeChange={handlePageSizeChange}
+						pageSizeOptions={[30, 50, 100]}
+					/>
+				</Pagination>
 			</div>
 		</div>
 	);
