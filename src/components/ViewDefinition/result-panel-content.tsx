@@ -334,7 +334,7 @@ export function ResultPanel() {
 
 	return (
 		<div
-			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-[100] overflow-auto bg-bg-primary" : ""}`}
+			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-10 overflow-auto bg-bg-primary" : ""}`}
 		>
 			<ResultHeader
 				rowCount={tableData.length}
