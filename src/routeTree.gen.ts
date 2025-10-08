@@ -9,18 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VaivRouteImport } from './routes/vaiv'
 import { Route as RestRouteImport } from './routes/rest'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ResourceTypeViewDefinitionRouteImport } from './routes/resourceType/ViewDefinition'
-import { Route as ViewDefinitionNewRouteImport } from './routes/ViewDefinition/new'
-import { Route as ViewDefinitionIdRouteImport } from './routes/ViewDefinition/$id'
+import { Route as ResourceTypesIndexRouteImport } from './routes/resource-types/index'
+import { Route as ResourceTypesResourceTypeIndexRouteImport } from './routes/resource-types/$resourceType/index'
+import { Route as ResourceTypesResourceTypeNewRouteImport } from './routes/resource-types/$resourceType/new'
+import { Route as ResourceTypesResourceTypeIdRouteImport } from './routes/resource-types/$resourceType/$id'
 
-const VaivRoute = VaivRouteImport.update({
-  id: '/vaiv',
-  path: '/vaiv',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RestRoute = RestRouteImport.update({
   id: '/rest',
   path: '/rest',
@@ -31,93 +26,93 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResourceTypeViewDefinitionRoute =
-  ResourceTypeViewDefinitionRouteImport.update({
-    id: '/resourceType/ViewDefinition',
-    path: '/resourceType/ViewDefinition',
+const ResourceTypesIndexRoute = ResourceTypesIndexRouteImport.update({
+  id: '/resource-types/',
+  path: '/resource-types/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResourceTypesResourceTypeIndexRoute =
+  ResourceTypesResourceTypeIndexRouteImport.update({
+    id: '/resource-types/$resourceType/',
+    path: '/resource-types/$resourceType/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ViewDefinitionNewRoute = ViewDefinitionNewRouteImport.update({
-  id: '/ViewDefinition/new',
-  path: '/ViewDefinition/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ViewDefinitionIdRoute = ViewDefinitionIdRouteImport.update({
-  id: '/ViewDefinition/$id',
-  path: '/ViewDefinition/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ResourceTypesResourceTypeNewRoute =
+  ResourceTypesResourceTypeNewRouteImport.update({
+    id: '/resource-types/$resourceType/new',
+    path: '/resource-types/$resourceType/new',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ResourceTypesResourceTypeIdRoute =
+  ResourceTypesResourceTypeIdRouteImport.update({
+    id: '/resource-types/$resourceType/$id',
+    path: '/resource-types/$resourceType/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/rest': typeof RestRoute
-  '/vaiv': typeof VaivRoute
-  '/ViewDefinition/$id': typeof ViewDefinitionIdRoute
-  '/ViewDefinition/new': typeof ViewDefinitionNewRoute
-  '/resourceType/ViewDefinition': typeof ResourceTypeViewDefinitionRoute
+  '/resource-types': typeof ResourceTypesIndexRoute
+  '/resource-types/$resourceType/$id': typeof ResourceTypesResourceTypeIdRoute
+  '/resource-types/$resourceType/new': typeof ResourceTypesResourceTypeNewRoute
+  '/resource-types/$resourceType': typeof ResourceTypesResourceTypeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/rest': typeof RestRoute
-  '/vaiv': typeof VaivRoute
-  '/ViewDefinition/$id': typeof ViewDefinitionIdRoute
-  '/ViewDefinition/new': typeof ViewDefinitionNewRoute
-  '/resourceType/ViewDefinition': typeof ResourceTypeViewDefinitionRoute
+  '/resource-types': typeof ResourceTypesIndexRoute
+  '/resource-types/$resourceType/$id': typeof ResourceTypesResourceTypeIdRoute
+  '/resource-types/$resourceType/new': typeof ResourceTypesResourceTypeNewRoute
+  '/resource-types/$resourceType': typeof ResourceTypesResourceTypeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/rest': typeof RestRoute
-  '/vaiv': typeof VaivRoute
-  '/ViewDefinition/$id': typeof ViewDefinitionIdRoute
-  '/ViewDefinition/new': typeof ViewDefinitionNewRoute
-  '/resourceType/ViewDefinition': typeof ResourceTypeViewDefinitionRoute
+  '/resource-types/': typeof ResourceTypesIndexRoute
+  '/resource-types/$resourceType/$id': typeof ResourceTypesResourceTypeIdRoute
+  '/resource-types/$resourceType/new': typeof ResourceTypesResourceTypeNewRoute
+  '/resource-types/$resourceType/': typeof ResourceTypesResourceTypeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/rest'
-    | '/vaiv'
-    | '/ViewDefinition/$id'
-    | '/ViewDefinition/new'
-    | '/resourceType/ViewDefinition'
+    | '/resource-types'
+    | '/resource-types/$resourceType/$id'
+    | '/resource-types/$resourceType/new'
+    | '/resource-types/$resourceType'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/rest'
-    | '/vaiv'
-    | '/ViewDefinition/$id'
-    | '/ViewDefinition/new'
-    | '/resourceType/ViewDefinition'
+    | '/resource-types'
+    | '/resource-types/$resourceType/$id'
+    | '/resource-types/$resourceType/new'
+    | '/resource-types/$resourceType'
   id:
     | '__root__'
     | '/'
     | '/rest'
-    | '/vaiv'
-    | '/ViewDefinition/$id'
-    | '/ViewDefinition/new'
-    | '/resourceType/ViewDefinition'
+    | '/resource-types/'
+    | '/resource-types/$resourceType/$id'
+    | '/resource-types/$resourceType/new'
+    | '/resource-types/$resourceType/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   RestRoute: typeof RestRoute
-  VaivRoute: typeof VaivRoute
-  ViewDefinitionIdRoute: typeof ViewDefinitionIdRoute
-  ViewDefinitionNewRoute: typeof ViewDefinitionNewRoute
-  ResourceTypeViewDefinitionRoute: typeof ResourceTypeViewDefinitionRoute
+  ResourceTypesIndexRoute: typeof ResourceTypesIndexRoute
+  ResourceTypesResourceTypeIdRoute: typeof ResourceTypesResourceTypeIdRoute
+  ResourceTypesResourceTypeNewRoute: typeof ResourceTypesResourceTypeNewRoute
+  ResourceTypesResourceTypeIndexRoute: typeof ResourceTypesResourceTypeIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/vaiv': {
-      id: '/vaiv'
-      path: '/vaiv'
-      fullPath: '/vaiv'
-      preLoaderRoute: typeof VaivRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/rest': {
       id: '/rest'
       path: '/rest'
@@ -132,25 +127,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resourceType/ViewDefinition': {
-      id: '/resourceType/ViewDefinition'
-      path: '/resourceType/ViewDefinition'
-      fullPath: '/resourceType/ViewDefinition'
-      preLoaderRoute: typeof ResourceTypeViewDefinitionRouteImport
+    '/resource-types/': {
+      id: '/resource-types/'
+      path: '/resource-types'
+      fullPath: '/resource-types'
+      preLoaderRoute: typeof ResourceTypesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ViewDefinition/new': {
-      id: '/ViewDefinition/new'
-      path: '/ViewDefinition/new'
-      fullPath: '/ViewDefinition/new'
-      preLoaderRoute: typeof ViewDefinitionNewRouteImport
+    '/resource-types/$resourceType/': {
+      id: '/resource-types/$resourceType/'
+      path: '/resource-types/$resourceType'
+      fullPath: '/resource-types/$resourceType'
+      preLoaderRoute: typeof ResourceTypesResourceTypeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ViewDefinition/$id': {
-      id: '/ViewDefinition/$id'
-      path: '/ViewDefinition/$id'
-      fullPath: '/ViewDefinition/$id'
-      preLoaderRoute: typeof ViewDefinitionIdRouteImport
+    '/resource-types/$resourceType/new': {
+      id: '/resource-types/$resourceType/new'
+      path: '/resource-types/$resourceType/new'
+      fullPath: '/resource-types/$resourceType/new'
+      preLoaderRoute: typeof ResourceTypesResourceTypeNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resource-types/$resourceType/$id': {
+      id: '/resource-types/$resourceType/$id'
+      path: '/resource-types/$resourceType/$id'
+      fullPath: '/resource-types/$resourceType/$id'
+      preLoaderRoute: typeof ResourceTypesResourceTypeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -159,10 +161,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   RestRoute: RestRoute,
-  VaivRoute: VaivRoute,
-  ViewDefinitionIdRoute: ViewDefinitionIdRoute,
-  ViewDefinitionNewRoute: ViewDefinitionNewRoute,
-  ResourceTypeViewDefinitionRoute: ResourceTypeViewDefinitionRoute,
+  ResourceTypesIndexRoute: ResourceTypesIndexRoute,
+  ResourceTypesResourceTypeIdRoute: ResourceTypesResourceTypeIdRoute,
+  ResourceTypesResourceTypeNewRoute: ResourceTypesResourceTypeNewRoute,
+  ResourceTypesResourceTypeIndexRoute: ResourceTypesResourceTypeIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
