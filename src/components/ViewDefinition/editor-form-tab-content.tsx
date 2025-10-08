@@ -1514,7 +1514,6 @@ export const FormTabContent = () => {
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
 			itemLabelClassFn={(item: ItemInstance<TreeViewItem<any>>) => {
 				const metaType = item.getItemData()?.meta?.type;
-
 				if (
 					metaType === "constant" ||
 					metaType === "select" ||
@@ -1523,7 +1522,12 @@ export const FormTabContent = () => {
 				) {
 					return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 				} else {
-					return "pr-0";
+					console.log(metaType);
+					if (metaType === "column-item" || metaType === "constant-value") {
+						return "pl-0! pr-0! ml-2.5 border-b";
+					} else {
+						return "pr-0";
+					}
 				}
 			}}
 			onSelectItem={onSelectTreeItem}
