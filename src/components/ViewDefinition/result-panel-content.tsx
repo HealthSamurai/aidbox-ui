@@ -228,7 +228,6 @@ export function ResultPanel() {
 
 	const { tableData, columns, isEmptyArray } = useMemo(() => {
 		const data = processTableData(rows);
-		console.log(data);
 		return data;
 	}, [rows]);
 
