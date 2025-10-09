@@ -75,7 +75,7 @@ export const EditorPanelActions = () => {
 		onSuccess: (data) => {
 			const id = JSON.parse(data.body).id;
 			if (id) {
-				window.location.assign(`/u/ViewDefinition/${id}`);
+				window.location.assign(`/u/resource-types/ViewDefinition/${id}`);
 			} else {
 				HSComp.toast.error("Failed to create ViewDefinition", {
 					position: "bottom-right",
