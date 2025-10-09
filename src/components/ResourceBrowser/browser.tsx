@@ -14,6 +14,27 @@ function formatBytes(bytes: number): string {
 	return `${value % 1 === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
 
+function FavoriteCell({
+	resourceType,
+	isFavorite,
+	onToggle,
+}: {
+	resourceType: string;
+	isFavorite: boolean;
+	onToggle: (resourceType: string) => void;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={() => onToggle(resourceType)}
+			className="cursor-pointer transition-opacity pin-button"
+			style={{ opacity: isFavorite ? 1 : 0 }}
+		>
+			<Pin size={16} />
+		</button>
+	);
+}
+
 function ResourceList({
 	tableData,
 	filterQuery,
@@ -37,18 +58,17 @@ function ResourceList({
 	const columns = [
 		{
 			accessorKey: "favorite",
-			header: <Pin />,
+			header: <Pin size={16} />,
+			size: 40,
 			cell: (info: any) => {
 				const resourceType = info.row.original.resourceType;
 				const isFavorite = favorites.has(resourceType);
 				return (
-					<button
-						type="button"
-						onClick={() => onToggleFavorite(resourceType)}
-						className="cursor-pointer"
-					>
-						{isFavorite ? <Pin size={16} /> : <PinOff size={16} />}
-					</button>
+					<FavoriteCell
+						resourceType={resourceType}
+						isFavorite={isFavorite}
+						onToggle={onToggleFavorite}
+					/>
 				);
 			},
 		},
