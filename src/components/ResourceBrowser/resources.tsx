@@ -231,84 +231,91 @@ function ResourcesTab({ resourceType }: { resourceType: string }) {
 			</div>
 			<div className="flex-1 min-h-0">
 				{isLoading ? (
-					<div>Loading...</div>
+					<div className="flex items-center justify-center h-full text-text-secondary">
+						<div className="text-center">
+							<div className="text-lg mb-2">Loading resources...</div>
+							<div className="text-sm">Fetching {resourceType} resources</div>
+						</div>
+					</div>
 				) : (
 					<div className="h-full">
 						<HSComp.DataTable columns={columns} data={tableData} stickyHeader />
 					</div>
 				)}
 			</div>
-			<div className="flex items-center justify-end px-6 py-3 border-t flex-none">
-				<Pagination>
-					<PaginationContent>
-						<PaginationPrevious
-							href="#"
-							onClick={(e) => {
-								e.preventDefault();
-								if (currentPage > 1) {
-									handlePageChange(currentPage - 1);
+			<div className="flex items-center justify-end bg-bg-secondary px-6 py-3 border-t h-12">
+				<div className="flex items-center gap-4">
+					<Pagination>
+						<PaginationContent>
+							<PaginationPrevious
+								href="#"
+								onClick={(e) => {
+									e.preventDefault();
+									if (currentPage > 1) {
+										handlePageChange(currentPage - 1);
+									}
+								}}
+								aria-disabled={currentPage <= 1}
+								style={
+									currentPage <= 1
+										? {
+												pointerEvents: "none",
+												opacity: 0.5,
+												cursor: "not-allowed",
+											}
+										: { cursor: "pointer" }
 								}
-							}}
-							aria-disabled={currentPage <= 1}
-							style={
-								currentPage <= 1
-									? {
-											pointerEvents: "none",
-											opacity: 0.5,
-											cursor: "not-allowed",
-										}
-									: { cursor: "pointer" }
-							}
-						/>
-						{getPageNumbers().map((page, index) => {
-							if (page === "ellipsis") {
+							/>
+							{getPageNumbers().map((page, index) => {
+								if (page === "ellipsis") {
+									return (
+										<PaginationItem key={`ellipsis-${index}`}>
+											<PaginationEllipsis />
+										</PaginationItem>
+									);
+								}
 								return (
-									<PaginationItem key={`ellipsis-${index}`}>
-										<PaginationEllipsis />
+									<PaginationItem key={page}>
+										<PaginationLink
+											href="#"
+											onClick={(e) => {
+												e.preventDefault();
+												handlePageChange(page);
+											}}
+											isActive={currentPage === page}
+										>
+											{page}
+										</PaginationLink>
 									</PaginationItem>
 								);
-							}
-							return (
-								<PaginationItem key={page}>
-									<PaginationLink
-										href="#"
-										onClick={(e) => {
-											e.preventDefault();
-											handlePageChange(page);
-										}}
-										isActive={currentPage === page}
-									>
-										{page}
-									</PaginationLink>
-								</PaginationItem>
-							);
-						})}
-						<PaginationNext
-							href="#"
-							onClick={(e) => {
-								e.preventDefault();
-								if (currentPage < totalPages) {
-									handlePageChange(currentPage + 1);
+							})}
+							<PaginationNext
+								href="#"
+								onClick={(e) => {
+									e.preventDefault();
+									if (currentPage < totalPages) {
+										handlePageChange(currentPage + 1);
+									}
+								}}
+								aria-disabled={currentPage >= totalPages}
+								style={
+									currentPage >= totalPages
+										? {
+												pointerEvents: "none",
+												opacity: 0.5,
+												cursor: "not-allowed",
+											}
+										: { cursor: "pointer" }
 								}
-							}}
-							aria-disabled={currentPage >= totalPages}
-							style={
-								currentPage >= totalPages
-									? {
-											pointerEvents: "none",
-											opacity: 0.5,
-											cursor: "not-allowed",
-										}
-									: { cursor: "pointer" }
-							}
+							/>
+						</PaginationContent>
+						<PaginationPageSizeSelector
+							pageSize={pageSize}
+							onPageSizeChange={handlePageSizeChange}
+							pageSizeOptions={[30, 50, 100]}
 						/>
-					</PaginationContent>
-					<PaginationPageSizeSelector
-						pageSize={pageSize}
-						onPageSizeChange={handlePageSizeChange}
-						pageSizeOptions={[30, 50, 100]}
-					/>
-				</Pagination>
+					</Pagination>
+				</div>
 			</div>
 		</div>
 	);
