@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import * as HSComp from "@health-samurai/react-components";
 import { AidboxCallWithMeta } from "../../api/auth";
 import { useQuery } from "@tanstack/react-query";
@@ -15,64 +15,24 @@ function formatBytes(bytes: number): string {
 }
 
 function ResourceList({
-	isLoading,
-	data,
+	tableData,
 	filterQuery,
-	subset,
 	favorites,
 	onToggleFavorite,
 }: {
-	isLoading: boolean;
-	data: { resources: unknown; stats: unknown } | undefined;
+	tableData: any[];
 	filterQuery: string;
-	subset?: string;
 	favorites: Set<string>;
 	onToggleFavorite: (resourceType: string) => void;
 }) {
-	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center h-full text-text-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">Fetching resource types...</div>
-				</div>
-			</div>
-		);
-	}
-
-	const { resources, stats } = data;
-
 	const lowerFilterQuery = filterQuery.toLowerCase();
-	const isFavoritesSubset = subset === "favorites";
 
-	const tableData = Object.entries(resources || {}).reduce(
-		(acc, [key, value]) => {
-			if (isFavoritesSubset && !favorites.has(key)) return acc;
-			if (lowerFilterQuery && !key.toLowerCase().includes(lowerFilterQuery))
-				return acc;
-
-			const keyLower = key.toLowerCase();
-			const resourceStats = stats[keyLower] || {};
-			const historyStats = stats[`${keyLower}_history`] || {};
-
-			const row = {
-				resourceType: key,
-				tableSize: resourceStats.total_size || 0,
-				historySize: historyStats.total_size || 0,
-				indexSize: resourceStats.index_size || 0,
-				defaultProfile: value["default-profile"],
-				system: value["system?"],
-				fhir: value["fhir?"],
-				custom: value["custom?"],
-				populated: resourceStats["num_rows"] > 0,
-			};
-
-			if (subset && !isFavoritesSubset && !row[subset]) return acc;
-
-			acc.push(row);
-			return acc;
-		},
-		[],
-	);
+	const filteredData = useMemo(() => {
+		if (!lowerFilterQuery) return tableData;
+		return tableData.filter((row) =>
+			row.resourceType.toLowerCase().includes(lowerFilterQuery),
+		);
+	}, [tableData, lowerFilterQuery]);
 
 	const columns = [
 		{
@@ -121,7 +81,7 @@ function ResourceList({
 
 	return (
 		<div className="h-full">
-			<HSComp.DataTable columns={columns} data={tableData} stickyHeader />
+			<HSComp.DataTable columns={columns} data={filteredData} stickyHeader />
 		</div>
 	);
 }
@@ -161,6 +121,51 @@ export function Browser() {
 		},
 	});
 
+	const allTableData = useMemo(() => {
+		if (!data) return [];
+		const { resources, stats } = data;
+
+		return Object.entries(resources || {}).map(([key, value]) => {
+			const keyLower = key.toLowerCase();
+			const resourceStats = stats[keyLower] || {};
+			const historyStats = stats[`${keyLower}_history`] || {};
+
+			return {
+				resourceType: key,
+				tableSize: resourceStats.total_size || 0,
+				historySize: historyStats.total_size || 0,
+				indexSize: resourceStats.index_size || 0,
+				defaultProfile: value["default-profile"],
+				system: value["system?"],
+				fhir: value["fhir?"],
+				custom: value["custom?"],
+				populated: resourceStats["num_rows"] > 0,
+			};
+		});
+	}, [data]);
+
+	const subsets = useMemo(
+		() => ({
+			all: allTableData,
+			populated: allTableData.filter((row) => row.populated),
+			fhir: allTableData.filter((row) => row.fhir),
+			custom: allTableData.filter((row) => row.custom),
+			system: allTableData.filter((row) => row.system),
+			favorites: allTableData.filter((row) => favorites.has(row.resourceType)),
+		}),
+		[allTableData, favorites],
+	);
+
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Fetching resource types...</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="overflow-hidden">
 			<div className="flex gap-1 items-center p-1">
@@ -188,11 +193,21 @@ export function Browser() {
 			>
 				<div className="flex items-center gap-4 bg-bg-secondary px-4 border-b h-10 flex-none">
 					<HSComp.TabsList>
-						<HSComp.TabsTrigger value="all">All</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="populated">Polulated</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="fhir">FHIR</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="custom">Custom</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="system">System</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="all">
+							All ({subsets.all.length})
+						</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="populated">
+							Polulated ({subsets.populated.length})
+						</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="fhir">
+							FHIR ({subsets.fhir.length})
+						</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="custom">
+							Custom ({subsets.custom.length})
+						</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="system">
+							System ({subsets.system.length})
+						</HSComp.TabsTrigger>
 						<HSComp.TabsTrigger value="favorites">
 							favorites ({favorites.size})
 						</HSComp.TabsTrigger>
@@ -200,8 +215,7 @@ export function Browser() {
 				</div>
 				<HSComp.TabsContent value="all" className="min-h-0">
 					<ResourceList
-						isLoading={isLoading}
-						data={data}
+						tableData={subsets.all}
 						filterQuery={filterQuery}
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
@@ -209,50 +223,40 @@ export function Browser() {
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="populated">
 					<ResourceList
-						isLoading={isLoading}
-						data={data}
+						tableData={subsets.populated}
 						filterQuery={filterQuery}
-						subset="populated"
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
 					/>
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="fhir">
 					<ResourceList
-						isLoading={isLoading}
-						data={data}
+						tableData={subsets.fhir}
 						filterQuery={filterQuery}
-						subset="fhir"
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
 					/>
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="custom">
 					<ResourceList
-						isLoading={isLoading}
-						data={data}
+						tableData={subsets.custom}
 						filterQuery={filterQuery}
-						subset="custom"
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
 					/>
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="system">
 					<ResourceList
-						isLoading={isLoading}
-						data={data}
+						tableData={subsets.system}
 						filterQuery={filterQuery}
-						subset="system"
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
 					/>
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="favorites">
 					<ResourceList
-						isLoading={isLoading}
-						data={data}
+						tableData={subsets.favorites}
 						filterQuery={filterQuery}
-						subset="favorites"
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
 					/>
