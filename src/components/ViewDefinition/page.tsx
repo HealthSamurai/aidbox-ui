@@ -78,7 +78,7 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			} else {
 				response = {
 					resource: "Patient",
-					resourceType: "Patient",
+					resourceType: "ViewDefinition",
 					select: [],
 				};
 			}
