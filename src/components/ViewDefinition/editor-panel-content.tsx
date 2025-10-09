@@ -1,5 +1,6 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
@@ -35,6 +36,7 @@ export const EditorHeaderMenu = () => {
 };
 
 export const EditorPanelActions = () => {
+	const navigate = useNavigate({ from: "/resource-types/ViewDefinition/new" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -75,7 +77,10 @@ export const EditorPanelActions = () => {
 		onSuccess: (data) => {
 			const id = JSON.parse(data.body).id;
 			if (id) {
-				window.location.assign(`/u/resource-types/ViewDefinition/${id}`);
+				navigate({
+					to: "/resource-types/ViewDefinition/{-$id}",
+					params: { id: id },
+				});
 			} else {
 				HSComp.toast.error("Failed to create ViewDefinition", {
 					position: "bottom-right",
