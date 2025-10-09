@@ -11,6 +11,7 @@ import { ViewDefinitionContext } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
 import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
+import * as utils from "../../api/utils";
 
 export const EditorHeaderMenu = () => {
 	return (
@@ -54,16 +55,7 @@ export const EditorPanelActions = () => {
 				style: { margin: "1rem" },
 			});
 		},
-		onError: () => {
-			HSComp.toast.error("Failed to save ViewDefinition", {
-				position: "bottom-right",
-				style: {
-					margin: "1rem",
-					backgroundColor: "var(--destructive)",
-					color: "var(--accent)",
-				},
-			});
-		},
+		onError: utils.onError(),
 	});
 
 	const viewDefinitionCreateMutation = useMutation({
@@ -74,34 +66,14 @@ export const EditorPanelActions = () => {
 				body: JSON.stringify(viewDefinition),
 			});
 		},
-		onSuccess: (data) => {
-			const id = JSON.parse(data.body).id;
-			if (id) {
-				navigate({
-					to: "/resource-types/ViewDefinition/{-$id}",
-					params: { id: id },
-				});
-			} else {
-				HSComp.toast.error("Failed to create ViewDefinition", {
-					position: "bottom-right",
-					style: {
-						margin: "1rem",
-						backgroundColor: "var(--destructive)",
-						color: "var(--accent)",
-					},
-				});
-			}
-		},
-		onError: () => {
-			HSComp.toast.error("Failed to create ViewDefinition", {
-				position: "bottom-right",
-				style: {
-					margin: "1rem",
-					backgroundColor: "var(--destructive)",
-					color: "var(--accent)",
-				},
+		onSuccess: (resp) => {
+			const id = JSON.parse(resp.body).id;
+			navigate({
+				to: "/resource-types/ViewDefinition/{-$id}",
+				params: { id: id },
 			});
 		},
+		onError: utils.onError(),
 	});
 
 	const viewDefinitionRunMutation = useMutation({
@@ -148,16 +120,7 @@ export const EditorPanelActions = () => {
 				style: { margin: "1rem" },
 			});
 		},
-		onError: () => {
-			HSComp.toast.error("Failed to run ViewDefinition", {
-				position: "bottom-right",
-				style: {
-					margin: "1rem",
-					backgroundColor: "var(--destructive)",
-					color: "var(--accent)",
-				},
-			});
-		},
+		onError: utils.onError(),
 	});
 
 	const handleSave = () => {

@@ -129,7 +129,11 @@ export async function AidboxCallWithMeta({
 		if (response.status === 401 || response.status === 403) {
 			const encodedLocation = btoa(window.location.href);
 			window.location.href = `${baseURL}/auth/login?redirect_to=${encodedLocation}`;
+			throw new Error("Authentication required");
 		}
+		throw Error(`HTTP ${response.status}: ${response.statusText}`, {
+			cause: bodyText,
+		});
 	}
 
 	return {
