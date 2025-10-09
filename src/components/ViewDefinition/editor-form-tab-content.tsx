@@ -224,7 +224,7 @@ export const FormTabContent = () => {
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
+		if (viewDefinition?.id && viewDefinition.id !== lastViewDefId) {
 			setLastViewDefId(viewDefinition.id || null);
 			if (
 				(viewDefinition as any)?.constant &&
@@ -897,19 +897,6 @@ export const FormTabContent = () => {
 		return treeStructure;
 	}, [constants, whereConditions, selectItems]);
 
-	const onSelectTreeItem = (item: ItemInstance<TreeViewItem<any>>) => {
-		if (item.isFolder()) {
-			if (item.isExpanded()) {
-				const newItems = collapsedItemIds.filter((id) => id !== item.getId());
-				if (newItems.length !== collapsedItemIds.length) {
-					setCollapsedItemIds(newItems);
-				}
-			} else {
-				setCollapsedItemIds([...collapsedItemIds, item.getId()]);
-			}
-		}
-	};
-
 	const onDropTreeItem = (
 		tree: TreeInstance<TreeViewItem<any>>,
 		item: ItemInstance<TreeViewItem<any>>,
@@ -1069,6 +1056,7 @@ export const FormTabContent = () => {
 	const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 		const selectData = item.getItemData()?.meta?.selectData;
+		const isFolder = item.isFolder();
 		let additionalClass = "";
 		let label = metaType;
 
@@ -1118,12 +1106,11 @@ export const FormTabContent = () => {
 			} else {
 				item.expand();
 			}
-			onSelectTreeItem(item);
 		};
 
 		return (
 			<span
-				className={`uppercase px-1.5 py-0.5 rounded-md ${additionalClass}`}
+				className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
 				onClick={onLabelClickFn}
 			>
 				{label}
@@ -1659,7 +1646,7 @@ export const FormTabContent = () => {
 					>
 						<span>
 							<PlusIcon size={16} strokeWidth={3} />
-							<span className="typo-label">Constant</span>
+							<span className="text-xs typo-label ">Constant</span>
 						</span>
 					</Button>
 				);
@@ -1749,7 +1736,6 @@ export const FormTabContent = () => {
 					}
 				}
 			}}
-			onSelectItem={onSelectTreeItem}
 			items={tree}
 			rootItemId="root"
 			expandedItems={expandedItemIds}
