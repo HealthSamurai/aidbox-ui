@@ -16,9 +16,13 @@ export function formatBytes(bytes: number): string {
 function ResourceList({
 	isLoading,
 	data,
+	filterQuery,
+	subset,
 }: {
 	isLoading: boolean;
 	data: { resources: unknown; stats: unknown } | undefined;
+	filterQuery: string;
+	subset?: string;
 }) {
 	if (isLoading) {
 		return (
@@ -32,18 +36,26 @@ function ResourceList({
 
 	const { resources, stats } = data;
 
-	const tableData = Object.entries(resources || {}).map(([key, value]) => {
-		const resourceStats = stats[key.toLowerCase()] || {};
-		const historyStats = stats[`${key.toLowerCase()}_history`] || {};
-		console.log(key, typeof key);
-		return {
-			resourceType: key,
-			tableSize: resourceStats.total_size || 0,
-			historySize: historyStats.total_size || 0,
-			indexSize: resourceStats.index_size || 0,
-			defaultProfile: value["default-profile"],
-		};
-	});
+	const tableData = Object.entries(resources || {})
+		.map(([key, value]) => {
+			const resourceStats = stats[key.toLowerCase()] || {};
+			const historyStats = stats[`${key.toLowerCase()}_history`] || {};
+			return {
+				resourceType: key,
+				tableSize: resourceStats.total_size || 0,
+				historySize: historyStats.total_size || 0,
+				indexSize: resourceStats.index_size || 0,
+				defaultProfile: value["default-profile"],
+				system: value["system?"],
+				fhir: value["fhir?"],
+				custom: value["custom?"],
+				populated: resourceStats["num_rows"] > 0,
+			};
+		})
+		.filter((row) => (!subset ? true : row[subset]))
+		.filter((row) =>
+			row.resourceType.toLowerCase().includes(filterQuery.toLowerCase()),
+		);
 
 	const columns = [
 		{
@@ -82,7 +94,7 @@ function ResourceList({
 
 export function Browser() {
 	const [selectedTab, setSelectedTab] = useState("all");
-	const [searchQuery, setSearchQuery] = useState("");
+	const [filterQuery, setFilterQuery] = useState("");
 
 	const { data, isLoading } = useQuery({
 		queryKey: ["resource-browser-resources"],
@@ -109,9 +121,8 @@ export function Browser() {
 					type="text"
 					className="flex-1 bg-bg-primary"
 					placeholder="search resource types"
-					value={searchQuery}
-					onChange={(e) => setSearchQuery(e.target.value)}
-					onKeyPress={(e) => {}}
+					value={filterQuery}
+					onChange={(e) => setFilterQuery(e.target.value)}
 				/>
 				<div className="flex gap-4 items-center">
 					<HSComp.Button
@@ -139,15 +150,52 @@ export function Browser() {
 					</HSComp.TabsList>
 				</div>
 				<HSComp.TabsContent value="all" className="min-h-0">
-					<ResourceList isLoading={isLoading} data={data} />
+					<ResourceList
+						isLoading={isLoading}
+						data={data}
+						filterQuery={filterQuery}
+					/>
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="populated">
-					{/* Profiles content */}
+					<ResourceList
+						isLoading={isLoading}
+						data={data}
+						filterQuery={filterQuery}
+						subset="populated"
+					/>
 				</HSComp.TabsContent>
-				<HSComp.TabsContent value="fhir">{/* */}</HSComp.TabsContent>
-				<HSComp.TabsContent value="custom">{/* */}</HSComp.TabsContent>
-				<HSComp.TabsContent value="system">{/* */}</HSComp.TabsContent>
-				<HSComp.TabsContent value="favorites">{/* */}</HSComp.TabsContent>
+				<HSComp.TabsContent value="fhir">
+					<ResourceList
+						isLoading={isLoading}
+						data={data}
+						filterQuery={filterQuery}
+						subset="fhir"
+					/>
+				</HSComp.TabsContent>
+				<HSComp.TabsContent value="custom">
+					<ResourceList
+						isLoading={isLoading}
+						data={data}
+						filterQuery={filterQuery}
+						subset="custom"
+					/>
+				</HSComp.TabsContent>
+				<HSComp.TabsContent value="system">
+					<ResourceList
+						isLoading={isLoading}
+						data={data}
+						filterQuery={filterQuery}
+						subset="system"
+					/>
+				</HSComp.TabsContent>
+				<HSComp.TabsContent value="favorites">
+					<ResourceList
+						isLoading={isLoading}
+						data={data}
+						filterQuery={filterQuery}
+						subset="isFavorites"
+					/>
+				</HSComp.TabsContent>
 			</HSComp.Tabs>
 		</div>
 	);
