@@ -33,12 +33,20 @@ export const ResourcePageTabList = () => {
 export const ResourcesTabSarchInput = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
+	const search = Router.useSearch({
+		strict: false,
+	});
+
+	const decodedSearchQuery = search.searchQuery
+		? atob(search.searchQuery)
+		: Constants.DEFAULT_SEARCH_QUERY;
+
 	return (
 		<HSComp.Input
 			autoFocus
 			type="text"
 			name="searchQuery"
-			defaultValue="_count=30&_page=1&_ilike="
+			defaultValue={decodedSearchQuery}
 			prefixValue={
 				<span className="flex gap-1 text-nowrap text-elements-assistive">
 					<span className="font-bold">GET</span>
@@ -129,19 +137,31 @@ export const ResourcesTabTable = ({
 		return <div>No resources found</div>;
 	}
 
-	return <HSComp.DataTable columns={columns} data={resources} stickyHeader />;
+	return (
+		<div className="h-full overflow-hidden">
+			<HSComp.DataTable columns={columns} data={resources} stickyHeader />
+		</div>
+	);
 };
 
 export const ResourcesTabContent = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
-	const [searchQuery, setSearchQuery] = React.useState("");
+
+	const navigate = Router.useNavigate();
+	const search = Router.useSearch({
+		strict: false,
+	});
+
+	const decodedSearchQuery = search.searchQuery
+		? atob(search.searchQuery)
+		: Constants.DEFAULT_SEARCH_QUERY;
 
 	const { data, isLoading } = ReactQuery.useQuery({
-		queryKey: [Constants.PageID, "resource-list", searchQuery],
+		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
 			const response = await AidboxClient.AidboxCallWithMeta({
 				method: "GET",
-				url: `/fhir/${resourcesPageContext.resourceType}?${searchQuery}`,
+				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
 			return JSON.parse(response.body).entry.map(
 				(entry: any) => entry.resource,
@@ -152,7 +172,11 @@ export const ResourcesTabContent = () => {
 
 	const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		setSearchQuery(e.currentTarget.searchQuery.value);
+		navigate({
+			search: {
+				searchQuery: btoa(e.currentTarget.searchQuery.value),
+			},
+		});
 	};
 
 	return (
@@ -170,7 +194,7 @@ export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
 		<ResourcesPageContext.Provider value={{ resourceType }}>
 			<HSComp.Tabs defaultValue="resources">
 				<ResourcePageTabList />
-				<HSComp.TabsContent value="resources">
+				<HSComp.TabsContent value="resources" className="overflow-hidden">
 					<ResourcesTabContent />
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="profiles">TODO</HSComp.TabsContent>
