@@ -3,6 +3,7 @@ import * as HSComp from "@health-samurai/react-components";
 import { AidboxCallWithMeta } from "../../api/auth";
 import { useQuery } from "@tanstack/react-query";
 import { Pin, PinOff } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 function formatBytes(bytes: number): string {
 	if (bytes === 0) return "0 B";
@@ -46,6 +47,7 @@ function ResourceList({
 	favorites: Set<string>;
 	onToggleFavorite: (resourceType: string) => void;
 }) {
+	const navigate = useNavigate();
 	const lowerFilterQuery = filterQuery.toLowerCase();
 
 	const filteredData = useMemo(() => {
@@ -55,11 +57,27 @@ function ResourceList({
 		);
 	}, [tableData, lowerFilterQuery]);
 
+	const makeClickableCell = (renderer: (value: any) => any) => {
+		return (info: any) => (
+			<div
+				className="cursor-pointer"
+				onClick={() =>
+					navigate({
+						to: "/resource-types/$resourceType",
+						params: { resourceType: info.row.original.resourceType },
+					})
+				}
+			>
+				{renderer(info.getValue())}
+			</div>
+		);
+	};
+
 	const columns = [
 		{
 			accessorKey: "favorite",
 			header: <Pin size={16} />,
-			size: 40,
+			size: 20,
 			cell: (info: any) => {
 				const resourceType = info.row.original.resourceType;
 				const isFavorite = favorites.has(resourceType);
@@ -75,27 +93,27 @@ function ResourceList({
 		{
 			accessorKey: "resourceType",
 			header: "Resource type",
-			cell: (info: any) => info.getValue(),
+			cell: makeClickableCell((value) => value),
 		},
 		{
 			accessorKey: "tableSize",
 			header: "Table size",
-			cell: (info: any) => formatBytes(info.getValue()),
+			cell: makeClickableCell(formatBytes),
 		},
 		{
 			accessorKey: "historySize",
 			header: "History size",
-			cell: (info: any) => formatBytes(info.getValue()),
+			cell: makeClickableCell(formatBytes),
 		},
 		{
 			accessorKey: "indexSize",
 			header: "Index size",
-			cell: (info: any) => formatBytes(info.getValue()),
+			cell: makeClickableCell(formatBytes),
 		},
 		{
 			accessorKey: "defaultProfile",
 			header: "Default profile",
-			cell: (info: any) => info.getValue(),
+			cell: makeClickableCell((value) => value),
 		},
 	];
 
