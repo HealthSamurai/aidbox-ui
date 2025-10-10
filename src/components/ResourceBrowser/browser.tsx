@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Pin } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
 
 type ResourceRow = {
 	resourceType: string;
@@ -214,20 +215,22 @@ function useProcessedData(
 export function Browser() {
 	const [selectedTab, setSelectedTab] = useState("all");
 	const [filterQuery, setFilterQuery] = useState("");
-	const [favorites, setFavorites] = useState<Set<string>>(new Set());
+	const [favoritesArray, setFavoritesArray] = useLocalStorage<string[]>({
+		key: "resource-browser-favorites",
+		defaultValue: [],
+	});
+
+	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
 
 	const { data, isLoading } = useResourceData();
 	const { subsets } = useProcessedData(data, favorites);
 
 	const toggleFavorite = (resourceType: string) => {
-		setFavorites((prev) => {
-			const next = new Set(prev);
-			if (next.has(resourceType)) {
-				next.delete(resourceType);
-			} else {
-				next.add(resourceType);
+		setFavoritesArray((prev) => {
+			if (prev.includes(resourceType)) {
+				return prev.filter((item) => item !== resourceType);
 			}
-			return next;
+			return [...prev, resourceType];
 		});
 	};
 
