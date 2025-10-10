@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
 import * as HSComp from "@health-samurai/react-components";
-import { AidboxCallWithMeta } from "../../api/auth";
 import { useQuery } from "@tanstack/react-query";
-import { Pin } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { Pin } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AidboxCallWithMeta } from "../../api/auth";
 
 type ResourceRow = {
 	resourceType: string;
@@ -31,7 +31,7 @@ function formatBytes(bytes: number): string {
 
 	const units = ["bytes", "KB", "MB", "GB", "TB"];
 	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	const value = bytes / Math.pow(1024, i);
+	const value = bytes / 1024 ** i;
 
 	return `${value % 1 === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
@@ -175,23 +175,25 @@ function useProcessedData(
 		if (!data) return [];
 		const { resources, stats } = data;
 
-		return Object.entries(resources || {}).map(([key, value]: [string, any]) => {
-			const keyLower = key.toLowerCase();
-			const resourceStats = stats[keyLower] || {};
-			const historyStats = stats[`${keyLower}_history`] || {};
+		return Object.entries(resources || {}).map(
+			([key, value]: [string, any]) => {
+				const keyLower = key.toLowerCase();
+				const resourceStats = stats[keyLower] || {};
+				const historyStats = stats[`${keyLower}_history`] || {};
 
-			return {
-				resourceType: key,
-				tableSize: resourceStats.total_size || 0,
-				historySize: historyStats.total_size || 0,
-				indexSize: resourceStats.index_size || 0,
-				defaultProfile: value["default-profile"],
-				system: value["system?"],
-				fhir: value["fhir?"],
-				custom: value["custom?"],
-				populated: resourceStats["num_rows"] > 0,
-			};
-		});
+				return {
+					resourceType: key,
+					tableSize: resourceStats.total_size || 0,
+					historySize: historyStats.total_size || 0,
+					indexSize: resourceStats.index_size || 0,
+					defaultProfile: value["default-profile"],
+					system: value["system?"],
+					fhir: value["fhir?"],
+					custom: value["custom?"],
+					populated: resourceStats["num_rows"] > 0,
+				};
+			},
+		);
 	}, [data]);
 
 	const subsets = useMemo(
@@ -274,7 +276,11 @@ export function Browser() {
 					</HSComp.TabsList>
 				</div>
 				{tabs.map((tab) => (
-					<HSComp.TabsContent key={tab.value} value={tab.value} className="min-h-0">
+					<HSComp.TabsContent
+						key={tab.value}
+						value={tab.value}
+						className="min-h-0"
+					>
 						<ResourceList
 							tableData={subsets[tab.value as keyof Subsets]}
 							filterQuery={filterQuery}
