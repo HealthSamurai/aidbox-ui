@@ -2,7 +2,7 @@ import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Pin } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, memo } from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 
@@ -37,114 +37,129 @@ function formatBytes(bytes: number): string {
 	return `${value % 1 === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
 
-function FavoriteCell({
-	resourceType,
-	isFavorite,
-	onToggle,
-}: {
-	resourceType: string;
-	isFavorite: boolean;
-	onToggle: (resourceType: string) => void;
-}) {
-	return (
-		<button
-			type="button"
-			onClick={() => onToggle(resourceType)}
-			className="cursor-pointer transition-opacity pin-button"
-			style={{ opacity: isFavorite ? 1 : 0 }}
-		>
-			<Pin size={16} />
-		</button>
-	);
-}
-
-function ResourceList({
-	tableData,
-	filterQuery,
-	favorites,
-	onToggleFavorite,
-}: {
-	tableData: ResourceRow[];
-	filterQuery: string;
-	favorites: Set<string>;
-	onToggleFavorite: (resourceType: string) => void;
-}) {
-	const navigate = useNavigate();
-
-	const filteredData = useMemo(() => {
-		if (!filterQuery) return tableData;
-		const lowerQuery = filterQuery.toLowerCase();
-		return tableData.filter((row) =>
-			row.resourceType.toLowerCase().includes(lowerQuery),
-		);
-	}, [tableData, filterQuery]);
-
-	const makeClickableCell = (renderer: (value: any) => any) => {
-		return (info: any) => (
-			<div
-				className="cursor-pointer"
-				onClick={() =>
-					navigate({
-						to: "/resource-types/$resourceType",
-						params: { resourceType: info.row.original.resourceType },
-					})
-				}
+const FavoriteCell = memo(
+	({
+		resourceType,
+		getFavorites,
+		onToggle,
+	}: {
+		resourceType: string;
+		getFavorites: () => Set<string>;
+		onToggle: (resourceType: string) => void;
+	}) => {
+		const [, forceUpdate] = useState({});
+		const isFavorite = getFavorites().has(resourceType);
+		return (
+			<button
+				type="button"
+				onClick={() => {
+					onToggle(resourceType);
+					forceUpdate({});
+				}}
+				className="cursor-pointer transition-opacity pin-button"
+				style={{ opacity: isFavorite ? 1 : 0 }}
 			>
-				{renderer(info.getValue())}
+				<Pin size={16} />
+			</button>
+		);
+	},
+	(prev, next) => prev.resourceType === next.resourceType,
+);
+
+const ResourceList = memo(
+	function ResourceList({
+		tableData,
+		filterQuery,
+		getFavorites,
+		onToggleFavorite,
+	}: {
+		tableData: ResourceRow[];
+		filterQuery: string;
+		getFavorites: () => Set<string>;
+		onToggleFavorite: (resourceType: string) => void;
+	}) {
+		const navigate = useNavigate();
+
+		const filteredData = useMemo(() => {
+			if (!filterQuery) return tableData;
+			const lowerQuery = filterQuery.toLowerCase();
+			return tableData.filter((row) =>
+				row.resourceType.toLowerCase().includes(lowerQuery),
+			);
+		}, [tableData, filterQuery]);
+
+		const makeClickableCell = (renderer: (value: any) => any) => {
+			return (info: any) => (
+				<div
+					className="cursor-pointer"
+					onClick={() =>
+						navigate({
+							to: "/resource-types/$resourceType",
+							params: { resourceType: info.row.original.resourceType },
+						})
+					}
+				>
+					{renderer(info.getValue())}
+				</div>
+			);
+		};
+
+		const columns = [
+			{
+				accessorKey: "favorite",
+				header: <Pin size={14} />,
+				size: 20,
+				cell: (info: any) => {
+					const resourceType = info.row.original.resourceType;
+					return (
+						<FavoriteCell
+							resourceType={resourceType}
+							getFavorites={getFavorites}
+							onToggle={onToggleFavorite}
+						/>
+					);
+				},
+			},
+			{
+				accessorKey: "resourceType",
+				header: "Resource type",
+				cell: makeClickableCell((value) => value),
+			},
+			{
+				accessorKey: "tableSize",
+				header: "Table size",
+				cell: makeClickableCell(formatBytes),
+			},
+			{
+				accessorKey: "historySize",
+				header: "History size",
+				cell: makeClickableCell(formatBytes),
+			},
+			{
+				accessorKey: "indexSize",
+				header: "Index size",
+				cell: makeClickableCell(formatBytes),
+			},
+			{
+				accessorKey: "defaultProfile",
+				header: "Default profile",
+				cell: makeClickableCell((value) => value),
+			},
+		];
+
+		return (
+			<div className="h-full">
+				<HSComp.DataTable columns={columns} data={filteredData} stickyHeader />
 			</div>
 		);
-	};
-
-	const columns = [
-		{
-			accessorKey: "favorite",
-			header: <Pin size={14} />,
-			size: 20,
-			cell: (info: any) => {
-				const resourceType = info.row.original.resourceType;
-				const isFavorite = favorites.has(resourceType);
-				return (
-					<FavoriteCell
-						resourceType={resourceType}
-						isFavorite={isFavorite}
-						onToggle={onToggleFavorite}
-					/>
-				);
-			},
-		},
-		{
-			accessorKey: "resourceType",
-			header: "Resource type",
-			cell: makeClickableCell((value) => value),
-		},
-		{
-			accessorKey: "tableSize",
-			header: "Table size",
-			cell: makeClickableCell(formatBytes),
-		},
-		{
-			accessorKey: "historySize",
-			header: "History size",
-			cell: makeClickableCell(formatBytes),
-		},
-		{
-			accessorKey: "indexSize",
-			header: "Index size",
-			cell: makeClickableCell(formatBytes),
-		},
-		{
-			accessorKey: "defaultProfile",
-			header: "Default profile",
-			cell: makeClickableCell((value) => value),
-		},
-	];
-
-	return (
-		<div className="h-full">
-			<HSComp.DataTable columns={columns} data={filteredData} stickyHeader />
-		</div>
-	);
-}
+	},
+	(prevProps, nextProps) => {
+		return (
+			prevProps.tableData === nextProps.tableData &&
+			prevProps.filterQuery === nextProps.filterQuery
+		);
+	},
+);
 
 function useResourceData() {
 	return useQuery({
@@ -238,18 +253,25 @@ export function Browser() {
 	});
 
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
+	const favoritesRef = useMemo(() => ({ current: favorites }), []);
+	favoritesRef.current = favorites;
+
+	const getFavorites = useMemo(() => () => favoritesRef.current, []);
 
 	const { data, isLoading } = useResourceData();
 	const { subsets } = useProcessedData(data, favorites);
 
-	const toggleFavorite = (resourceType: string) => {
-		setFavoritesArray((prev) => {
-			if (prev.includes(resourceType)) {
-				return prev.filter((item) => item !== resourceType);
-			}
-			return [...prev, resourceType];
-		});
-	};
+	const toggleFavorite = useMemo(
+		() => (resourceType: string) => {
+			setFavoritesArray((prev) => {
+				if (prev.includes(resourceType)) {
+					return prev.filter((item) => item !== resourceType);
+				}
+				return [...prev, resourceType];
+			});
+		},
+		[setFavoritesArray],
+	);
 
 	if (isLoading) {
 		return (
@@ -304,7 +326,7 @@ export function Browser() {
 						<ResourceList
 							tableData={subsets[tab.value as keyof Subsets]}
 							filterQuery={filterQuery}
-							favorites={favorites}
+							getFavorites={getFavorites}
 							onToggleFavorite={toggleFavorite}
 						/>
 					</HSComp.TabsContent>
