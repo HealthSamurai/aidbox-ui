@@ -99,7 +99,7 @@ function ResourceList({
 		{
 			accessorKey: "favorite",
 			header: <Pin size={14} />,
-			size: 40,
+			size: 20,
 			cell: (info: any) => {
 				const resourceType = info.row.original.resourceType;
 				const isFavorite = favorites.has(resourceType);
@@ -197,16 +197,30 @@ function useProcessedData(
 		);
 	}, [data]);
 
-	const subsets = useMemo(
+	// Memoize static subsets separately (don't depend on favorites)
+	const staticSubsets = useMemo(
 		() => ({
 			all: allTableData,
 			populated: allTableData.filter((row) => row.populated),
 			fhir: allTableData.filter((row) => row.fhir),
 			custom: allTableData.filter((row) => row.custom),
 			system: allTableData.filter((row) => row.system),
-			favorites: allTableData.filter((row) => favorites.has(row.resourceType)),
 		}),
+		[allTableData],
+	);
+
+	// Only recompute favorites subset when favorites change
+	const favoritesSubset = useMemo(
+		() => allTableData.filter((row) => favorites.has(row.resourceType)),
 		[allTableData, favorites],
+	);
+
+	const subsets = useMemo(
+		() => ({
+			...staticSubsets,
+			favorites: favoritesSubset,
+		}),
+		[staticSubsets, favoritesSubset],
 	);
 
 	return { allTableData, subsets };
