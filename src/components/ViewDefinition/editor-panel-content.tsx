@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
+import * as utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
@@ -11,7 +12,6 @@ import { ViewDefinitionContext } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
 import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
-import * as utils from "../../api/utils";
 
 export const EditorHeaderMenu = () => {
 	return (

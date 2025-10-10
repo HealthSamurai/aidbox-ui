@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
 import * as HSComp from "@health-samurai/react-components";
-import { AidboxCallWithMeta } from "../../api/auth";
 import { useQuery } from "@tanstack/react-query";
-import { Pin } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { Pin } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AidboxCallWithMeta } from "../../api/auth";
 
 type ResourceRow = {
 	resourceType: string;
@@ -31,7 +31,7 @@ function formatBytes(bytes: number): string {
 
 	const units = ["bytes", "KB", "MB", "GB", "TB"];
 	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	const value = bytes / Math.pow(1024, i);
+	const value = bytes / 1024 ** i;
 
 	return `${value % 1 === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
