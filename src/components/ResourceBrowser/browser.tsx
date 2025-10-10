@@ -2,8 +2,29 @@ import { useState, useMemo } from "react";
 import * as HSComp from "@health-samurai/react-components";
 import { AidboxCallWithMeta } from "../../api/auth";
 import { useQuery } from "@tanstack/react-query";
-import { Pin, PinOff } from "lucide-react";
+import { Pin } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+
+type ResourceRow = {
+	resourceType: string;
+	tableSize: number;
+	historySize: number;
+	indexSize: number;
+	defaultProfile: string;
+	system: boolean;
+	fhir: boolean;
+	custom: boolean;
+	populated: boolean;
+};
+
+type Subsets = {
+	all: ResourceRow[];
+	populated: ResourceRow[];
+	fhir: ResourceRow[];
+	custom: ResourceRow[];
+	system: ResourceRow[];
+	favorites: ResourceRow[];
+};
 
 function formatBytes(bytes: number): string {
 	if (bytes === 0) return "0 B";
@@ -42,20 +63,20 @@ function ResourceList({
 	favorites,
 	onToggleFavorite,
 }: {
-	tableData: any[];
+	tableData: ResourceRow[];
 	filterQuery: string;
 	favorites: Set<string>;
 	onToggleFavorite: (resourceType: string) => void;
 }) {
 	const navigate = useNavigate();
-	const lowerFilterQuery = filterQuery.toLowerCase();
 
 	const filteredData = useMemo(() => {
-		if (!lowerFilterQuery) return tableData;
+		if (!filterQuery) return tableData;
+		const lowerQuery = filterQuery.toLowerCase();
 		return tableData.filter((row) =>
-			row.resourceType.toLowerCase().includes(lowerFilterQuery),
+			row.resourceType.toLowerCase().includes(lowerQuery),
 		);
-	}, [tableData, lowerFilterQuery]);
+	}, [tableData, filterQuery]);
 
 	const makeClickableCell = (renderer: (value: any) => any) => {
 		return (info: any) => (
@@ -76,8 +97,8 @@ function ResourceList({
 	const columns = [
 		{
 			accessorKey: "favorite",
-			header: <Pin size={16} />,
-			size: 20,
+			header: <Pin size={14} />,
+			size: 40,
 			cell: (info: any) => {
 				const resourceType = info.row.original.resourceType;
 				const isFavorite = favorites.has(resourceType);
@@ -124,62 +145,55 @@ function ResourceList({
 	);
 }
 
-export function Browser() {
-	const [selectedTab, setSelectedTab] = useState("all");
-	const [filterQuery, setFilterQuery] = useState("");
-	const [favorites, setFavorites] = useState<Set<string>>(new Set());
-
-	const toggleFavorite = (resourceType: string) => {
-		setFavorites((prev) => {
-			const next = new Set(prev);
-			if (next.has(resourceType)) {
-				next.delete(resourceType);
-			} else {
-				next.add(resourceType);
-			}
-			return next;
-		});
-	};
-
-	const { data, isLoading } = useQuery({
+function useResourceData() {
+	return useQuery({
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {
-			const resourceTypes = await AidboxCallWithMeta({
-				method: "GET",
-				url: "/$resource-types",
-			});
-			const stats = await AidboxCallWithMeta({
-				method: "GET",
-				url: "/$resource-types-pg-stats",
-			});
+			const [resourceTypes, stats] = await Promise.all([
+				AidboxCallWithMeta({
+					method: "GET",
+					url: "/$resource-types",
+				}),
+				AidboxCallWithMeta({
+					method: "GET",
+					url: "/$resource-types-pg-stats",
+				}),
+			]);
 			return {
 				resources: JSON.parse(resourceTypes.body),
 				stats: JSON.parse(stats.body),
 			};
 		},
 	});
+}
 
+function useProcessedData(
+	data: any,
+	favorites: Set<string>,
+): { allTableData: ResourceRow[]; subsets: Subsets } {
 	const allTableData = useMemo(() => {
 		if (!data) return [];
 		const { resources, stats } = data;
 
-		return Object.entries(resources || {}).map(([key, value]) => {
-			const keyLower = key.toLowerCase();
-			const resourceStats = stats[keyLower] || {};
-			const historyStats = stats[`${keyLower}_history`] || {};
+		return Object.entries(resources || {}).map(
+			([key, value]: [string, any]) => {
+				const keyLower = key.toLowerCase();
+				const resourceStats = stats[keyLower] || {};
+				const historyStats = stats[`${keyLower}_history`] || {};
 
-			return {
-				resourceType: key,
-				tableSize: resourceStats.total_size || 0,
-				historySize: historyStats.total_size || 0,
-				indexSize: resourceStats.index_size || 0,
-				defaultProfile: value["default-profile"],
-				system: value["system?"],
-				fhir: value["fhir?"],
-				custom: value["custom?"],
-				populated: resourceStats["num_rows"] > 0,
-			};
-		});
+				return {
+					resourceType: key,
+					tableSize: resourceStats.total_size || 0,
+					historySize: historyStats.total_size || 0,
+					indexSize: resourceStats.index_size || 0,
+					defaultProfile: value["default-profile"],
+					system: value["system?"],
+					fhir: value["fhir?"],
+					custom: value["custom?"],
+					populated: resourceStats["num_rows"] > 0,
+				};
+			},
+		);
 	}, [data]);
 
 	const subsets = useMemo(
@@ -194,6 +208,29 @@ export function Browser() {
 		[allTableData, favorites],
 	);
 
+	return { allTableData, subsets };
+}
+
+export function Browser() {
+	const [selectedTab, setSelectedTab] = useState("all");
+	const [filterQuery, setFilterQuery] = useState("");
+	const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+	const { data, isLoading } = useResourceData();
+	const { subsets } = useProcessedData(data, favorites);
+
+	const toggleFavorite = (resourceType: string) => {
+		setFavorites((prev) => {
+			const next = new Set(prev);
+			if (next.has(resourceType)) {
+				next.delete(resourceType);
+			} else {
+				next.add(resourceType);
+			}
+			return next;
+		});
+	};
+
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center h-full text-text-secondary">
@@ -204,25 +241,25 @@ export function Browser() {
 		);
 	}
 
+	const tabs = [
+		{ value: "all", label: "All", count: subsets.all.length },
+		{ value: "populated", label: "Populated", count: subsets.populated.length },
+		{ value: "fhir", label: "FHIR", count: subsets.fhir.length },
+		{ value: "custom", label: "Custom", count: subsets.custom.length },
+		{ value: "system", label: "System", count: subsets.system.length },
+		{ value: "favorites", label: "Favorites", count: favorites.size },
+	];
+
 	return (
-		<div className="overflow-hidden">
+		<div className="overflow-hidden h-full flex flex-col">
 			<div className="flex gap-1 items-center p-1">
 				<HSComp.Input
 					type="text"
 					className="flex-1 bg-bg-primary"
-					placeholder="search resource types"
+					placeholder="Search resource types"
 					value={filterQuery}
 					onChange={(e) => setFilterQuery(e.target.value)}
 				/>
-				<div className="flex gap-4 items-center">
-					<HSComp.Button
-						variant="primary"
-						onClick={() => {}}
-						disabled={isLoading}
-					>
-						Search
-					</HSComp.Button>
-				</div>
 			</div>
 			<HSComp.Tabs
 				defaultValue={selectedTab}
@@ -231,74 +268,27 @@ export function Browser() {
 			>
 				<div className="flex items-center gap-4 bg-bg-secondary px-4 border-b h-10 flex-none">
 					<HSComp.TabsList>
-						<HSComp.TabsTrigger value="all">
-							All ({subsets.all.length})
-						</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="populated">
-							Polulated ({subsets.populated.length})
-						</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="fhir">
-							FHIR ({subsets.fhir.length})
-						</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="custom">
-							Custom ({subsets.custom.length})
-						</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="system">
-							System ({subsets.system.length})
-						</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="favorites">
-							favorites ({favorites.size})
-						</HSComp.TabsTrigger>
+						{tabs.map((tab) => (
+							<HSComp.TabsTrigger key={tab.value} value={tab.value}>
+								{tab.label} ({tab.count})
+							</HSComp.TabsTrigger>
+						))}
 					</HSComp.TabsList>
 				</div>
-				<HSComp.TabsContent value="all" className="min-h-0">
-					<ResourceList
-						tableData={subsets.all}
-						filterQuery={filterQuery}
-						favorites={favorites}
-						onToggleFavorite={toggleFavorite}
-					/>
-				</HSComp.TabsContent>
-				<HSComp.TabsContent value="populated">
-					<ResourceList
-						tableData={subsets.populated}
-						filterQuery={filterQuery}
-						favorites={favorites}
-						onToggleFavorite={toggleFavorite}
-					/>
-				</HSComp.TabsContent>
-				<HSComp.TabsContent value="fhir">
-					<ResourceList
-						tableData={subsets.fhir}
-						filterQuery={filterQuery}
-						favorites={favorites}
-						onToggleFavorite={toggleFavorite}
-					/>
-				</HSComp.TabsContent>
-				<HSComp.TabsContent value="custom">
-					<ResourceList
-						tableData={subsets.custom}
-						filterQuery={filterQuery}
-						favorites={favorites}
-						onToggleFavorite={toggleFavorite}
-					/>
-				</HSComp.TabsContent>
-				<HSComp.TabsContent value="system">
-					<ResourceList
-						tableData={subsets.system}
-						filterQuery={filterQuery}
-						favorites={favorites}
-						onToggleFavorite={toggleFavorite}
-					/>
-				</HSComp.TabsContent>
-				<HSComp.TabsContent value="favorites">
-					<ResourceList
-						tableData={subsets.favorites}
-						filterQuery={filterQuery}
-						favorites={favorites}
-						onToggleFavorite={toggleFavorite}
-					/>
-				</HSComp.TabsContent>
+				{tabs.map((tab) => (
+					<HSComp.TabsContent
+						key={tab.value}
+						value={tab.value}
+						className="min-h-0"
+					>
+						<ResourceList
+							tableData={subsets[tab.value as keyof Subsets]}
+							filterQuery={filterQuery}
+							favorites={favorites}
+							onToggleFavorite={toggleFavorite}
+						/>
+					</HSComp.TabsContent>
+				))}
 			</HSComp.Tabs>
 		</div>
 	);
