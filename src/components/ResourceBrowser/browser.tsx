@@ -213,7 +213,10 @@ function useProcessedData(
 }
 
 export function Browser() {
-	const [selectedTab, setSelectedTab] = useState("all");
+	const [selectedTab, setSelectedTab] = useLocalStorage<string>({
+		key: "resource-browser-selected-tab",
+		defaultValue: "all",
+	});
 	const [filterQuery, setFilterQuery] = useState("");
 	const [favoritesArray, setFavoritesArray] = useLocalStorage<string[]>({
 		key: "resource-browser-favorites",
@@ -265,7 +268,7 @@ export function Browser() {
 				/>
 			</div>
 			<HSComp.Tabs
-				defaultValue={selectedTab}
+				value={selectedTab}
 				onValueChange={setSelectedTab}
 				className="grow min-h-0 flex flex-col"
 			>
