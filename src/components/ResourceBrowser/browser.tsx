@@ -1,10 +1,10 @@
+import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
+import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Pin } from "lucide-react";
-import { useMemo, useState, memo } from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
-import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { memo, useMemo, useState } from "react";
 
 type ResourceRow = {
 	resourceType: string;
@@ -210,7 +210,7 @@ function useProcessedData(
 				};
 			},
 		);
-	}, [data]);
+	}, [data]).sort((a, b) => a.resourceType.localeCompare(b.resourceType));
 
 	// Memoize static subsets separately (don't depend on favorites)
 	const staticSubsets = useMemo(
