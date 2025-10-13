@@ -123,6 +123,7 @@ export const ResourcesTabTable = ({
 				<Router.Link
 					className="text-text-link hover:underline pl-5"
 					to="/resource-types/$resourceType/$id"
+					search={{ tab: "code" }}
 					params={{
 						resourceType: resourcesPageContext.resourceType,
 						id: info.getValue(),
