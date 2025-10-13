@@ -1,11 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
 import * as utils from "../../api/utils";
-import { useLocalStorage } from "../../hooks";
+
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { ViewDefinitionContext } from "./page";
@@ -71,6 +71,7 @@ export const EditorPanelActions = () => {
 			navigate({
 				to: "/resource-types/$resourceType/$id",
 				params: { resourceType: "ViewDefinition", id: id },
+				search: { tab: "code" },
 			});
 		},
 		onError: utils.onError(),
@@ -163,15 +164,17 @@ export const EditorPanelActions = () => {
 };
 
 export const EditorPanelContent = () => {
-	const [selectedTab, setSelectedTab] =
-		useLocalStorage<Types.ViewDefinitionEditorTab>({
-			key: "view-definition-editor-tab-selected",
-			getInitialValueInEffect: false,
-			defaultValue: "form",
-		});
+	const navigate = useNavigate();
+
+	const { tab: selectedTab } = useSearch({
+		from: "/resource-types/$resourceType/$id",
+	});
 
 	const handleOnTabSelect = (value: string) => {
-		setSelectedTab(value as Types.ViewDefinitionEditorTab);
+		navigate({
+			from: "/resource-types/$resourceType/$id",
+			search: { tab: value as Types.ViewDefinitionEditorTab },
+		});
 	};
 
 	return (
@@ -181,10 +184,10 @@ export const EditorPanelContent = () => {
 			className="grow min-h-0"
 		>
 			<EditorHeaderMenu />
-			<HSComp.TabsContent value="form" className="py-1 px-2.5">
+			<HSComp.TabsContent value={"form"} className="py-1 px-2.5">
 				<FormTabContent />
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value="code">
+			<HSComp.TabsContent value={"code"}>
 				<CodeTabContent />
 			</HSComp.TabsContent>
 			<SQLTab />
