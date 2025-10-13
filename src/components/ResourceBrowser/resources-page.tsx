@@ -11,10 +11,9 @@ const ResourcesPageContext = React.createContext<Types.ResourcesPageContext>({
 	resourceType: "",
 });
 
-const ResourcesTabContentContext =
-	React.createContext<Types.ResourcesTabContentContext>({
-		resourcesLoading: false,
-	});
+const ResourcesTabContentContext = React.createContext<Types.ResourcesTabContentContext>({
+	resourcesLoading: false,
+});
 
 export const ResourcePageTabList = () => {
 	return (
@@ -22,9 +21,7 @@ export const ResourcePageTabList = () => {
 			<HSComp.TabsList className="px-4">
 				<HSComp.TabsTrigger value="resources">Resources</HSComp.TabsTrigger>
 				<HSComp.TabsTrigger value="profiles">Profiles</HSComp.TabsTrigger>
-				<HSComp.TabsTrigger value="extensions">
-					Search parameters
-				</HSComp.TabsTrigger>
+				<HSComp.TabsTrigger value="extensions">Search parameters</HSComp.TabsTrigger>
 			</HSComp.TabsList>
 		</div>
 	);
@@ -37,9 +34,7 @@ export const ResourcesTabSarchInput = () => {
 		strict: false,
 	});
 
-	const decodedSearchQuery = search.searchQuery
-		? atob(search.searchQuery)
-		: Constants.DEFAULT_SEARCH_QUERY;
+	const decodedSearchQuery = search.searchQuery ? atob(search.searchQuery) : Constants.DEFAULT_SEARCH_QUERY;
 
 	return (
 		<HSComp.Input
@@ -61,9 +56,7 @@ export const ResourcesTabCreateButton = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	return (
-		<Router.Link
-			to={`/resource-types/${resourcesPageContext.resourceType}/new`}
-		>
+		<Router.Link to={`/resource-types/${resourcesPageContext.resourceType}/new`}>
 			<HSComp.Button variant="secondary">
 				<Lucide.PlusIcon className="text-fg-brand-primary" />
 				Create
@@ -73,46 +66,31 @@ export const ResourcesTabCreateButton = () => {
 };
 
 export const ResourcesTabSearchButton = () => {
-	const resourcesTabContentContext = React.useContext(
-		ResourcesTabContentContext,
-	);
+	const resourcesTabContentContext = React.useContext(ResourcesTabContentContext);
 
 	return (
-		<HSComp.Button
-			variant="primary"
-			type="submit"
-			disabled={resourcesTabContentContext.resourcesLoading}
-		>
+		<HSComp.Button variant="primary" type="submit" disabled={resourcesTabContentContext.resourcesLoading}>
 			Search
 		</HSComp.Button>
 	);
 };
 
-export const ResourcesTabHeader = ({
-	handleSearch,
-}: Types.ResourcesTabHeaderProps) => {
+export const ResourcesTabHeader = ({ handleSearch }: Types.ResourcesTabHeaderProps) => {
 	return (
 		<form className="px-4 py-3 border-b flex gap-2" onSubmit={handleSearch}>
 			<ResourcesTabSarchInput />
 			<div className="flex gap-4 items-center">
 				<ResourcesTabSearchButton />
-				<HSComp.Separator
-					orientation="vertical"
-					className="data-[orientation=vertical]:h-6"
-				/>
+				<HSComp.Separator orientation="vertical" className="data-[orientation=vertical]:h-6" />
 				<ResourcesTabCreateButton />
 			</div>
 		</form>
 	);
 };
 
-export const ResourcesTabTable = ({
-	resources,
-}: Types.ResourcesTabTableProps) => {
+export const ResourcesTabTable = ({ resources }: Types.ResourcesTabTableProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
-	const resourcesTabContentContext = React.useContext(
-		ResourcesTabContentContext,
-	);
+	const resourcesTabContentContext = React.useContext(ResourcesTabContentContext);
 
 	const columns = [
 		{
@@ -152,9 +130,7 @@ export const ResourcesTabContent = () => {
 		strict: false,
 	});
 
-	const decodedSearchQuery = search.searchQuery
-		? atob(search.searchQuery)
-		: Constants.DEFAULT_SEARCH_QUERY;
+	const decodedSearchQuery = search.searchQuery ? atob(search.searchQuery) : Constants.DEFAULT_SEARCH_QUERY;
 
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
@@ -163,9 +139,7 @@ export const ResourcesTabContent = () => {
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			return JSON.parse(response.body).entry.map(
-				(entry: any) => entry.resource,
-			);
+			return JSON.parse(response.body).entry.map((entry: any) => entry.resource);
 		},
 		retry: false,
 	});
@@ -180,9 +154,7 @@ export const ResourcesTabContent = () => {
 	};
 
 	return (
-		<ResourcesTabContentContext.Provider
-			value={{ resourcesLoading: isLoading }}
-		>
+		<ResourcesTabContentContext.Provider value={{ resourcesLoading: isLoading }}>
 			<ResourcesTabHeader handleSearch={handleSearch} />
 			<ResourcesTabTable resources={data} />
 		</ResourcesTabContentContext.Provider>

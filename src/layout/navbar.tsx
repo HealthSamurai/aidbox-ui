@@ -14,12 +14,7 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { Link, useMatches } from "@tanstack/react-router";
-import {
-	BookOpenText,
-	LogOut,
-	MessageCircleQuestionMark,
-	UserRound,
-} from "lucide-react";
+import { BookOpenText, LogOut, MessageCircleQuestionMark, UserRound } from "lucide-react";
 import React from "react";
 import { useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
@@ -37,15 +32,8 @@ function Breadcrumbs() {
 			];
 
 			// If the route has params and it's ViewDefinition, add ID as separate breadcrumb
-			if (
-				match.params &&
-				"id" in match.params &&
-				match.pathname.includes("/ViewDefinition/")
-			) {
-				const pathWithoutId = match.pathname.substring(
-					0,
-					match.pathname.lastIndexOf("/"),
-				);
+			if (match.params && "id" in match.params && match.pathname.includes("/ViewDefinition/")) {
+				const pathWithoutId = match.pathname.substring(0, match.pathname.lastIndexOf("/"));
 				items[0].path = pathWithoutId;
 				items.push({
 					title: match.params.id as string,
@@ -91,11 +79,7 @@ function NavbarButtons() {
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Button variant="ghost" className="rounded-full p-2" asChild>
-						<a
-							href="https://health-samurai.io/docs/aidbox"
-							target="_blank"
-							rel="noopener"
-						>
+						<a href="https://health-samurai.io/docs/aidbox" target="_blank" rel="noopener">
 							<BookOpenText />
 						</a>
 					</Button>
@@ -106,11 +90,7 @@ function NavbarButtons() {
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Button variant="ghost" className="rounded-full p-2" asChild>
-						<a
-							href="https://connect.health-samurai.io"
-							target="_blank"
-							rel="noopener"
-						>
+						<a href="https://connect.health-samurai.io" target="_blank" rel="noopener">
 							<MessageCircleQuestionMark />
 						</a>
 					</Button>
@@ -144,11 +124,7 @@ function NavbarButtons() {
 							</a>
 						</Button>
 					</div>
-					<Button
-						variant="ghost"
-						className="w-full justify-start"
-						onClick={() => logout.mutate()}
-					>
+					<Button variant="ghost" className="w-full justify-start" onClick={() => logout.mutate()}>
 						<LogOut />
 						Sign out
 					</Button>
@@ -162,13 +138,7 @@ export function Navbar() {
 	return (
 		<div className="flex-none h-15 flex items-center border-b">
 			<div className="h-full shrink-0 border-r flex items-center justify-center w-[3.125rem] box-content">
-				<img
-					src={AidboxLogo}
-					alt="Aidbox"
-					className="h-6"
-					height="24"
-					width="24"
-				/>
+				<img src={AidboxLogo} alt="Aidbox" className="h-6" height="24" width="24" />
 			</div>
 			<div className="pl-4 pr-4 w-full flex items-center justify-between">
 				<Breadcrumbs />

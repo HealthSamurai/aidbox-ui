@@ -56,15 +56,7 @@ const commandContainer = cn("h-full");
 const commandList = cn("h-full", "max-h-full", "p-0");
 
 // History item styles
-const historyItem = cn(
-	"flex",
-	"items-center",
-	"gap-2",
-	"my-1",
-	"py-2",
-	"cursor-pointer",
-	"hover:bg-bg-secondary",
-);
+const historyItem = cn("flex", "items-center", "gap-2", "my-1", "py-2", "cursor-pointer", "hover:bg-bg-secondary");
 
 const historyItemSelected = cn("bg-bg-tertiary", "text-text-primary");
 
@@ -96,8 +88,7 @@ export { LeftMenuContext };
 // Helper function to parse HTTP command
 function parseHttpCommand(command: string) {
 	const lines = command.split("\n");
-	if (lines.length === 0)
-		return { method: "", path: "", headers: [], body: "" };
+	if (lines.length === 0) return { method: "", path: "", headers: [], body: "" };
 
 	const firstLine = lines[0]?.trim() || "";
 	const [method, ...pathParts] = firstLine.split(" ");
@@ -138,11 +129,7 @@ function getTimeGroup(dateString: string): string {
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const yesterday = new Date(today);
 	yesterday.setDate(yesterday.getDate() - 1);
-	const itemDate = new Date(
-		date.getFullYear(),
-		date.getMonth(),
-		date.getDate(),
-	);
+	const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
 	if (itemDate.getTime() === today.getTime()) {
 		return "TODAY";
@@ -174,11 +161,7 @@ function groupHistoryByTime(items: UIHistoryResource[]) {
 	Object.keys(groups).forEach((key) => {
 		const groupItems = groups[key];
 		if (groupItems) {
-			groupItems.sort(
-				(a, b) =>
-					new Date(b.meta.createdAt).getTime() -
-					new Date(a.meta.createdAt).getTime(),
-			);
+			groupItems.sort((a, b) => new Date(b.meta.createdAt).getTime() - new Date(a.meta.createdAt).getTime());
 		}
 	});
 
@@ -186,10 +169,7 @@ function groupHistoryByTime(items: UIHistoryResource[]) {
 }
 
 // Helper function to check if history item matches selected tab
-function isHistoryItemSelected(
-	item: UIHistoryResource,
-	selectedTab?: Tab,
-): boolean {
+function isHistoryItemSelected(item: UIHistoryResource, selectedTab?: Tab): boolean {
 	if (!selectedTab || !selectedTab.historyId) return false;
 	return item.id === selectedTab.historyId;
 }
@@ -231,16 +211,10 @@ function HistoryCommand({
 	onItemMiddleClick: (item: UIHistoryResource) => void;
 }) {
 	const getMethodColor = (method: string) => {
-		return (
-			methodColors[method.toUpperCase() as keyof typeof methodColors] ||
-			"text-text-secondary"
-		);
+		return methodColors[method.toUpperCase() as keyof typeof methodColors] || "text-text-secondary";
 	};
 
-	const handleItemMouseDown = (
-		event: React.MouseEvent,
-		item: UIHistoryResource,
-	) => {
+	const handleItemMouseDown = (event: React.MouseEvent, item: UIHistoryResource) => {
 		// Middle mouse button (wheel click) - button 1
 		if (event.button === 1) {
 			event.preventDefault();
@@ -278,20 +252,10 @@ function HistoryCommand({
 										value={createSearchableText(item)}
 										onSelect={() => onItemClick(item)}
 										onMouseDown={(event) => handleItemMouseDown(event, item)}
-										className={cn(
-											historyItem,
-											isSelected && historyItemSelected,
-										)}
+										className={cn(historyItem, isSelected && historyItemSelected)}
 									>
-										<span
-											className={cn(methodLabel, getMethodColor(method || ""))}
-										>
-											{method}
-										</span>
-										<div
-											className={isSelected ? pathLabelSelected : pathLabel}
-											title={path}
-										>
+										<span className={cn(methodLabel, getMethodColor(method || ""))}>{method}</span>
+										<div className={isSelected ? pathLabelSelected : pathLabel} title={path}>
 											{path}
 										</div>
 									</CommandItem>
@@ -390,25 +354,22 @@ export function LeftMenu({
 	}, [historyData]);
 
 	// Helper function to sort group keys in chronological order
-	const getSortedGroupKeys = React.useCallback(
-		(groups: Record<string, UIHistoryResource[]>) => {
-			return Object.keys(groups).sort((a, b) => {
-				// TODAY should be first
-				if (a === "TODAY") return -1;
-				if (b === "TODAY") return 1;
+	const getSortedGroupKeys = React.useCallback((groups: Record<string, UIHistoryResource[]>) => {
+		return Object.keys(groups).sort((a, b) => {
+			// TODAY should be first
+			if (a === "TODAY") return -1;
+			if (b === "TODAY") return 1;
 
-				// YESTERDAY should be second
-				if (a === "YESTERDAY") return -1;
-				if (b === "YESTERDAY") return 1;
+			// YESTERDAY should be second
+			if (a === "YESTERDAY") return -1;
+			if (b === "YESTERDAY") return 1;
 
-				// For date strings, sort in descending order (newest first)
-				const dateA = new Date(a.split(".").reverse().join("-")); // Convert DD.MM.YYYY to YYYY-MM-DD
-				const dateB = new Date(b.split(".").reverse().join("-"));
-				return dateB.getTime() - dateA.getTime();
-			});
-		},
-		[],
-	);
+			// For date strings, sort in descending order (newest first)
+			const dateA = new Date(a.split(".").reverse().join("-")); // Convert DD.MM.YYYY to YYYY-MM-DD
+			const dateB = new Date(b.split(".").reverse().join("-"));
+			return dateB.getTime() - dateA.getTime();
+		});
+	}, []);
 
 	const [selectedMenuTab, setSelectedMenuTab] = useLocalStorage<string>({
 		key: "rest-console-left-menu-default-tab",
@@ -416,12 +377,7 @@ export function LeftMenu({
 	});
 
 	return (
-		<div
-			className={cn(
-				leftMenuContainer,
-				leftMenuStatus === "open" && leftMenuContainerOpen,
-			)}
-		>
+		<div className={cn(leftMenuContainer, leftMenuStatus === "open" && leftMenuContainerOpen)}>
 			<Tabs value={selectedMenuTab} onValueChange={setSelectedMenuTab}>
 				<div className={tabsHeader}>
 					<TabsList>
@@ -480,16 +436,8 @@ export function LeftMenuToggle({ onOpen, onClose }: LeftMenuToggleProps) {
 	return (
 		<Tooltip delayDuration={600}>
 			<TooltipTrigger asChild>
-				<Button
-					variant="link"
-					className={toggleButton}
-					onClick={leftMenuStatus === "open" ? onClose : onOpen}
-				>
-					{leftMenuStatus === "open" ? (
-						<PanelLeftClose className={iconSize} />
-					) : (
-						<PanelLeftOpen className={iconSize} />
-					)}
+				<Button variant="link" className={toggleButton} onClick={leftMenuStatus === "open" ? onClose : onOpen}>
+					{leftMenuStatus === "open" ? <PanelLeftClose className={iconSize} /> : <PanelLeftOpen className={iconSize} />}
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>History / Collections</TooltipContent>

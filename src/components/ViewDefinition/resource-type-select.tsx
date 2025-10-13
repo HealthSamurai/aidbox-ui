@@ -19,9 +19,7 @@ const fetchResourceTypes = () => {
 };
 
 export const ResourceTypeSelect = () => {
-	const viewDefinitionResourceTypeContext = React.useContext(
-		ViewDefinitionResourceTypeContext,
-	);
+	const viewDefinitionResourceTypeContext = React.useContext(ViewDefinitionResourceTypeContext);
 
 	const { data, isLoading } = useQuery({
 		queryKey: [Constants.PageID, "resource-types"],
@@ -38,8 +36,7 @@ export const ResourceTypeSelect = () => {
 		[data],
 	);
 
-	const currentResourceType =
-		viewDefinitionResourceTypeContext.viewDefinitionResourceType;
+	const currentResourceType = viewDefinitionResourceTypeContext.viewDefinitionResourceType;
 
 	const handleOnSelect = React.useCallback(
 		(value: string) => {
@@ -47,14 +44,10 @@ export const ResourceTypeSelect = () => {
 				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(value);
 			}
 		},
-		[
-			currentResourceType,
-			viewDefinitionResourceTypeContext.setViewDefinitionResourceType,
-		],
+		[currentResourceType, viewDefinitionResourceTypeContext.setViewDefinitionResourceType],
 	);
 
-	if (isLoading)
-		return <HSComp.Skeleton className="rounded-full min-w-21 h-6" />;
+	if (isLoading) return <HSComp.Skeleton className="rounded-full min-w-21 h-6" />;
 
 	return (
 		<HSComp.ButtonDropdown

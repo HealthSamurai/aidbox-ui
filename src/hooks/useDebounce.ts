@@ -1,9 +1,7 @@
 import React from "react";
 
 export const useDebounce = <T>(callback: (value: T) => void, delay: number) => {
-	const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(
-		undefined,
-	);
+	const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const callbackRef = React.useRef(callback);
 
 	React.useEffect(() => {

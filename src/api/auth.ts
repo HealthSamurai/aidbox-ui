@@ -72,13 +72,7 @@ export async function AidboxCall<T = unknown>({
 	return response.json() as T;
 }
 
-export async function AidboxCallWithMeta({
-	method,
-	url,
-	headers = {},
-	params = {},
-	body,
-}: AidboxCallParams): Promise<{
+export async function AidboxCallWithMeta({ method, url, headers = {}, params = {}, body }: AidboxCallParams): Promise<{
 	status: number;
 	statusText: string;
 	headers: Record<string, string>;

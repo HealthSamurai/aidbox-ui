@@ -3,10 +3,7 @@ import * as yaml from "js-yaml";
 import React from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
 import { CodeEditorMenubar } from "./code-editor-menubar";
-import {
-	ViewDefinitionContext,
-	ViewDefinitionResourceTypeContext,
-} from "./page";
+import { ViewDefinitionContext, ViewDefinitionResourceTypeContext } from "./page";
 import type { ViewDefinition, ViewDefinitionEditorMode } from "./types";
 
 export const ViewDefinitionCodeEditor = ({
@@ -19,60 +16,35 @@ export const ViewDefinitionCodeEditor = ({
 	setEditorValue: (value: string) => void;
 }) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const viewDefinitionResourceTypeContext = React.useContext(
-		ViewDefinitionResourceTypeContext,
-	);
+	const viewDefinitionResourceTypeContext = React.useContext(ViewDefinitionResourceTypeContext);
 
-	const debouncedSetViewDefinitionResourceType = useDebounce(
-		(resourceType: string) => {
-			if (
-				resourceType !==
-				viewDefinitionResourceTypeContext.viewDefinitionResourceType
-			) {
-				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
-					resourceType,
-				);
-			}
-		},
-		500,
-	);
+	const debouncedSetViewDefinitionResourceType = useDebounce((resourceType: string) => {
+		if (resourceType !== viewDefinitionResourceTypeContext.viewDefinitionResourceType) {
+			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(resourceType);
+		}
+	}, 500);
 
-	const debouncedSetViewDefinition = useDebounce(
-		(viewDefinition: ViewDefinition) => {
-			if (
-				JSON.stringify(viewDefinition) !==
-				JSON.stringify(viewDefinitionContext.viewDefinition)
-			) {
-				viewDefinitionContext.setViewDefinition(viewDefinition);
-			}
-		},
-		500,
-	);
+	const debouncedSetViewDefinition = useDebounce((viewDefinition: ViewDefinition) => {
+		if (JSON.stringify(viewDefinition) !== JSON.stringify(viewDefinitionContext.viewDefinition)) {
+			viewDefinitionContext.setViewDefinition(viewDefinition);
+		}
+	}, 500);
 
 	const handleEditorValueChange = (value: string) => {
 		setEditorValue(value);
 		try {
-			const parsedValue =
-				codeMode === "json" ? JSON.parse(value) : yaml.load(value);
+			const parsedValue = codeMode === "json" ? JSON.parse(value) : yaml.load(value);
 			debouncedSetViewDefinitionResourceType(parsedValue.resource);
 			debouncedSetViewDefinition(parsedValue);
 		} catch (_error) {}
 	};
 
-	return (
-		<HSComp.CodeEditor
-			currentValue={editorValue}
-			mode={codeMode}
-			onChange={handleEditorValueChange}
-		/>
-	);
+	return <HSComp.CodeEditor currentValue={editorValue} mode={codeMode} onChange={handleEditorValueChange} />;
 };
 
 export const CodeTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const viewDefinitionResourceTypeContext = React.useContext(
-		ViewDefinitionResourceTypeContext,
-	);
+	const viewDefinitionResourceTypeContext = React.useContext(ViewDefinitionResourceTypeContext);
 
 	const [codeMode, setCodeMode] = useLocalStorage<ViewDefinitionEditorMode>({
 		key: "viewDefinition.codeMode",
@@ -93,15 +65,11 @@ export const CodeTabContent = () => {
 	);
 
 	React.useEffect(() => {
-		if (
-			viewDefinitionContext.viewDefinition &&
-			viewDefinitionResourceTypeContext.viewDefinitionResourceType
-		) {
+		if (viewDefinitionContext.viewDefinition && viewDefinitionResourceTypeContext.viewDefinitionResourceType) {
 			setEditorValue(
 				stringifyViewDefinition({
 					...viewDefinitionContext.viewDefinition,
-					resource:
-						viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+					resource: viewDefinitionResourceTypeContext.viewDefinitionResourceType,
 				}),
 			);
 		}
@@ -119,10 +87,7 @@ export const CodeTabContent = () => {
 		}
 	}, [viewDefinitionContext.viewDefinition, stringifyViewDefinition]);
 
-	const formatCode = (
-		editorValue: string,
-		codeMode: ViewDefinitionEditorMode,
-	) => {
+	const formatCode = (editorValue: string, codeMode: ViewDefinitionEditorMode) => {
 		const formattedValue =
 			codeMode === "yaml"
 				? yaml.dump(yaml.load(editorValue), { indent: 2 })
@@ -158,11 +123,7 @@ export const CodeTabContent = () => {
 					}}
 				/>
 			</div>
-			<ViewDefinitionCodeEditor
-				codeMode={codeMode}
-				editorValue={editorValue}
-				setEditorValue={setEditorValue}
-			/>
+			<ViewDefinitionCodeEditor codeMode={codeMode} editorValue={editorValue} setEditorValue={setEditorValue} />
 		</div>
 	);
 };

@@ -21,25 +21,11 @@ export function ParamRow({
 }) {
 	return (
 		<div className="flex gap-2 items-center">
-			<Checkbox
-				className="mr-2"
-				checked={active}
-				onCheckedChange={(checked) => onActiveChange(checked !== false)}
-			/>
+			<Checkbox className="mr-2" checked={active} onCheckedChange={(checked) => onActiveChange(checked !== false)} />
 			<div className="max-w-90 w-90">
-				<Input
-					placeholder="Key"
-					value={name}
-					onChange={(ev) => onNameChange(ev.target.value)}
-					disabled={!active}
-				/>
+				<Input placeholder="Key" value={name} onChange={(ev) => onNameChange(ev.target.value)} disabled={!active} />
 			</div>
-			<Input
-				placeholder="Value"
-				value={value}
-				onChange={(ev) => onValueChange(ev.target.value)}
-				disabled={!active}
-			/>
+			<Input placeholder="Value" value={value} onChange={(ev) => onValueChange(ev.target.value)} disabled={!active} />
 			<Button
 				variant="link"
 				size="small"
@@ -75,9 +61,7 @@ export default function ParamsEditor({
 					value={param.value}
 					onValueChange={(value) => onParamChange(index, { ...param, value })}
 					active={param.enabled ?? true}
-					onActiveChange={(active) =>
-						onParamChange(index, { ...param, enabled: active })
-					}
+					onActiveChange={(active) => onParamChange(index, { ...param, enabled: active })}
 					onRemove={() => onParamRemove(index)}
 				/>
 			))}

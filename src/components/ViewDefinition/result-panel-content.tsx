@@ -35,9 +35,7 @@ const parseResponse = (response: string | undefined): unknown[] | null => {
 	}
 };
 
-const extractColumns = (
-	data: unknown[],
-): ColumnDef<Record<string, unknown>, unknown>[] => {
+const extractColumns = (data: unknown[]): ColumnDef<Record<string, unknown>, unknown>[] => {
 	const allKeys = new Set<string>();
 	data.forEach((row) => {
 		if (typeof row === "object" && row !== null) {
@@ -73,13 +71,7 @@ const processTableData = (response: string | undefined): ProcessedTableData => {
 	return { tableData: parsedData, columns, isEmptyArray: false };
 };
 
-const EmptyState = ({
-	message,
-	description,
-}: {
-	message: string;
-	description: string;
-}) => (
+const EmptyState = ({ message, description }: { message: string; description: string }) => (
 	<div className="flex items-center justify-center h-full text-text-secondary bg-bg-primary">
 		<div className="text-center">
 			<div className="text-lg mb-2">{message}</div>
@@ -88,23 +80,13 @@ const EmptyState = ({
 	</div>
 );
 
-const ResultHeader = ({
-	isMaximized,
-	onToggleMaximize,
-}: {
-	isMaximized: boolean;
-	onToggleMaximize: () => void;
-}) => (
+const ResultHeader = ({ isMaximized, onToggleMaximize }: { isMaximized: boolean; onToggleMaximize: () => void }) => (
 	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-2 pr-2 py-3 border-b h-10">
 		<div className="flex gap-1 items-center">
 			<span className="typo-label text-text-secondary">Result:</span>
 		</div>
 		<Button variant="ghost" size="small" onClick={onToggleMaximize}>
-			{isMaximized ? (
-				<Minimize2 className="w-4 h-4" />
-			) : (
-				<Maximize2 className="w-4 h-4" />
-			)}
+			{isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
 		</Button>
 	</div>
 );
@@ -121,21 +103,11 @@ const ResultContent = ({
 	columns: ColumnDef<Record<string, unknown>, unknown>[];
 }) => {
 	if (!rows) {
-		return (
-			<EmptyState
-				message="No results yet"
-				description="Click Run to execute the ViewDefinition"
-			/>
-		);
+		return <EmptyState message="No results yet" description="Click Run to execute the ViewDefinition" />;
 	}
 
 	if (isEmptyArray) {
-		return (
-			<EmptyState
-				message="No results"
-				description="The query executed successfully but returned no data"
-			/>
-		);
+		return <EmptyState message="No results" description="The query executed successfully but returned no data" />;
 	}
 
 	if (tableData.length > 0) {
@@ -333,16 +305,8 @@ export function ResultPanel() {
 		<div
 			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-30 overflow-auto bg-bg-primary" : ""}`}
 		>
-			<ResultHeader
-				isMaximized={isMaximized}
-				onToggleMaximize={toggleMaximize}
-			/>
-			<ResultContent
-				rows={rows}
-				isEmptyArray={isEmptyArray}
-				tableData={tableData}
-				columns={columns}
-			/>
+			<ResultHeader isMaximized={isMaximized} onToggleMaximize={toggleMaximize} />
+			<ResultContent rows={rows} isEmptyArray={isEmptyArray} tableData={tableData} columns={columns} />
 			{rows && (
 				<ResultPagination
 					onPageChange={handlePageChange}

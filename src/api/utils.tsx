@@ -2,19 +2,9 @@ import * as HSComp from "@health-samurai/react-components";
 import type MutationFunctionContext from "@tanstack/react-query";
 
 export function onError<T>(
-	cb?: (
-		error: Error,
-		vars: T,
-		onMutateResult: unknown,
-		context: MutationFunctionContext,
-	) => Promise<unknown> | unknown,
+	cb?: (error: Error, vars: T, onMutateResult: unknown, context: MutationFunctionContext) => Promise<unknown> | unknown,
 ) {
-	return (
-		error: Error,
-		vars: T,
-		onMutateResult: unknown,
-		context: MutationFunctionContext,
-	) => {
+	return (error: Error, vars: T, onMutateResult: unknown, context: MutationFunctionContext) => {
 		if (typeof error.cause === "string") {
 			const cause = JSON.parse(error.cause);
 			const issues: unknown[] = cause.issue;

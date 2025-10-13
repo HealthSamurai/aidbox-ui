@@ -11,10 +11,7 @@ export function InfoPanel() {
 
 	return (
 		<div className="flex flex-col h-full">
-			<Tabs
-				value={activeTab}
-				onValueChange={(value) => setActiveTab(value as "schema" | "examples")}
-			>
+			<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "schema" | "examples")}>
 				<div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
 					<div className="flex items-center gap-8">
 						<TabsList>

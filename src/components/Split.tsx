@@ -1,9 +1,4 @@
-import {
-	Button,
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@health-samurai/react-components";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@health-samurai/react-components";
 import { Columns2, Rows2 } from "lucide-react";
 
 type SplitDirection = "horizontal" | "vertical";
@@ -47,10 +42,4 @@ function SplitButton({ direction, onChange }: SplitButtonProps) {
 	}
 }
 
-export {
-	HorizontalSplitButton,
-	VerticalSplitButton,
-	SplitButton,
-	type SplitDirection,
-	type SplitButtonProps,
-};
+export { HorizontalSplitButton, VerticalSplitButton, SplitButton, type SplitDirection, type SplitButtonProps };

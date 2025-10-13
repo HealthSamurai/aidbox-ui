@@ -87,9 +87,7 @@ export function generateHttpRequest(tab: Tab): string {
 
 	const headers =
 		tab.headers
-			?.filter(
-				(header) => header.name && header.value && (header.enabled ?? true),
-			)
+			?.filter((header) => header.name && header.value && (header.enabled ?? true))
 			.map((header) => `${header.name}: ${header.value}`)
 			.join("\n") || "";
 

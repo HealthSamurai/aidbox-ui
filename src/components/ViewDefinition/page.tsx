@@ -15,53 +15,40 @@ const fetchViewDefinition = (id: string) => {
 	});
 };
 
-export const ViewDefinitionContext =
-	React.createContext<Types.ViewDefinitionContextProps>({
-		viewDefinition: undefined,
-		setViewDefinition: () => {},
-		isLoadingViewDef: true,
-		runResult: undefined,
-		setRunResult: () => {},
-		runResultPageSize: 30,
-		setRunResultPageSize: () => {},
-		runResultPage: 1,
-		setRunResultPage: () => {},
-		runViewDefinition: undefined,
-		setRunViewDefinition: () => {},
-	});
+export const ViewDefinitionContext = React.createContext<Types.ViewDefinitionContextProps>({
+	viewDefinition: undefined,
+	setViewDefinition: () => {},
+	isLoadingViewDef: true,
+	runResult: undefined,
+	setRunResult: () => {},
+	runResultPageSize: 30,
+	setRunResultPageSize: () => {},
+	runResultPage: 1,
+	setRunResultPage: () => {},
+	runViewDefinition: undefined,
+	setRunViewDefinition: () => {},
+});
 
-export const ViewDefinitionResourceTypeContext =
-	React.createContext<Types.ViewDefinitionResourceTypeContextProps>({
-		viewDefinitionResourceType: undefined,
-		setViewDefinitionResourceType: () => {},
-	});
+export const ViewDefinitionResourceTypeContext = React.createContext<Types.ViewDefinitionResourceTypeContextProps>({
+	viewDefinitionResourceType: undefined,
+	setViewDefinitionResourceType: () => {},
+});
 
-export const ViewDefinitionErrorPage = ({
-	viewDefinitionError,
-}: {
-	viewDefinitionError: Error;
-}) => {
+export const ViewDefinitionErrorPage = ({ viewDefinitionError }: { viewDefinitionError: Error }) => {
 	return (
 		<div className="px-4 py-5">
-			<div className="text-text-secondary">
-				Error while fetching View Definition:
-			</div>
-			<div className="text-text-error-primary">
-				{viewDefinitionError.message}
-			</div>
+			<div className="text-text-secondary">Error while fetching View Definition:</div>
+			<div className="text-text-error-primary">{viewDefinitionError.message}</div>
 		</div>
 	);
 };
 
 const ViewDefinitionPage = ({ id }: { id?: string }) => {
-	const [viewDefinition, setViewDefinition] =
-		React.useState<Types.ViewDefinition>();
+	const [viewDefinition, setViewDefinition] = React.useState<Types.ViewDefinition>();
 
-	const [runViewDefinition, setRunViewDefinition] =
-		React.useState<Types.ViewDefinition>();
+	const [runViewDefinition, setRunViewDefinition] = React.useState<Types.ViewDefinition>();
 
-	const [viewDefinitionResourceType, setViewDefinitionResourceType] =
-		React.useState<string>();
+	const [viewDefinitionResourceType, setViewDefinitionResourceType] = React.useState<string>();
 
 	const [runResult, setRunResult] = React.useState<string>();
 
@@ -90,12 +77,7 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 		refetchOnWindowFocus: false,
 	});
 
-	if (viewDefinitionQuery.error)
-		return (
-			<ViewDefinitionErrorPage
-				viewDefinitionError={viewDefinitionQuery.error}
-			/>
-		);
+	if (viewDefinitionQuery.error) return <ViewDefinitionErrorPage viewDefinitionError={viewDefinitionQuery.error} />;
 
 	return (
 		<ViewDefinitionContext.Provider
@@ -120,15 +102,9 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 					setViewDefinitionResourceType: setViewDefinitionResourceType,
 				}}
 			>
-				<HSComp.ResizablePanelGroup
-					direction="vertical"
-					autoSaveId="view-definition-vertical-panel"
-				>
+				<HSComp.ResizablePanelGroup direction="vertical" autoSaveId="view-definition-vertical-panel">
 					<HSComp.ResizablePanel minSize={10}>
-						<HSComp.ResizablePanelGroup
-							direction="horizontal"
-							autoSaveId="view-definition-horizontal-panel"
-						>
+						<HSComp.ResizablePanelGroup direction="horizontal" autoSaveId="view-definition-horizontal-panel">
 							<HSComp.ResizablePanel minSize={20}>
 								<EditorPanelContent />
 							</HSComp.ResizablePanel>

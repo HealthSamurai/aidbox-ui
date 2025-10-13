@@ -63,10 +63,7 @@ export const DEFAULT_TAB: Tab = {
 	params: [{ id: "1", name: "", value: "", enabled: true }],
 };
 
-export function addTab(
-	tabs: Tab[],
-	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
-) {
+export function addTab(tabs: Tab[], setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void) {
 	const newTab: Tab = {
 		...DEFAULT_TAB,
 		id: crypto.randomUUID(),
@@ -88,9 +85,7 @@ export function addTabFromHistory(
 	},
 ) {
 	// Check if tab with this historyId already exists
-	const existingTab = tabs.find(
-		(tab) => tab.historyId === historyData.historyId,
-	);
+	const existingTab = tabs.find((tab) => tab.historyId === historyData.historyId);
 
 	if (existingTab) {
 		// Focus existing tab instead of creating new one
@@ -113,9 +108,7 @@ export function addTabFromHistory(
 				? []
 				: [{ id: crypto.randomUUID(), name: "", value: "", enabled: true }]),
 		],
-		params: historyData.params || [
-			{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
-		],
+		params: historyData.params || [{ id: crypto.randomUUID(), name: "", value: "", enabled: true }],
 	};
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 }
@@ -124,20 +117,12 @@ export function forceSelectedTab(tabs: Tab[], tabIndex: number): Tab[] {
 	const hasSelected = tabs.some((tab) => tab.selected);
 	if (!hasSelected && tabs.length > 0) {
 		const safeIndex = Math.min(tabIndex, tabs.length - 1);
-		return tabs.map((tab, idx) =>
-			idx === safeIndex
-				? { ...tab, selected: true }
-				: { ...tab, selected: false },
-		);
+		return tabs.map((tab, idx) => (idx === safeIndex ? { ...tab, selected: true } : { ...tab, selected: false }));
 	}
 	return tabs;
 }
 
-export function removeTab(
-	tabs: Tab[],
-	tabId: TabId,
-	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
-) {
+export function removeTab(tabs: Tab[], tabId: TabId, setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void) {
 	const newTabs = tabs.filter((tab) => tab.id !== tabId);
 	if (newTabs.length === 0) {
 		setTabs([DEFAULT_TAB]);
@@ -153,20 +138,14 @@ export function removeTab(
 			const safeIndex = Math.min(targetIndex, newTabs.length - 1);
 
 			updatedTabs = newTabs.map((tab, idx) =>
-				idx === safeIndex
-					? { ...tab, selected: true }
-					: { ...tab, selected: false },
+				idx === safeIndex ? { ...tab, selected: true } : { ...tab, selected: false },
 			);
 		}
 		setTabs(updatedTabs);
 	}
 }
 
-function onTabSelect(
-	tabId: TabId,
-	tabs: Tab[],
-	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
-) {
+function onTabSelect(tabId: TabId, tabs: Tab[], setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void) {
 	setTabs(tabs.map((t) => ({ ...t, selected: t.id === tabId })));
 }
 
@@ -213,22 +192,12 @@ function TabContextMenuContent({
 
 	return (
 		<ContextMenuContent className="w-50">
-			<ContextMenuItem onClick={handleDuplicateTab}>
-				Duplicate tab
-			</ContextMenuItem>
+			<ContextMenuItem onClick={handleDuplicateTab}>Duplicate tab</ContextMenuItem>
 			<ContextMenuSeparator></ContextMenuSeparator>
-			<ContextMenuItem onClick={() => handleCloseTab(tab.id)}>
-				Close tab
-			</ContextMenuItem>
-			<ContextMenuItem onClick={handleCloseOtherTabs}>
-				Close other tabs
-			</ContextMenuItem>
-			<ContextMenuItem onClick={handleCloseTabsToLeft}>
-				Close tabs to left
-			</ContextMenuItem>
-			<ContextMenuItem onClick={handleCloseTabsToRight}>
-				Close tabs to right
-			</ContextMenuItem>
+			<ContextMenuItem onClick={() => handleCloseTab(tab.id)}>Close tab</ContextMenuItem>
+			<ContextMenuItem onClick={handleCloseOtherTabs}>Close other tabs</ContextMenuItem>
+			<ContextMenuItem onClick={handleCloseTabsToLeft}>Close tabs to left</ContextMenuItem>
+			<ContextMenuItem onClick={handleCloseTabsToRight}>Close tabs to right</ContextMenuItem>
 		</ContextMenuContent>
 	);
 }
@@ -275,12 +244,7 @@ export function ActiveTabs({
 									<TabContent tab={tab} />
 								</TabsTrigger>
 							</ContextMenuTrigger>
-							<TabContextMenuContent
-								tab={tab}
-								tabs={tabs}
-								setTabs={setTabs}
-								handleCloseTab={handleCloseTab}
-							/>
+							<TabContextMenuContent tab={tab} tabs={tabs} setTabs={setTabs} handleCloseTab={handleCloseTab} />
 						</ContextMenu>
 					);
 				})}

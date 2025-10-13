@@ -19,26 +19,20 @@ export default function HeadersEditor({
 						<Checkbox
 							className="mr-2"
 							checked={header.enabled ?? true}
-							onCheckedChange={(checked) =>
-								onHeaderChange(index, { ...header, enabled: !!checked })
-							}
+							onCheckedChange={(checked) => onHeaderChange(index, { ...header, enabled: !!checked })}
 						/>
 						<div className="max-w-90 w-90">
 							<Input
 								placeholder="Key"
 								defaultValue={header.name}
-								onChange={(e) =>
-									onHeaderChange(index, { ...header, name: e.target.value })
-								}
+								onChange={(e) => onHeaderChange(index, { ...header, name: e.target.value })}
 								disabled={!(header.enabled ?? true)}
 							/>
 						</div>
 						<Input
 							placeholder="Value"
 							defaultValue={header.value}
-							onChange={(e) =>
-								onHeaderChange(index, { ...header, value: e.target.value })
-							}
+							onChange={(e) => onHeaderChange(index, { ...header, value: e.target.value })}
 							disabled={!(header.enabled ?? true)}
 						/>
 						<Button
@@ -47,12 +41,8 @@ export default function HeadersEditor({
 							onClick={() => onHeaderRemove(index)}
 							disabled={header.name === undefined || header.name === ""}
 							style={{
-								opacity:
-									header.name === undefined || header.name === "" ? 0 : 1,
-								pointerEvents:
-									header.name === undefined || header.name === ""
-										? "none"
-										: "auto",
+								opacity: header.name === undefined || header.name === "" ? 0 : 1,
+								pointerEvents: header.name === undefined || header.name === "" ? "none" : "auto",
 							}}
 						>
 							<Trash2 />

@@ -83,9 +83,7 @@ const ResourceList = memo(
 		const filteredData = useMemo(() => {
 			if (!filterQuery) return tableData;
 			const lowerQuery = filterQuery.toLowerCase();
-			return tableData.filter((row) =>
-				row.resourceType.toLowerCase().includes(lowerQuery),
-			);
+			return tableData.filter((row) => row.resourceType.toLowerCase().includes(lowerQuery));
 		}, [tableData, filterQuery]);
 
 		const makeClickableCell = (renderer: (value: any) => any) => {
@@ -111,13 +109,7 @@ const ResourceList = memo(
 				size: 20,
 				cell: (info: any) => {
 					const resourceType = info.row.original.resourceType;
-					return (
-						<FavoriteCell
-							resourceType={resourceType}
-							getFavorites={getFavorites}
-							onToggle={onToggleFavorite}
-						/>
-					);
+					return <FavoriteCell resourceType={resourceType} getFavorites={getFavorites} onToggle={onToggleFavorite} />;
 				},
 			},
 			{
@@ -154,10 +146,7 @@ const ResourceList = memo(
 		);
 	},
 	(prevProps, nextProps) => {
-		return (
-			prevProps.tableData === nextProps.tableData &&
-			prevProps.filterQuery === nextProps.filterQuery
-		);
+		return prevProps.tableData === nextProps.tableData && prevProps.filterQuery === nextProps.filterQuery;
 	},
 );
 
@@ -183,33 +172,28 @@ function useResourceData() {
 	});
 }
 
-function useProcessedData(
-	data: any,
-	favorites: Set<string>,
-): { allTableData: ResourceRow[]; subsets: Subsets } {
+function useProcessedData(data: any, favorites: Set<string>): { allTableData: ResourceRow[]; subsets: Subsets } {
 	const allTableData = useMemo(() => {
 		if (!data) return [];
 		const { resources, stats } = data;
 
-		return Object.entries(resources || {}).map(
-			([key, value]: [string, any]) => {
-				const keyLower = key.toLowerCase();
-				const resourceStats = stats[keyLower] || {};
-				const historyStats = stats[`${keyLower}_history`] || {};
+		return Object.entries(resources || {}).map(([key, value]: [string, any]) => {
+			const keyLower = key.toLowerCase();
+			const resourceStats = stats[keyLower] || {};
+			const historyStats = stats[`${keyLower}_history`] || {};
 
-				return {
-					resourceType: key,
-					tableSize: resourceStats.total_size || 0,
-					historySize: historyStats.total_size || 0,
-					indexSize: resourceStats.index_size || 0,
-					defaultProfile: value["default-profile"],
-					system: value["system?"],
-					fhir: value["fhir?"],
-					custom: value["custom?"],
-					populated: resourceStats["num_rows"] > 0,
-				};
-			},
-		);
+			return {
+				resourceType: key,
+				tableSize: resourceStats.total_size || 0,
+				historySize: historyStats.total_size || 0,
+				indexSize: resourceStats.index_size || 0,
+				defaultProfile: value["default-profile"],
+				system: value["system?"],
+				fhir: value["fhir?"],
+				custom: value["custom?"],
+				populated: resourceStats["num_rows"] > 0,
+			};
+		});
 	}, [data]).sort((a, b) => a.resourceType.localeCompare(b.resourceType));
 
 	// Memoize static subsets separately (don't depend on favorites)
@@ -303,11 +287,7 @@ export function Browser() {
 					onChange={(e) => setFilterQuery(e.target.value)}
 				/>
 			</div>
-			<HSComp.Tabs
-				value={selectedTab}
-				onValueChange={setSelectedTab}
-				className="grow min-h-0 flex flex-col"
-			>
+			<HSComp.Tabs value={selectedTab} onValueChange={setSelectedTab} className="grow min-h-0 flex flex-col">
 				<div className="flex items-center gap-4 bg-bg-secondary px-4 border-b h-10 flex-none">
 					<HSComp.TabsList>
 						{tabs.map((tab) => (
@@ -318,11 +298,7 @@ export function Browser() {
 					</HSComp.TabsList>
 				</div>
 				{tabs.map((tab) => (
-					<HSComp.TabsContent
-						key={tab.value}
-						value={tab.value}
-						className="min-h-0"
-					>
+					<HSComp.TabsContent key={tab.value} value={tab.value} className="min-h-0">
 						<ResourceList
 							tableData={subsets[tab.value as keyof Subsets]}
 							filterQuery={filterQuery}

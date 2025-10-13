@@ -19,9 +19,7 @@ export function SearchBar({
 	handleSearch: (query?: string) => void;
 	isLoadingExample: boolean;
 }) {
-	const viewDefinitionTypeContext = useContext(
-		ViewDefinitionResourceTypeContext,
-	);
+	const viewDefinitionTypeContext = useContext(ViewDefinitionResourceTypeContext);
 
 	const [searchQuery, setSearchQuery] = useState("");
 

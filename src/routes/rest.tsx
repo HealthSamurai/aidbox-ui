@@ -14,28 +14,15 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import {
-	type QueryClient,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, Minimize2, Timer } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
-import {
-	ActiveTabs,
-	DEFAULT_TAB,
-	type Header,
-	type Tab,
-} from "../components/rest/active-tabs";
+import { ActiveTabs, DEFAULT_TAB, type Header, type Tab } from "../components/rest/active-tabs";
 import * as RestCollections from "../components/rest/collections";
 import HeadersEditor from "../components/rest/headers-editor";
-import {
-	LeftMenu,
-	LeftMenuContext,
-	LeftMenuToggle,
-} from "../components/rest/left-menu";
+import { LeftMenu, LeftMenuContext, LeftMenuToggle } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
 import { SplitButton, type SplitDirection } from "../components/Split";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -92,9 +79,7 @@ function RawEditor({
 	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const defaultHeaders =
 		selectedTab.headers
-			?.filter(
-				(header) => header.name && header.value && (header.enabled ?? true),
-			)
+			?.filter((header) => header.name && header.value && (header.enabled ?? true))
 			.map((header) => `${header.name}: ${header.value}`)
 			.join("\n") || "";
 
@@ -145,15 +130,11 @@ function RequestView({
 		<div className="flex flex-col h-full">
 			<Tabs
 				value={currentActiveSubTab}
-				onValueChange={(value) =>
-					onSubTabChange(value as "params" | "headers" | "body" | "raw")
-				}
+				onValueChange={(value) => onSubTabChange(value as "params" | "headers" | "body" | "raw")}
 			>
 				<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
 					<div className="flex items-center">
-						<span className="typo-label text-text-secondary pr-3">
-							Request:
-						</span>
+						<span className="typo-label text-text-secondary pr-3">Request:</span>
 						<TabsList>
 							<TabsTrigger value="params">Params</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
@@ -161,17 +142,10 @@ function RequestView({
 							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
 					</div>
-					<ExpandPane
-						onToggle={(state) => onFullScreenToggle(state)}
-						state={fullScreenState}
-					/>
+					<ExpandPane onToggle={(state) => onFullScreenToggle(state)} state={fullScreenState} />
 				</div>
 				<TabsContent value="params">
-					<ParamsEditor
-						params={selectedTab.params || []}
-						onParamChange={onParamChange}
-						onParamRemove={onParamRemove}
-					/>
+					<ParamsEditor params={selectedTab.params || []} onParamChange={onParamChange} onParamRemove={onParamRemove} />
 				</TabsContent>
 				<TabsContent value="headers">
 					<HeadersEditor
@@ -189,11 +163,7 @@ function RequestView({
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
-					<RawEditor
-						requestLineVersion={requestLineVersion}
-						selectedTab={selectedTab}
-						onRawChange={onRawChange}
-					/>
+					<RawEditor requestLineVersion={requestLineVersion} selectedTab={selectedTab} onRawChange={onRawChange} />
 				</TabsContent>
 			</Tabs>
 		</div>
@@ -202,15 +172,8 @@ function RequestView({
 
 type ResponseTabs = "body" | "headers" | "raw";
 
-function ResponseStatus({
-	status,
-	statusText,
-}: {
-	status: number;
-	statusText?: string;
-}) {
-	const messageColor =
-		status >= 400 ? "text-critical-default" : "text-green-500";
+function ResponseStatus({ status, statusText }: { status: number; statusText?: string }) {
+	const messageColor = status >= 400 ? "text-critical-default" : "text-green-500";
 	return (
 		<span className="flex font-medium items-center text-text-secondary text-sm">
 			<span>Status:</span>
@@ -238,11 +201,7 @@ function ExpandPane({
 		return (
 			<div className="flex gap-2 items-center">
 				<span className="typo-body text-text-secondary">Esc</span>
-				<Button
-					variant="primary"
-					size="small"
-					onClick={() => onToggle("normal")}
-				>
+				<Button variant="primary" size="small" onClick={() => onToggle("normal")}>
 					<Minimize2 />
 				</Button>
 			</div>
@@ -262,10 +221,7 @@ function ResponseInfo({ response }: { response: ResponseData }) {
 	if (response) {
 		return (
 			<>
-				<ResponseStatus
-					status={response.status}
-					statusText={response.statusText}
-				/>
+				<ResponseStatus status={response.status} statusText={response.statusText} />
 				<span className="flex items-center text-text-secondary text-sm pl-2">
 					<Timer className="size-4 mr-1" strokeWidth={1.5} />
 					<span className="font-bold">{response.duration}</span>
@@ -290,9 +246,7 @@ function ResponseView({
 			case "headers":
 				return JSON.stringify(response.headers, null, 2);
 			case "raw":
-				return `HTTP/1.1 ${response.status} ${response.statusText}\n${Object.entries(
-					response.headers,
-				)
+				return `HTTP/1.1 ${response.status} ${response.statusText}\n${Object.entries(response.headers)
 					.map(([key, value]) => `${key}: ${value}`)
 					.join("\n")}\n\n${response.body}`;
 			case "body":
@@ -327,31 +281,19 @@ function ResponseView({
 	}
 }
 
-function ResponsePane({
-	splitState,
-	onSplitChange,
-	response,
-	onFullScreenToggle,
-	fullScreenState,
-}: ResponsePaneProps) {
-	const [activeResponseTab, setActiveResponseTab] = useState<
-		"body" | "headers" | "raw"
-	>("body");
+function ResponsePane({ splitState, onSplitChange, response, onFullScreenToggle, fullScreenState }: ResponsePaneProps) {
+	const [activeResponseTab, setActiveResponseTab] = useState<"body" | "headers" | "raw">("body");
 
 	return (
 		<Tabs
 			value={activeResponseTab}
 			className="h-full"
-			onValueChange={(value) =>
-				setActiveResponseTab(value as "body" | "headers" | "raw")
-			}
+			onValueChange={(value) => setActiveResponseTab(value as "body" | "headers" | "raw")}
 		>
 			<div className="flex flex-col h-full">
 				<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
 					<div className="flex items-center">
-						<span className="typo-label text-text-secondary pr-3">
-							Response:
-						</span>
+						<span className="typo-label text-text-secondary pr-3">Response:</span>
 						<TabsList>
 							<TabsTrigger value="body">Body</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
@@ -361,21 +303,12 @@ function ResponsePane({
 					<div className="flex items-center gap-1">
 						{response && <ResponseInfo response={response} />}
 						{fullScreenState === "normal" && (
-							<SplitButton
-								direction={splitState}
-								onChange={(newMode) => onSplitChange(newMode)}
-							/>
+							<SplitButton direction={splitState} onChange={(newMode) => onSplitChange(newMode)} />
 						)}
-						<ExpandPane
-							onToggle={(state) => onFullScreenToggle(state)}
-							state={fullScreenState}
-						/>
+						<ExpandPane onToggle={(state) => onFullScreenToggle(state)} state={fullScreenState} />
 					</div>
 				</div>
-				<ResponseView
-					response={response}
-					activeResponseTab={activeResponseTab}
-				/>
+				<ResponseView response={response} activeResponseTab={activeResponseTab} />
 			</div>
 		</Tabs>
 	);
@@ -385,11 +318,7 @@ function requestParamsHasEmpty(params: Header[]): boolean {
 	return params.some((param) => param.name === "" && param.value === "");
 }
 
-function handleTabRequestPathChange(
-	path: string,
-	tabs: Tab[],
-	setTabs: (tabs: Tab[]) => void,
-) {
+function handleTabRequestPathChange(path: string, tabs: Tab[], setTabs: (tabs: Tab[]) => void) {
 	const queryParams = path.split("?")[1];
 	const params =
 		queryParams?.split("&").map((param, index) => {
@@ -411,9 +340,7 @@ function handleTabRequestPathChange(
 		});
 	}
 
-	setTabs(
-		tabs.map((tab) => (tab.selected ? { ...tab, path, params } : tab)) as Tab[],
-	);
+	setTabs(tabs.map((tab) => (tab.selected ? { ...tab, path, params } : tab)) as Tab[]);
 }
 
 function handleSendRequest(
@@ -423,9 +350,7 @@ function handleSendRequest(
 ) {
 	const headers =
 		selectedTab.headers
-			?.filter(
-				(header) => header.name && header.value && (header.enabled ?? true),
-			)
+			?.filter((header) => header.name && header.value && (header.enabled ?? true))
 			.reduce(
 				(acc, header) => {
 					acc[header.name] = header.value;
@@ -479,9 +404,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 	// Format headers - note: using colon without space after header name to match expected format
 	const headerLines =
 		tab.headers
-			?.filter(
-				(header) => header.name && header.value && (header.enabled ?? true),
-			)
+			?.filter((header) => header.name && header.value && (header.enabled ?? true))
 			.map((header) => `${header.name}:${header.value}`)
 			.join("\n") || "";
 
@@ -501,10 +424,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 }
 
 // Helper function to save request to UI history
-async function saveToUIHistory(
-	tab: Tab,
-	queryClient: QueryClient,
-): Promise<void> {
+async function saveToUIHistory(tab: Tab, queryClient: QueryClient): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();
 		const command = formatRequestAsHttpCommand(tab);
@@ -532,9 +452,7 @@ async function saveToUIHistory(
 	}
 }
 
-function SendButton(
-	props: Omit<React.ComponentProps<typeof Button>, "variant">,
-) {
+function SendButton(props: Omit<React.ComponentProps<typeof Button>, "variant">) {
 	return (
 		<Tooltip delayDuration={600}>
 			<TooltipTrigger asChild>
@@ -562,13 +480,9 @@ function RouteComponent() {
 	});
 
 	// State to store history refresh function
-	const [refreshHistory, setRefreshHistory] = React.useState<
-		(() => void) | null
-	>(null);
+	const [refreshHistory, setRefreshHistory] = React.useState<(() => void) | null>(null);
 
-	const [panelsMode, setPanelsMode] = useLocalStorage<
-		"horizontal" | "vertical"
-	>({
+	const [panelsMode, setPanelsMode] = useLocalStorage<"horizontal" | "vertical">({
 		key: "rest-console-panels-mode",
 		getInitialValueInEffect: false,
 		defaultValue: "vertical",
@@ -576,22 +490,16 @@ function RouteComponent() {
 
 	const [response, setResponse] = useState<ResponseData | null>(null);
 
-	const [requestLineVersion, setRequestLineVersion] = useState<string>(
-		crypto.randomUUID(),
-	);
+	const [requestLineVersion, setRequestLineVersion] = useState<string>(crypto.randomUUID());
 
-	const [fullscreenPanel, setFullscreenPanel] = useState<
-		"request" | "response" | null
-	>(null);
+	const [fullscreenPanel, setFullscreenPanel] = useState<"request" | "response" | null>(null);
 
 	const selectedTab = useMemo(() => {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
 
 	const queryClient = useQueryClient();
-	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
-		string | undefined
-	>(selectedTab.id);
+	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<string | undefined>(selectedTab.id);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -634,9 +542,7 @@ function RouteComponent() {
 				const headers = Array.isArray(tab.headers) ? [...tab.headers] : [];
 				headers[headerIndex] = { ...headers[headerIndex], ...header };
 
-				const hasEmptyHeader = headers.some(
-					(h) => h.name === "" && h.value === "",
-				);
+				const hasEmptyHeader = headers.some((h) => h.name === "" && h.value === "");
 
 				if (!hasEmptyHeader) {
 					headers.push({
@@ -686,9 +592,7 @@ function RouteComponent() {
 	const handleTabBodyChange = useCallback(
 		(body: string) => {
 			setTabs((currentTabs) => {
-				const updatedTabs = currentTabs.map((tab) =>
-					tab.selected ? { ...tab, body } : tab,
-				);
+				const updatedTabs = currentTabs.map((tab) => (tab.selected ? { ...tab, body } : tab));
 				return updatedTabs;
 			});
 		},
@@ -697,9 +601,7 @@ function RouteComponent() {
 
 	function handleSubTabChange(subTab: "params" | "headers" | "body" | "raw") {
 		setTabs((currentTabs) => {
-			const updatedTabs = currentTabs.map((tab) =>
-				tab.selected ? { ...tab, activeSubTab: subTab } : tab,
-			);
+			const updatedTabs = currentTabs.map((tab) => (tab.selected ? { ...tab, activeSubTab: subTab } : tab));
 			return updatedTabs;
 		});
 	}
@@ -736,12 +638,7 @@ function RouteComponent() {
 
 						return {
 							...tab,
-							method: parsed.method as
-								| "GET"
-								| "POST"
-								| "PUT"
-								| "PATCH"
-								| "DELETE",
+							method: parsed.method as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
 							path: parsed.path,
 							headers: parsed.headers,
 							body: parsed.body,
@@ -767,8 +664,7 @@ function RouteComponent() {
 				// Check if after removal there is at least one empty header (both name and value are empty)
 				const hasEmptyHeader = headers.some(
 					(header) =>
-						(header.name === undefined || header.name === "") &&
-						(header.value === undefined || header.value === ""),
+						(header.name === undefined || header.name === "") && (header.value === undefined || header.value === ""),
 				);
 
 				// If not, add an empty header row
@@ -859,11 +755,7 @@ function RouteComponent() {
 							}}
 							handleTabMethodChange={handleTabMethodChange}
 						/>
-						<SendButton
-							onClick={() =>
-								handleSendRequest(selectedTab, setResponse, queryClient)
-							}
-						/>
+						<SendButton onClick={() => handleSendRequest(selectedTab, setResponse, queryClient)} />
 						<RestCollections.SaveButton
 							tab={selectedTab}
 							collectionEntries={collectionEntries}
@@ -873,11 +765,7 @@ function RouteComponent() {
 							setLeftMenuOpen={setLeftMenuOpen}
 						/>
 					</div>
-					<ResizablePanelGroup
-						autoSaveId="rest-console-request-response"
-						direction={panelsMode}
-						className="grow"
-					>
+					<ResizablePanelGroup autoSaveId="rest-console-request-response" direction={panelsMode} className="grow">
 						<ResizablePanel
 							defaultSize={50}
 							className={`min-h-10 ${fullscreenPanel === "request" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "response" ? "hidden" : ""}`}
@@ -892,12 +780,8 @@ function RouteComponent() {
 								onRawChange={handleRawChange}
 								onHeaderRemove={handleTabHeaderRemove}
 								onParamRemove={handleTabParamRemove}
-								onFullScreenToggle={(state) =>
-									setFullscreenPanel(state === "maximized" ? "request" : null)
-								}
-								fullScreenState={
-									fullscreenPanel === "request" ? "maximized" : "normal"
-								}
+								onFullScreenToggle={(state) => setFullscreenPanel(state === "maximized" ? "request" : null)}
+								fullScreenState={fullscreenPanel === "request" ? "maximized" : "normal"}
 							/>
 						</ResizablePanel>
 						<ResizableHandle />
@@ -910,13 +794,9 @@ function RouteComponent() {
 								response={response}
 								splitState={panelsMode}
 								onSplitChange={setPanelsMode}
-								fullScreenState={
-									fullscreenPanel === "response" ? "maximized" : "normal"
-								}
+								fullScreenState={fullscreenPanel === "response" ? "maximized" : "normal"}
 								onFullScreenToggle={(state) =>
-									state === "maximized"
-										? setFullscreenPanel("response")
-										: setFullscreenPanel(null)
+									state === "maximized" ? setFullscreenPanel("response") : setFullscreenPanel(null)
 								}
 							/>
 						</ResizablePanel>

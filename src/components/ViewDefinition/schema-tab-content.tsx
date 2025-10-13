@@ -1,8 +1,5 @@
 import type { TreeViewItem } from "@health-samurai/react-components";
-import {
-	FhirStructureView,
-	TabsContent,
-} from "@health-samurai/react-components";
+import { FhirStructureView, TabsContent } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
@@ -45,9 +42,7 @@ interface SchemaData {
 	result: Record<string, Schema>;
 }
 
-const fetchSchema = async (
-	resourceType: string,
-): Promise<Array<Snapshot> | undefined> => {
+const fetchSchema = async (resourceType: string): Promise<Array<Snapshot> | undefined> => {
 	const response = await AidboxCallWithMeta({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
@@ -64,9 +59,7 @@ const fetchSchema = async (
 
 	if (!data?.result) return undefined;
 
-	const defaultSchema = Object.values(data.result).find(
-		(schema: Schema) => schema["default?"] === true,
-	);
+	const defaultSchema = Object.values(data.result).find((schema: Schema) => schema["default?"] === true);
 
 	return defaultSchema?.snapshot;
 };
@@ -96,8 +89,7 @@ const buildMeta = (element: Snapshot, isUnion: boolean): Meta => {
 	const meta: Meta = {};
 
 	if (element.min != null) meta.min = String(element.min);
-	if (element.max != null)
-		meta.max = element.max === "*" ? "*" : String(element.max);
+	if (element.max != null) meta.max = element.max === "*" ? "*" : String(element.max);
 
 	if (element.short) meta.short = element.short;
 	if (element.desc) meta.desc = element.desc;
@@ -120,29 +112,20 @@ const buildMeta = (element: Snapshot, isUnion: boolean): Meta => {
 	}
 
 	if (element["extension-url"]) meta.extensionUrl = element["extension-url"];
-	if (element["extension-coordinate"])
-		meta.extensionCoordinate = element["extension-coordinate"];
+	if (element["extension-coordinate"]) meta.extensionCoordinate = element["extension-coordinate"];
 	if (element.binding) meta.binding = element.binding;
 	if (element["vs-coordinate"]) meta.vsCoordinate = element["vs-coordinate"];
 
 	return meta;
 };
 
-const getDisplayName = (
-	element: Snapshot,
-	path: string,
-	isUnion: boolean,
-): string => {
+const getDisplayName = (element: Snapshot, path: string, isUnion: boolean): string => {
 	const parts = path.split(".");
 	const name = element.name || parts.at(-1) || "";
 	return isUnion && !name.includes("[x]") ? `${name}[x]` : name;
 };
 
-const addChildToMap = (
-	childrenMap: Record<string, string[]>,
-	parentPath: string,
-	childPath: string,
-): void => {
+const addChildToMap = (childrenMap: Record<string, string[]>, parentPath: string, childPath: string): void => {
 	if (!childrenMap[parentPath]) {
 		childrenMap[parentPath] = [];
 	}
@@ -151,11 +134,7 @@ const addChildToMap = (
 	}
 };
 
-const findUnionParent = (
-	data: Snapshot[],
-	path: string,
-	lastPart: string,
-): string | null => {
+const findUnionParent = (data: Snapshot[], path: string, lastPart: string): string | null => {
 	const parts = path.split(".");
 
 	for (const potentialParent of data) {
@@ -175,10 +154,7 @@ const findUnionParent = (
 	return null;
 };
 
-const buildParentChildRelationships = (
-	data: Snapshot[],
-	childrenMap: Record<string, string[]>,
-): void => {
+const buildParentChildRelationships = (data: Snapshot[], childrenMap: Record<string, string[]>): void => {
 	for (const element of data) {
 		if (element.type === "root" || !element.path) continue;
 
@@ -212,10 +188,7 @@ const attachChildrenAndMarkLastNodes = (
 		const lastChildPath = children[children.length - 1];
 		const lastChildNode = tree[lastChildPath];
 
-		if (
-			lastChildNode?.meta &&
-			(!childrenMap[lastChildPath] || childrenMap[lastChildPath].length === 0)
-		) {
+		if (lastChildNode?.meta && (!childrenMap[lastChildPath] || childrenMap[lastChildPath].length === 0)) {
 			lastChildNode.meta.lastNode = true;
 		}
 	}
@@ -270,10 +243,7 @@ const ensureResourceNode = (
 		return;
 	}
 
-	const resourceElement = data.find(
-		(e) =>
-			e.path === resourceType || (e.type === "root" && e.name === resourceType),
-	);
+	const resourceElement = data.find((e) => e.path === resourceType || (e.type === "root" && e.name === resourceType));
 
 	tree[resourceType] = {
 		name: resourceType,
@@ -281,18 +251,13 @@ const ensureResourceNode = (
 			type: "Resource",
 			min: "0",
 			max: "*",
-			description:
-				resourceElement?.short ||
-				resourceElement?.desc ||
-				`Information about ${resourceType}`,
+			description: resourceElement?.short || resourceElement?.desc || `Information about ${resourceType}`,
 		},
 		children: directChildren,
 	};
 };
 
-const transformSnapshotToTree = (
-	data: Snapshot[] | undefined,
-): Record<string, TreeViewItem<Meta>> => {
+const transformSnapshotToTree = (data: Snapshot[] | undefined): Record<string, TreeViewItem<Meta>> => {
 	if (!data || data.length === 0) return {};
 
 	const tree: Record<string, TreeViewItem<Meta>> = {};
@@ -333,11 +298,8 @@ const transformSnapshotToTree = (
 };
 
 export function SchemaTabContent() {
-	const viewDefinitionTypeContext = useContext(
-		ViewDefinitionResourceTypeContext,
-	);
-	const viewDefinitionResourceType =
-		viewDefinitionTypeContext.viewDefinitionResourceType;
+	const viewDefinitionTypeContext = useContext(ViewDefinitionResourceTypeContext);
+	const viewDefinitionResourceType = viewDefinitionTypeContext.viewDefinitionResourceType;
 
 	const { isLoading, data, status, error } = useQuery({
 		queryKey: [viewDefinitionResourceType, Constants.PageID],
@@ -355,9 +317,7 @@ export function SchemaTabContent() {
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2">Loading schema...</div>
-						<div className="text-sm">
-							Fetching {viewDefinitionResourceType} schema
-						</div>
+						<div className="text-sm">Fetching {viewDefinitionResourceType} schema</div>
 					</div>
 				</div>
 			</TabsContent>
@@ -369,9 +329,7 @@ export function SchemaTabContent() {
 			<TabsContent value="schema" className="h-full overflow-auto">
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
-						<div className="text-lg mb-2 text-red-600">
-							Error loading schema
-						</div>
+						<div className="text-lg mb-2 text-red-600">Error loading schema</div>
 						<div className="text-sm">{error.message}</div>
 					</div>
 				</div>

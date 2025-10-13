@@ -21,20 +21,11 @@ export const CodeEditorFormatSelect = ({
 	);
 };
 
-export const CodeEditorFormatButton = ({
-	onFormat,
-}: {
-	onFormat: () => void;
-}) => {
+export const CodeEditorFormatButton = ({ onFormat }: { onFormat: () => void }) => {
 	return (
 		<HSComp.Tooltip>
 			<HSComp.TooltipTrigger asChild>
-				<HSComp.Button
-					variant="ghost"
-					size="small"
-					onClick={onFormat}
-					title="Format code"
-				>
+				<HSComp.Button variant="ghost" size="small" onClick={onFormat} title="Format code">
 					<Lucide.TextQuote className="w-4 h-4" />
 				</HSComp.Button>
 			</HSComp.TooltipTrigger>
@@ -45,11 +36,7 @@ export const CodeEditorFormatButton = ({
 	);
 };
 
-export const CodeEditorCopyButton = ({
-	textToCopy,
-}: {
-	textToCopy: string;
-}) => {
+export const CodeEditorCopyButton = ({ textToCopy }: { textToCopy: string }) => {
 	return (
 		<HSComp.Button variant="ghost" size="small" asChild>
 			<HSComp.CopyIcon text={textToCopy} />

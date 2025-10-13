@@ -45,9 +45,7 @@ function createStorageHandler(type: StorageType) {
 		try {
 			return window[type].getItem(key);
 		} catch (_error) {
-			console.warn(
-				"use-local-storage: Failed to get value from storage, localStorage is blocked",
-			);
+			console.warn("use-local-storage: Failed to get value from storage, localStorage is blocked");
 			return null;
 		}
 	};
@@ -56,9 +54,7 @@ function createStorageHandler(type: StorageType) {
 		try {
 			window[type].setItem(key, value);
 		} catch (_error) {
-			console.warn(
-				"use-local-storage: Failed to set value to storage, localStorage is blocked",
-			);
+			console.warn("use-local-storage: Failed to set value to storage, localStorage is blocked");
 		}
 	};
 
@@ -66,9 +62,7 @@ function createStorageHandler(type: StorageType) {
 		try {
 			window[type].removeItem(key);
 		} catch (_error) {
-			console.warn(
-				"use-local-storage: Failed to remove value from storage, localStorage is blocked",
-			);
+			console.warn("use-local-storage: Failed to remove value from storage, localStorage is blocked");
 		}
 	};
 
@@ -82,8 +76,7 @@ export type UseStorageReturnValue<T> = [
 ];
 
 export function createStorage<T>(type: StorageType, hookName: string) {
-	const eventName =
-		type === "localStorage" ? "local-storage" : "session-storage";
+	const eventName = type === "localStorage" ? "local-storage" : "session-storage";
 	const { getItem, setItem, removeItem } = createStorageHandler(type);
 
 	return function useStorage({
@@ -114,10 +107,7 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 
 				try {
 					storageBlockedOrSkipped =
-						typeof window === "undefined" ||
-						!(type in window) ||
-						window[type] === null ||
-						!!skipStorage;
+						typeof window === "undefined" || !(type in window) || window[type] === null || !!skipStorage;
 				} catch (_e) {
 					storageBlockedOrSkipped = true;
 				}
@@ -127,9 +117,7 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 				}
 
 				const storageValue = getItem(key);
-				return storageValue !== null
-					? deserialize(storageValue)
-					: (defaultValueRef.current as T);
+				return storageValue !== null ? deserialize(storageValue) : (defaultValueRef.current as T);
 			},
 			[key, deserialize, type],
 		);
@@ -156,9 +144,7 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 					});
 				} else {
 					setItem(key, serializeFn(val));
-					window.dispatchEvent(
-						new CustomEvent(eventName, { detail: { key, value: val } }),
-					);
+					window.dispatchEvent(new CustomEvent(eventName, { detail: { key, value: val } }));
 					setValue(val);
 				}
 			},
@@ -182,16 +168,13 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 			}
 		});
 
-		useWindowEvent(
-			eventName,
-			(event: CustomEventInit<{ key: string; value: T }>) => {
-				if (sync) {
-					if (event?.detail?.key === key) {
-						setValue(event.detail.value);
-					}
+		useWindowEvent(eventName, (event: CustomEventInit<{ key: string; value: T }>) => {
+			if (sync) {
+				if (event?.detail?.key === key) {
+					setValue(event.detail.value);
 				}
-			},
-		);
+			}
+		});
 
 		// biome-ignore lint/correctness/useExhaustiveDependencies: we no need readStorageValue in deps
 		useEffect(() => {
@@ -211,29 +194,18 @@ export function createStorage<T>(type: StorageType, hookName: string) {
 			}
 		}, [key, serializeFn, value]);
 
-		return [
-			value === undefined ? (defaultValueRef.current as T) : value,
-			setStorageValue,
-			removeStorageValue,
-		];
+		return [value === undefined ? (defaultValueRef.current as T) : value, setStorageValue, removeStorageValue];
 	};
 }
 
 export function readValue(type: StorageType) {
 	const { getItem } = createStorageHandler(type);
 
-	return function read<T>({
-		key,
-		defaultValue,
-		deserialize = deserializeJSON,
-	}: UseStorageOptions<T>) {
+	return function read<T>({ key, defaultValue, deserialize = deserializeJSON }: UseStorageOptions<T>) {
 		let storageBlockedOrSkipped: boolean;
 
 		try {
-			storageBlockedOrSkipped =
-				typeof window === "undefined" ||
-				!(type in window) ||
-				window[type] === null;
+			storageBlockedOrSkipped = typeof window === "undefined" || !(type in window) || window[type] === null;
 		} catch (_e) {
 			storageBlockedOrSkipped = true;
 		}
@@ -243,9 +215,7 @@ export function readValue(type: StorageType) {
 		}
 
 		const storageValue = getItem(key);
-		return storageValue !== null
-			? deserialize(storageValue)
-			: (defaultValue as T);
+		return storageValue !== null ? deserialize(storageValue) : (defaultValue as T);
 	};
 }
 

@@ -10,19 +10,8 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "@health-samurai/react-components";
-import {
-	Link,
-	type RouteMatch,
-	useParentMatches,
-	useRouterState,
-} from "@tanstack/react-router";
-import {
-	Columns3Cog,
-	House,
-	PanelLeftClose,
-	PanelLeftOpen,
-	SquareTerminal,
-} from "lucide-react";
+import { Link, type RouteMatch, useParentMatches, useRouterState } from "@tanstack/react-router";
+import { Columns3Cog, House, PanelLeftClose, PanelLeftOpen, SquareTerminal } from "lucide-react";
 import { useEffect } from "react";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
@@ -37,10 +26,7 @@ const mainMenuItems = [
 	},
 ];
 
-const isActiveNavItem = (
-	item: (typeof mainMenuItems)[number],
-	currentPath: string,
-) => {
+const isActiveNavItem = (item: (typeof mainMenuItems)[number], currentPath: string) => {
 	console.log(currentPath, item.url);
 	return (
 		currentPath === item.url ||
@@ -65,11 +51,7 @@ export function AidboxSidebar({
 	}, [sidebarMode, sidebar]);
 
 	return (
-		<Sidebar
-			collapsible="icon"
-			data-sidebar-mode={sidebarMode}
-			className="relative h-full"
-		>
+		<Sidebar collapsible="icon" data-sidebar-mode={sidebarMode} className="relative h-full">
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarGroupContent>
@@ -100,16 +82,10 @@ export function AidboxSidebar({
 							<SidebarMenuItem>
 								<SidebarMenuButton
 									onClick={() =>
-										sidebarMode === "expanded"
-											? setSidebarMode("collapsed")
-											: setSidebarMode("expanded")
+										sidebarMode === "expanded" ? setSidebarMode("collapsed") : setSidebarMode("expanded")
 									}
 								>
-									{sidebarMode === "expanded" ? (
-										<PanelLeftClose />
-									) : (
-										<PanelLeftOpen />
-									)}
+									{sidebarMode === "expanded" ? <PanelLeftClose /> : <PanelLeftOpen />}
 									edge:d8c83455a0
 								</SidebarMenuButton>
 							</SidebarMenuItem>

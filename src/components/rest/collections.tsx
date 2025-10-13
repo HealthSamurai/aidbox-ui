@@ -1,9 +1,5 @@
 import * as ReactComponents from "@health-samurai/react-components";
-import {
-	type QueryClient,
-	type QueryObserverResult,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { type QueryClient, type QueryObserverResult, useQueryClient } from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import * as Auth from "../../api/auth";
@@ -26,9 +22,7 @@ export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	return (
-		JSON.parse(response.body).entry?.map((entry: any) => entry.resource) ?? []
-	);
+	return JSON.parse(response.body).entry?.map((entry: any) => entry.resource) ?? [];
 }
 
 async function SaveRequest(
@@ -56,18 +50,12 @@ async function SaveRequest(
 	} else if (saveToRootCollection && !currentSnippet) {
 		collection = undefined;
 	} else {
-		collection =
-			collectionName ||
-			currentSnippet?.collection ||
-			getNewUniqueCollectionName(collectionEntries);
+		collection = collectionName || currentSnippet?.collection || getNewUniqueCollectionName(collectionEntries);
 	}
 
 	if (currentSnippet && createNewCollection) {
 		snippetId = crypto.randomUUID();
-		setTabs([
-			...tabs.map((t) => ({ ...t, selected: false })),
-			{ ...tab, id: snippetId, selected: true },
-		]);
+		setTabs([...tabs.map((t) => ({ ...t, selected: false })), { ...tab, id: snippetId, selected: true }]);
 	} else {
 		snippetId = tab.id;
 	}
@@ -87,9 +75,7 @@ async function SaveRequest(
 }
 
 function getNewUniqueCollectionName(collectionEntries: CollectionEntry[]) {
-	const collectionNames = collectionEntries
-		.flatMap((entry) => entry.collection)
-		.filter((name) => name !== undefined);
+	const collectionNames = collectionEntries.flatMap((entry) => entry.collection).filter((name) => name !== undefined);
 
 	const countNewNames = collectionNames.filter(
 		(name) => name === "New Collection" || name.startsWith("New Collection ("),
@@ -148,23 +134,15 @@ export const SaveButton = ({
 					</ReactComponents.Button>
 				</ReactComponents.DropdownMenuTrigger>
 				<ReactComponents.DropdownMenuContent className="mr-4">
-					<ReactComponents.DropdownMenuLabel>
-						Save to collection:
-					</ReactComponents.DropdownMenuLabel>
+					<ReactComponents.DropdownMenuLabel>Save to collection:</ReactComponents.DropdownMenuLabel>
 					<ReactComponents.DropdownMenuSeparator />
-					{collectionEntries.data?.filter((entry) => entry.collection)
-						?.length === 0 ? (
-						<ReactComponents.DropdownMenuItem disabled>
-							No collections
-						</ReactComponents.DropdownMenuItem>
+					{collectionEntries.data?.filter((entry) => entry.collection)?.length === 0 ? (
+						<ReactComponents.DropdownMenuItem disabled>No collections</ReactComponents.DropdownMenuItem>
 					) : (
 						collectionEntries.data
 							?.map((entry, idx, arr) => {
 								const collectionName = entry.collection;
-								if (
-									collectionName !== undefined &&
-									arr.findIndex((e) => e.collection === collectionName) === idx
-								) {
+								if (collectionName !== undefined && arr.findIndex((e) => e.collection === collectionName) === idx) {
 									return collectionName;
 								}
 								return undefined;
@@ -230,9 +208,7 @@ function buildTreeView(
 				...entries
 					.filter((entry) => !pinnedCollections.includes(entry.collection!))
 					.filter(
-						(entry, idx, arr) =>
-							entry.collection &&
-							arr.findIndex((e) => e.collection === entry.collection) === idx,
+						(entry, idx, arr) => entry.collection && arr.findIndex((e) => e.collection === entry.collection) === idx,
 					)
 					.map((entry) => entry.collection!),
 			],
@@ -301,10 +277,7 @@ async function handleDeleteSnippet(
 	// ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
 }
 
-async function handleDeleteCollection(
-	itemData: ReactComponents.TreeViewItem<any>,
-	queryClient: QueryClient,
-) {
+async function handleDeleteCollection(itemData: ReactComponents.TreeViewItem<any>, queryClient: QueryClient) {
 	await Auth.AidboxCallWithMeta({
 		method: "DELETE",
 		url: `/ui_snippet`,
@@ -346,37 +319,24 @@ function CollectionMoreButton({
 				</ReactComponents.Button>
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
-				<ReactComponents.DropdownMenuItem
-					onClick={() => tree.getItemInstance(itemId).startRenaming()}
-				>
+				<ReactComponents.DropdownMenuItem onClick={() => tree.getItemInstance(itemId).startRenaming()}>
 					Rename
 				</ReactComponents.DropdownMenuItem>
-				<ReactComponents.DropdownMenuItem
-					variant="destructive"
-					onClick={() => setIsAlertDialogOpen(true)}
-				>
+				<ReactComponents.DropdownMenuItem variant="destructive" onClick={() => setIsAlertDialogOpen(true)}>
 					Delete
 				</ReactComponents.DropdownMenuItem>
 			</ReactComponents.DropdownMenuContent>
 
-			<ReactComponents.AlertDialog
-				open={isAlertDialogOpen}
-				onOpenChange={setIsAlertDialogOpen}
-			>
+			<ReactComponents.AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
 				<ReactComponents.AlertDialogContent>
 					<ReactComponents.AlertDialogHeader>
-						<ReactComponents.AlertDialogTitle>
-							Delete snippet?
-						</ReactComponents.AlertDialogTitle>
+						<ReactComponents.AlertDialogTitle>Delete snippet?</ReactComponents.AlertDialogTitle>
 						<ReactComponents.AlertDialogDescription>
-							Are you sure you want to delete this collection? This action
-							cannot be undone.
+							Are you sure you want to delete this collection? This action cannot be undone.
 						</ReactComponents.AlertDialogDescription>
 					</ReactComponents.AlertDialogHeader>
 					<ReactComponents.AlertDialogFooter>
-						<ReactComponents.AlertDialogCancel
-							onClick={() => setIsAlertDialogOpen(false)}
-						>
+						<ReactComponents.AlertDialogCancel onClick={() => setIsAlertDialogOpen(false)}>
 							Cancel
 						</ReactComponents.AlertDialogCancel>
 						<ReactComponents.AlertDialogAction
@@ -429,37 +389,24 @@ function SnippetMoreButton({
 				</ReactComponents.Button>
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
-				<ReactComponents.DropdownMenuItem
-					onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}
-				>
+				<ReactComponents.DropdownMenuItem onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}>
 					Rename
 				</ReactComponents.DropdownMenuItem>
-				<ReactComponents.DropdownMenuItem
-					variant="destructive"
-					onClick={() => setIsAlertDialogOpen(true)}
-				>
+				<ReactComponents.DropdownMenuItem variant="destructive" onClick={() => setIsAlertDialogOpen(true)}>
 					Delete
 				</ReactComponents.DropdownMenuItem>
 			</ReactComponents.DropdownMenuContent>
 
-			<ReactComponents.AlertDialog
-				open={isAlertDialogOpen}
-				onOpenChange={setIsAlertDialogOpen}
-			>
+			<ReactComponents.AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
 				<ReactComponents.AlertDialogContent>
 					<ReactComponents.AlertDialogHeader>
-						<ReactComponents.AlertDialogTitle>
-							Delete snippet?
-						</ReactComponents.AlertDialogTitle>
+						<ReactComponents.AlertDialogTitle>Delete snippet?</ReactComponents.AlertDialogTitle>
 						<ReactComponents.AlertDialogDescription>
-							Are you sure you want to delete this snippet? This action cannot
-							be undone.
+							Are you sure you want to delete this snippet? This action cannot be undone.
 						</ReactComponents.AlertDialogDescription>
 					</ReactComponents.AlertDialogHeader>
 					<ReactComponents.AlertDialogFooter>
-						<ReactComponents.AlertDialogCancel
-							onClick={() => setIsAlertDialogOpen(false)}
-						>
+						<ReactComponents.AlertDialogCancel onClick={() => setIsAlertDialogOpen(false)}>
 							Cancel
 						</ReactComponents.AlertDialogCancel>
 						<ReactComponents.AlertDialogAction
@@ -500,11 +447,7 @@ function customItemView(
 		return (
 			<div className="flex justify-between items-center w-full">
 				{item.isRenaming() ? (
-					<ReactComponents.Input
-						className="h-5 border-none p-0"
-						autoFocus
-						{...item.getRenameInputProps()}
-					/>
+					<ReactComponents.Input className="h-5 border-none p-0" autoFocus {...item.getRenameInputProps()} />
 				) : (
 					<React.Fragment>
 						<div>{itemData?.name}</div>
@@ -517,13 +460,7 @@ function customItemView(
 								onClick={(e) => {
 									e.stopPropagation();
 									e.preventDefault();
-									handleAddNewCollectionEntry(
-										itemData?.name,
-										queryClient,
-										setSelectedCollectionItemId,
-										setTabs,
-										tabs,
-									);
+									handleAddNewCollectionEntry(itemData?.name, queryClient, setSelectedCollectionItemId, setTabs, tabs);
 								}}
 								asChild
 							>
@@ -539,25 +476,16 @@ function customItemView(
 									e.stopPropagation();
 									e.preventDefault();
 									if (isPinned) {
-										setPinnedCollections(
-											pinnedCollections.filter((id) => id !== itemId),
-										);
+										setPinnedCollections(pinnedCollections.filter((id) => id !== itemId));
 									} else {
 										setPinnedCollections([...pinnedCollections, itemId]);
 									}
 								}}
 								asChild
 							>
-								<span>
-									{isPinned ? <ReactComponents.PinIcon /> : <Lucide.Pin />}
-								</span>
+								<span>{isPinned ? <ReactComponents.PinIcon /> : <Lucide.Pin />}</span>
 							</ReactComponents.Button>
-							<CollectionMoreButton
-								itemData={itemData}
-								queryClient={queryClient}
-								tree={tree}
-								itemId={item.getId()}
-							/>
+							<CollectionMoreButton itemData={itemData} queryClient={queryClient} tree={tree} itemId={item.getId()} />
 						</div>
 					</React.Fragment>
 				)}
@@ -565,8 +493,7 @@ function customItemView(
 		);
 	} else {
 		const parsedCommand = itemData?.meta;
-		const methodColor =
-			methodColors[parsedCommand?.method as keyof typeof methodColors];
+		const methodColor = methodColors[parsedCommand?.method as keyof typeof methodColors];
 		return (
 			<div className="flex justify-between items-center w-full">
 				<div className="flex items-center gap-2">
@@ -576,11 +503,7 @@ function customItemView(
 						{parsedCommand?.method}
 					</div>
 					{item.isRenaming() ? (
-						<ReactComponents.Input
-							className="h-5 border-none p-0"
-							autoFocus
-							{...item.getRenameInputProps()}
-						/>
+						<ReactComponents.Input className="h-5 border-none p-0" autoFocus {...item.getRenameInputProps()} />
 					) : itemData.meta.title ? (
 						<div>{itemData.meta.title}</div>
 					) : (
@@ -588,13 +511,7 @@ function customItemView(
 					)}
 				</div>
 				<div className="flex items-center gap-2">
-					<SnippetMoreButton
-						itemData={itemData}
-						queryClient={queryClient}
-						tabs={tabs}
-						setTabs={setTabs}
-						tree={tree}
-					/>
+					<SnippetMoreButton itemData={itemData} queryClient={queryClient} tabs={tabs} setTabs={setTabs} tree={tree} />
 				</div>
 			</div>
 		);
@@ -619,9 +536,7 @@ const NoCollectionsView = ({
 		return (
 			<div className="bg-bg-tertiary h-full flex items-center justify-center">
 				<div className="flex flex-col items-center">
-					<span className="text-text-disabled text-xl font-medium">
-						No collections
-					</span>
+					<span className="text-text-disabled text-xl font-medium">No collections</span>
 					<ReactComponents.Button
 						variant="link"
 						onClick={() =>
@@ -707,9 +622,7 @@ export const CollectionsView = ({
 
 	const selectedTabId = tabs.find((tab) => tab.selected)?.id;
 
-	const selectedTabEntry = collectionEntries.data?.find(
-		(entry) => entry.id === selectedCollectionItemId,
-	);
+	const selectedTabEntry = collectionEntries.data?.find((entry) => entry.id === selectedCollectionItemId);
 
 	const [expandedItemIds, setExpandedItemIds] = useLocalStorage<string[]>({
 		key: "rest-console-expanded-items",
@@ -729,14 +642,10 @@ export const CollectionsView = ({
 			}
 			return;
 		}
-		const activeTab = tabs.find(
-			(tab) => tab.id === item.getItemData().meta?.id,
-		);
+		const activeTab = tabs.find((tab) => tab.id === item.getItemData().meta?.id);
 
 		if (activeTab) {
-			setTabs(
-				tabs.map((tab) => ({ ...tab, selected: tab.id === activeTab.id })),
-			);
+			setTabs(tabs.map((tab) => ({ ...tab, selected: tab.id === activeTab.id })));
 		} else {
 			setTabs(
 				tabs
@@ -746,12 +655,8 @@ export const CollectionsView = ({
 						method: item.getItemData().meta?.method,
 						path: item.getItemData().meta?.path,
 						body: item.getItemData().meta?.body,
-						headers: item.getItemData().meta?.headers || [
-							{ id: "0", name: "", value: "", enabled: true },
-						],
-						params: item.getItemData().meta?.params || [
-							{ id: "0", name: "", value: "", enabled: true },
-						],
+						headers: item.getItemData().meta?.headers || [{ id: "0", name: "", value: "", enabled: true }],
+						params: item.getItemData().meta?.params || [{ id: "0", name: "", value: "", enabled: true }],
 						selected: true,
 					}),
 			);
@@ -775,17 +680,11 @@ export const CollectionsView = ({
 			) : (
 				<div className="px-1 py-2">
 					<ReactComponents.TreeView
-						key={
-							queryClient.getQueryState(["rest-console-collections"])
-								?.dataUpdatedAt + pinnedCollections.join(",")
-						}
+						key={queryClient.getQueryState(["rest-console-collections"])?.dataUpdatedAt + pinnedCollections.join(",")}
 						rootItemId="root"
 						items={tree}
 						selectedItemId={selectedTabId ?? "root"}
-						expandedItemIds={[
-							...expandedItemIds,
-							selectedTabEntry?.collection ?? "",
-						]}
+						expandedItemIds={[...expandedItemIds, selectedTabEntry?.collection ?? ""]}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(item, newTitle, queryClient);
 						}}
@@ -801,9 +700,7 @@ export const CollectionsView = ({
 								setPinnedCollections,
 							)
 						}
-						onSelectItem={(e) =>
-							handleSelectItem(e, expandedItemIds, setExpandedItemIds)
-						}
+						onSelectItem={(e) => handleSelectItem(e, expandedItemIds, setExpandedItemIds)}
 					/>
 				</div>
 			)}

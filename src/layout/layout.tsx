@@ -1,8 +1,4 @@
-import {
-	SidebarInset,
-	SidebarProvider,
-	Toaster,
-} from "@health-samurai/react-components";
+import { SidebarInset, SidebarProvider, Toaster } from "@health-samurai/react-components";
 import type { PropsWithChildren } from "react";
 import { useUserInfo } from "../api/auth";
 import { useLocalStorage } from "../hooks";
@@ -23,14 +19,8 @@ function Layout({ children }: PropsWithChildren) {
 	return (
 		<div className="flex flex-col h-screen">
 			<Navbar />
-			<SidebarProvider
-				className="grow min-h-0"
-				defaultOpen={sidebarMode === "expanded"}
-			>
-				<AidboxSidebar
-					sidebarMode={sidebarMode}
-					setSidebarMode={setSidebarMode}
-				/>
+			<SidebarProvider className="grow min-h-0" defaultOpen={sidebarMode === "expanded"}>
+				<AidboxSidebar sidebarMode={sidebarMode} setSidebarMode={setSidebarMode} />
 				<SidebarInset className="min-w-0">{children}</SidebarInset>
 			</SidebarProvider>
 			<Toaster

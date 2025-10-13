@@ -64,9 +64,7 @@ export function SQLTab() {
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
 						<div className="text-lg mb-2">Loading SQL...</div>
-						<div className="text-sm">
-							Generating SQL query from ViewDefinition
-						</div>
+						<div className="text-sm">Generating SQL query from ViewDefinition</div>
 					</div>
 				</div>
 			) : status === "error" ? (

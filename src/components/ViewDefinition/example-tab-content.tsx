@@ -14,19 +14,11 @@ import { useContext, useState } from "react";
 import { AidboxCall } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
 import * as Constants from "./constants";
-import {
-	ViewDefinitionContext,
-	ViewDefinitionResourceTypeContext,
-} from "./page";
+import { ViewDefinitionContext, ViewDefinitionResourceTypeContext } from "./page";
 import { SearchBar } from "./search-bar";
 
-const searchResources = async (
-	resourceType: string,
-	searchParams: string,
-): Promise<Record<string, unknown>[]> => {
-	const url = searchParams.trim()
-		? `/fhir/${resourceType}?${searchParams}`
-		: `/fhir/${resourceType}`;
+const searchResources = async (resourceType: string, searchParams: string): Promise<Record<string, unknown>[]> => {
+	const url = searchParams.trim() ? `/fhir/${resourceType}?${searchParams}` : `/fhir/${resourceType}`;
 
 	const response = await AidboxCall<{
 		entry?: Array<{ resource: Record<string, unknown> }>;
@@ -76,20 +68,10 @@ const ExampleTabEditorMenu = ({
 				<CopyIcon text={textToCopy} />
 			</Button>
 			<div className="border-l h-6" />
-			<Button
-				variant="ghost"
-				size="small"
-				onClick={onPrevious}
-				disabled={!canGoToPrevious}
-			>
+			<Button variant="ghost" size="small" onClick={onPrevious} disabled={!canGoToPrevious}>
 				<ChevronLeft />
 			</Button>
-			<Button
-				variant="ghost"
-				size="small"
-				onClick={onNext}
-				disabled={!canGoToNext}
-			>
+			<Button variant="ghost" size="small" onClick={onNext} disabled={!canGoToNext}>
 				<ChevronRight />
 			</Button>
 		</div>
@@ -98,11 +80,8 @@ const ExampleTabEditorMenu = ({
 
 export function ExampleTabContent() {
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
-	const viewDefinitionTypeContext = useContext(
-		ViewDefinitionResourceTypeContext,
-	);
-	const viewDefinitionResourceType =
-		viewDefinitionTypeContext.viewDefinitionResourceType;
+	const viewDefinitionTypeContext = useContext(ViewDefinitionResourceTypeContext);
+	const viewDefinitionResourceType = viewDefinitionTypeContext.viewDefinitionResourceType;
 	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 
 	const [currentResultIndex, setCurrentResultIndex] = useState(0);
@@ -118,10 +97,7 @@ export function ExampleTabContent() {
 		queryKey: [viewDefinitionResourceType, Constants.PageID, query],
 		queryFn: async () => {
 			if (!viewDefinitionResourceType) return;
-			const resources = await searchResources(
-				viewDefinitionResourceType,
-				query,
-			);
+			const resources = await searchResources(viewDefinitionResourceType, query);
 			setCurrentResultIndex(0);
 			return resources;
 		},
@@ -156,10 +132,7 @@ export function ExampleTabContent() {
 	};
 
 	return (
-		<TabsContent
-			value="examples"
-			className="flex flex-col h-full bg-bg-secondary"
-		>
+		<TabsContent value="examples" className="flex flex-col h-full bg-bg-secondary">
 			<SearchBar
 				handleSearch={(q?: string) => {
 					setQuery(q || "");
