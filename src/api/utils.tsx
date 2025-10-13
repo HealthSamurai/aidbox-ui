@@ -1,5 +1,5 @@
 import * as HSComp from "@health-samurai/react-components";
-import type MutationFunctionContext from "@tanstack/react-query";
+import type { MutationFunctionContext } from "@tanstack/react-query";
 
 export function onError<T>(
 	cb?: (
@@ -18,7 +18,7 @@ export function onError<T>(
 		if (typeof error.cause === "string") {
 			const cause = JSON.parse(error.cause);
 			const issues: unknown[] = cause.issue;
-			issues.forEach((o) => {
+			issues.forEach((o: any) => {
 				HSComp.toast.error(
 					<div className="text-left">
 						<b>{o.expression}</b>

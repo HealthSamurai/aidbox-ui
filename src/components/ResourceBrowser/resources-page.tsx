@@ -33,7 +33,7 @@ export const ResourcePageTabList = () => {
 export const ResourcesTabSarchInput = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
-	const search = Router.useSearch({
+	const search: any = Router.useSearch({
 		strict: false,
 	});
 
@@ -62,7 +62,8 @@ export const ResourcesTabCreateButton = () => {
 
 	return (
 		<Router.Link
-			to={`/resource-types/${resourcesPageContext.resourceType}/new`}
+			to="/resource-types/$resourceType/new"
+			params={{ resourceType: resourcesPageContext.resourceType }}
 		>
 			<HSComp.Button variant="secondary">
 				<Lucide.PlusIcon className="text-fg-brand-primary" />
@@ -118,10 +119,14 @@ export const ResourcesTabTable = ({
 		{
 			accessorKey: "id",
 			header: <span className="pl-5">ID</span>,
-			cell: (info) => (
+			cell: (info: any) => (
 				<Router.Link
 					className="text-text-link hover:underline pl-5"
-					to={`/resource-types/${resourcesPageContext.resourceType}/${info.getValue()}`}
+					to="/resource-types/$resourceType/$id"
+					params={{
+						resourceType: resourcesPageContext.resourceType,
+						id: info.getValue(),
+					}}
 				>
 					{info.getValue()}
 				</Router.Link>
@@ -139,7 +144,11 @@ export const ResourcesTabTable = ({
 
 	return (
 		<div className="h-full overflow-hidden">
-			<HSComp.DataTable columns={columns} data={resources} stickyHeader />
+			<HSComp.DataTable
+				columns={columns as any}
+				data={resources}
+				stickyHeader
+			/>
 		</div>
 	);
 };
@@ -148,7 +157,7 @@ export const ResourcesTabContent = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	const navigate = Router.useNavigate();
-	const search = Router.useSearch({
+	const search: any = Router.useSearch({
 		strict: false,
 	});
 
@@ -175,7 +184,7 @@ export const ResourcesTabContent = () => {
 		navigate({
 			search: {
 				searchQuery: btoa(e.currentTarget.searchQuery.value),
-			},
+			} as any,
 		});
 	};
 
