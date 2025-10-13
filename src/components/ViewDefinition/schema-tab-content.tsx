@@ -215,7 +215,7 @@ const attachChildrenAndMarkLastNodes = (
 		if (
 			lastChildNode?.meta &&
 			(!childrenMap[lastChildPath!] ||
-				childrenMap[lastChildPath!]!.length === 0)
+				childrenMap[lastChildPath!]?.length === 0)
 		) {
 			lastChildNode.meta.lastNode = true;
 		}

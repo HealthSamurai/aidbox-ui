@@ -32,6 +32,10 @@
 			"test": "recommended"
 		},
 		"rules": {
+			"a11y": {
+				"useKeyWithClickEvents": "warn",
+				"noStaticElementInteractions": "warn"
+			},
 			"recommended": true
 		}
 	},
