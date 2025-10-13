@@ -300,10 +300,10 @@ async function handleAddNewCollectionEntry(
 async function handleDeleteSnippet(
 	itemData: ReactComponents.TreeViewItem<any>,
 	queryClient: QueryClient,
-	tabs: Tab[],
-	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
+	_tabs: Tab[],
+	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
-	const result = await Auth.AidboxCallWithMeta({
+	const _result = await Auth.AidboxCallWithMeta({
 		method: "DELETE",
 		url: `/ui_snippet/${itemData.meta.id}`,
 	});

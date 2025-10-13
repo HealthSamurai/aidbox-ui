@@ -37,7 +37,7 @@ export const EditorHeaderMenu = () => {
 };
 
 export const EditorPanelActions = () => {
-	const navigate = useNavigate({ from: "/resource-types/ViewDefinition/new" });
+	const navigate = useNavigate({ from: "/resource-types/$resourceType/new" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -69,8 +69,8 @@ export const EditorPanelActions = () => {
 		onSuccess: (resp) => {
 			const id = JSON.parse(resp.body).id;
 			navigate({
-				to: "/resource-types/ViewDefinition/{-$id}",
-				params: { id: id },
+				to: "/resource-types/$resourceType/$id",
+				params: { resourceType: "ViewDefinition", id: id },
 			});
 		},
 		onError: utils.onError(),

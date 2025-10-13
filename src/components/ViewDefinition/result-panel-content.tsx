@@ -141,7 +141,7 @@ const ResultContent = ({
 	if (tableData.length > 0) {
 		return (
 			<div className="flex-1 overflow-hidden min-h-0">
-				<DataTable columns={columns} data={tableData} stickyHeader />
+				<DataTable columns={columns as any} data={tableData} stickyHeader />
 			</div>
 		);
 	}
@@ -187,6 +187,7 @@ const ResultPagination = ({
 								onPageChange("previous");
 							}}
 							aria-disabled={currentPage <= 1}
+							size="small"
 							style={
 								currentPage <= 1
 									? {
@@ -204,6 +205,7 @@ const ResultPagination = ({
 								onPageChange("next");
 							}}
 							aria-disabled={isLastPage}
+							size="small"
 							style={
 								isLastPage
 									? {
