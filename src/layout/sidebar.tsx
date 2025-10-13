@@ -7,10 +7,9 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
-	SidebarTrigger,
 	useSidebar,
 } from "@health-samurai/react-components";
-import { Link, type RouteMatch, useParentMatches, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Columns3Cog, House, PanelLeftClose, PanelLeftOpen, SquareTerminal } from "lucide-react";
 import { useEffect } from "react";
 import { UI_BASE_PATH } from "../shared/const";
@@ -31,7 +30,7 @@ const isActiveNavItem = (item: (typeof mainMenuItems)[number], currentPath: stri
 	return (
 		currentPath === item.url ||
 		(currentPath.startsWith(item.url) && item.url !== "/") ||
-		currentPath === UI_BASE_PATH + "/" + item.url
+		currentPath === `${UI_BASE_PATH}/${item.url}`
 	);
 };
 

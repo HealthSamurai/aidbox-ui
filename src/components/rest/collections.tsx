@@ -227,7 +227,7 @@ function buildTreeView(
 		};
 		if (entry.collection) {
 			if (tree[entry.collection]) {
-				tree[entry.collection]!.children!.push(entry.id);
+				tree[entry.collection]?.children?.push(entry.id);
 			} else {
 				tree[entry.collection] = {
 					name: entry.collection,
@@ -235,7 +235,7 @@ function buildTreeView(
 				};
 			}
 		} else {
-			tree.root!.children!.push(entry.id);
+			tree.root?.children?.push(entry.id);
 		}
 	});
 

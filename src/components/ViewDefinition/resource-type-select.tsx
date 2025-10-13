@@ -1,6 +1,5 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCall } from "../../api/auth";
 import * as Constants from "./constants";

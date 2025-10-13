@@ -188,7 +188,7 @@ const attachChildrenAndMarkLastNodes = (
 		const lastChildPath = children[children.length - 1];
 		const lastChildNode = tree[lastChildPath!];
 
-		if (lastChildNode?.meta && (!childrenMap[lastChildPath!] || childrenMap[lastChildPath!]!.length === 0)) {
+		if (lastChildNode?.meta && (!childrenMap[lastChildPath!] || childrenMap[lastChildPath!]?.length === 0)) {
 			lastChildNode.meta.lastNode = true;
 		}
 	}

@@ -442,7 +442,7 @@ export const FormTabContent = () => {
 			let target = updatedItems;
 			for (const id of parentPath) {
 				const item = target.find((i: SelectItemInternal) => i.id === id);
-				if (item && item.children) {
+				if (item?.children) {
 					target = item.children;
 				}
 			}
@@ -817,14 +817,14 @@ export const FormTabContent = () => {
 	}, [constants, whereConditions, selectItems]);
 
 	const onDropTreeItem = (
-		tree: TreeInstance<TreeViewItem<any>>,
+		_tree: TreeInstance<TreeViewItem<any>>,
 		item: ItemInstance<TreeViewItem<any>>,
 		newChildren: string[],
 	) => {
 		item.getItemData().children = newChildren;
 
 		const itemId = item.getId();
-		const itemMeta = item.getItemData()?.meta;
+		const _itemMeta = item.getItemData()?.meta;
 
 		// Handle reordering of constants
 		if (itemId === "_constant") {
@@ -1021,8 +1021,8 @@ export const FormTabContent = () => {
 
 	const customItemView = (item: ItemInstance<TreeViewItem<any>>) => {
 		const metaType = item.getItemData()?.meta?.type;
-		const itemId = item.getId();
-		const itemProps = item.getProps();
+		const _itemId = item.getId();
+		const _itemProps = item.getProps();
 
 		// Helper function to render drag handle for draggable items
 		const renderDragHandle = () => {
