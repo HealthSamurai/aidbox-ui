@@ -186,9 +186,9 @@ const attachChildrenAndMarkLastNodes = (
 		parentNode.children = children;
 
 		const lastChildPath = children[children.length - 1];
-		const lastChildNode = tree[lastChildPath];
+		const lastChildNode = tree[lastChildPath!];
 
-		if (lastChildNode?.meta && (!childrenMap[lastChildPath] || childrenMap[lastChildPath].length === 0)) {
+		if (lastChildNode?.meta && (!childrenMap[lastChildPath!] || childrenMap[lastChildPath!]!.length === 0)) {
 			lastChildNode.meta.lastNode = true;
 		}
 	}
@@ -340,7 +340,7 @@ export function SchemaTabContent() {
 	return (
 		<TabsContent value="schema" className="h-full overflow-auto">
 			<div className="h-full w-full overflow-auto px-2">
-				<FhirStructureView tree={transformSnapshotToTree(data)} />
+				<FhirStructureView tree={transformSnapshotToTree(data) as any} />
 			</div>
 		</TabsContent>
 	);

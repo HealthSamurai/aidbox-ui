@@ -1,7 +1,6 @@
 import {
 	Button,
 	Checkbox,
-	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -357,44 +356,44 @@ export const FormTabContent = () => {
 
 	// Function to update title field
 	const updateTitle = (title: string) => {
-		updateViewDefinition(undefined, undefined, { title });
+		updateViewDefinition(undefined, undefined, { title } as any);
 	};
 
 	// Function to update description field
 	const updateDescription = (description: string) => {
-		updateViewDefinition(undefined, undefined, { description });
+		updateViewDefinition(undefined, undefined, { description } as any);
 	};
 
 	// Function to update status field
 	const updateStatus = (status: string) => {
-		updateViewDefinition(undefined, undefined, { status });
+		updateViewDefinition(undefined, undefined, { status } as any);
 	};
 
 	// Function to update url field
 	const updateUrl = (url: string) => {
-		updateViewDefinition(undefined, undefined, { url });
+		updateViewDefinition(undefined, undefined, { url } as any);
 	};
 
 	// Function to update publisher field
 	const updatePublisher = (publisher: string) => {
-		updateViewDefinition(undefined, undefined, { publisher });
+		updateViewDefinition(undefined, undefined, { publisher } as any);
 	};
 
 	// Function to update copyright field
 	const updateCopyright = (copyright: string) => {
-		updateViewDefinition(undefined, undefined, { copyright });
+		updateViewDefinition(undefined, undefined, { copyright } as any);
 	};
 
 	// Function to update experimental field
 	const updateExperimental = (experimental: boolean) => {
-		updateViewDefinition(undefined, undefined, { experimental });
+		updateViewDefinition(undefined, undefined, { experimental } as any);
 	};
 
 	// Function to update fhirVersion field
 	const updateFhirVersions = (fhirVersions: string[]) => {
 		updateViewDefinition(undefined, undefined, {
 			fhirVersion: fhirVersions.length > 0 ? fhirVersions : undefined,
-		});
+		} as any);
 	};
 
 	// Function to add a new select item
@@ -630,7 +629,7 @@ export const FormTabContent = () => {
 							selectItemId: item.id,
 						},
 					};
-					treeStructure[item.id].children = columnChildren;
+					treeStructure[item.id]!.children = columnChildren;
 				} else if (item.type === "forEach" || item.type === "forEachOrNull" || item.type === "unionAll") {
 					const nodeChildren: string[] = [];
 
@@ -648,7 +647,7 @@ export const FormTabContent = () => {
 						},
 					};
 
-					treeStructure[item.id].children = nodeChildren;
+					treeStructure[item.id]!.children = nodeChildren;
 				}
 			});
 
@@ -1222,7 +1221,7 @@ export const FormTabContent = () => {
 									const currentIdentifier = (viewDefinition as any)?.identifier?.[0] || {};
 									updateViewDefinition(undefined, undefined, {
 										identifier: [{ ...currentIdentifier, system: value }],
-									});
+									} as any);
 								}}
 							/>
 						</div>
@@ -1240,7 +1239,7 @@ export const FormTabContent = () => {
 									const currentIdentifier = (viewDefinition as any)?.identifier?.[0] || {};
 									updateViewDefinition(undefined, undefined, {
 										identifier: [{ ...currentIdentifier, value }],
-									});
+									} as any);
 								}}
 							/>
 						</div>

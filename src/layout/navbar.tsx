@@ -34,7 +34,7 @@ function Breadcrumbs() {
 			// If the route has params and it's ViewDefinition, add ID as separate breadcrumb
 			if (match.params && "id" in match.params && match.pathname.includes("/ViewDefinition/")) {
 				const pathWithoutId = match.pathname.substring(0, match.pathname.lastIndexOf("/"));
-				items[0].path = pathWithoutId;
+				items[0]!.path = pathWithoutId;
 				items.push({
 					title: match.params.id as string,
 					path: match.pathname,

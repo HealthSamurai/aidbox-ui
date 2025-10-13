@@ -141,7 +141,7 @@ const ResourceList = memo(
 
 		return (
 			<div className="h-full">
-				<HSComp.DataTable columns={columns} data={filteredData} stickyHeader />
+				<HSComp.DataTable columns={columns as any} data={filteredData} stickyHeader />
 			</div>
 		);
 	},
