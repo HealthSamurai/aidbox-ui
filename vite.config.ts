@@ -18,4 +18,9 @@ export default defineConfig({
 			},
 		}),
 	],
+	resolve: {
+		alias: {
+			"@aidbox-ui": "/src",
+		},
+	},
 });
