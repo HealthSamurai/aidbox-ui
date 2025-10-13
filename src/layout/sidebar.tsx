@@ -32,7 +32,7 @@ const mainMenuItems = [
 	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
 	{
 		title: "ViewDefinition browser",
-		url: "/resource-types/ViewDefinition",
+		url: "/resource-types",
 		icon: Columns3Cog,
 	},
 ];
