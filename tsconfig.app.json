@@ -6,6 +6,9 @@
 		"module": "ESNext",
 		"skipLibCheck": true,
 		"types": [],
+		"paths": {
+			"@aidbox-ui/*": ["./src/*"]
+		},
 
 		/* Bundler mode */
 		"moduleResolution": "bundler",
