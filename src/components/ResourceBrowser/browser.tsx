@@ -210,7 +210,7 @@ function useProcessedData(
 					system: value["system?"],
 					fhir: value["fhir?"],
 					custom: value["custom?"],
-					populated: resourceStats["num_rows"] > 0,
+					populated: resourceStats.num_rows > 0,
 				};
 			},
 		);
@@ -257,10 +257,13 @@ export function Browser() {
 	});
 
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
-	const favoritesRef = useMemo(() => ({ current: favorites }), []);
+	const favoritesRef = useMemo(() => ({ current: favorites }), [favorites]);
 	favoritesRef.current = favorites;
 
-	const getFavorites = useMemo(() => () => favoritesRef.current, []);
+	const getFavorites = useMemo(
+		() => () => favoritesRef.current,
+		[favoritesRef.current],
+	);
 
 	const { data, isLoading } = useResourceData();
 	const { subsets } = useProcessedData(data, favorites);

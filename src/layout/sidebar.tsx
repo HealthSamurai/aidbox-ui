@@ -7,15 +7,9 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
-	SidebarTrigger,
 	useSidebar,
 } from "@health-samurai/react-components";
-import {
-	Link,
-	type RouteMatch,
-	useParentMatches,
-	useRouterState,
-} from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Columns3Cog,
 	House,
@@ -45,7 +39,7 @@ const isActiveNavItem = (
 	return (
 		currentPath === item.url ||
 		(currentPath.startsWith(item.url) && item.url !== "/") ||
-		currentPath === UI_BASE_PATH + "/" + item.url
+		currentPath === `${UI_BASE_PATH}/${item.url}`
 	);
 };
 
