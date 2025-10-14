@@ -201,16 +201,9 @@ export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 
-	// State for managing constants dynamically
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
-
-	// State for managing where conditions dynamically
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
-
-	// State for managing select items dynamically (nested structure)
 	const [selectItems, setSelectItems] = useState<SelectItemInternal[]>([]);
-
-	// State for collapsed items using localStorage - tree renders fully expanded by default
 	const [collapsedItemIds, setCollapsedItemIds] = useLocalStorage<string[]>({
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
 		defaultValue: [],
