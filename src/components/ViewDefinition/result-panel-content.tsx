@@ -218,22 +218,10 @@ export function ResultPanel() {
 			const parametersPayload = {
 				resourceType: "Parameters",
 				parameter: [
-					{
-						name: "viewResource",
-						resource: viewDefinition,
-					},
-					{
-						name: "_format",
-						valueCode: "json",
-					},
-					{
-						name: "_limit",
-						valueInteger: pageSize,
-					},
-					{
-						name: "_page",
-						valueInteger: page,
-					},
+					{ name: "viewResource", resource: viewDefinition },
+					{ name: "_format", valueCode: "json" },
+					{ name: "_limit", valueInteger: pageSize },
+					{ name: "_page", valueInteger: page },
 				],
 			};
 			return AidboxCallWithMeta({
