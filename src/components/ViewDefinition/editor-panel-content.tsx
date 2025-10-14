@@ -37,7 +37,7 @@ export const EditorHeaderMenu = () => {
 };
 
 export const EditorPanelActions = () => {
-	const navigate = useNavigate({ from: "/resource-types/$resourceType/new" });
+	const navigate = useNavigate({ from: "/resource-create/$resourceType" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -69,7 +69,7 @@ export const EditorPanelActions = () => {
 		onSuccess: (resp) => {
 			const id = JSON.parse(resp.body).id;
 			navigate({
-				to: "/resource-types/$resourceType/$id",
+				to: "/resource-edit/$resourceType/$id",
 				params: { resourceType: "ViewDefinition", id: id },
 				search: { tab: "code" },
 			});
@@ -166,13 +166,27 @@ export const EditorPanelActions = () => {
 export const EditorPanelContent = () => {
 	const navigate = useNavigate();
 
-	const { tab: selectedTab } = useSearch({
-		from: "/resource-types/$resourceType/$id",
+	const createSearch = useSearch({
+		from: "/resource-create/$resourceType",
+		shouldThrow: false,
 	});
+	const editSearch = useSearch({
+		from: "/resource-edit/$resourceType/$id",
+		shouldThrow: false,
+	});
+	const search = createSearch || editSearch;
+	if (search === undefined) {
+		console.error("createSearch and editSearch are undefined");
+		return <div>FAILED DUE TO UNDEFINED SEARCH</div>;
+	}
+	const { tab: selectedTab } = search;
 
 	const handleOnTabSelect = (value: Types.ViewDefinitionEditorTab) => {
 		navigate({
-			from: "/resource-types/$resourceType/$id",
+			from:
+				createSearch !== undefined
+					? "/resource-create/$resourceType"
+					: "/resource-edit/$resourceType/$id",
 			search: { tab: value },
 		});
 	};
