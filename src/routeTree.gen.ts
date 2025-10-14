@@ -13,9 +13,9 @@ import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceTypesRouteImport } from './routes/resource-types'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceTypesIndexRouteImport } from './routes/resource-types.index'
-import { Route as ResourceTypesResourceTypeIndexRouteImport } from './routes/resource-types.$resourceType.index'
-import { Route as ResourceTypesResourceTypeNewRouteImport } from './routes/resource-types.$resourceType.new'
-import { Route as ResourceTypesResourceTypeIdRouteImport } from './routes/resource-types.$resourceType.$id'
+import { Route as ResourceCreateResourceTypeRouteImport } from './routes/resource-create.$resourceType'
+import { Route as ResourceListResourceTypeIndexRouteImport } from './routes/resource-list.$resourceType.index'
+import { Route as ResourceEditResourceTypeIdRouteImport } from './routes/resource-edit.$resourceType.$id'
 
 const RestRoute = RestRouteImport.update({
   id: '/rest',
@@ -37,51 +37,51 @@ const ResourceTypesIndexRoute = ResourceTypesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ResourceTypesRoute,
 } as any)
-const ResourceTypesResourceTypeIndexRoute =
-  ResourceTypesResourceTypeIndexRouteImport.update({
-    id: '/$resourceType/',
-    path: '/$resourceType/',
-    getParentRoute: () => ResourceTypesRoute,
+const ResourceCreateResourceTypeRoute =
+  ResourceCreateResourceTypeRouteImport.update({
+    id: '/resource-create/$resourceType',
+    path: '/resource-create/$resourceType',
+    getParentRoute: () => rootRouteImport,
   } as any)
-const ResourceTypesResourceTypeNewRoute =
-  ResourceTypesResourceTypeNewRouteImport.update({
-    id: '/$resourceType/new',
-    path: '/$resourceType/new',
-    getParentRoute: () => ResourceTypesRoute,
+const ResourceListResourceTypeIndexRoute =
+  ResourceListResourceTypeIndexRouteImport.update({
+    id: '/resource-list/$resourceType/',
+    path: '/resource-list/$resourceType/',
+    getParentRoute: () => rootRouteImport,
   } as any)
-const ResourceTypesResourceTypeIdRoute =
-  ResourceTypesResourceTypeIdRouteImport.update({
-    id: '/$resourceType/$id',
-    path: '/$resourceType/$id',
-    getParentRoute: () => ResourceTypesRoute,
+const ResourceEditResourceTypeIdRoute =
+  ResourceEditResourceTypeIdRouteImport.update({
+    id: '/resource-edit/$resourceType/$id',
+    path: '/resource-edit/$resourceType/$id',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/resource-types': typeof ResourceTypesRouteWithChildren
   '/rest': typeof RestRoute
+  '/resource-create/$resourceType': typeof ResourceCreateResourceTypeRoute
   '/resource-types/': typeof ResourceTypesIndexRoute
-  '/resource-types/$resourceType/$id': typeof ResourceTypesResourceTypeIdRoute
-  '/resource-types/$resourceType/new': typeof ResourceTypesResourceTypeNewRoute
-  '/resource-types/$resourceType': typeof ResourceTypesResourceTypeIndexRoute
+  '/resource-edit/$resourceType/$id': typeof ResourceEditResourceTypeIdRoute
+  '/resource-list/$resourceType': typeof ResourceListResourceTypeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/rest': typeof RestRoute
+  '/resource-create/$resourceType': typeof ResourceCreateResourceTypeRoute
   '/resource-types': typeof ResourceTypesIndexRoute
-  '/resource-types/$resourceType/$id': typeof ResourceTypesResourceTypeIdRoute
-  '/resource-types/$resourceType/new': typeof ResourceTypesResourceTypeNewRoute
-  '/resource-types/$resourceType': typeof ResourceTypesResourceTypeIndexRoute
+  '/resource-edit/$resourceType/$id': typeof ResourceEditResourceTypeIdRoute
+  '/resource-list/$resourceType': typeof ResourceListResourceTypeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/resource-types': typeof ResourceTypesRouteWithChildren
   '/rest': typeof RestRoute
+  '/resource-create/$resourceType': typeof ResourceCreateResourceTypeRoute
   '/resource-types/': typeof ResourceTypesIndexRoute
-  '/resource-types/$resourceType/$id': typeof ResourceTypesResourceTypeIdRoute
-  '/resource-types/$resourceType/new': typeof ResourceTypesResourceTypeNewRoute
-  '/resource-types/$resourceType/': typeof ResourceTypesResourceTypeIndexRoute
+  '/resource-edit/$resourceType/$id': typeof ResourceEditResourceTypeIdRoute
+  '/resource-list/$resourceType/': typeof ResourceListResourceTypeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,33 +89,36 @@ export interface FileRouteTypes {
     | '/'
     | '/resource-types'
     | '/rest'
+    | '/resource-create/$resourceType'
     | '/resource-types/'
-    | '/resource-types/$resourceType/$id'
-    | '/resource-types/$resourceType/new'
-    | '/resource-types/$resourceType'
+    | '/resource-edit/$resourceType/$id'
+    | '/resource-list/$resourceType'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/rest'
+    | '/resource-create/$resourceType'
     | '/resource-types'
-    | '/resource-types/$resourceType/$id'
-    | '/resource-types/$resourceType/new'
-    | '/resource-types/$resourceType'
+    | '/resource-edit/$resourceType/$id'
+    | '/resource-list/$resourceType'
   id:
     | '__root__'
     | '/'
     | '/resource-types'
     | '/rest'
+    | '/resource-create/$resourceType'
     | '/resource-types/'
-    | '/resource-types/$resourceType/$id'
-    | '/resource-types/$resourceType/new'
-    | '/resource-types/$resourceType/'
+    | '/resource-edit/$resourceType/$id'
+    | '/resource-list/$resourceType/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ResourceTypesRoute: typeof ResourceTypesRouteWithChildren
   RestRoute: typeof RestRoute
+  ResourceCreateResourceTypeRoute: typeof ResourceCreateResourceTypeRoute
+  ResourceEditResourceTypeIdRoute: typeof ResourceEditResourceTypeIdRoute
+  ResourceListResourceTypeIndexRoute: typeof ResourceListResourceTypeIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,42 +151,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceTypesIndexRouteImport
       parentRoute: typeof ResourceTypesRoute
     }
-    '/resource-types/$resourceType/': {
-      id: '/resource-types/$resourceType/'
-      path: '/$resourceType'
-      fullPath: '/resource-types/$resourceType'
-      preLoaderRoute: typeof ResourceTypesResourceTypeIndexRouteImport
-      parentRoute: typeof ResourceTypesRoute
+    '/resource-create/$resourceType': {
+      id: '/resource-create/$resourceType'
+      path: '/resource-create/$resourceType'
+      fullPath: '/resource-create/$resourceType'
+      preLoaderRoute: typeof ResourceCreateResourceTypeRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/resource-types/$resourceType/new': {
-      id: '/resource-types/$resourceType/new'
-      path: '/$resourceType/new'
-      fullPath: '/resource-types/$resourceType/new'
-      preLoaderRoute: typeof ResourceTypesResourceTypeNewRouteImport
-      parentRoute: typeof ResourceTypesRoute
+    '/resource-list/$resourceType/': {
+      id: '/resource-list/$resourceType/'
+      path: '/resource-list/$resourceType'
+      fullPath: '/resource-list/$resourceType'
+      preLoaderRoute: typeof ResourceListResourceTypeIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/resource-types/$resourceType/$id': {
-      id: '/resource-types/$resourceType/$id'
-      path: '/$resourceType/$id'
-      fullPath: '/resource-types/$resourceType/$id'
-      preLoaderRoute: typeof ResourceTypesResourceTypeIdRouteImport
-      parentRoute: typeof ResourceTypesRoute
+    '/resource-edit/$resourceType/$id': {
+      id: '/resource-edit/$resourceType/$id'
+      path: '/resource-edit/$resourceType/$id'
+      fullPath: '/resource-edit/$resourceType/$id'
+      preLoaderRoute: typeof ResourceEditResourceTypeIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
 interface ResourceTypesRouteChildren {
   ResourceTypesIndexRoute: typeof ResourceTypesIndexRoute
-  ResourceTypesResourceTypeIdRoute: typeof ResourceTypesResourceTypeIdRoute
-  ResourceTypesResourceTypeNewRoute: typeof ResourceTypesResourceTypeNewRoute
-  ResourceTypesResourceTypeIndexRoute: typeof ResourceTypesResourceTypeIndexRoute
 }
 
 const ResourceTypesRouteChildren: ResourceTypesRouteChildren = {
   ResourceTypesIndexRoute: ResourceTypesIndexRoute,
-  ResourceTypesResourceTypeIdRoute: ResourceTypesResourceTypeIdRoute,
-  ResourceTypesResourceTypeNewRoute: ResourceTypesResourceTypeNewRoute,
-  ResourceTypesResourceTypeIndexRoute: ResourceTypesResourceTypeIndexRoute,
 }
 
 const ResourceTypesRouteWithChildren = ResourceTypesRoute._addFileChildren(
@@ -194,6 +191,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ResourceTypesRoute: ResourceTypesRouteWithChildren,
   RestRoute: RestRoute,
+  ResourceCreateResourceTypeRoute: ResourceCreateResourceTypeRoute,
+  ResourceEditResourceTypeIdRoute: ResourceEditResourceTypeIdRoute,
+  ResourceListResourceTypeIndexRoute: ResourceListResourceTypeIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
