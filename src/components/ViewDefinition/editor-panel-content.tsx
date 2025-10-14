@@ -170,10 +170,10 @@ export const EditorPanelContent = () => {
 		from: "/resource-types/$resourceType/$id",
 	});
 
-	const handleOnTabSelect = (value: string) => {
+	const handleOnTabSelect = (value: Types.ViewDefinitionEditorTab) => {
 		navigate({
 			from: "/resource-types/$resourceType/$id",
-			search: { tab: value as Types.ViewDefinitionEditorTab },
+			search: { tab: value },
 		});
 	};
 
