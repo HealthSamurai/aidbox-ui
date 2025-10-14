@@ -92,7 +92,7 @@ const ResourceList = memo(
 					className="cursor-pointer"
 					onClick={() =>
 						navigate({
-							to: "/resource-types/$resourceType",
+							to: "/resource-list/$resourceType",
 							params: { resourceType: info.row.original.resourceType },
 						})
 					}

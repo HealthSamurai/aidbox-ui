@@ -56,7 +56,11 @@ export const ResourcesTabCreateButton = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	return (
-		<Router.Link to="/resource-types/$resourceType/new" params={{ resourceType: resourcesPageContext.resourceType }}>
+		<Router.Link
+			to="/resource-create/$resourceType"
+			params={{ resourceType: resourcesPageContext.resourceType }}
+			search={{ tab: "code" }}
+		>
 			<HSComp.Button variant="secondary">
 				<Lucide.PlusIcon className="text-fg-brand-primary" />
 				Create
@@ -99,7 +103,7 @@ export const ResourcesTabTable = ({ resources }: Types.ResourcesTabTableProps) =
 			cell: (info: any) => (
 				<Router.Link
 					className="text-text-link hover:underline pl-5"
-					to="/resource-types/$resourceType/$id"
+					to="/resource-edit/$resourceType/$id"
 					search={{ tab: "code" }}
 					params={{ resourceType: resourcesPageContext.resourceType, id: info.getValue() }}
 				>
