@@ -191,7 +191,11 @@ const resourcesWithKeys = (
 	return {
 		resources: resources.map((resource) => ({ resourceKeys, ...resource })),
 		resourceKeys: Object.keys(resourceKeys).filter(
-			(k) => k !== "id" && k !== "createdAt" && k !== "lastUpdated",
+			(k) =>
+				k !== "id" &&
+				k !== "createdAt" &&
+				k !== "lastUpdated" &&
+				k !== "resourceType",
 		),
 		snapshot: snapshot,
 	};
