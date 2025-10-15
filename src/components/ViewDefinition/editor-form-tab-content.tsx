@@ -201,6 +201,7 @@ export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 
+	console.log("FormTabContent:viewDefinition", viewDefinition?.name);
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
 	const [selectItems, setSelectItems] = useState<SelectItemInternal[]>([]);
@@ -216,7 +217,7 @@ export const FormTabContent = () => {
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (viewDefinition?.id && viewDefinition.id !== lastViewDefId) {
+		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
 			setLastViewDefId(viewDefinition.id || null);
 			if (
 				(viewDefinition as any)?.constant &&
