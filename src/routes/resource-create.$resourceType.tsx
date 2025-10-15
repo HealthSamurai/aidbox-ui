@@ -1,3 +1,4 @@
+import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/Page";
 import type { ViewDefinitionEditorTab } from "@aidbox-ui/components/ViewDefinition/types";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import ViewDefinitionPage from "../components/ViewDefinition/page";
@@ -28,7 +29,7 @@ export const resourceTypePageFromParams = () => {
 		case "ViewDefinition":
 			return ViewDefinitionPage;
 		default:
-			return (_: { id?: string }) => <div>TODO</div>;
+			return ResourceEditorPage;
 	}
 };
 
