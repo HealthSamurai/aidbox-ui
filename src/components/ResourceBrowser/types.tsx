@@ -3,8 +3,13 @@ export interface ResourcesPageProps {
 }
 
 export interface ResourcesTabTableProps {
-	data: any[];
-	resourcesWithKeys: any;
+	data:
+		| {
+				resources: any[];
+				resourceKeys: any;
+				snapshot: any;
+		  }
+		| undefined;
 }
 
 export interface ResourcesTabHeaderProps {
@@ -17,5 +22,4 @@ export interface ResourcesPageContext {
 
 export interface ResourcesTabContentContext {
 	resourcesLoading: boolean;
-	schemaLoading: boolean;
 }

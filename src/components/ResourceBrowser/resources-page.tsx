@@ -52,7 +52,6 @@ const ResourcesPageContext = React.createContext<Types.ResourcesPageContext>({
 const ResourcesTabContentContext =
 	React.createContext<Types.ResourcesTabContentContext>({
 		resourcesLoading: false,
-		schemaLoading: false,
 	});
 
 export const ResourcePageTabList = () => {
@@ -185,10 +184,9 @@ const resourcesWithKeys = (
 		{},
 	);
 
-	const snapshot = Object.values(profiles.entity).reduce((acc, v) => {
-		if (typeof v.elements === "object") return { acc, ...v.elements };
-		else return acc;
-	}, {});
+	const snapshot = profiles.entity.elements;
+
+	console.log("111 shapshot:", snapshot);
 
 	return {
 		resources: resources.map((resource) => ({ resourceKeys, ...resource })),
@@ -199,16 +197,13 @@ const resourcesWithKeys = (
 	};
 };
 
-export const ResourcesTabTable = ({ data }) => {
+export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const resourcesTabContentContext = React.useContext(
 		ResourcesTabContentContext,
 	);
 
-	if (
-		resourcesTabContentContext.resourcesLoading ||
-		resourcesTabContentContext.schemaLoading
-	) {
+	if (resourcesTabContentContext.resourcesLoading) {
 		return <div>Loading...</div>;
 	}
 
@@ -248,12 +243,13 @@ export const ResourcesTabTable = ({ data }) => {
 		},
 	];
 
-	resourceKeys.forEach((k) => {
+	resourceKeys.forEach((k: string) => {
 		if (k !== "id" && k !== "meta")
 			columns.push({
 				accessorKey: k,
 				header: <span className="pl-5">{k}</span>,
-				cell: (info: any) => Humanize.humanizeValue(k, info.getValue(), {}),
+				cell: (info: any) =>
+					Humanize.humanizeValue(k, info.getValue(), snapshot),
 			});
 	});
 
