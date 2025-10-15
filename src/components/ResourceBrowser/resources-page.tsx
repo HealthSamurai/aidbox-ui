@@ -6,6 +6,44 @@ import * as React from "react";
 import * as AidboxClient from "../../api/auth";
 import * as Constants from "./constants";
 import type * as Types from "./types";
+import * as Humanize from "../../humanize";
+import { AidboxCallWithMeta } from "../../api/auth";
+
+interface Snapshot {
+	type: string | null;
+	lvl: number;
+	name: string;
+	path?: string;
+	short?: string;
+	desc?: string;
+	id: string;
+	"union?"?: boolean;
+	min?: number | string;
+	max?: number | string;
+	datatype?: string;
+	flags?: string[];
+	"extension-url"?: string;
+	"extension-coordinate"?: { label: string };
+	binding?: { strength: string; valueSet: string };
+	"vs-coordinate"?: {
+		label: string;
+		id: string;
+		"package-spec": {
+			name: string;
+			version: string;
+		};
+	};
+}
+
+interface Schema {
+	differential: Array<Snapshot>;
+	snapshot: Array<Snapshot>;
+	"default?": boolean;
+}
+
+interface SchemaData {
+	result: Record<string, Schema>;
+}
 
 const ResourcesPageContext = React.createContext<Types.ResourcesPageContext>({
 	resourceType: "",
@@ -13,6 +51,7 @@ const ResourcesPageContext = React.createContext<Types.ResourcesPageContext>({
 
 const ResourcesTabContentContext = React.createContext<Types.ResourcesTabContentContext>({
 	resourcesLoading: false,
+	schemaLoading: false,
 });
 
 export const ResourcePageTabList = () => {
@@ -92,9 +131,62 @@ export const ResourcesTabHeader = ({ handleSearch }: Types.ResourcesTabHeaderPro
 	);
 };
 
-export const ResourcesTabTable = ({ resources }: Types.ResourcesTabTableProps) => {
+const fetchSchema = async (resourceType: string): Promise<unknown | undefined> => {
+	const response = await AidboxCallWithMeta({
+		method: "POST",
+		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			method: "aidbox.introspector/get-schemas-by-resource-type",
+			params: { "resource-type": resourceType },
+		}),
+	});
+
+	const data: SchemaData = JSON.parse(response.body);
+
+	if (!data?.result) return undefined;
+
+	const defaultSchema = Object.values(data.result).find((schema: Schema) => schema["default?"] === true);
+
+	return defaultSchema;
+};
+
+const resourcesWithKeys = (profiles: any, resources: Array<Record<string, unknown>>) => {
+	const resourceKeys: Record<string, undefined> = resources.reduce(
+		(acc: Record<string, undefined>, resource: Record<string, unknown>) => {
+			Object.keys(resource).forEach((key) => (acc[key] = undefined));
+			return acc;
+		},
+		{},
+	);
+
+	const snapshot = Object.values(profiles.entity).reduce((acc, v) => {
+		if (typeof v.elements === "object") return { acc, ...v.elements };
+		else return acc;
+	}, {});
+
+	return {
+		resources: resources.map((resource) => ({ resourceKeys, ...resource })),
+		resourceKeys: Object.keys(resourceKeys).filter((k) => k !== "id" && k !== "createdAt" && k !== "lastUpdated"),
+		snapshot: snapshot,
+	};
+};
+
+export const ResourcesTabTable = ({ data }) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const resourcesTabContentContext = React.useContext(ResourcesTabContentContext);
+
+	if (resourcesTabContentContext.resourcesLoading || resourcesTabContentContext.schemaLoading) {
+		return <div>Loading...</div>;
+	}
+
+	if (!data || !data.resources || data.resources.length === 0) {
+		return <div>No resources found</div>;
+	}
+
+	const { resources, resourceKeys, snapshot } = data;
 
 	const columns = [
 		{
@@ -111,15 +203,21 @@ export const ResourcesTabTable = ({ resources }: Types.ResourcesTabTableProps) =
 				</Router.Link>
 			),
 		},
+		{
+			accessorKey: "lastUpdated",
+			header: <span className="pl-5">lastUpdated</span>,
+			cell: (info: any) => Humanize.humanizeValue("lastUpdated", info.row.original.meta.lastUpdated, {}),
+		},
 	];
 
-	if (resourcesTabContentContext.resourcesLoading) {
-		return <div>Loading...</div>;
-	}
-
-	if (!resources || resources.length === 0) {
-		return <div>No resources found</div>;
-	}
+	resourceKeys.forEach((k) => {
+		if (k !== "id" && k !== "meta")
+			columns.push({
+				accessorKey: k,
+				header: <span className="pl-5">{k}</span>,
+				cell: (info: any) => Humanize.humanizeValue(k, info.getValue(), {}),
+			});
+	});
 
 	return (
 		<div className="h-full overflow-hidden">
@@ -128,7 +226,7 @@ export const ResourcesTabTable = ({ resources }: Types.ResourcesTabTableProps) =
 	);
 };
 
-export const ResourcesTabContent = () => {
+export const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	const navigate = Router.useNavigate();
@@ -145,7 +243,9 @@ export const ResourcesTabContent = () => {
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			return JSON.parse(response.body).entry.map((entry: any) => entry.resource);
+			const data = JSON.parse(response.body).entry.map((entry: any) => entry.resource);
+			const schema = await fetchSchema(resourceType);
+			return resourcesWithKeys(schema, data);
 		},
 		retry: false,
 	});
@@ -162,7 +262,7 @@ export const ResourcesTabContent = () => {
 	return (
 		<ResourcesTabContentContext.Provider value={{ resourcesLoading: isLoading }}>
 			<ResourcesTabHeader handleSearch={handleSearch} />
-			<ResourcesTabTable resources={data} />
+			<ResourcesTabTable data={data} />
 		</ResourcesTabContentContext.Provider>
 	);
 };
@@ -173,7 +273,7 @@ export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
 			<HSComp.Tabs defaultValue="resources">
 				<ResourcePageTabList />
 				<HSComp.TabsContent value="resources" className="overflow-hidden">
-					<ResourcesTabContent />
+					<ResourcesTabContent resourceType={resourceType} />
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="profiles">TODO</HSComp.TabsContent>
 				<HSComp.TabsContent value="extensions">TODO</HSComp.TabsContent>
