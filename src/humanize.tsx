@@ -239,7 +239,7 @@ function humanizeDosage(value: any): string | null {
 
 	if (text) return text;
 
-	const parts: (string | null)[] = [];
+	const parts: (React.ReactNode | null)[] = [];
 	if (timing) parts.push(humanizeValue_(null, timing, "Timing"));
 	if (route) parts.push(humanizeValue_(null, route, "CodeableConcept"));
 	if (dose) parts.push(humanizeValue_(null, dose[0]?.doseQuantity, "Quantity"));
@@ -291,7 +291,7 @@ function humanizeSignature(value: any): string {
 		.join(" ");
 }
 
-function humanizeTiming(value: any): string | null {
+function humanizeTiming(value: any): React.ReactNode | string | null {
 	const repeat = value.repeat;
 	const code = value.code;
 
@@ -312,7 +312,7 @@ function humanizeTiming(value: any): string | null {
 			durationUnit,
 		} = repeat;
 
-		const parts: (string | null)[] = [];
+		const parts: (React.ReactNode | string | null)[] = [];
 
 		if (frequency && period && periodUnit) {
 			parts.push(`${frequency}/${period}${periodUnit}`);
@@ -337,7 +337,7 @@ function humanizeUsageContext(value: any): string {
 	const valueRange = value.valueRange;
 	const valueRef = value.valueReference;
 
-	const parts: (string | null)[] = [];
+	const parts: (string | React.ReactNode | null)[] = [];
 
 	if (code) parts.push(humanizeValue_(null, code, "Coding"));
 
@@ -350,7 +350,7 @@ function humanizeUsageContext(value: any): string {
 	return parts.filter(Boolean).join(": ");
 }
 
-function humanizeUnknown(value: any, depthSoFar = 1): string {
+function humanizeUnknown(value: any, depthSoFar = 1): React.ReactNode | string {
 	if (depthSoFar > 4 || !value || typeof value !== "object") return "";
 
 	if (value.coding) return humanizeValue_(null, value, "CodeableConcept") || "";
@@ -361,7 +361,7 @@ function humanizeUnknown(value: any, depthSoFar = 1): string {
 
 	return values
 		.map((v) => humanizeUnknown(v, depthSoFar + 1))
-		.filter((v) => v && v.trim())
+		.filter((v: any) => v && v.trim())
 		.join(", ");
 }
 
@@ -446,22 +446,29 @@ function humanizeValue_(
 			}
 
 			if (identifier) {
-				const rt =
+				const rt: string =
 					value.type ||
 					refer ||
 					(key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
 				const humanizedValue =
 					value.display || `${rt}?identifier=${identifier}`;
 				const navigate = useNavigate();
+				const identifierParam = identifierSystem
+					? `${identifierSystem}|${identifier}`
+					: identifier;
 
 				return (
 					<HumanizedValue tooltip={JSON.stringify(humanizedValue, null, " ")}>
 						<Link
-							to={`#/resource-types/${rt}?identifier=${identifierSystem ? `${identifierSystem}|` : ""}${identifier}`}
+							to={`#/resource-types/${rt}?identifier=${identifierParam}`}
 							onClick={(e) => {
 								stopPropagation(e);
 								navigate({
-									to: `#/resource-types/${rt}?identifier=${identifierSystem ? `${identifierSystem}|` : ""}${identifier}`,
+									to: "#/resource-types/$resourceType?identifier=$identifier",
+									params: {
+										resourceType: rt,
+										identifier: identifierParam,
+									},
 								});
 							}}
 						>
