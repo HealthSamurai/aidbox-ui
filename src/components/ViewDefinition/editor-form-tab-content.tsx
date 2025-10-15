@@ -1533,7 +1533,12 @@ export const FormTabContent = () => {
 			onSelectItem={onSelectTreeItem}
 			items={tree}
 			rootItemId="root"
-			expandedItemIds={expandedItemIds}
+			expandedItems={expandedItemIds}
+			onExpandedItemsChange={(expandedItems) =>
+				setCollapsedItemIds(
+					Object.keys(tree).filter((item) => !expandedItems.includes(item)),
+				)
+			}
 			customItemView={customItemView}
 			disableHover={true}
 		/>

@@ -218,11 +218,21 @@ export const SaveButton = ({
 	);
 };
 
+type ItemMeta = {
+	method: string;
+	path: string;
+	headers: ActiveTabs.Header[];
+	params?: ActiveTabs.Header[];
+	body: string;
+	title?: string;
+	id: string;
+};
+
 function buildTreeView(
 	entries: CollectionEntry[],
 	pinnedCollections: string[],
-): Record<string, ReactComponents.TreeViewItem<any>> {
-	const tree: Record<string, ReactComponents.TreeViewItem<any>> = {
+): Record<string, ReactComponents.TreeViewItem<ItemMeta>> {
+	const tree: Record<string, ReactComponents.TreeViewItem<ItemMeta>> = {
 		root: {
 			name: "root",
 			children: [
@@ -245,7 +255,7 @@ function buildTreeView(
 			name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
 			meta: {
 				...parsedCommand,
-				title: entry.title,
+				...(entry.title ? { title: entry.title } : {}),
 				id: entry.id,
 			},
 		};
@@ -717,44 +727,50 @@ export const CollectionsView = ({
 	});
 
 	function handleSelectItem(
-		item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
+		itemId: string | null,
 		expandedItemIds: string[],
 		setExpandedItemIds: (ids: string[]) => void,
 	) {
-		if (item.isFolder()) {
-			if (item.isExpanded()) {
-				setExpandedItemIds(expandedItemIds.filter((id) => id !== item.getId()));
+		if (itemId === null) {
+			return;
+		}
+
+		const item = tree[itemId];
+		if (item === undefined) {
+			return;
+		}
+
+		if (item.children !== undefined) {
+			if (expandedItemIds.includes(itemId)) {
+				setExpandedItemIds(expandedItemIds.filter((id) => id !== itemId));
 			} else {
-				setExpandedItemIds(expandedItemIds.concat(item.getId()));
+				setExpandedItemIds([...expandedItemIds, itemId]);
 			}
 			return;
 		}
-		const activeTab = tabs.find(
-			(tab) => tab.id === item.getItemData().meta?.id,
-		);
+		const activeTab = tabs.find((tab) => tab.id === item.meta?.id);
 
 		if (activeTab) {
 			setTabs(
 				tabs.map((tab) => ({ ...tab, selected: tab.id === activeTab.id })),
 			);
 		} else {
-			setTabs(
-				tabs
-					.map((tab) => ({ ...tab, selected: false }))
-					.concat({
-						id: item.getItemData().meta?.id,
-						method: item.getItemData().meta?.method,
-						path: item.getItemData().meta?.path,
-						body: item.getItemData().meta?.body,
-						headers: item.getItemData().meta?.headers || [
-							{ id: "0", name: "", value: "", enabled: true },
-						],
-						params: item.getItemData().meta?.params || [
-							{ id: "0", name: "", value: "", enabled: true },
-						],
-						selected: true,
-					}),
-			);
+			setTabs([
+				...tabs.map((tab) => ({ ...tab, selected: false })),
+				{
+					id: item.meta?.id,
+					method: item.meta?.method,
+					path: item.meta?.path,
+					body: item.meta?.body,
+					headers: item.meta?.headers || [
+						{ id: "0", name: "", value: "", enabled: true },
+					],
+					params: item.meta?.params || [
+						{ id: "0", name: "", value: "", enabled: true },
+					],
+					selected: true,
+				} as Tab,
+			]);
 		}
 	}
 
@@ -781,11 +797,18 @@ export const CollectionsView = ({
 						}
 						rootItemId="root"
 						items={tree}
-						selectedItemId={selectedTabId ?? "root"}
-						expandedItemIds={[
+						focusedItem={selectedTabId ?? "root"}
+						expandedItems={[
 							...expandedItemIds,
-							selectedTabEntry?.collection ?? "",
+							...(selectedTabEntry?.collection &&
+							expandedItemIds.includes(selectedTabEntry.collection)
+								? [selectedTabEntry.collection]
+								: []),
 						]}
+						onExpandedItemsChange={(newExpandedItems) => {
+							console.log("HELLO");
+							return setExpandedItemIds(newExpandedItems);
+						}}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(item, newTitle, queryClient);
 						}}
@@ -801,8 +824,8 @@ export const CollectionsView = ({
 								setPinnedCollections,
 							)
 						}
-						onSelectItem={(e) =>
-							handleSelectItem(e, expandedItemIds, setExpandedItemIds)
+						onFocusedItemChange={(item) =>
+							handleSelectItem(item, expandedItemIds, setExpandedItemIds)
 						}
 					/>
 				</div>
