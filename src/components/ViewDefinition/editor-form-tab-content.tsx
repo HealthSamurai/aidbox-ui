@@ -201,7 +201,6 @@ export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 
-	console.log("FormTabContent:viewDefinition", viewDefinition?.name);
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
 	const [selectItems, setSelectItems] = useState<SelectItemInternal[]>([]);
