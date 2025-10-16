@@ -31,14 +31,14 @@ type PathItem = {
 	path: string;
 };
 
-type MyRoutingMatch = {
+type AnyRoutingMatch = {
 	params: any;
 	staticData: { title?: string };
 	pathname: string;
 };
 
-const omit = (_rm: MyRoutingMatch) => [];
-const staticTitle = (rm: MyRoutingMatch) => {
+const omit = (_rm: AnyRoutingMatch) => [];
+const staticTitle = (rm: AnyRoutingMatch) => {
 	if (!rm.staticData.title) {
 		console.warn(`Missing title for route ${rm.pathname}`);
 		return [];
@@ -55,18 +55,18 @@ type FileRoutesIds = keyof FileRoutesByPath;
 
 const breadcrumbGenerators: Record<
 	FileRoutesIds | "__root__",
-	(rm: MyRoutingMatch) => PathItem[]
+	(rm: AnyRoutingMatch) => PathItem[]
 > = {
 	__root__: omit,
 	"/": omit,
-	"/resource": staticTitle,
 	"/resource/": omit,
-	"/resource/$resourceType": (rm: MyRoutingMatch) => [
+	"/resource": staticTitle,
+	"/resource/$resourceType/": omit,
+	"/resource/$resourceType": (rm: AnyRoutingMatch) => [
 		{ title: rm.params.resourceType, path: rm.pathname },
 	],
-	"/resource/$resourceType/": omit,
 	"/resource/$resourceType/create": staticTitle,
-	"/resource/$resourceType/edit/$id": (rm: MyRoutingMatch) => [
+	"/resource/$resourceType/edit/$id": (rm: AnyRoutingMatch) => [
 		{ title: rm.params.id, path: rm.pathname },
 	],
 	"/rest": staticTitle,
