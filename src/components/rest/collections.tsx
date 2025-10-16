@@ -805,7 +805,7 @@ export const CollectionsView = ({
 								? [selectedTabEntry.collection]
 								: []),
 						]}
-						onExpandedItemsChange={(newExpandedItems) => {
+						onExpandedItemsChange={(newExpandedItems: any) => {
 							console.log("HELLO");
 							return setExpandedItemIds(newExpandedItems);
 						}}
@@ -824,7 +824,7 @@ export const CollectionsView = ({
 								setPinnedCollections,
 							)
 						}
-						onFocusedItemChange={(item) =>
+						onFocusedItemChange={(item: any) =>
 							handleSelectItem(item, expandedItemIds, setExpandedItemIds)
 						}
 					/>
