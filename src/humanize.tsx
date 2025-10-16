@@ -460,7 +460,7 @@ function humanizeValue_(
 				return (
 					<HumanizedValue tooltip={JSON.stringify(humanizedValue, null, " ")}>
 						<Link
-							to={`#/resource-types/${rt}?identifier=${identifierParam}`}
+							to={`#/resource-types/${rt}?identifier=${identifierParam}` as any}
 							onClick={(e) => {
 								stopPropagation(e);
 								navigate({
@@ -469,7 +469,7 @@ function humanizeValue_(
 										resourceType: rt,
 										identifier: identifierParam,
 									},
-								});
+								} as any);
 							}}
 						>
 							{humanizedValue}

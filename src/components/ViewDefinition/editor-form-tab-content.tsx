@@ -1730,8 +1730,8 @@ export const FormTabContent = () => {
 			}}
 			items={tree}
 			rootItemId="root"
-			expandedItems={expandedItemIds}
-			onExpandedItemsChange={(expandedItems) =>
+			expandedItems={expandedItemIds as any}
+			onExpandedItemsChange={(expandedItems: any) =>
 				setCollapsedItemIds(
 					Object.keys(tree).filter((item) => !expandedItems.includes(item)),
 				)
