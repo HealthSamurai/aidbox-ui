@@ -26,21 +26,24 @@ import { useEffect } from "react";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 
-const mainMenuItems: {
-	title: string;
-	url: keyof FileRoutesByPath;
-	icon: React.ForwardRefExoticComponent<
-		Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>
-	>;
-}[] = [
-	{ title: "Home", url: "/", icon: House },
-	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
-	{
-		title: "Resource browser",
-		url: "/resource",
-		icon: Columns3Cog,
-	},
-];
+const mainMenuItems = [
+	<Link key="/" to="/">
+		<House />
+		Home
+	</Link>,
+	<Link key="/rest" to="/rest">
+		<SquareTerminal />
+		REST Console
+	</Link>,
+	<Link key="/resource" to="/resource">
+		<Columns3Cog />
+		Resource browser
+	</Link>,
+].map((link) => {
+	const linkChildren = link.props.children;
+	const title = linkChildren[linkChildren.length - 1];
+	return { link, url: link.props.to, title };
+});
 
 const isActiveNavItem = (
 	item: (typeof mainMenuItems)[number],
@@ -87,10 +90,7 @@ export function AidboxSidebar({
 										tooltip={{ sideOffset: 16, children: item.title }}
 										className="text-nowrap"
 									>
-										<Link to={item.url as string}>
-											<item.icon />
-											{item.title}
-										</Link>
+										{item.link}
 									</SidebarMenuButton>
 								</SidebarMenuItem>
 							))}
