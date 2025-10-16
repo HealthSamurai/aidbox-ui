@@ -186,10 +186,8 @@ const resourcesWithKeys = (
 
 	const snapshot = profiles.entity.elements;
 
-	console.log("111 shapshot:", snapshot);
-
 	return {
-		resources: resources.map((resource) => ({ resourceKeys, ...resource })),
+		resources: resources.map((resource) => ({ ...resourceKeys, ...resource })),
 		resourceKeys: Object.keys(resourceKeys).filter(
 			(k) =>
 				k !== "id" &&
