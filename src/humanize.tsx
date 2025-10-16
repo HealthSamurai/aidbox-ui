@@ -1,7 +1,7 @@
 /**
  * AI-translated from CLJS
  */
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import type React from "react";
 
 // Helper function to stop event propagation
@@ -429,14 +429,12 @@ function humanizeValue_(
 			const maybeLink = referenceLink(ref);
 
 			if (maybeLink) {
-				const navigate = useNavigate();
 				return (
 					<HumanizedValue tooltip={JSON.stringify(ref, null, " ")}>
 						<Link
 							to={maybeLink}
 							onClick={(e) => {
 								stopPropagation(e);
-								navigate({ to: maybeLink });
 							}}
 						>
 							{value.display || ref}
@@ -452,7 +450,6 @@ function humanizeValue_(
 					(key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
 				const humanizedValue =
 					value.display || `${rt}?identifier=${identifier}`;
-				const navigate = useNavigate();
 				const identifierParam = identifierSystem
 					? `${identifierSystem}|${identifier}`
 					: identifier;
@@ -463,13 +460,6 @@ function humanizeValue_(
 							to={`#/resource-types/${rt}?identifier=${identifierParam}` as any}
 							onClick={(e) => {
 								stopPropagation(e);
-								navigate({
-									to: "#/resource-types/$resourceType?identifier=$identifier",
-									params: {
-										resourceType: rt,
-										identifier: identifierParam,
-									},
-								} as any);
 							}}
 						>
 							{humanizedValue}
@@ -610,7 +600,7 @@ function humanizeValue_(
 		if (typeof value === "string") return value;
 
 		const unknownHumanized = humanizeUnknown(value);
-		return unknownHumanized == ""
+		return unknownHumanized === ""
 			? HumanizedValue({
 					children: "[...]",
 					tooltip: JSON.stringify(value, null, " "),
