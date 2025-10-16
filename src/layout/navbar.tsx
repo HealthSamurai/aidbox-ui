@@ -13,12 +13,9 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import type { FileRoutesByPath, } from "@tanstack/react-router";
+import type { FileRoutesByPath } from "@tanstack/react-router";
 import * as RR from "@tanstack/react-router";
-import {
-	Link,
-	useMatches,
-} from "@tanstack/react-router";
+import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
 	LogOut,
@@ -40,9 +37,12 @@ type MyRoutingMatch = {
 	pathname: string;
 };
 
-const omitGeneration = (_rm: MyRoutingMatch) => [];
-const staticTitleGen = (rm: MyRoutingMatch) => {
-	if (!rm.staticData.title) return [];
+const omit = (_rm: MyRoutingMatch) => [];
+const staticTitle = (rm: MyRoutingMatch) => {
+	if (!rm.staticData.title) {
+		console.warn(`Missing title for route ${rm.pathname}`);
+		return [];
+	}
 	return [
 		{
 			title: rm.staticData.title,
@@ -53,21 +53,23 @@ const staticTitleGen = (rm: MyRoutingMatch) => {
 
 type FileRoutesIds = keyof FileRoutesByPath;
 
-
 const breadcrumbGenerators: Record<
 	FileRoutesIds | "__root__",
 	(rm: MyRoutingMatch) => PathItem[]
 > = {
-	__root__: omitGeneration,
-	"/": omitGeneration,
-	"/rest": staticTitleGen,
-	"/resource": staticTitleGen,
-	"/resource/": staticTitleGen,
-	"/resource/create/$resourceType": staticTitleGen,
-	"/resource/list/$resourceType/": (rm: MyRoutingMatch) => [
+	__root__: omit,
+	"/": omit,
+	"/resource": staticTitle,
+	"/resource/": omit,
+	"/resource/$resourceType": (rm: MyRoutingMatch) => [
 		{ title: rm.params.resourceType, path: rm.pathname },
 	],
-	"/resource/edit/$resourceType/$id": staticTitleGen,
+	"/resource/$resourceType/": omit,
+	"/resource/$resourceType/create": staticTitle,
+	"/resource/$resourceType/edit/$id": (rm: MyRoutingMatch) => [
+		{ title: rm.params.id, path: rm.pathname },
+	],
+	"/rest": staticTitle,
 };
 
 function Breadcrumbs() {
