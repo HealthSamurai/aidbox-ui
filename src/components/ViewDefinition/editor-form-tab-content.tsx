@@ -1730,12 +1730,12 @@ export const FormTabContent = () => {
 			}}
 			items={tree}
 			rootItemId="root"
-			expandedItems={expandedItemIds as any}
-			onExpandedItemsChange={(expandedItems: any) =>
-				setCollapsedItemIds(
-					Object.keys(tree).filter((item) => !expandedItems.includes(item)),
-				)
-			}
+			// expandedItems={expandedItemIds as any}
+			// onExpandedItemsChange={(expandedItems: any) =>
+			// 	setCollapsedItemIds(
+			// 		Object.keys(tree).filter((item) => !expandedItems.includes(item)),
+			// 	)
+			// }
 			customItemView={customItemView}
 			disableHover={true}
 			canReorder={true}
