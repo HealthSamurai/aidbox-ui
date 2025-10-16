@@ -4,10 +4,10 @@ import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import * as AidboxClient from "../../api/auth";
+import { AidboxCallWithMeta } from "../../api/auth";
+import * as Humanize from "../../humanize";
 import * as Constants from "./constants";
 import type * as Types from "./types";
-import * as Humanize from "../../humanize";
-import { AidboxCallWithMeta } from "../../api/auth";
 
 interface Snapshot {
 	type: string | null;

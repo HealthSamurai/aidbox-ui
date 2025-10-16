@@ -797,18 +797,18 @@ export const CollectionsView = ({
 						}
 						rootItemId="root"
 						items={tree}
-						focusedItem={selectedTabId ?? "root"}
-						expandedItems={[
-							...expandedItemIds,
-							...(selectedTabEntry?.collection &&
-							expandedItemIds.includes(selectedTabEntry.collection)
-								? [selectedTabEntry.collection]
-								: []),
-						]}
-						onExpandedItemsChange={(newExpandedItems: any) => {
-							console.log("HELLO");
-							return setExpandedItemIds(newExpandedItems);
-						}}
+						// focusedItem={selectedTabId ?? "root"}
+						// expandedItems={[
+						// 	...expandedItemIds,
+						// 	...(selectedTabEntry?.collection &&
+						// 	expandedItemIds.includes(selectedTabEntry.collection)
+						// 		? [selectedTabEntry.collection]
+						// 		: []),
+						// ]}
+						// onExpandedItemsChange={(newExpandedItems: any) => {
+						// 	console.log("HELLO");
+						// 	return setExpandedItemIds(newExpandedItems);
+						// }}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(item, newTitle, queryClient);
 						}}
@@ -824,9 +824,9 @@ export const CollectionsView = ({
 								setPinnedCollections,
 							)
 						}
-						onFocusedItemChange={(item: any) =>
-							handleSelectItem(item, expandedItemIds, setExpandedItemIds)
-						}
+						// onFocusedItemChange={(item: any) =>
+						// 	handleSelectItem(item, expandedItemIds, setExpandedItemIds)
+						// }
 					/>
 				</div>
 			)}
