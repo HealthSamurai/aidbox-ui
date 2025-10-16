@@ -146,7 +146,7 @@ export const ResourcesTabHeader = ({
 	);
 };
 
-const fetchSchema = async (
+const fetchSchemas = async (
 	resourceType: string,
 ): Promise<unknown | undefined> => {
 	const response = await AidboxCallWithMeta({
@@ -165,7 +165,17 @@ const fetchSchema = async (
 
 	if (!data?.result) return undefined;
 
-	const defaultSchema = Object.values(data.result).find(
+	return data.result;
+};
+
+const fetchDefaultSchema = async (
+	resourceType: string,
+): Promise<unknown | undefined> => {
+	const schemas = await fetchSchemas(resourceType);
+
+	if (!schemas) return undefined;
+
+	const defaultSchema = Object.values(schemas).find(
 		(schema: Schema) => schema["default?"] === true,
 	);
 
@@ -292,7 +302,7 @@ export const ResourcesTabContent = ({
 			const data = JSON.parse(response.body).entry.map(
 				(entry: any) => entry.resource,
 			);
-			const schema = await fetchSchema(resourceType);
+			const schema = await fetchDefaultSchema(resourceType);
 			return resourcesWithKeys(schema, data);
 		},
 		retry: false,
@@ -317,6 +327,67 @@ export const ResourcesTabContent = ({
 	);
 };
 
+export const ProfilesTabContent = ({
+	resourceType,
+}: Types.ResourcesPageProps) => {
+	// TODO: sidebar with schema tree view
+	const { data, isLoading } = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "resource-profiles-list"],
+		queryFn: async () => {
+			const schema = await fetchSchemas(resourceType);
+			return schema;
+		},
+		retry: false,
+	});
+
+	if (isLoading) {
+		return <div>Loading...</div>;
+	}
+
+	if (!data || Object.keys(data).length === 0) {
+		return <div>No profiles found</div>;
+	}
+
+	const columns = [
+		{
+			accessorKey: "default?",
+			header: <span className="pl-5">default</span>,
+			cell: (info: any) => (info.getValue() ? "+" : "-"), // FIXME: icons
+		},
+		{
+			accessorKey: "url",
+			header: <span className="pl-5">URL</span>,
+			cell: (info: any) => info.row.original.entity.url,
+		},
+		{
+			accessorKey: "name",
+			header: <span className="pl-5">Name</span>,
+			cell: (info: any) => info.row.original.entity.name,
+		},
+		{
+			accessorKey: "version",
+			header: <span className="pl-5">Version</span>,
+			cell: (info: any) => info.row.original.entity.version,
+		},
+		{
+			accessorKey: "ig",
+			header: <span className="pl-5">IG</span>,
+			cell: (_info: any) =>
+				"", // TODO
+		},
+	];
+
+	return (
+		<div className="h-full overflow-hidden">
+			<HSComp.DataTable
+				columns={columns as any}
+				data={Object.values(data)}
+				stickyHeader
+			/>
+		</div>
+	);
+};
+
 export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
 	return (
 		<ResourcesPageContext.Provider value={{ resourceType }}>
@@ -325,7 +396,9 @@ export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
 				<HSComp.TabsContent value="resources" className="overflow-hidden">
 					<ResourcesTabContent resourceType={resourceType} />
 				</HSComp.TabsContent>
-				<HSComp.TabsContent value="profiles">TODO</HSComp.TabsContent>
+				<HSComp.TabsContent value="profiles">
+					<ProfilesTabContent resourceType={resourceType} />
+				</HSComp.TabsContent>
 				<HSComp.TabsContent value="extensions">TODO</HSComp.TabsContent>
 			</HSComp.Tabs>
 		</ResourcesPageContext.Provider>
