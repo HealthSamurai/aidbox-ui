@@ -610,7 +610,12 @@ function humanizeValue_(
 		if (typeof value === "string") return value;
 
 		const unknownHumanized = humanizeUnknown(value);
-		return unknownHumanized || null;
+		return unknownHumanized == ""
+			? HumanizedValue({
+					children: "[...]",
+					tooltip: JSON.stringify(value, null, " "),
+				})
+			: unknownHumanized;
 	} catch (_error) {
 		return null;
 	}
