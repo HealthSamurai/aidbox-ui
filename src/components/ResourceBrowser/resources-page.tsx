@@ -100,7 +100,7 @@ export const ResourcesTabCreateButton = () => {
 
 	return (
 		<Router.Link
-			to="/resource/create/$resourceType"
+			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
 			search={{ tab: "code" }}
 		>
@@ -178,7 +178,9 @@ const resourcesWithKeys = (
 ) => {
 	const resourceKeys: Record<string, undefined> = resources.reduce(
 		(acc: Record<string, undefined>, resource: Record<string, unknown>) => {
-			Object.keys(resource).forEach((key) => (acc[key] = undefined));
+			Object.keys(resource).forEach((key) => {
+				acc[key] = undefined;
+			});
 			return acc;
 		},
 		{},
@@ -222,7 +224,7 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 			cell: (info: any) => (
 				<Router.Link
 					className="text-text-link hover:underline pl-5"
-					to="/resource/edit/$resourceType/$id"
+					to="/resource/$resourceType/edit/$id"
 					search={{ tab: "code" }}
 					params={{
 						resourceType: resourcesPageContext.resourceType,

@@ -43,7 +43,7 @@ const PageComponent = () => {
 	return <Page />;
 };
 
-export const Route = createFileRoute("/resource/create/$resourceType")({
+export const Route = createFileRoute("/resource/$resourceType/create")({
 	component: PageComponent,
 	validateSearch,
 	staticData: {
