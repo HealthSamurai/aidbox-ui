@@ -165,13 +165,13 @@ const fetchSchemas = async (
 
 	if (!data?.result) return undefined;
 
-	return data.result
-}
+	return data.result;
+};
 
 const fetchDefaultSchema = async (
 	resourceType: string,
 ): Promise<unknown | undefined> => {
-	const schemas = await fetchSchemas(resourceType)
+	const schemas = await fetchSchemas(resourceType);
 
 	if (!schemas) return undefined;
 
@@ -352,35 +352,28 @@ export const ProfilesTabContent = ({
 		{
 			accessorKey: "default?",
 			header: <span className="pl-5">default</span>,
-			cell: (info: any) => info.getValue() ? "+" : "-" // FIXME: icons
+			cell: (info: any) => (info.getValue() ? "+" : "-"), // FIXME: icons
 		},
 		{
 			accessorKey: "url",
 			header: <span className="pl-5">URL</span>,
-			cell: (info: any) => (
-				info.row.original.entity.url
-			),
+			cell: (info: any) => info.row.original.entity.url,
 		},
 		{
 			accessorKey: "name",
 			header: <span className="pl-5">Name</span>,
-			cell: (info: any) => (
-				info.row.original.entity.name
-			),
+			cell: (info: any) => info.row.original.entity.name,
 		},
 		{
 			accessorKey: "version",
 			header: <span className="pl-5">Version</span>,
-			cell: (info: any) => (
-				info.row.original.entity.version
-			),
+			cell: (info: any) => info.row.original.entity.version,
 		},
 		{
 			accessorKey: "ig",
 			header: <span className="pl-5">IG</span>,
-			cell: (_info: any) => (
-				"" // TODO
-			),
+			cell: (_info: any) =>
+				"", // TODO
 		},
 	];
 
