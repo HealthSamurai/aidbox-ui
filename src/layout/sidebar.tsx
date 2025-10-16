@@ -9,15 +9,10 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@health-samurai/react-components";
-import {
-	type FileRoutesByPath,
-	Link,
-	useRouterState,
-} from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Columns3Cog,
 	House,
-	type LucideProps,
 	PanelLeftClose,
 	PanelLeftOpen,
 	SquareTerminal,
@@ -49,7 +44,6 @@ const isActiveNavItem = (
 	item: (typeof mainMenuItems)[number],
 	currentPath: string,
 ) => {
-	console.log(currentPath, item.url);
 	return (
 		currentPath === item.url ||
 		(currentPath.startsWith(item.url) && item.url !== "/") ||

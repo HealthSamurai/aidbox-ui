@@ -14,7 +14,6 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import type { FileRoutesByPath } from "@tanstack/react-router";
-import * as RR from "@tanstack/react-router";
 import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
@@ -32,7 +31,7 @@ type PathItem = {
 };
 
 type AnyRoutingMatch = {
-	params: any;
+	params: { resourceType?: string; id?: string };
 	staticData: { title?: string };
 	pathname: string;
 };
@@ -62,13 +61,16 @@ const breadcrumbGenerators: Record<
 	"/resource/": omit,
 	"/resource": staticTitle,
 	"/resource/$resourceType/": omit,
-	"/resource/$resourceType": (rm: AnyRoutingMatch) => [
-		{ title: rm.params.resourceType, path: rm.pathname },
-	],
+	"/resource/$resourceType": (rm: AnyRoutingMatch) => {
+		if (!rm.params.resourceType)
+			throw new Error(`Missing resourceType for route ${rm.pathname}`);
+		return [{ title: rm.params.resourceType, path: rm.pathname }];
+	},
 	"/resource/$resourceType/create": staticTitle,
-	"/resource/$resourceType/edit/$id": (rm: AnyRoutingMatch) => [
-		{ title: rm.params.id, path: rm.pathname },
-	],
+	"/resource/$resourceType/edit/$id": (rm: AnyRoutingMatch) => {
+		if (!rm.params.id) throw new Error(`Missing id for route ${rm.pathname}`);
+		return [{ title: rm.params.id, path: rm.pathname }];
+	},
 	"/rest": staticTitle,
 };
 
@@ -77,7 +79,6 @@ function Breadcrumbs() {
 	if (matches.length === 0) return <div>No router matches</div>;
 
 	const breadcrumbs = matches.flatMap((match) => {
-		console.log("generate breadcrumb for", match.routeId);
 		return breadcrumbGenerators[match.routeId](match);
 	});
 
