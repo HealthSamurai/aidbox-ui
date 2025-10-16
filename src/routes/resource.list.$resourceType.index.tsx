@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ResourcesPage } from "../components/ResourceBrowser/resources-page";
 
-export const Route = createFileRoute("/resource-list/$resourceType/")({
+export const Route = createFileRoute("/resource/list/$resourceType/")({
 	component: RouteComponent,
 	staticData: {
 		title: "View Definition",

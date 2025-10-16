@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
 	resourceTypePageFromParams,
 	validateSearch,
-} from "./resource-create.$resourceType";
+} from "./resource.create.$resourceType";
 
 const PageComponent = () => {
 	const Page = resourceTypePageFromParams();
@@ -10,7 +10,7 @@ const PageComponent = () => {
 	return <Page id={id} />;
 };
 
-export const Route = createFileRoute("/resource-edit/$resourceType/$id")({
+export const Route = createFileRoute("/resource/edit/$resourceType/$id")({
 	component: PageComponent,
 	validateSearch: validateSearch,
 	staticData: {

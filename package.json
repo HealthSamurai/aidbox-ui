@@ -12,7 +12,8 @@
 		"lint": "biome check",
 		"lint:check": "biome check",
 		"lint:fix": "biome check --write",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"all": "pnpm format && pnpm typecheck && pnpm lint:fix"
 	},
 	"keywords": [],
 	"author": "Health Samurai",

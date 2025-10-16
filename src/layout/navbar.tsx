@@ -13,6 +13,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
+import type { FileRoutesByPath } from "@tanstack/react-router";
+import * as RR from "@tanstack/react-router";
 import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
@@ -24,39 +26,57 @@ import React from "react";
 import { useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 
+type PathItem = {
+	title: string;
+	path: string;
+};
+
+type MyRoutingMatch = {
+	params: any;
+	staticData: { title?: string };
+	pathname: string;
+};
+
+const omitGeneration = (_rm: MyRoutingMatch) => [];
+const staticTitleGen = (rm: MyRoutingMatch) => {
+	if (!rm.staticData.title) return [];
+	return [
+		{
+			title: rm.staticData.title,
+			path: rm.pathname,
+		},
+	];
+};
+
+type FileRoutesIds = keyof FileRoutesByPath;
+
+const breadcrumbGenerators: Record<
+	FileRoutesIds | "__root__",
+	(rm: MyRoutingMatch) => PathItem[]
+> = {
+	__root__: omitGeneration,
+	"/": omitGeneration,
+	"/rest": staticTitleGen,
+	"/resource": staticTitleGen,
+	"/resource/": staticTitleGen,
+	"/resource/create/$resourceType": staticTitleGen,
+	"/resource/list/$resourceType/": (rm: MyRoutingMatch) => [
+		{ title: rm.params.resourceType, path: rm.pathname },
+	],
+	"/resource/edit/$resourceType/$id": staticTitleGen,
+};
+
 function Breadcrumbs() {
 	const matches = useMatches();
-	const breadcrumbs = matches
-		.filter((match) => match.staticData?.title)
-		.flatMap((match) => {
-			const items = [
-				{
-					title: match.staticData.title as string,
-					path: match.pathname,
-				},
-			];
+	if (matches.length === 0) return <div>No router matches</div>;
 
-			// If the route has params and it's ViewDefinition, add ID as separate breadcrumb
-			if (
-				match.params &&
-				"id" in match.params &&
-				match.pathname.includes("/ViewDefinition/")
-			) {
-				const pathWithoutId = match.pathname.substring(
-					0,
-					match.pathname.lastIndexOf("/"),
-				);
-				items[0]!.path = pathWithoutId;
-				items.push({
-					title: match.params.id as string,
-					path: match.pathname,
-				});
-			}
-
-			return items;
-		});
+	const breadcrumbs = matches.flatMap((match) => {
+		console.log("generate breadcrumb for", match.routeId);
+		return breadcrumbGenerators[match.routeId](match);
+	});
 
 	if (breadcrumbs.length === 0) {
+		console.warn("Breadcrumb ommited!");
 		return null;
 	}
 

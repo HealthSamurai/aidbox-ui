@@ -9,10 +9,15 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@health-samurai/react-components";
-import { Link, useRouterState } from "@tanstack/react-router";
+import {
+	type FileRoutesByPath,
+	Link,
+	useRouterState,
+} from "@tanstack/react-router";
 import {
 	Columns3Cog,
 	House,
+	type LucideProps,
 	PanelLeftClose,
 	PanelLeftOpen,
 	SquareTerminal,
@@ -21,12 +26,18 @@ import { useEffect } from "react";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 
-const mainMenuItems = [
+const mainMenuItems: {
+	title: string;
+	url: keyof FileRoutesByPath;
+	icon: React.ForwardRefExoticComponent<
+		Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>
+	>;
+}[] = [
 	{ title: "Home", url: "/", icon: House },
 	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
 	{
 		title: "Resource browser",
-		url: "/resource-types",
+		url: "/resource",
 		icon: Columns3Cog,
 	},
 ];
@@ -76,7 +87,7 @@ export function AidboxSidebar({
 										tooltip={{ sideOffset: 16, children: item.title }}
 										className="text-nowrap"
 									>
-										<Link to={item.url}>
+										<Link to={item.url as string}>
 											<item.icon />
 											{item.title}
 										</Link>
