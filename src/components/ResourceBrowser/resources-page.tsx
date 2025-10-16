@@ -372,8 +372,7 @@ export const ProfilesTabContent = ({
 		{
 			accessorKey: "ig",
 			header: <span className="pl-5">IG</span>,
-			cell: (_info: any) =>
-				"", // TODO
+			cell: (_info: any) => "", // TODO
 		},
 	];
 
