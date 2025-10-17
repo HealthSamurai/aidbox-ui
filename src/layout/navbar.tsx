@@ -42,12 +42,15 @@ const staticTitle = (rm: AnyRoutingMatch) => {
 		console.warn(`Missing title for route ${rm.pathname}`);
 		return [];
 	}
-	return [
-		{
-			title: rm.staticData.title,
-			path: rm.pathname,
-		},
-	];
+	return [{ title: rm.staticData.title, path: rm.pathname }];
+};
+
+const resourceId = (rm: AnyRoutingMatch) => {
+	if (!rm.params.id) {
+		console.warn(`Missing id for route ${rm.pathname}`);
+		return [];
+	}
+	return [{ title: rm.params.id, path: rm.pathname }];
 };
 
 type FileRoutesIds = keyof FileRoutesByPath;
@@ -67,10 +70,9 @@ const breadcrumbGenerators: Record<
 		return [{ title: rm.params.resourceType, path: rm.pathname }];
 	},
 	"/resource/$resourceType/create": staticTitle,
-	"/resource/$resourceType/edit/$id": (rm: AnyRoutingMatch) => {
-		if (!rm.params.id) throw new Error(`Missing id for route ${rm.pathname}`);
-		return [{ title: rm.params.id, path: rm.pathname }];
-	},
+	"/resource/$resourceType/edit/$id": resourceId,
+	"/resource/ViewDefinition/create": staticTitle,
+	"/resource/ViewDefinition/edit/$id": resourceId,
 	"/rest": staticTitle,
 };
 

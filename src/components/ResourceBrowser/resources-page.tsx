@@ -6,10 +6,10 @@ import * as React from "react";
 import * as AidboxClient from "../../api/auth";
 import { AidboxCallWithMeta } from "../../api/auth";
 import * as Humanize from "../../humanize";
+import * as Utils from "../../utils";
+import type * as VDTypes from "../ViewDefinition/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
-import type * as VDTypes from "../ViewDefinition/types";
-import * as Utils from "../../utils";
 
 interface Schema {
 	differential: Array<VDTypes.Snapshot>;

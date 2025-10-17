@@ -1,6 +1,6 @@
-import type { Header, Tab } from "./components/rest/active-tabs";
-import type { Snapshot, Meta } from "./components/ViewDefinition/types";
 import type { TreeViewItem } from "@health-samurai/react-components";
+import type { Header, Tab } from "./components/rest/active-tabs";
+import type { Meta, Snapshot } from "./components/ViewDefinition/types";
 
 export function getAidboxBaseURL(): string {
 	const cookies = document.cookie.split("; ");

@@ -1,5 +1,3 @@
-import type { Snapshot } from "./types";
-import { transformSnapshotToTree } from "../../utils";
 import {
 	FhirStructureView,
 	TabsContent,
@@ -7,8 +5,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
+import { transformSnapshotToTree } from "../../utils";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
+import type { Snapshot } from "./types";
 
 interface Schema {
 	differential: Array<Snapshot>;

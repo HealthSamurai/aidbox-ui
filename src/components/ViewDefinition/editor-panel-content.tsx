@@ -167,11 +167,11 @@ export const EditorPanelContent = () => {
 	const navigate = useNavigate();
 
 	const createSearch = useSearch({
-		from: "/resource/$resourceType/create",
+		from: "/resource/ViewDefinition/create",
 		shouldThrow: false,
 	});
 	const editSearch = useSearch({
-		from: "/resource/$resourceType/edit/$id",
+		from: "/resource/ViewDefinition/edit/$id",
 		shouldThrow: false,
 	});
 	const search = createSearch || editSearch;
@@ -185,8 +185,8 @@ export const EditorPanelContent = () => {
 		navigate({
 			from:
 				createSearch !== undefined
-					? "/resource/$resourceType/create"
-					: "/resource/$resourceType/edit/$id",
+					? "/resource/ViewDefinition/create"
+					: "/resource/ViewDefinition/edit/$id",
 			search: { tab: value },
 		});
 	};
