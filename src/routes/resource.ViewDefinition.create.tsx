@@ -27,10 +27,15 @@ export function validateSearch(
 	return { tab };
 }
 
+const TITLE = "View Definition";
+
 export const Route = createFileRoute("/resource/ViewDefinition/create")({
 	component: ViewDefinitionPage,
 	validateSearch,
 	staticData: {
-		title: "View Definition",
+		title: TITLE,
 	},
+	loader: () => ({
+		breadCrumb: TITLE,
+	}),
 });

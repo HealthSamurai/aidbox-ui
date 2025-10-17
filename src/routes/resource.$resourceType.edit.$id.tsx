@@ -16,4 +16,7 @@ export const Route = createFileRoute("/resource/$resourceType/edit/$id")({
 	staticData: {
 		title: "View Definition",
 	},
+	loader: (cx) => ({
+		breadCrumb: cx.params.id,
+	}),
 });

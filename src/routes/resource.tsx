@@ -1,8 +1,11 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
+const TITLE = "Resources";
+
 export const Route = createFileRoute("/resource")({
 	component: () => <Outlet />,
 	staticData: {
-		title: "Resources",
+		title: TITLE,
 	},
+	loader: () => ({ breadCrumb: TITLE }),
 });
