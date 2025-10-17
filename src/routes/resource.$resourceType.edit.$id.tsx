@@ -1,21 +1,32 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/editor-page";
 import {
-	resourceTypePageFromParams,
-	validateSearch,
-} from "./resource.$resourceType.create";
+	createFileRoute,
+	useMatch,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
+import { validateSearch } from "./resource.$resourceType.create";
 
 const PageComponent = () => {
-	const Page = resourceTypePageFromParams();
 	const { id } = Route.useParams();
-	return <Page id={id} />;
+	const navigate = useNavigate({ from: "/resource/$resourceType/edit/$id" });
+	const { tab } = useSearch({ from: "/resource/$resourceType/edit/$id" });
+	const { resourceType } = useMatch({
+		from: "/resource/$resourceType/edit/$id",
+	}).params;
+	return (
+		<ResourceEditorPage
+			id={id}
+			resourceType={resourceType}
+			tab={tab}
+			navigate={navigate}
+		/>
+	);
 };
 
 export const Route = createFileRoute("/resource/$resourceType/edit/$id")({
 	component: PageComponent,
-	validateSearch: validateSearch,
-	staticData: {
-		title: "View Definition",
-	},
+	validateSearch,
 	loader: (cx) => ({
 		breadCrumb: cx.params.id,
 	}),
