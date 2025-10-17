@@ -339,8 +339,14 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 			size: 16,
 			header: <span className="pl-5"></span>,
 			cell: makeClickableCell((value) =>
-				value ? <span title="default profile">+</span> : "",
-			), // FIXME: icons
+				value ? (
+					<span title="default profile">
+						<Lucide.Diamond size="17px" />
+					</span>
+				) : (
+					""
+				),
+			),
 		},
 		{
 			accessorKey: "url",
@@ -479,6 +485,90 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	);
 };
 
+const SearchParametersTabContent = ({
+	resourceType,
+}: Types.ResourcesPageProps) => {
+	const { data, isLoading } = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "resource-profiles-list"],
+		queryFn: async () => {
+			const response = await AidboxCallWithMeta({
+				method: "GET",
+				url: "/fhir/metadata?include-custom-resources=true",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+
+			const data = JSON.parse(response.body);
+			return data;
+		},
+		retry: false,
+	});
+
+	if (isLoading) {
+		return <div>Loading...</div>;
+	}
+
+	if (!data || Object.keys(data).length === 0) {
+		return <div>No search parameters found</div>;
+	}
+
+	const resourceTypeParams = data.rest
+		.at(0)
+		.resource.find((item: any) => item.type === resourceType).searchParam;
+	const commonParams = data.rest.at(0).searchParam;
+	const allParams = [...resourceTypeParams, ...commonParams];
+
+	allParams.map((param: any) => {
+		if (param.extension) {
+			const code = param.extension.find(
+				(e: any) =>
+					e.url ===
+					"https://fhir.aidbox.app/fhir/StructureDefinition/search-parameter-code",
+			);
+			param.code = code.valueCode;
+		}
+	});
+
+	const columns = [
+		{
+			accessorKey: "code",
+			header: <span className="pl-5">Code</span>,
+			cell: (row: any) => row.getValue() || "-",
+		},
+		{
+			accessorKey: "name",
+			header: <span className="pl-5">Name</span>,
+			cell: (row: any) => row.getValue() || "-",
+		},
+		{
+			accessorKey: "type",
+			header: <span className="pl-5">Type</span>,
+			cell: (row: any) => row.getValue() || "-",
+		},
+		{
+			accessorKey: "definition",
+			header: <span className="pl-5">Definition</span>,
+			cell: (row: any) => row.getValue() || "-",
+		},
+		{
+			accessorKey: "documentation",
+			header: <span className="pl-5">Description</span>,
+			cell: (row: any) => row.getValue() || "-",
+		},
+	];
+
+	return (
+		<div className="h-full overflow-hidden">
+			<HSComp.DataTable
+				columns={columns as any}
+				data={allParams}
+				stickyHeader
+			/>
+		</div>
+	);
+};
+
 export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
 	return (
 		<ResourcesPageContext.Provider value={{ resourceType }}>
@@ -490,7 +580,9 @@ export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
 				<HSComp.TabsContent value="profiles">
 					<ProfilesTabContent resourceType={resourceType} />
 				</HSComp.TabsContent>
-				<HSComp.TabsContent value="extensions">TODO</HSComp.TabsContent>
+				<HSComp.TabsContent value="extensions">
+					<SearchParametersTabContent resourceType={resourceType} />
+				</HSComp.TabsContent>
 			</HSComp.Tabs>
 		</ResourcesPageContext.Provider>
 	);
