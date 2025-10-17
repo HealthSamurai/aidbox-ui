@@ -509,14 +509,16 @@ const SearchParametersTabContent = ({
 		return <div>Loading...</div>;
 	}
 
-	if (!data || Object.keys(data).length === 0) {
+	if (!data || !data.rest) {
 		return <div>No search parameters found</div>;
 	}
 
-	const resourceTypeParams = data.rest
-		.at(0)
-		.resource.find((item: any) => item.type === resourceType).searchParam;
-	const commonParams = data.rest.at(0).searchParam;
+	const rest = data.rest.at(0) || {};
+
+	const resourceTypeParams = rest.resource.find(
+		(item: any) => item.type === resourceType,
+	).searchParam;
+	const commonParams = rest.searchParam;
 	const allParams = [...resourceTypeParams, ...commonParams];
 
 	allParams.map((param: any) => {
