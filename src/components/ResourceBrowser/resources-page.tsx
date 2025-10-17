@@ -301,8 +301,6 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	);
 };
 
-const DifferentialTabContent = ({}) => {};
-
 const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const [selectedProfile, setSelectedProfile] = React.useState<any>(null);
 	const [detailTab, setDetailTab] = React.useState<string>("differential");
@@ -338,10 +336,10 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const columns = [
 		{
 			accessorKey: "default?",
-			size: 20,
+			size: 16,
 			header: <span className="pl-5"></span>,
 			cell: makeClickableCell((value) =>
-				value ? <span title="default profile">+</span> : "-",
+				value ? <span title="default profile">+</span> : "",
 			), // FIXME: icons
 		},
 		{
@@ -462,7 +460,15 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 									/>
 								</HSComp.TabsContent>
 								<HSComp.TabsContent value="fhirschema">
-									TODO: FHIRSchema
+									<HSComp.CodeEditor
+										readOnly
+										currentValue={JSON.stringify(
+											selectedProfile.entity,
+											null,
+											"  ",
+										)}
+										mode="json"
+									/>
 								</HSComp.TabsContent>
 							</HSComp.Tabs>
 						</div>
