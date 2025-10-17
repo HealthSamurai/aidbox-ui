@@ -44,10 +44,15 @@ const PageComponent = () => {
 	return <Page />;
 };
 
+const TITLE = "Create";
+
 export const Route = createFileRoute("/resource/$resourceType/create")({
 	component: PageComponent,
 	validateSearch,
 	staticData: {
-		title: "Create",
+		title: TITLE,
 	},
+	loader: () => ({
+		breadCrumb: TITLE,
+	}),
 });

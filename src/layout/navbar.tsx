@@ -13,7 +13,6 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import type { FileRoutesByPath } from "@tanstack/react-router";
 import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
@@ -25,65 +24,13 @@ import React from "react";
 import { useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 
-type PathItem = {
-	title: string;
-	path: string;
-};
-
-type AnyRoutingMatch = {
-	params: { resourceType?: string; id?: string };
-	staticData: { title?: string };
-	pathname: string;
-};
-
-const omit = (_rm: AnyRoutingMatch) => [];
-const staticTitle = (rm: AnyRoutingMatch) => {
-	if (!rm.staticData.title) {
-		console.warn(`Missing title for route ${rm.pathname}`);
-		return [];
-	}
-	return [{ title: rm.staticData.title, path: rm.pathname }];
-};
-
-const resourceId = (rm: AnyRoutingMatch) => {
-	if (!rm.params.id) {
-		console.warn(`Missing id for route ${rm.pathname}`);
-		return [];
-	}
-	return [{ title: rm.params.id, path: rm.pathname }];
-};
-
-type FileRoutesIds = keyof FileRoutesByPath;
-
-const breadcrumbGenerators: Record<
-	FileRoutesIds | "__root__",
-	(rm: AnyRoutingMatch) => PathItem[]
-> = {
-	__root__: omit,
-	"/": omit,
-	"/resource/": omit,
-	"/resource": staticTitle,
-	"/resource/$resourceType/": omit,
-	"/resource/$resourceType": (rm: AnyRoutingMatch) => {
-		if (!rm.params.resourceType)
-			throw new Error(`Missing resourceType for route ${rm.pathname}`);
-		return [{ title: rm.params.resourceType, path: rm.pathname }];
-	},
-	"/resource/$resourceType/create": staticTitle,
-	"/resource/$resourceType/edit/$id": resourceId,
-	"/resource/ViewDefinition/": omit,
-	"/resource/ViewDefinition": staticTitle,
-	"/resource/ViewDefinition/create": staticTitle,
-	"/resource/ViewDefinition/edit/$id": resourceId,
-	"/rest": staticTitle,
-};
-
 function Breadcrumbs() {
 	const matches = useMatches();
 	if (matches.length === 0) return <div>No router matches</div>;
 
 	const breadcrumbs = matches.flatMap((match) => {
-		return breadcrumbGenerators[match.routeId](match);
+		const breadCrumb = match.loaderData?.breadCrumb;
+		return breadCrumb ? [{ title: breadCrumb, path: match.pathname }] : [];
 	});
 
 	if (breadcrumbs.length === 0) {

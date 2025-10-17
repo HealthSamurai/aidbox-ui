@@ -50,11 +50,14 @@ type ResponseData = {
 	duration: number;
 };
 
+const TITLE = "REST Console";
+
 export const Route = createFileRoute("/rest")({
 	staticData: {
-		title: "REST Console",
+		title: TITLE,
 	},
 	component: RouteComponent,
+	loader: () => ({ breadCrumb: TITLE }),
 });
 
 function RequestLineEditorWrapper({
