@@ -8,36 +8,12 @@ import { AidboxCallWithMeta } from "../../api/auth";
 import * as Humanize from "../../humanize";
 import * as Constants from "./constants";
 import type * as Types from "./types";
-
-interface Snapshot {
-	type: string | null;
-	lvl: number;
-	name: string;
-	path?: string;
-	short?: string;
-	desc?: string;
-	id: string;
-	"union?"?: boolean;
-	min?: number | string;
-	max?: number | string;
-	datatype?: string;
-	flags?: string[];
-	"extension-url"?: string;
-	"extension-coordinate"?: { label: string };
-	binding?: { strength: string; valueSet: string };
-	"vs-coordinate"?: {
-		label: string;
-		id: string;
-		"package-spec": {
-			name: string;
-			version: string;
-		};
-	};
-}
+import type * as VDTypes from "../ViewDefinition/types";
+import * as Utils from "../../utils";
 
 interface Schema {
-	differential: Array<Snapshot>;
-	snapshot: Array<Snapshot>;
+	differential: Array<VDTypes.Snapshot>;
+	snapshot: Array<VDTypes.Snapshot>;
 	"default?": boolean;
 }
 
@@ -278,9 +254,7 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 	);
 };
 
-export const ResourcesTabContent = ({
-	resourceType,
-}: Types.ResourcesPageProps) => {
+const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	const navigate = Router.useNavigate();
@@ -327,10 +301,12 @@ export const ResourcesTabContent = ({
 	);
 };
 
-export const ProfilesTabContent = ({
-	resourceType,
-}: Types.ResourcesPageProps) => {
-	// TODO: sidebar with schema tree view
+const DifferentialTabContent = ({}) => {};
+
+const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
+	const [selectedProfile, setSelectedProfile] = React.useState<any>(null);
+	const [detailTab, setDetailTab] = React.useState<string>("differential");
+
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-profiles-list"],
 		queryFn: async () => {
@@ -348,41 +324,151 @@ export const ProfilesTabContent = ({
 		return <div>No profiles found</div>;
 	}
 
+	const makeClickableCell = (renderer: (value: any) => any) => {
+		return (info: any) => (
+			<div
+				className="cursor-pointer"
+				onClick={() => setSelectedProfile(info.row.original)}
+			>
+				{renderer(info.getValue())}
+			</div>
+		);
+	};
+
 	const columns = [
 		{
 			accessorKey: "default?",
-			header: <span className="pl-5">default</span>,
-			cell: (info: any) => (info.getValue() ? "+" : "-"), // FIXME: icons
+			size: 20,
+			header: <span className="pl-5"></span>,
+			cell: makeClickableCell((value) =>
+				value ? <span title="default profile">+</span> : "-",
+			), // FIXME: icons
 		},
 		{
 			accessorKey: "url",
 			header: <span className="pl-5">URL</span>,
-			cell: (info: any) => info.row.original.entity.url,
+			cell: makeClickableCell((value) => value || ""),
 		},
 		{
 			accessorKey: "name",
 			header: <span className="pl-5">Name</span>,
-			cell: (info: any) => info.row.original.entity.name,
+			cell: makeClickableCell((value) => value || ""),
 		},
 		{
 			accessorKey: "version",
 			header: <span className="pl-5">Version</span>,
-			cell: (info: any) => info.row.original.entity.version,
+			cell: makeClickableCell((value) => value || ""),
 		},
 		{
 			accessorKey: "ig",
 			header: <span className="pl-5">IG</span>,
-			cell: (_info: any) => "", // TODO
+			cell: makeClickableCell((_value) => ""), // TODO
 		},
 	];
 
+	// Adjust column accessors to read from entity
+	const columnsWithEntity = columns.map((col) => {
+		if (col.accessorKey === "default?") {
+			return col;
+		}
+		return {
+			...col,
+			cell: (info: any) => {
+				const value = info.row.original.entity?.[col.accessorKey];
+				return (
+					<div
+						className="cursor-pointer"
+						onClick={() => setSelectedProfile(info.row.original)}
+					>
+						{value || ""}
+					</div>
+				);
+			},
+		};
+	});
+
+	if (!selectedProfile) {
+		return (
+			<div className="h-full overflow-hidden">
+				<HSComp.DataTable
+					columns={columnsWithEntity as any}
+					data={Object.values(data)}
+					stickyHeader
+				/>
+			</div>
+		);
+	}
+
 	return (
 		<div className="h-full overflow-hidden">
-			<HSComp.DataTable
-				columns={columns as any}
-				data={Object.values(data)}
-				stickyHeader
-			/>
+			<HSComp.ResizablePanelGroup
+				direction="horizontal"
+				autoSaveId="profiles-tab-horizontal-panel"
+			>
+				<HSComp.ResizablePanel minSize={30}>
+					<HSComp.DataTable
+						columns={columnsWithEntity as any}
+						data={Object.values(data)}
+						stickyHeader
+					/>
+				</HSComp.ResizablePanel>
+				<HSComp.ResizableHandle />
+				<HSComp.ResizablePanel minSize={30}>
+					<div className="h-full flex flex-col">
+						<div className="border-b h-10 flex items-center justify-between px-4">
+							<HSComp.Tabs
+								value={detailTab}
+								onValueChange={setDetailTab}
+								className="flex-1"
+							>
+								<HSComp.TabsList>
+									<HSComp.TabsTrigger value="differential">
+										Differential
+									</HSComp.TabsTrigger>
+									<HSComp.TabsTrigger value="snapshot">
+										Snapshot
+									</HSComp.TabsTrigger>
+									<HSComp.TabsTrigger value="fhirschema">
+										FHIRSchema
+									</HSComp.TabsTrigger>
+								</HSComp.TabsList>
+							</HSComp.Tabs>
+							<HSComp.Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setSelectedProfile(null)}
+							>
+								<Lucide.XIcon size={16} />
+							</HSComp.Button>
+						</div>
+						<div className="flex-1 overflow-auto p-4">
+							<HSComp.Tabs value={detailTab}>
+								<HSComp.TabsContent value="differential">
+									<HSComp.FhirStructureView
+										tree={
+											Utils.transformSnapshotToTree(
+												selectedProfile.differential,
+											) as any
+										}
+									/>
+								</HSComp.TabsContent>
+								<HSComp.TabsContent value="snapshot">
+									<HSComp.FhirStructureView
+										tree={
+											Utils.transformSnapshotToTree(
+												selectedProfile.snapshot,
+											) as any
+										}
+									/>
+								</HSComp.TabsContent>
+								<HSComp.TabsContent value="fhirschema">
+									TODO: FHIRSchema
+								</HSComp.TabsContent>
+							</HSComp.Tabs>
+						</div>
+					</div>
+				</HSComp.ResizablePanel>
+			</HSComp.ResizablePanelGroup>
 		</div>
 	);
 };
