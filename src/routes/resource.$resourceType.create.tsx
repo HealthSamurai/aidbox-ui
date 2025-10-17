@@ -1,47 +1,47 @@
-import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/Page";
-import type { ViewDefinitionEditorTab } from "@aidbox-ui/components/ViewDefinition/types";
-import { createFileRoute, useParams } from "@tanstack/react-router";
-import ViewDefinitionPage from "../components/ViewDefinition/page";
+import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/editor-page";
+import {
+	isResourceEditorTab,
+	type ResourceEditorTab,
+} from "@aidbox-ui/components/ResourceEditor/types";
+import {
+	createFileRoute,
+	useMatch,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
 
 export type ViewDefinitionSearch = {
-	tab: ViewDefinitionEditorTab;
+	tab: ResourceEditorTab;
 };
 
-export const tabs: Set<ViewDefinitionEditorTab> = new Set([
-	"form",
-	"code",
-	"sql",
-]);
-
 export function validateSearch(
-	search: Record<string, unknown>,
+	rawSearch: Record<string, unknown>,
 ): ViewDefinitionSearch {
-	let tab: ViewDefinitionEditorTab;
-	if (tabs.has(search.tab as ViewDefinitionEditorTab)) {
-		tab = search.tab as ViewDefinitionEditorTab;
-	} else if (search.tab === undefined) {
+	let tab: ResourceEditorTab;
+	if (isResourceEditorTab(rawSearch.tab)) {
+		tab = rawSearch.tab;
+	} else if (rawSearch.tab === undefined) {
 		tab = "code";
 	} else {
-		console.error("Invalid tab", search.tab, "force to 'code'");
+		console.error("Invalid tab", rawSearch.tab, "force to 'code'");
 		tab = "code";
 	}
 	return { tab };
 }
 
-export const resourceTypePageFromParams = () => {
-	// NOTE: we need to specify `from` or Router here, on the router side
-	const { resourceType } = useParams({ strict: false });
-	switch (resourceType) {
-		case "ViewDefinition":
-			return ViewDefinitionPage;
-		default:
-			return ResourceEditorPage;
-	}
-};
-
 const PageComponent = () => {
-	const Page = resourceTypePageFromParams();
-	return <Page />;
+	const { tab } = useSearch({ from: "/resource/$resourceType/create" });
+	const { resourceType } = useMatch({
+		from: "/resource/$resourceType/create",
+	}).params;
+	const navigate = useNavigate();
+	return (
+		<ResourceEditorPage
+			resourceType={resourceType}
+			tab={tab}
+			navigate={navigate}
+		/>
+	);
 };
 
 const TITLE = "Create";
