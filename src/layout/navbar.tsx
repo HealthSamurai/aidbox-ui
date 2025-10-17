@@ -71,6 +71,8 @@ const breadcrumbGenerators: Record<
 	},
 	"/resource/$resourceType/create": staticTitle,
 	"/resource/$resourceType/edit/$id": resourceId,
+	"/resource/ViewDefinition/": omit,
+	"/resource/ViewDefinition": staticTitle,
 	"/resource/ViewDefinition/create": staticTitle,
 	"/resource/ViewDefinition/edit/$id": resourceId,
 	"/rest": staticTitle,
