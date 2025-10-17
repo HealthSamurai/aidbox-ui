@@ -435,7 +435,7 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 							</HSComp.Tabs>
 							<HSComp.Button
 								variant="ghost"
-								size="sm"
+								size="small"
 								onClick={() => setSelectedProfile(null)}
 							>
 								<Lucide.XIcon size={16} />
