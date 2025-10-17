@@ -1,4 +1,4 @@
-import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/editor-page";
+import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
 	isResourceEditorTab,
 	type ResourceEditorTab,
