@@ -15,7 +15,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
+import { Route as ResourceViewDefinitionCreateRouteImport } from './routes/resource.ViewDefinition.create'
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
+import { Route as ResourceViewDefinitionEditIdRouteImport } from './routes/resource.ViewDefinition.edit.$id'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
 
 const RestRoute = RestRouteImport.update({
@@ -49,11 +51,23 @@ const ResourceResourceTypeIndexRoute =
     path: '/',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
+const ResourceViewDefinitionCreateRoute =
+  ResourceViewDefinitionCreateRouteImport.update({
+    id: '/ViewDefinition/create',
+    path: '/ViewDefinition/create',
+    getParentRoute: () => ResourceRoute,
+  } as any)
 const ResourceResourceTypeCreateRoute =
   ResourceResourceTypeCreateRouteImport.update({
     id: '/create',
     path: '/create',
     getParentRoute: () => ResourceResourceTypeRoute,
+  } as any)
+const ResourceViewDefinitionEditIdRoute =
+  ResourceViewDefinitionEditIdRouteImport.update({
+    id: '/ViewDefinition/edit/$id',
+    path: '/ViewDefinition/edit/$id',
+    getParentRoute: () => ResourceRoute,
   } as any)
 const ResourceResourceTypeEditIdRoute =
   ResourceResourceTypeEditIdRouteImport.update({
@@ -69,16 +83,20 @@ export interface FileRoutesByFullPath {
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/resource/': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/resource/ViewDefinition/create': typeof ResourceViewDefinitionCreateRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/resource/ViewDefinition/edit/$id': typeof ResourceViewDefinitionEditIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/rest': typeof RestRoute
   '/resource': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/resource/ViewDefinition/create': typeof ResourceViewDefinitionCreateRoute
   '/resource/$resourceType': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/resource/ViewDefinition/edit/$id': typeof ResourceViewDefinitionEditIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,8 +106,10 @@ export interface FileRoutesById {
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/resource/': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/resource/ViewDefinition/create': typeof ResourceViewDefinitionCreateRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/resource/ViewDefinition/edit/$id': typeof ResourceViewDefinitionEditIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,16 +120,20 @@ export interface FileRouteTypes {
     | '/resource/$resourceType'
     | '/resource/'
     | '/resource/$resourceType/create'
+    | '/resource/ViewDefinition/create'
     | '/resource/$resourceType/'
     | '/resource/$resourceType/edit/$id'
+    | '/resource/ViewDefinition/edit/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/rest'
     | '/resource'
     | '/resource/$resourceType/create'
+    | '/resource/ViewDefinition/create'
     | '/resource/$resourceType'
     | '/resource/$resourceType/edit/$id'
+    | '/resource/ViewDefinition/edit/$id'
   id:
     | '__root__'
     | '/'
@@ -118,8 +142,10 @@ export interface FileRouteTypes {
     | '/resource/$resourceType'
     | '/resource/'
     | '/resource/$resourceType/create'
+    | '/resource/ViewDefinition/create'
     | '/resource/$resourceType/'
     | '/resource/$resourceType/edit/$id'
+    | '/resource/ViewDefinition/edit/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -172,12 +198,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceResourceTypeIndexRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
     }
+    '/resource/ViewDefinition/create': {
+      id: '/resource/ViewDefinition/create'
+      path: '/ViewDefinition/create'
+      fullPath: '/resource/ViewDefinition/create'
+      preLoaderRoute: typeof ResourceViewDefinitionCreateRouteImport
+      parentRoute: typeof ResourceRoute
+    }
     '/resource/$resourceType/create': {
       id: '/resource/$resourceType/create'
       path: '/create'
       fullPath: '/resource/$resourceType/create'
       preLoaderRoute: typeof ResourceResourceTypeCreateRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
+    }
+    '/resource/ViewDefinition/edit/$id': {
+      id: '/resource/ViewDefinition/edit/$id'
+      path: '/ViewDefinition/edit/$id'
+      fullPath: '/resource/ViewDefinition/edit/$id'
+      preLoaderRoute: typeof ResourceViewDefinitionEditIdRouteImport
+      parentRoute: typeof ResourceRoute
     }
     '/resource/$resourceType/edit/$id': {
       id: '/resource/$resourceType/edit/$id'
@@ -207,11 +247,15 @@ const ResourceResourceTypeRouteWithChildren =
 interface ResourceRouteChildren {
   ResourceResourceTypeRoute: typeof ResourceResourceTypeRouteWithChildren
   ResourceIndexRoute: typeof ResourceIndexRoute
+  ResourceViewDefinitionCreateRoute: typeof ResourceViewDefinitionCreateRoute
+  ResourceViewDefinitionEditIdRoute: typeof ResourceViewDefinitionEditIdRoute
 }
 
 const ResourceRouteChildren: ResourceRouteChildren = {
   ResourceResourceTypeRoute: ResourceResourceTypeRouteWithChildren,
   ResourceIndexRoute: ResourceIndexRoute,
+  ResourceViewDefinitionCreateRoute: ResourceViewDefinitionCreateRoute,
+  ResourceViewDefinitionEditIdRoute: ResourceViewDefinitionEditIdRoute,
 }
 
 const ResourceRouteWithChildren = ResourceRoute._addFileChildren(

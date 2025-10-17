@@ -27,26 +27,10 @@ export function validateSearch(
 	return { tab };
 }
 
-export const resourceTypePageFromParams = () => {
-	// NOTE: we need to specify `from` or Router here, on the router side
-	const { resourceType } = useParams({ strict: false });
-	switch (resourceType) {
-		case "ViewDefinition":
-			return ViewDefinitionPage;
-		default:
-			return (_: { id?: string }) => <div>TODO</div>;
-	}
-};
-
-const PageComponent = () => {
-	const Page = resourceTypePageFromParams();
-	return <Page />;
-};
-
-export const Route = createFileRoute("/resource/$resourceType/create")({
-	component: PageComponent,
+export const Route = createFileRoute("/resource/ViewDefinition/create")({
+	component: ViewDefinitionPage,
 	validateSearch,
 	staticData: {
-		title: "Create",
+		title: "View Definition",
 	},
 });
