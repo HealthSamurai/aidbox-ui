@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ResourcesPage } from "../components/ResourceBrowser/resources-page";
+import { ResourcesPage } from "../components/ResourceBrowser/page";
 
 export const Route = createFileRoute("/resource/ViewDefinition/")({
 	component: RouteComponent,
