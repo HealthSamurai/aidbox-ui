@@ -51,3 +51,50 @@ export interface ResourceTypesResponse {
 		"default-profile": string;
 	};
 }
+
+export interface Snapshot {
+	type: string | null;
+	lvl: number;
+	name: string;
+	path?: string;
+	short?: string;
+	desc?: string;
+	id: string;
+	"union?"?: boolean;
+	min?: number | string;
+	max?: number | string;
+	datatype?: string;
+	flags?: string[];
+	"extension-url"?: string;
+	"extension-coordinate"?: { label: string };
+	binding?: { strength: string; valueSet: string };
+	"vs-coordinate"?: {
+		label: string;
+		id: string;
+		"package-spec": {
+			name: string;
+			version: string;
+		};
+	};
+}
+
+export interface Meta {
+	type?: string;
+	description?: string | undefined;
+	min?: number | string;
+	max?: number | string;
+	short?: string;
+	isSummary?: boolean;
+	isModifier?: boolean;
+	mustSupport?: boolean;
+	desc?: string;
+	extensionUrl?: string;
+	extensionCoordinate?: { label: string };
+	binding?: { strength: string; valueSet: string };
+	vsCoordinate?: {
+		label: string;
+		id: string;
+		"package-spec": { name: string; version: string };
+	};
+	lastNode?: boolean;
+}
