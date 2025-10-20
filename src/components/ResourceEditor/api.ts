@@ -25,7 +25,7 @@ export interface HistoryBundle {
 	entry: HistoryEntry[];
 }
 
-interface HistoryEntry {
+export interface HistoryEntry {
 	resource: {
 		meta: {
 			versionId: string;
