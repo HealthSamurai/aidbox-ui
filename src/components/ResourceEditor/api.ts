@@ -15,7 +15,6 @@ export const fetchResource = async (resourceType: string, id: string) => {
 			Accept: "application/json",
 		},
 	});
-	console.log(raw);
 	return raw;
 };
 

@@ -1,3 +1,4 @@
+import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { fetchResourceHistory, type HistoryBundle } from "./api";
@@ -28,7 +29,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		}
 	}, [historyData]);
 
-	if (isLoading) {
+	if (isLoading || !history) {
 		return <div>Loading...</div>;
 	}
 
@@ -36,28 +37,42 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		return <div>Error loading history: {(error as Error).message}</div>;
 	}
 
+	const columns = [
+		{
+			accessorKey: "versionId",
+			header: <span className="pl-5">versionId</span>,
+			cell: (info: any) => info.row.original.resource?.meta?.versionId,
+		},
+		{
+			accessorKey: "status",
+			header: <span className="pl-5">Status</span>,
+			cell: (info: any) => prettyStatus(info.row.original.response.status),
+		},
+		{
+			accessorKey: "date",
+			header: <span className="pl-5">Date</span>,
+			cell: (info: any) =>
+				info.row.original.resource.meta.lastUpdated
+					? new Date(
+							info.row.original.resource.meta.lastUpdated,
+						).toLocaleString()
+					: "-",
+		},
+		{
+			accessorKey: "attributes",
+			header: <span className="pl-5">Affected attributes</span>,
+			cell: (info: any) => {
+				console.log(info.row.original);
+				return "";
+			},
+		},
+	];
+
 	return (
-		<table>
-			<thead>
-				<tr>
-					<th>Version ID</th>
-					<th>Status</th>
-					<th>Date</th>
-				</tr>
-			</thead>
-			<tbody>
-				{history?.entry?.map((entry) => (
-					<tr key={entry.resource.meta.versionId}>
-						<td>{entry.resource.meta.versionId}</td>
-						<td>{prettyStatus(entry.response.status)}</td>
-						<td>
-							{entry.resource.meta.lastUpdated
-								? new Date(entry.resource.meta.lastUpdated).toLocaleString()
-								: "-"}
-						</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
+		<HSComp.DataTable
+			columns={columns as any}
+			data={history.entry}
+			stickyHeader
+		/>
 	);
 };
