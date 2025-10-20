@@ -183,7 +183,13 @@ export function referenceLink(ref: string | null | undefined): string | null {
 	return null;
 }
 
-function humanizeAnnotation(value: any): string {
+type FhirAnnotation = {
+	authorString?: string;
+	time?: string;
+	text: string;
+};
+
+function humanizeAnnotation(value: FhirAnnotation): string {
 	const author = value.authorString;
 	const time = value.time ? humanizeDatetime(value.time) : null;
 	const text = value.text;
@@ -193,35 +199,58 @@ function humanizeAnnotation(value: any): string {
 		.join(" ");
 }
 
-function humanizeAttachment(value: any): string {
+type FhirAttachment = {
+	title?: string;
+	url?: string;
+};
+
+function humanizeAttachment(value: FhirAttachment): string | null {
 	const title = value.title;
 	const url = value.url;
-	const displayText = title || url;
-
-	return url ? displayText || url : displayText;
+	return title ?? url ?? null;
 }
 
-function humanizeContactDetail(value: any): string {
+type FhirContactPoint = {
+	system?: string;
+	value?: string;
+};
+
+type FhirContactDetail = {
+	name?: string;
+	telecom?: FhirContactPoint[];
+};
+
+function humanizeContactDetail(value: FhirContactDetail): string {
 	const name = value.name;
 	const telecoms = value.telecom;
 
-	const parts: string[] = [];
-	if (name) parts.push(name);
-	if (telecoms) {
-		parts.push(...telecoms.map((t: any) => `${t.system}: ${t.value}`));
-	}
+	const humanizedTelecoms =
+		telecoms?.map((telecom) => `${telecom.system}: ${telecom.value}`) ?? [];
 
-	return parts.filter(Boolean).join(", ");
+	const humanizedName = name ? [name] : [];
+
+	return humanizedName.concat(humanizedTelecoms).join(", ");
 }
 
-function humanizeContributor(value: any): string {
+type FhirContributor = {
+	type?: string;
+	name?: string;
+};
+
+function humanizeContributor(value: FhirContributor): string {
 	const type = value.type;
 	const name = value.name;
 
-	return [name, type].filter(Boolean).join(" ");
+	return [...(name ? [name] : []), ...(type ? [type] : [])].join(" ");
 }
 
-function humanizeDataRequirement(value: any): string {
+type FhirDataRequirement = {
+	type: string;
+	profile?: string[];
+	mustSupport?: string[];
+};
+
+function humanizeDataRequirement(value: FhirDataRequirement): string {
 	const type = value.type;
 	const profile = value.profile;
 	const mustSupport = value.mustSupport;
@@ -231,7 +260,59 @@ function humanizeDataRequirement(value: any): string {
 		.join(" ");
 }
 
-function humanizeDosage(value: any): string | null {
+type FhirQuantity = {
+	comparator?: string;
+	value?: number;
+	unit?: string;
+};
+
+type FhirSimpleQuantity = {
+	comparator?: string;
+	value?: number;
+	unit?: string;
+};
+
+type FhirDuration = FhirQuantity;
+type FhirRange = FhirQuantity;
+type FhirPeriod = FhirQuantity;
+
+type FhirTiming = {
+	code?: FhirCodeableConcept;
+	repeat?: {
+		frequency?: number;
+		period?: number;
+		periodUnit?: string;
+		boundsDuration?: FhirDuration;
+		boundsRange?: FhirRange;
+		boundsPeriod?: FhirPeriod;
+		count?: number;
+		duration?: number;
+		durationUnit?: string;
+	};
+};
+
+type FhirCoding = {
+	display?: string;
+	code?: string;
+};
+
+type FhirCodeableConcept = {
+	text?: string;
+	coding?: FhirCoding[];
+};
+
+type FhirDosageDoseAndRate = {
+	doseQuantity: FhirSimpleQuantity;
+};
+
+type FhirDosage = {
+	text?: string;
+	timing?: FhirTiming;
+	route?: FhirCodeableConcept;
+	doseAndRate?: FhirDosageDoseAndRate[];
+};
+
+function humanizeDosage(value: FhirDosage): string | null {
 	const text = value.text;
 	const timing = value.timing;
 	const route = value.route;
@@ -247,18 +328,35 @@ function humanizeDosage(value: any): string | null {
 	return parts.filter(Boolean).join(", ");
 }
 
-function humanizeExpression(value: any): string | null {
+type FhirExpression = {
+	description?: string;
+	name?: string;
+	expression?: string;
+};
+
+function humanizeExpression(value: FhirExpression): string | null {
 	return value.description || value.name || value.expression || null;
 }
 
-function humanizeMoney(value: any): string {
+type FhirMoney = {
+	value?: number;
+	currency?: string;
+};
+
+function humanizeMoney(value: FhirMoney): string {
 	const amount = value.value;
 	const currency = value.currency;
 
 	return [amount, currency].filter(Boolean).join(" ");
 }
 
-function humanizeParameterDefinition(value: any): string {
+type FhirParameterDefinition = {
+	name?: string;
+	use: string;
+	type: string;
+};
+
+function humanizeParameterDefinition(value: FhirParameterDefinition): string {
 	const name = value.name;
 	const use = value.use;
 	const type = value.type;
@@ -266,11 +364,22 @@ function humanizeParameterDefinition(value: any): string {
 	return [name, use ? `(${use})` : null, type].filter(Boolean).join(" ");
 }
 
-function humanizeRelatedArtifact(value: any): string | null {
+type FhirRelatedArtifact = {
+	display?: string;
+	citation?: string;
+	url?: string;
+};
+
+function humanizeRelatedArtifact(value: FhirRelatedArtifact): string | null {
 	return value.display || value.citation || value.url || null;
 }
 
-function humanizeSampledData(value: any): string {
+type FhirSampledData = {
+	period: number;
+	dimensions: number;
+};
+
+function humanizeSampledData(value: FhirSampledData): string {
 	const period = value.period;
 	const dimensions = value.dimensions;
 
@@ -279,7 +388,24 @@ function humanizeSampledData(value: any): string {
 		.join(" ");
 }
 
-function humanizeSignature(value: any): string {
+type FhirIdentifier = {
+	value?: string;
+	system?: string;
+};
+
+type FhirReference = {
+	reference?: string;
+	identifier?: FhirIdentifier;
+	display?: string;
+	type?: string;
+};
+
+type FhirSignature = {
+	when: string;
+	who: FhirReference;
+};
+
+function humanizeSignature(value: FhirSignature): string {
 	const when = value.when;
 	const who = value.who;
 
@@ -291,7 +417,7 @@ function humanizeSignature(value: any): string {
 		.join(" ");
 }
 
-function humanizeTiming(value: any): React.ReactNode | string | null {
+function humanizeTiming(value: FhirTiming): React.ReactNode | string | null {
 	const repeat = value.repeat;
 	const code = value.code;
 
@@ -330,7 +456,15 @@ function humanizeTiming(value: any): React.ReactNode | string | null {
 	return null;
 }
 
-function humanizeUsageContext(value: any): string {
+type FhirUsageContext = {
+	code: FhirCoding;
+	valueCodeableConcept?: FhirCodeableConcept;
+	valueQuantity?: FhirQuantity;
+	valueRange?: FhirRange;
+	valueReference?: FhirReference;
+};
+
+function humanizeUsageContext(value: FhirUsageContext): string {
 	const code = value.code;
 	const valueCC = value.valueCodeableConcept;
 	const valueQuantity = value.valueQuantity;
@@ -350,54 +484,49 @@ function humanizeUsageContext(value: any): string {
 	return parts.filter(Boolean).join(": ");
 }
 
-function humanizeUnknown(value: any, depthSoFar = 1): React.ReactNode | string {
+function humanizeUnknown(
+	value: unknown,
+	depthSoFar = 1,
+): React.ReactNode | string {
 	if (depthSoFar > 4 || !value || typeof value !== "object") return "";
 
-	if (value.coding) return humanizeValue_(null, value, "CodeableConcept") || "";
+	if (Object.hasOwn(value, "coding")) {
+		return humanizeValue_(null, value, "CodeableConcept") || "";
+	}
 
-	if (value.display) return value.display;
+	if ("display" in value && typeof value.display === "string") {
+		return value.display;
+	}
 
 	const values = Array.isArray(value) ? value : Object.values(value);
 
 	return values
 		.map((v) => humanizeUnknown(v, depthSoFar + 1))
-		.filter((v: any) => v && v.trim())
+		.filter((v) => (typeof v === "string" ? v?.trim() : v))
 		.join(", ");
 }
 
-// Component for rendering reference links
-function ReferenceLink({
-	href,
-	onClick,
-	children,
-}: {
-	href: string;
-	onClick: () => void;
-	children: React.ReactNode;
-}) {
-	return (
-		<Link
-			to={href}
-			onClick={(e) => {
-				stopPropagation(e);
-				onClick();
-			}}
-		>
-			{children}
-		</Link>
-	);
+function hasProperty<K extends string>(
+	value: object,
+	property: K,
+): value is { [P in K]: unknown } {
+	return Object.hasOwn(value, property);
+}
+
+function isArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
 }
 
 function humanizeValue_(
 	key: string | null,
-	value: any,
+	value: unknown,
 	datatype: string,
 	element?: Element,
 ): string | React.ReactNode | null {
 	try {
 		if (value == null) return "-";
 
-		if (key === "id") return value;
+		if (key === "id" && typeof value === "string") return value;
 
 		if (
 			[
@@ -416,15 +545,22 @@ function humanizeValue_(
 			key === "lastUpdated" ||
 			datatype === "instant" ||
 			datatype === "dateTime"
-		)
-			return humanizeDatetime(value);
+		) {
+			if (typeof value === "string") {
+				return humanizeDatetime(value);
+			} else {
+				return "-";
+			}
+		}
 
-		if (datatype === "url") return value;
+		if (datatype === "url") {
+			return typeof value === "string" ? value : "-";
+		}
 
 		if (datatype === "Reference") {
-			const ref = value.reference;
-			const identifier = value.identifier?.value;
-			const identifierSystem = value.identifier?.system;
+			const ref = (value as FhirReference).reference;
+			const identifier = (value as FhirReference).identifier?.value;
+			const identifierSystem = (value as FhirReference).identifier?.system;
 			const refer = element?.refers?.[0];
 			const maybeLink = referenceLink(ref);
 
@@ -437,7 +573,7 @@ function humanizeValue_(
 								stopPropagation(e);
 							}}
 						>
-							{value.display || ref}
+							{(value as FhirReference).display || ref}
 						</Link>
 					</HumanizedValue>
 				);
@@ -445,11 +581,11 @@ function humanizeValue_(
 
 			if (identifier) {
 				const rt: string =
-					value.type ||
+					(value as FhirReference).type ||
 					refer ||
 					(key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
 				const humanizedValue =
-					value.display || `${rt}?identifier=${identifier}`;
+					(value as FhirReference).display || `${rt}?identifier=${identifier}`;
 				const identifierParam = identifierSystem
 					? `${identifierSystem}|${identifier}`
 					: identifier;
@@ -457,7 +593,9 @@ function humanizeValue_(
 				return (
 					<HumanizedValue tooltip={JSON.stringify(humanizedValue, null, " ")}>
 						<Link
-							to={`#/resource-types/${rt}?identifier=${identifierParam}` as any}
+							to={`/resource/$resourceType`}
+							params={{ resourceType: rt }}
+							search={{ identifier: identifierParam }}
 							onClick={(e) => {
 								stopPropagation(e);
 							}}
@@ -471,31 +609,76 @@ function humanizeValue_(
 			return ref;
 		}
 
-		if (datatype === "BackboneElement" && value[key as any]?.reference) {
-			const ref = value[key as any].reference;
+		if (
+			datatype === "BackboneElement" &&
+			typeof value === "object" &&
+			key &&
+			hasProperty(value, key) &&
+			typeof value[key] === "object" &&
+			value[key] !== null &&
+			hasProperty(value[key], "reference") &&
+			typeof value[key].reference === "string"
+		) {
+			const ref = value[key].reference;
 			const maybeLink = referenceLink(ref);
-			const valueRef = value[key as any];
+
+			const displayString: null | string =
+				hasProperty(value[key], "display") &&
+				typeof value[key].display === "string"
+					? value[key].display
+					: null;
 
 			if (!maybeLink) return ref;
 
 			return (
 				<HumanizedValue
-					tooltip={JSON.stringify(valueRef.display || ref, null, " ")}
+					tooltip={JSON.stringify(displayString || ref, null, " ")}
 				>
-					<Link to={maybeLink}>{valueRef.display || ref}</Link>
+					<Link to={maybeLink}>{displayString ?? ref}</Link>
 				</HumanizedValue>
 			);
 		}
 
-		if (datatype === "Ratio")
-			return `${humanizeValue_(key, value.numerator, "Quantity")}/${humanizeValue_(key, value.denominator, "Quantity")}`;
+		if (datatype === "Ratio") {
+			const numerator = humanizeValue_(
+				key,
+				hasProperty(value, "numerator") ? value.numerator : undefined,
+				"Quantity",
+			);
+			const denominator = humanizeValue_(
+				key,
+				hasProperty(value, "denominator") ? value.denominator : undefined,
+				"Quantity",
+			);
 
-		if (datatype === "Range")
-			return `${humanizeValue_(key, value.low, "Quantity")}–${humanizeValue_(key, value.high, "Quantity")}`;
+			return `${numerator}/${denominator}`;
+		}
+
+		if (datatype === "Range") {
+			const low = humanizeValue_(
+				key,
+				hasProperty(value, "low") ? value.low : undefined,
+				"Quantity",
+			);
+			const high = humanizeValue_(
+				key,
+				hasProperty(value, "high") ? value.high : undefined,
+				"Quantity",
+			);
+			return `${low}–${high}`;
+		}
 
 		if (datatype === "Period") {
-			const value1 = humanizeValue_(key, value.start, "dateTime");
-			const value2 = humanizeValue_(key, value.end, "dateTime");
+			const value1 = humanizeValue_(
+				key,
+				hasProperty(value, "start") ? value.start : undefined,
+				"dateTime",
+			);
+			const value2 = humanizeValue_(
+				key,
+				hasProperty(value, "end") ? value.end : undefined,
+				"dateTime",
+			);
 
 			return (
 				<>
@@ -512,12 +695,17 @@ function humanizeValue_(
 			return <HumanizedValue tooltip={humanized}>{humanized}</HumanizedValue>;
 		}
 
-		if (datatype === "ContactPoint") return value.value;
+		if (datatype === "ContactPoint") {
+			return hasProperty(value, "value") && typeof value.value === "string"
+				? value.value
+				: undefined;
+		}
 
-		if (datatype === "HumanName")
+		if (datatype === "HumanName") {
 			return Array.isArray(value)
 				? value.map(humanizeName).join(", ")
 				: humanizeName(value);
+		}
 
 		if (
 			[
@@ -532,37 +720,95 @@ function humanizeValue_(
 		) {
 			const parts: string[] = [];
 
-			if (value.comparator) parts.push(value.comparator, " ");
-			if (value.value) parts.push(String(value.value));
-			if (value.unit) {
-				if (value.value && value.unit === "%") parts.push(" ");
+			if (
+				hasProperty(value, "comparator") &&
+				typeof value.comparator === "string"
+			) {
+				parts.push(value.comparator, " ");
+			}
+			if (hasProperty(value, "value") && typeof value.value === "number") {
+				parts.push(String(value.value));
+			}
+			if (hasProperty(value, "unit") && typeof value.unit === "string") {
+				if (
+					hasProperty(value, "value") &&
+					typeof value.value === "number" &&
+					value.unit === "%"
+				) {
+					parts.push(" ");
+				}
 				parts.push(value.unit);
 			}
 
 			return parts.join("");
 		}
 
-		if (datatype === "Coding")
-			return value.display || `${value.system}|${value.code}`;
+		if (datatype === "Coding") {
+			const display: string | undefined =
+				hasProperty(value, "display") && typeof value.display === "string"
+					? value.display
+					: undefined;
 
-		if (datatype === "Identifier") return `${value.system}|${value.value}`;
+			const system: string | undefined =
+				hasProperty(value, "system") && typeof value.system === "string"
+					? value.system
+					: "";
+
+			const code: string | undefined =
+				hasProperty(value, "code") && typeof value.code === "string"
+					? value.code
+					: "";
+
+			return display ?? `${system}|${code}`;
+		}
+
+		if (datatype === "Identifier") {
+			const system: string | undefined =
+				hasProperty(value, "system") && typeof value.system === "string"
+					? value.system
+					: "";
+
+			const identifierValue: string | undefined =
+				hasProperty(value, "value") && typeof value.value === "string"
+					? value.value
+					: "";
+			return `${system}|${identifierValue}`;
+		}
 
 		if (datatype === "CodeableConcept") {
 			if (!value) return null;
 
-			if (value.text) return value.text;
+			if (hasProperty(value, "text") && typeof value.text === "string") {
+				return value.text;
+			}
 
-			if (value.coding) {
+			if (
+				hasProperty(value, "coding") &&
+				typeof value.coding === "object" &&
+				isArray(value.coding)
+			) {
 				const displays = value.coding
-					.map((c: any) => c.display || c.code)
-					.filter(Boolean);
+					.map((c) => {
+						if (typeof c !== "object" || c === null) {
+							return null;
+						}
+						if (hasProperty(c, "display") && typeof c.display === "string") {
+							return c.display;
+						}
+						if (hasProperty(c, "code") && typeof c.code === "string") {
+							return c.code;
+						}
+						return null;
+					})
+					.filter((x) => x !== null);
 				return displays.length > 0 ? displays.join(", ") : null;
 			}
 
 			return null;
 		}
 
-		if (datatype === "Annotation") return humanizeAnnotation(value);
+		if (datatype === "Annotation")
+			return humanizeAnnotation(value as FhirAnnotation);
 
 		if (datatype === "Attachment") return humanizeAttachment(value);
 
@@ -570,7 +816,8 @@ function humanizeValue_(
 
 		if (datatype === "Contributor") return humanizeContributor(value);
 
-		if (datatype === "DataRequirement") return humanizeDataRequirement(value);
+		if (datatype === "DataRequirement")
+			return humanizeDataRequirement(value as FhirDataRequirement);
 
 		if (datatype === "Dosage") return humanizeDosage(value);
 
@@ -579,22 +826,42 @@ function humanizeValue_(
 		if (datatype === "Money") return humanizeMoney(value);
 
 		if (datatype === "ParameterDefinition")
-			return humanizeParameterDefinition(value);
+			return humanizeParameterDefinition(value as FhirParameterDefinition);
 
 		if (datatype === "RelatedArtifact") return humanizeRelatedArtifact(value);
 
-		if (datatype === "SampledData") return humanizeSampledData(value);
+		if (datatype === "SampledData")
+			return humanizeSampledData(value as FhirSampledData);
 
-		if (datatype === "Signature") return humanizeSignature(value);
+		if (datatype === "Signature")
+			return humanizeSignature(value as FhirSignature);
 
 		if (datatype === "Timing") return humanizeTiming(value);
 
-		if (datatype === "UsageContext") return humanizeUsageContext(value);
+		if (datatype === "UsageContext")
+			return humanizeUsageContext(value as FhirUsageContext);
 
-		if (value.coding && value.coding.some((c: any) => c.display))
+		if (
+			hasProperty(value, "coding") &&
+			isArray(value.coding) &&
+			value.coding.some(
+				(c) =>
+					typeof c === "object" &&
+					c !== null &&
+					hasProperty(c, "display") &&
+					typeof c.display === "string",
+			)
+		)
 			return value.coding
-				.map((c: any) => c.display)
-				.filter(Boolean)
+				.map((c) =>
+					typeof c === "object" &&
+					c !== null &&
+					hasProperty(c, "display") &&
+					typeof c.display === "string"
+						? c.display
+						: null,
+				)
+				.filter((x) => x !== null)
 				.join(", ");
 
 		if (typeof value === "string") return value;
@@ -613,13 +880,13 @@ function humanizeValue_(
 
 export function humanizeValue(
 	key: string,
-	value: any,
+	value: unknown,
 	snapshot: Snapshot,
 ): string | React.ReactNode | null {
 	const element = snapshot[key];
 	const datatype = element?.datatype || element?.type;
 
-	if (Array.isArray(value)) {
+	if (isArray(value)) {
 		const humanized = value.map((v) =>
 			humanizeValue_(key, v, datatype || "", element),
 		);
@@ -627,7 +894,7 @@ export function humanizeValue(
 		if (humanized.length === 1) return humanized[0];
 
 		if (humanized.every((h) => typeof h === "string"))
-			return humanized.filter((h) => h && h.trim()).join(", ");
+			return humanized.filter((h) => h.trim()).join(", ");
 
 		return humanized[0];
 	}

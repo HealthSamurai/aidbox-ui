@@ -1,5 +1,5 @@
 import type { ViewDefinitionEditorTab } from "@aidbox-ui/components/ViewDefinition/types";
-import { createFileRoute, useParams } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import ViewDefinitionPage from "../components/ViewDefinition/page";
 
 export type ViewDefinitionSearch = {

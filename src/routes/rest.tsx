@@ -21,7 +21,8 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, Minimize2, Timer } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -563,11 +564,6 @@ function RouteComponent() {
 		getInitialValueInEffect: false,
 		defaultValue: true,
 	});
-
-	// State to store history refresh function
-	const [refreshHistory, setRefreshHistory] = React.useState<
-		(() => void) | null
-	>(null);
 
 	const [panelsMode, setPanelsMode] = useLocalStorage<
 		"horizontal" | "vertical"

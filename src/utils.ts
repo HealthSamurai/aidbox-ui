@@ -177,17 +177,25 @@ const attachChildrenAndMarkLastNodes = (
 ): void => {
 	for (const [parentPath, children] of Object.entries(childrenMap)) {
 		const parentNode = tree[parentPath];
-		if (!parentNode || children.length === 0) continue;
+		if (parentNode === undefined) {
+			continue;
+		}
+
+		if (children.length === 0) {
+			continue;
+		}
+
+		const lastChildPath = children.at(-1);
+		if (lastChildPath === undefined) {
+			continue;
+		}
 
 		parentNode.children = children;
-
-		const lastChildPath = children[children.length - 1];
-		const lastChildNode = tree[lastChildPath!];
+		const lastChildNode = tree[lastChildPath];
 
 		if (
 			lastChildNode?.meta &&
-			(!childrenMap[lastChildPath!] ||
-				childrenMap[lastChildPath!]?.length === 0)
+			(!childrenMap[lastChildPath] || childrenMap[lastChildPath]?.length === 0)
 		) {
 			lastChildNode.meta.lastNode = true;
 		}
