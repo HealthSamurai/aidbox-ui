@@ -53,3 +53,48 @@ export const fetchResourceHistory = async (
 	});
 	return raw as HistoryBundle;
 };
+
+export const createResource = async (
+	resourceType: string,
+	resourceText: string,
+) => {
+	const res = await AidboxCall<Resource>({
+		method: "POST",
+		url: `/fhir/${resourceType}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+		body: resourceText,
+	});
+	return res;
+};
+
+export const updateResource = async (
+	resourceType: string,
+	id: string,
+	resourceText: string,
+) => {
+	const res = await AidboxCall<Resource>({
+		method: "PUT",
+		url: `/fhir/${resourceType}/${id}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+		body: resourceText,
+	});
+	return res;
+};
+
+export const deleteResource = async (resourceType: string, id: string) => {
+	const res = await AidboxCall<Resource>({
+		method: "DELETE",
+		url: `/fhir/${resourceType}/${id}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+	});
+	return res;
+};

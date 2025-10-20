@@ -3,13 +3,13 @@ import type { EditorMode } from "./types";
 
 type EditorTabProps = {
 	mode: EditorMode;
-	resourceText: string;
+	defaultResourceText: string;
 	setResourceText: (text: string) => void;
 };
 
 export const EditorTab = ({
 	mode,
-	resourceText,
+	defaultResourceText,
 	setResourceText,
 }: EditorTabProps) => {
 	return (
@@ -17,7 +17,7 @@ export const EditorTab = ({
 			<div className="relative h-full">
 				<HSComp.CodeEditor
 					mode={mode}
-					currentValue={resourceText}
+					currentValue={defaultResourceText}
 					onChange={setResourceText}
 				/>
 			</div>

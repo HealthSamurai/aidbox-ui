@@ -1,8 +1,9 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import type { NavigateOptions, RegisteredRouter } from "@tanstack/react-router";
+import type * as Router from "@tanstack/react-router";
 import * as yaml from "js-yaml";
 import React from "react";
+import { DeleteButton, SaveButton } from "./action";
 import { fetchResource } from "./api";
 import { EditorTab } from "./editor-tab";
 import { type EditorMode, queryKey, type ResourceEditorTab } from "./types";
@@ -14,7 +15,7 @@ interface ResourceEditorPageProps {
 	tab: ResourceEditorTab;
 	indent?: number;
 	navigate: <T extends string>(
-		opts: NavigateOptions<RegisteredRouter, T, T>,
+		opts: Router.NavigateOptions<Router.RegisteredRouter, T, T>,
 	) => Promise<void>;
 }
 
@@ -25,7 +26,7 @@ export const ResourceEditorPage = ({
 	indent = 2,
 	navigate,
 }: ResourceEditorPageProps) => {
-	const [mode, setMode] = React.useState<EditorMode>("json");
+	const [mode, _setMode] = React.useState<EditorMode>("json");
 	const [resourceText, setResourceText] = React.useState<string>(
 		JSON.stringify({ resourceType: resourceType }, undefined, indent),
 	);
@@ -41,6 +42,7 @@ export const ResourceEditorPage = ({
 			if (!id) throw new Error("Impossible");
 			return await fetchResource(resourceType, id);
 		},
+		retry: false,
 	});
 
 	React.useEffect(() => {
@@ -77,6 +79,49 @@ export const ResourceEditorPage = ({
 	const handleOnTabSelect = (value: ResourceEditorTab) =>
 		navigate({ search: { tab: value } });
 
+	const tabs = [
+		{
+			trigger: <HSComp.TabsTrigger value="code">Edit</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent value={"code"} className="py-1 px-2.5">
+					<EditorTab
+						mode={mode}
+						defaultResourceText={resourceText}
+						setResourceText={setResourceText}
+					/>
+				</HSComp.TabsContent>
+			),
+		},
+	];
+
+	const actions = [
+		{
+			content: (
+				<SaveButton
+					resourceType={resourceType}
+					id={id}
+					resourceText={resourceText}
+				/>
+			),
+		},
+	];
+
+	if (id) {
+		tabs.push({
+			trigger: (
+				<HSComp.TabsTrigger value="version">Versions</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value={"version"}>
+					<VersionsTab id={id} resourceType={resourceType} />
+				</HSComp.TabsContent>
+			),
+		});
+		actions.push({
+			content: <DeleteButton resourceType={resourceType} id={id} />,
+		});
+	}
+
 	return (
 		<HSComp.Tabs
 			defaultValue={tab}
@@ -85,22 +130,13 @@ export const ResourceEditorPage = ({
 		>
 			<div className="flex items-center justify-between gap-4 bg-bg-secondary px-6 border-b h-10 flex-none">
 				<div className="flex items-center gap-3">
-					<HSComp.TabsList>
-						<HSComp.TabsTrigger value="code">Edit</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="version">Versions</HSComp.TabsTrigger>
-					</HSComp.TabsList>
+					<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
+				</div>
+				<div className="flex items-center gap-3">
+					{actions.map((a) => a.content)}
 				</div>
 			</div>
-			<HSComp.TabsContent value={"code"} className="py-1 px-2.5">
-				<EditorTab
-					mode={mode}
-					resourceText={resourceText}
-					setResourceText={setResourceText}
-				/>
-			</HSComp.TabsContent>
-			<HSComp.TabsContent value={"version"}>
-				<VersionsTab id={id!} resourceType={resourceType} />
-			</HSComp.TabsContent>
+			{tabs.map((t) => t.content)}
 		</HSComp.Tabs>
 	);
 };
