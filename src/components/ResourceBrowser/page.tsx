@@ -322,13 +322,13 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 		return <div>No profiles found</div>;
 	}
 
-	const makeClickableCell = (renderer: (value: any) => any) => {
+	const makeClickableCell = (renderer: (info: any) => any) => {
 		return (info: any) => (
 			<div
 				className="cursor-pointer"
 				onClick={() => setSelectedProfile(info.row.original)}
 			>
-				{renderer(info.getValue())}
+				{renderer(info)}
 			</div>
 		);
 	};
@@ -338,64 +338,50 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 			accessorKey: "default?",
 			size: 16,
 			header: <span className="pl-5"></span>,
-			cell: makeClickableCell((value) =>
-				value ? (
+			cell: makeClickableCell((info) =>
+				info.getValue() ? (
 					<span title="default profile">
 						<Lucide.Diamond size="17px" />
 					</span>
 				) : (
-					""
+					<Lucide.Minus size="17px" />
 				),
 			),
 		},
 		{
 			accessorKey: "url",
 			header: <span className="pl-5">URL</span>,
-			cell: makeClickableCell((value) => value || ""),
+			cell: makeClickableCell((info) => info.row.original.entity?.url || ""),
 		},
 		{
 			accessorKey: "name",
 			header: <span className="pl-5">Name</span>,
-			cell: makeClickableCell((value) => value || ""),
+			cell: makeClickableCell((info) => info.row.original.entity?.name || ""),
 		},
 		{
 			accessorKey: "version",
 			header: <span className="pl-5">Version</span>,
-			cell: makeClickableCell((value) => value || ""),
+			cell: makeClickableCell(
+				(info) => info.row.original.entity?.version || "",
+			),
 		},
 		{
 			accessorKey: "ig",
 			header: <span className="pl-5">IG</span>,
-			cell: makeClickableCell((_value) => ""), // TODO
+			cell: makeClickableCell((info) => {
+				const { name, version } = info.row.original.entity;
+				const ig = `${name}#${version}`;
+				// <Router.Link to="/ig/$ig" params={{ ig: ig }} > {ig} </Router.Link> // FIXME when FAR in new UI
+				return ig;
+			}),
 		},
 	];
-
-	// Adjust column accessors to read from entity
-	const columnsWithEntity = columns.map((col) => {
-		if (col.accessorKey === "default?") {
-			return col;
-		}
-		return {
-			...col,
-			cell: (info: any) => {
-				const value = info.row.original.entity?.[col.accessorKey];
-				return (
-					<div
-						className="cursor-pointer"
-						onClick={() => setSelectedProfile(info.row.original)}
-					>
-						{value || ""}
-					</div>
-				);
-			},
-		};
-	});
 
 	if (!selectedProfile) {
 		return (
 			<div className="h-full overflow-hidden">
 				<HSComp.DataTable
-					columns={columnsWithEntity as any}
+					columns={columns as any}
 					data={Object.values(data)}
 					stickyHeader
 				/>
@@ -411,7 +397,7 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 			>
 				<HSComp.ResizablePanel minSize={30}>
 					<HSComp.DataTable
-						columns={columnsWithEntity as any}
+						columns={columns as any}
 						data={Object.values(data)}
 						stickyHeader
 					/>
