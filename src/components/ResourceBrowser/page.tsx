@@ -489,7 +489,7 @@ const SearchParametersTabContent = ({
 	resourceType,
 }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
-		queryKey: [Constants.PageID, "resource-profiles-list"],
+		queryKey: [Constants.PageID, "resource-search-parameters-list"],
 		queryFn: async () => {
 			const response = await AidboxCallWithMeta({
 				method: "GET",
