@@ -78,7 +78,7 @@ export const ResourcesTabCreateButton = () => {
 		<Router.Link
 			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
-			search={{ tab: "code" }}
+			search={{ tab: "code", mode: "json" }}
 		>
 			<HSComp.Button variant="secondary">
 				<Lucide.PlusIcon className="text-fg-brand-primary" />
@@ -211,7 +211,7 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 				<Router.Link
 					className="text-text-link hover:underline pl-5"
 					to="/resource/$resourceType/edit/$id"
-					search={{ tab: "code" }}
+					search={{ tab: "code", mode: "json" }}
 					params={{
 						resourceType: resourcesPageContext.resourceType,
 						id: info.getValue(),

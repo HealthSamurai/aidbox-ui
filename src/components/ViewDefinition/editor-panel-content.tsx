@@ -71,7 +71,7 @@ export const EditorPanelActions = () => {
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
-				search: { tab: "code" },
+				search: { tab: "code", mode: "json" },
 			});
 		},
 		onError: utils.onError(),

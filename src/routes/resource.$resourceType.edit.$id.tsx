@@ -10,7 +10,7 @@ import { validateSearch } from "./resource.$resourceType.create";
 const PageComponent = () => {
 	const { id } = Route.useParams();
 	const navigate = useNavigate({ from: "/resource/$resourceType/edit/$id" });
-	const { tab } = useSearch({ from: "/resource/$resourceType/edit/$id" });
+	const { tab, mode } = useSearch({ from: "/resource/$resourceType/edit/$id" });
 	const { resourceType } = useMatch({
 		from: "/resource/$resourceType/edit/$id",
 	}).params;
@@ -19,6 +19,7 @@ const PageComponent = () => {
 			id={id}
 			resourceType={resourceType}
 			tab={tab}
+			mode={mode}
 			navigate={navigate}
 		/>
 	);

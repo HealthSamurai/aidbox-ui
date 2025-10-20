@@ -55,7 +55,7 @@ export const fetchResourceHistory = async (
 
 export const createResource = async (
 	resourceType: string,
-	resourceText: string,
+	resource: Resource,
 ) => {
 	const res = await AidboxCall<Resource>({
 		method: "POST",
@@ -64,7 +64,7 @@ export const createResource = async (
 			"Content-Type": "application/json",
 			Accept: "application/json",
 		},
-		body: resourceText,
+		body: resource,
 	});
 	return res;
 };
@@ -72,7 +72,7 @@ export const createResource = async (
 export const updateResource = async (
 	resourceType: string,
 	id: string,
-	resourceText: string,
+	resource: Resource,
 ) => {
 	const res = await AidboxCall<Resource>({
 		method: "PUT",
@@ -81,7 +81,7 @@ export const updateResource = async (
 			"Content-Type": "application/json",
 			Accept: "application/json",
 		},
-		body: resourceText,
+		body: resource,
 	});
 	return res;
 };

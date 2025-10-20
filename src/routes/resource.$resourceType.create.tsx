@@ -1,8 +1,11 @@
 import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
+	type EditorMode,
+	isEditorMode,
 	isResourceEditorTab,
 	type ResourceEditorTab,
 } from "@aidbox-ui/components/ResourceEditor/types";
+import { useLocalStorage } from "@aidbox-ui/hooks";
 import {
 	createFileRoute,
 	useMatch,
@@ -12,6 +15,7 @@ import {
 
 export type ViewDefinitionSearch = {
 	tab: ResourceEditorTab;
+	mode: EditorMode;
 };
 
 export function validateSearch(
@@ -26,11 +30,21 @@ export function validateSearch(
 		console.error("Invalid tab", rawSearch.tab, "force to 'code'");
 		tab = "code";
 	}
-	return { tab };
+
+	let mode: EditorMode;
+	if (isEditorMode(rawSearch.mode)) {
+		mode = rawSearch.mode;
+	} else if (rawSearch.mode === undefined) {
+		mode = "json";
+	} else {
+		console.error("Invalid mode", rawSearch.mode, "force to 'code'");
+		mode = "json";
+	}
+	return { tab, mode };
 }
 
 const PageComponent = () => {
-	const { tab } = useSearch({ from: "/resource/$resourceType/create" });
+	const { tab, mode } = useSearch({ from: "/resource/$resourceType/create" });
 	const { resourceType } = useMatch({
 		from: "/resource/$resourceType/create",
 	}).params;
@@ -39,6 +53,7 @@ const PageComponent = () => {
 		<ResourceEditorPage
 			resourceType={resourceType}
 			tab={tab}
+			mode={mode}
 			navigate={navigate}
 		/>
 	);

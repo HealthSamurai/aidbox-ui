@@ -1,18 +1,19 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
-import * as yaml from "js-yaml";
+import * as YAML from "js-yaml";
 import React from "react";
 import { DeleteButton, SaveButton } from "./action";
 import { fetchResource } from "./api";
 import { EditorTab } from "./editor-tab";
-import { type EditorMode, queryKey, type ResourceEditorTab } from "./types";
+import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
 
 interface ResourceEditorPageProps {
 	id?: string;
 	resourceType: string;
 	tab: ResourceEditorTab;
+	mode: EditorMode;
 	indent?: number;
 	navigate: <T extends string>(
 		opts: Router.NavigateOptions<Router.RegisteredRouter, T, T>,
@@ -23,21 +24,25 @@ export const ResourceEditorPage = ({
 	id,
 	resourceType,
 	tab,
+	mode,
 	indent = 2,
 	navigate,
 }: ResourceEditorPageProps) => {
-	const [mode, _setMode] = React.useState<EditorMode>("json");
+	const [formatSignal, setFormatSignal] = React.useState<unknown>({});
 	const [resourceText, setResourceText] = React.useState<string>(
 		JSON.stringify({ resourceType: resourceType }, undefined, indent),
 	);
+	const setMode = (mode: EditorMode) => {
+		navigate({ search: { mode: mode } });
+	};
 
 	const {
-		data: resource,
+		data: resourceData,
 		isLoading,
 		error,
 	} = useQuery({
 		enabled: id !== undefined,
-		queryKey: [queryKey, resourceType, id],
+		queryKey: [pageId, resourceType, id],
 		queryFn: async () => {
 			if (!id) throw new Error("Impossible");
 			return await fetchResource(resourceType, id);
@@ -46,13 +51,15 @@ export const ResourceEditorPage = ({
 	});
 
 	React.useEffect(() => {
+		// FIXME: don't work for Create (resource always undefined), drop state on switch mode
 		let text: string;
-		if (resource) {
-			if (mode === "yaml") text = yaml.dump(resource, { indent });
-			else text = JSON.stringify(resource, null, indent);
+		if (resourceData) {
+			if (mode === "yaml") text = YAML.dump(resourceData, { indent });
+			else text = JSON.stringify(resourceData, null, indent);
+			formatSignal;
 			setResourceText(text);
 		}
-	}, [resource, mode, indent]);
+	}, [resourceData, mode, indent, formatSignal]);
 
 	if (isLoading) {
 		return (
@@ -76,9 +83,6 @@ export const ResourceEditorPage = ({
 		);
 	}
 
-	const handleOnTabSelect = (value: ResourceEditorTab) =>
-		navigate({ search: { tab: value } });
-
 	const tabs = [
 		{
 			trigger: <HSComp.TabsTrigger value="code">Edit</HSComp.TabsTrigger>,
@@ -86,6 +90,8 @@ export const ResourceEditorPage = ({
 				<HSComp.TabsContent value={"code"} className="py-1 px-2.5">
 					<EditorTab
 						mode={mode}
+						setMode={setMode}
+						triggerFormat={() => setFormatSignal({})}
 						defaultResourceText={resourceText}
 						setResourceText={setResourceText}
 					/>
@@ -100,7 +106,8 @@ export const ResourceEditorPage = ({
 				<SaveButton
 					resourceType={resourceType}
 					id={id}
-					resourceText={resourceText}
+					resource={resourceText}
+					mode={mode}
 				/>
 			),
 		},
@@ -121,6 +128,9 @@ export const ResourceEditorPage = ({
 			content: <DeleteButton resourceType={resourceType} id={id} />,
 		});
 	}
+
+	const handleOnTabSelect = (value: ResourceEditorTab) =>
+		navigate({ search: { tab: value } });
 
 	return (
 		<HSComp.Tabs

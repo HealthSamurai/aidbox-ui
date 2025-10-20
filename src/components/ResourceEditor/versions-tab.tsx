@@ -8,7 +8,7 @@ import {
 	type HistoryBundle,
 	type HistoryEntry,
 } from "./api";
-import { queryKey } from "./types";
+import { pageId } from "./types";
 
 const prettyStatus = (code: string) =>
 	({ "201": "Created", "200": "Updated", "204": "Deleted" })[code] || code;
@@ -80,7 +80,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		isLoading,
 		error,
 	} = useQuery({
-		queryKey: [queryKey, resourceType, id, "history"],
+		queryKey: [pageId, resourceType, id, "history"],
 		queryFn: async () => {
 			return await fetchResourceHistory(resourceType, id);
 		},
