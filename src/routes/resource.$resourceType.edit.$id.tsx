@@ -1,4 +1,4 @@
-import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
+import { ResourceEditorPageWithLoader } from "@aidbox-ui/components/ResourceEditor/page";
 import {
 	createFileRoute,
 	useMatch,
@@ -15,7 +15,7 @@ const PageComponent = () => {
 		from: "/resource/$resourceType/edit/$id",
 	}).params;
 	return (
-		<ResourceEditorPage
+		<ResourceEditorPageWithLoader
 			id={id}
 			resourceType={resourceType}
 			tab={tab}

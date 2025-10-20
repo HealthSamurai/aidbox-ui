@@ -1,4 +1,7 @@
-import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
+import {
+	ResourceEditorPage,
+	ResourceEditorPageWithLoader,
+} from "@aidbox-ui/components/ResourceEditor/page";
 import {
 	type EditorMode,
 	isEditorMode,
@@ -51,6 +54,7 @@ const PageComponent = () => {
 	const navigate = useNavigate();
 	return (
 		<ResourceEditorPage
+			initialResource={{ resourceType: resourceType }}
 			resourceType={resourceType}
 			tab={tab}
 			mode={mode}

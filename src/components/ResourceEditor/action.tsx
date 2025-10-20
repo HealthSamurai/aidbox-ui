@@ -36,6 +36,7 @@ export const SaveButton = ({
 		},
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
+			if (!resource.id) throw new Error("Resource ID is undefined");
 			if (!id)
 				navigate({
 					to: `/resource/$resourceType/edit/$id`,

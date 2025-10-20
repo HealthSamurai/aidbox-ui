@@ -4,7 +4,7 @@ import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { DeleteButton, SaveButton } from "./action";
-import { fetchResource } from "./api";
+import { fetchResource, type Resource } from "./api";
 import { EditorTab } from "./editor-tab";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
@@ -20,21 +20,10 @@ interface ResourceEditorPageProps {
 	) => Promise<void>;
 }
 
-export const ResourceEditorPage = ({
-	id,
-	resourceType,
-	tab,
-	mode,
-	indent = 2,
-	navigate,
-}: ResourceEditorPageProps) => {
-	const [formatSignal, setFormatSignal] = React.useState<unknown>({});
-	const [resourceText, setResourceText] = React.useState<string>(
-		JSON.stringify({ resourceType: resourceType }, undefined, indent),
-	);
-	const setMode = (mode: EditorMode) => {
-		navigate({ search: { mode: mode } });
-	};
+export const ResourceEditorPageWithLoader = (
+	props: ResourceEditorPageProps,
+) => {
+	const { resourceType, id } = props;
 
 	const {
 		data: resourceData,
@@ -49,17 +38,6 @@ export const ResourceEditorPage = ({
 		},
 		retry: false,
 	});
-
-	React.useEffect(() => {
-		// FIXME: don't work for Create (resource always undefined), drop state on switch mode
-		let text: string;
-		if (resourceData) {
-			if (mode === "yaml") text = YAML.dump(resourceData, { indent });
-			else text = JSON.stringify(resourceData, null, indent);
-			formatSignal;
-			setResourceText(text);
-		}
-	}, [resourceData, mode, indent, formatSignal]);
 
 	if (isLoading) {
 		return (
@@ -82,6 +60,38 @@ export const ResourceEditorPage = ({
 			</div>
 		);
 	}
+	if (!resourceData) throw new Error("Resource not found");
+	return <ResourceEditorPage initialResource={resourceData} {...props} />;
+};
+
+export const ResourceEditorPage = ({
+	id,
+	resourceType,
+	tab,
+	mode,
+	indent = 2,
+	navigate,
+	initialResource,
+}: ResourceEditorPageProps & { initialResource: Resource }) => {
+	const [formatSignal, setFormatSignal] = React.useState<unknown>({});
+	const [resource, setResource] = React.useState<Resource>(initialResource);
+	const [resourceText, setResourceText] = React.useState<string>(
+		JSON.stringify(initialResource, undefined, indent),
+	);
+	const setMode = (mode: EditorMode) => {
+		navigate({ search: { mode: mode } });
+	};
+
+	React.useEffect(() => {
+		let text: string;
+		if (mode === "yaml") {
+			text = YAML.dump(resource, { indent });
+		} else {
+			text = JSON.stringify(resource, null, indent);
+		}
+		setResourceText(text);
+		formatSignal; // NOTE: for side effect only
+	}, [resource, mode, indent, formatSignal]);
 
 	const tabs = [
 		{
@@ -92,8 +102,18 @@ export const ResourceEditorPage = ({
 						mode={mode}
 						setMode={setMode}
 						triggerFormat={() => setFormatSignal({})}
+						resourceText={resourceText}
 						defaultResourceText={resourceText}
-						setResourceText={setResourceText}
+						setResourceText={(text: string) => {
+							setResourceText(text);
+							try {
+								const parsed =
+									mode === "yaml" ? YAML.load(text) : JSON.parse(text);
+								setResource(parsed);
+							} catch {
+								// Keep text as-is if parsing fails
+							}
+						}}
 					/>
 				</HSComp.TabsContent>
 			),

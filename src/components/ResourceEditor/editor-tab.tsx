@@ -50,6 +50,7 @@ type EditorTabProps = {
 	setMode: (m: EditorMode) => void;
 	triggerFormat: () => void;
 	defaultResourceText: string;
+	resourceText: string;
 	setResourceText: (text: string) => void;
 };
 
@@ -57,6 +58,7 @@ export const EditorTab = ({
 	mode,
 	setMode,
 	triggerFormat,
+	resourceText,
 	defaultResourceText,
 	setResourceText,
 }: EditorTabProps) => {
@@ -69,7 +71,8 @@ export const EditorTab = ({
 			<div className="relative h-full">
 				<HSComp.CodeEditor
 					mode={mode}
-					currentValue={defaultResourceText}
+					defaultValue={defaultResourceText}
+					currentValue={resourceText}
 					onChange={setResourceText}
 				/>
 			</div>

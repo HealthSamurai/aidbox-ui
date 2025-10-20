@@ -2,7 +2,7 @@ import { AidboxCall } from "@aidbox-ui/api/auth";
 
 export type Resource = {
 	resourceType: string;
-	id: string;
+	id?: string;
 	[key: string]: unknown;
 };
 
