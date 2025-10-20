@@ -1,14 +1,14 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
+import { diff } from "../../utils/diff";
+import { traverseTree } from "../../utils/tree-walker";
 import {
 	fetchResourceHistory,
 	type HistoryBundle,
 	type HistoryEntry,
 } from "./api";
 import { queryKey } from "./types";
-import { diff } from "../../utils/diff";
-import { traverseTree } from "../../utils/tree-walker";
 
 const prettyStatus = (code: string) =>
 	({ "201": "Created", "200": "Updated", "204": "Deleted" })[code] || code;

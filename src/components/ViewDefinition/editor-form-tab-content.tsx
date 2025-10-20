@@ -37,6 +37,47 @@ import { useDebounce, useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
 
+type ItemMeta = {
+	type:
+		| "select-column"
+		| "select-forEach"
+		| "select-forEachOrNull"
+		| "select-unionAll"
+		| "column-item"
+		| "column-add"
+		| "select-add-nested"
+		| "constant-value"
+		| "where-value"
+		| "properties"
+		| "name"
+		| "title"
+		| "description"
+		| "status"
+		| "url"
+		| "publisher"
+		| "copyright"
+		| "experimental"
+		| "fhir version"
+		| "identifier"
+		| "system"
+		| "value"
+		| "constant"
+		| "constant-add"
+		| "where"
+		| "where-add"
+		| "select"
+		| "select-add"
+		| "column"
+		| "resource";
+	columnData?: ColumnItem;
+	selectData?: SelectItemInternal;
+	selectItemId?: string;
+	parentId?: string;
+	lastNode?: boolean;
+	constantData?: ConstantItem;
+	whereData?: WhereItem;
+};
+
 interface ConstantItem {
 	id: string;
 	name: string;
@@ -120,13 +161,17 @@ const buildSelectArray = (
 					})),
 				};
 			} else if (item.type === "forEach") {
-				const result: any = { forEach: item.expression || "" };
+				const result: Types.ViewDefinitionSelectItem = {
+					forEach: item.expression || "",
+				};
 				if (item.children && item.children.length > 0) {
 					result.select = buildSelectArray(item.children);
 				}
 				return result;
 			} else if (item.type === "forEachOrNull") {
-				const result: any = { forEachOrNull: item.expression || "" };
+				const result: Types.ViewDefinitionSelectItem = {
+					forEachOrNull: item.expression || "",
+				};
 				if (item.children && item.children.length > 0) {
 					result.select = buildSelectArray(item.children);
 				}
@@ -143,7 +188,7 @@ const buildSelectArray = (
 
 const findPath = (
 	items: SelectItemInternal[],
-	targetId: string,
+	targetId: string | undefined,
 	path: string[] = [],
 ): string[] | null => {
 	for (const item of items) {
@@ -219,12 +264,12 @@ export const FormTabContent = () => {
 		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
 			setLastViewDefId(viewDefinition.id || null);
 			if (
-				(viewDefinition as any)?.constant &&
-				Array.isArray((viewDefinition as any).constant) &&
-				(viewDefinition as any).constant.length > 0
+				viewDefinition?.constant &&
+				Array.isArray(viewDefinition.constant) &&
+				viewDefinition.constant.length > 0
 			) {
-				const constantsWithIds = (viewDefinition as any).constant.map(
-					(c: any, index: number) => ({
+				const constantsWithIds = viewDefinition.constant.map(
+					(c, index: number) => ({
 						id: `constant-${index}-${crypto.randomUUID()}`,
 						name: c.name || "",
 						valueString: c.valueString || "",
@@ -237,16 +282,14 @@ export const FormTabContent = () => {
 
 			// Initialize where conditions from viewDefinition
 			if (
-				(viewDefinition as any)?.where &&
-				Array.isArray((viewDefinition as any).where) &&
-				(viewDefinition as any).where.length > 0
+				viewDefinition?.where &&
+				Array.isArray(viewDefinition.where) &&
+				viewDefinition.where.length > 0
 			) {
-				const whereWithIds = (viewDefinition as any).where.map(
-					(w: any, index: number) => ({
-						id: `where-${index}-${crypto.randomUUID()}`,
-						path: w.path || "",
-					}),
-				);
+				const whereWithIds = viewDefinition.where.map((w, index: number) => ({
+					id: `where-${index}-${crypto.randomUUID()}`,
+					path: w.path || "",
+				}));
 				setWhereConditions(whereWithIds);
 			} else {
 				setWhereConditions([]);
@@ -266,7 +309,18 @@ export const FormTabContent = () => {
 		(
 			updatedConstants?: ConstantItem[],
 			updatedWhere?: WhereItem[],
-			updatedFields?: { name?: string },
+			updatedFields?: {
+				name?: string;
+				title?: string;
+				description?: string;
+				status?: string;
+				url?: string;
+				publisher?: string;
+				copyright?: string;
+				experimental?: boolean;
+				fhirVersion?: string[] | undefined;
+				identifier?: { system?: string; value?: string }[];
+			},
 			updatedSelectItems?: SelectItemInternal[],
 		) => {
 			if (viewDefinition) {
@@ -281,7 +335,7 @@ export const FormTabContent = () => {
 
 				const selectArray = buildSelectArray(updatedSelectItems || selectItems);
 
-				const updatedViewDef: any = {
+				const updatedViewDef = {
 					...viewDefinition,
 					...(updatedFields || {}),
 				};
@@ -394,44 +448,44 @@ export const FormTabContent = () => {
 
 	// Function to update title field
 	const updateTitle = (title: string) => {
-		updateViewDefinition(undefined, undefined, { title } as any);
+		updateViewDefinition(undefined, undefined, { title });
 	};
 
 	// Function to update description field
 	const updateDescription = (description: string) => {
-		updateViewDefinition(undefined, undefined, { description } as any);
+		updateViewDefinition(undefined, undefined, { description });
 	};
 
 	// Function to update status field
 	const updateStatus = (status: string) => {
-		updateViewDefinition(undefined, undefined, { status } as any);
+		updateViewDefinition(undefined, undefined, { status });
 	};
 
 	// Function to update url field
 	const updateUrl = (url: string) => {
-		updateViewDefinition(undefined, undefined, { url } as any);
+		updateViewDefinition(undefined, undefined, { url });
 	};
 
 	// Function to update publisher field
 	const updatePublisher = (publisher: string) => {
-		updateViewDefinition(undefined, undefined, { publisher } as any);
+		updateViewDefinition(undefined, undefined, { publisher });
 	};
 
 	// Function to update copyright field
 	const updateCopyright = (copyright: string) => {
-		updateViewDefinition(undefined, undefined, { copyright } as any);
+		updateViewDefinition(undefined, undefined, { copyright });
 	};
 
 	// Function to update experimental field
 	const updateExperimental = (experimental: boolean) => {
-		updateViewDefinition(undefined, undefined, { experimental } as any);
+		updateViewDefinition(undefined, undefined, { experimental });
 	};
 
 	// Function to update fhirVersion field
 	const updateFhirVersions = (fhirVersions: string[]) => {
 		updateViewDefinition(undefined, undefined, {
 			fhirVersion: fhirVersions.length > 0 ? fhirVersions : undefined,
-		} as any);
+		});
 	};
 
 	// Function to add a new select item
@@ -650,7 +704,7 @@ export const FormTabContent = () => {
 	};
 
 	// Dynamic tree generation based on current constants and where conditions
-	const tree: Record<string, TreeViewItem<any>> = useMemo(() => {
+	const tree: Record<string, TreeViewItem<ItemMeta>> = useMemo(() => {
 		const constantChildren =
 			constants.length > 0 ? constants.map((c) => c.id) : [];
 		constantChildren.push("_constant_add");
@@ -659,7 +713,7 @@ export const FormTabContent = () => {
 			whereConditions.length > 0 ? whereConditions.map((w) => w.id) : [];
 		whereChildren.push("_where_add");
 
-		const treeStructure: Record<string, TreeViewItem<any>> = {};
+		const treeStructure: Record<string, TreeViewItem<ItemMeta>> = {};
 
 		// Build tree for nested select items
 		const buildSelectTree = (items: SelectItemInternal[]): string[] => {
@@ -668,7 +722,7 @@ export const FormTabContent = () => {
 			items.forEach((item) => {
 				children.push(item.id);
 
-				treeStructure[item.id] = {
+				const currentItem: TreeViewItem<ItemMeta> = {
 					name: item.id,
 					meta: {
 						type: `select-${item.type}`,
@@ -676,6 +730,8 @@ export const FormTabContent = () => {
 					},
 					children: [],
 				};
+
+				treeStructure[item.id] = currentItem;
 
 				if (item.type === "column" && item.columns) {
 					const columnChildren: string[] = [];
@@ -698,7 +754,7 @@ export const FormTabContent = () => {
 							selectItemId: item.id,
 						},
 					};
-					treeStructure[item.id]!.children = columnChildren;
+					currentItem.children = columnChildren;
 				} else if (
 					item.type === "forEach" ||
 					item.type === "forEachOrNull" ||
@@ -720,14 +776,14 @@ export const FormTabContent = () => {
 						},
 					};
 
-					treeStructure[item.id]!.children = nodeChildren;
+					currentItem.children = nodeChildren;
 				}
 			});
 
 			return children;
 		};
 
-		Object.assign(treeStructure, {
+		const newTreeStructure: Record<string, TreeViewItem<ItemMeta>> = {
 			root: {
 				name: "root",
 				children: ["_properties", "_constant", "_where", "_select"],
@@ -862,7 +918,9 @@ export const FormTabContent = () => {
 					type: "select-add",
 				},
 			},
-		});
+		};
+
+		Object.assign(treeStructure, newTreeStructure);
 
 		constants.forEach((constant, index) => {
 			treeStructure[constant.id] = {
@@ -890,8 +948,8 @@ export const FormTabContent = () => {
 	}, [constants, whereConditions, selectItems]);
 
 	const onDropTreeItem = (
-		_tree: TreeInstance<TreeViewItem<any>>,
-		item: ItemInstance<TreeViewItem<any>>,
+		_tree: TreeInstance<TreeViewItem<ItemMeta>>,
+		item: ItemInstance<TreeViewItem<ItemMeta>>,
 		newChildren: string[],
 	) => {
 		item.getItemData().children = newChildren;
@@ -1045,12 +1103,12 @@ export const FormTabContent = () => {
 		}
 	};
 
-	const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
+	const labelView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 		const selectData = item.getItemData()?.meta?.selectData;
 		const isFolder = item.isFolder();
 		let additionalClass = "";
-		let label = metaType;
+		let label: string | undefined = metaType;
 
 		if (metaType === "column") {
 			additionalClass = "text-blue-500 bg-blue-100";
@@ -1101,16 +1159,17 @@ export const FormTabContent = () => {
 		};
 
 		return (
-			<span
+			<button
+				type="button"
 				className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
 				onClick={onLabelClickFn}
 			>
 				{label}
-			</span>
+			</button>
 		);
 	};
 
-	const customItemView = (item: ItemInstance<TreeViewItem<any>>) => {
+	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 		const _itemId = item.getId();
 		const _itemProps = item.getProps();
@@ -1164,7 +1223,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Title"
-								value={(viewDefinition as any)?.title || ""}
+								value={viewDefinition?.title || ""}
 								onChange={(value) => updateTitle(value)}
 							/>
 						</div>
@@ -1177,7 +1236,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Description"
-								value={(viewDefinition as any)?.description || ""}
+								value={viewDefinition?.description || ""}
 								onChange={(value) => updateDescription(value)}
 							/>
 						</div>
@@ -1189,7 +1248,7 @@ export const FormTabContent = () => {
 						{labelView(item)}
 						<div className="w-[50%]">
 							<Select
-								value={(viewDefinition as any)?.status || ""}
+								value={viewDefinition?.status || ""}
 								onValueChange={(value) => updateStatus(value)}
 							>
 								<SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
@@ -1212,7 +1271,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="URL"
-								value={(viewDefinition as any)?.url || ""}
+								value={viewDefinition?.url || ""}
 								onChange={(value) => updateUrl(value)}
 							/>
 						</div>
@@ -1225,7 +1284,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Publisher"
-								value={(viewDefinition as any)?.publisher || ""}
+								value={viewDefinition?.publisher || ""}
 								onChange={(value) => updatePublisher(value)}
 							/>
 						</div>
@@ -1238,7 +1297,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Copyright"
-								value={(viewDefinition as any)?.copyright || ""}
+								value={viewDefinition?.copyright || ""}
 								onChange={(value) => updateCopyright(value)}
 							/>
 						</div>
@@ -1250,7 +1309,7 @@ export const FormTabContent = () => {
 						{labelView(item)}
 						<div className="w-[50%] flex items-center pl-2">
 							<Checkbox
-								checked={(viewDefinition as any)?.experimental || false}
+								checked={viewDefinition?.experimental || false}
 								onCheckedChange={(checked) =>
 									updateExperimental(checked === true)
 								}
@@ -1285,7 +1344,7 @@ export const FormTabContent = () => {
 					{ value: "3.0.1", label: "3.0.1" },
 					{ value: "3.0.0", label: "3.0.0" },
 				];
-				const selectedVersions = (viewDefinition as any)?.fhirVersion || [];
+				const selectedVersions = viewDefinition?.fhirVersion || [];
 
 				return (
 					<div className="flex w-full items-center justify-between">
@@ -1312,13 +1371,13 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Identifier system"
-								value={(viewDefinition as any)?.identifier?.[0]?.system || ""}
+								value={viewDefinition?.identifier?.[0]?.system || ""}
 								onChange={(value) => {
 									const currentIdentifier =
-										(viewDefinition as any)?.identifier?.[0] || {};
+										viewDefinition?.identifier?.[0] || {};
 									updateViewDefinition(undefined, undefined, {
 										identifier: [{ ...currentIdentifier, system: value }],
-									} as any);
+									});
 								}}
 							/>
 						</div>
@@ -1331,13 +1390,13 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Identifier value"
-								value={(viewDefinition as any)?.identifier?.[0]?.value || ""}
+								value={viewDefinition?.identifier?.[0]?.value || ""}
 								onChange={(value) => {
 									const currentIdentifier =
-										(viewDefinition as any)?.identifier?.[0] || {};
+										viewDefinition?.identifier?.[0] || {};
 									updateViewDefinition(undefined, undefined, {
 										identifier: [{ ...currentIdentifier, value }],
-									} as any);
+									});
 								}}
 							/>
 						</div>
@@ -1411,44 +1470,44 @@ export const FormTabContent = () => {
 						<DropdownMenuContent align="start">
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"column",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("column", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								Column
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"forEach",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("forEach", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								forEach
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"forEachOrNull",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("forEachOrNull", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								forEachOrNull
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"unionAll",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("unionAll", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								unionAll
@@ -1573,7 +1632,9 @@ export const FormTabContent = () => {
 						variant="link"
 						size="small"
 						className="px-0"
-						onClick={() => addColumnToSelectItem(selectItemId)}
+						onClick={() =>
+							selectItemId ? addColumnToSelectItem(selectItemId) : undefined
+						}
 						asChild
 					>
 						<span>
@@ -1684,14 +1745,6 @@ export const FormTabContent = () => {
 		}
 	};
 
-	// Calculate expandedItemIds: all tree item IDs except those in collapsedItemIds
-	const expandedItemIds = useMemo(() => {
-		const allItemIds = Object.keys(tree).filter(
-			(item) => item !== "_properties",
-		);
-		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
-	}, [tree, collapsedItemIds]);
-
 	// Initialize the tree keys on first render
 	useEffect(() => {
 		if (previousTreeKeysRef.current === "") {
@@ -1706,7 +1759,7 @@ export const FormTabContent = () => {
 	return (
 		<TreeView
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
-			itemLabelClassFn={(item: ItemInstance<TreeViewItem<any>>) => {
+			itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 				const metaType = item.getItemData()?.meta?.type;
 
 				if (
@@ -1730,12 +1783,6 @@ export const FormTabContent = () => {
 			}}
 			items={tree}
 			rootItemId="root"
-			// expandedItems={expandedItemIds as any}
-			// onExpandedItemsChange={(expandedItems: any) =>
-			// 	setCollapsedItemIds(
-			// 		Object.keys(tree).filter((item) => !expandedItems.includes(item)),
-			// 	)
-			// }
 			customItemView={customItemView}
 			disableHover={true}
 			canReorder={true}

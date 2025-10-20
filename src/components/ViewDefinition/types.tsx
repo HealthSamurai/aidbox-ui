@@ -10,12 +10,35 @@ export interface ViewDefinitionSelectItem {
 	select?: ViewDefinitionSelectItem[];
 }
 
+export interface ViewDefinitionConstant {
+	name: string;
+	valueString?: string;
+}
+
+export interface ViewDefinitionWhere {
+	path: string;
+}
+
 export interface ViewDefinition {
 	resourceType: string;
 	resource: string;
 	name?: string;
 	id?: string;
-	select: ViewDefinitionSelectItem[];
+	select?: ViewDefinitionSelectItem[];
+	constant?: ViewDefinitionConstant[];
+	where?: ViewDefinitionWhere[];
+	title?: string;
+	description?: string;
+	status?: string;
+	url?: string;
+	publisher?: string;
+	copyright?: string;
+	experimental?: boolean;
+	fhirVersion?: string[] | undefined;
+	identifier?: {
+		system?: string;
+		value?: string;
+	}[];
 }
 
 export interface ViewDefinitionContextProps {

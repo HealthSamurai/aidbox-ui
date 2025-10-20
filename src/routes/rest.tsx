@@ -299,7 +299,6 @@ function ResponseView({
 				)
 					.map(([key, value]) => `${key}: ${value}`)
 					.join("\n")}\n\n${response.body}`;
-			case "body":
 			default:
 				try {
 					const parsed = JSON.parse(response.body);

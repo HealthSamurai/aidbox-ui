@@ -96,7 +96,7 @@ export function SchemaTabContent() {
 	return (
 		<TabsContent value="schema" className="h-full overflow-auto">
 			<div className="h-full w-full overflow-auto px-2">
-				<FhirStructureView tree={transformSnapshotToTree(data) as any} />
+				<FhirStructureView tree={transformSnapshotToTree(data)} />
 			</div>
 		</TabsContent>
 	);

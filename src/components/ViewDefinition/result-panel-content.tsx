@@ -1,7 +1,7 @@
 import {
+	type AccessorKeyColumnDef,
 	Button,
 	CodeEditor,
-	type ColumnDef,
 	DataTable,
 	Pagination,
 	PaginationContent,
@@ -17,12 +17,14 @@ import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
 
 interface ProcessedTableData {
-	tableData: unknown[];
-	columns: ColumnDef<Record<string, unknown>, unknown>[];
+	tableData: Record<string, unknown>[];
+	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
 	isEmptyArray: boolean;
 }
 
-const parseResponse = (response: string | undefined): unknown[] | null => {
+const parseResponse = (
+	response: string | undefined,
+): Record<string, unknown>[] | null => {
 	if (!response) {
 		return null;
 	}
@@ -37,7 +39,7 @@ const parseResponse = (response: string | undefined): unknown[] | null => {
 
 const extractColumns = (
 	data: unknown[],
-): ColumnDef<Record<string, unknown>, unknown>[] => {
+): AccessorKeyColumnDef<Record<string, unknown>, unknown>[] => {
 	const allKeys = new Set<string>();
 	data.forEach((row) => {
 		if (typeof row === "object" && row !== null) {
@@ -117,8 +119,8 @@ const ResultContent = ({
 }: {
 	rows: string | undefined;
 	isEmptyArray: boolean;
-	tableData: unknown[];
-	columns: ColumnDef<Record<string, unknown>, unknown>[];
+	tableData: Record<string, unknown>[];
+	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
 }) => {
 	if (!rows) {
 		return (
@@ -141,7 +143,7 @@ const ResultContent = ({
 	if (tableData.length > 0) {
 		return (
 			<div className="flex-1 overflow-hidden min-h-0">
-				<DataTable columns={columns as any} data={tableData} stickyHeader />
+				<DataTable columns={columns} data={tableData} stickyHeader />
 			</div>
 		);
 	}

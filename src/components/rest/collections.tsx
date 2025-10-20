@@ -238,13 +238,15 @@ function buildTreeView(
 			children: [
 				...[...pinnedCollections].reverse(),
 				...entries
-					.filter((entry) => !pinnedCollections.includes(entry.collection!))
+					.map((entry) => entry.collection)
+					.filter((collection) => collection !== undefined)
+					.filter((collection) => !pinnedCollections.includes(collection))
 					.filter(
-						(entry, idx, arr) =>
-							entry.collection &&
-							arr.findIndex((e) => e.collection === entry.collection) === idx,
-					)
-					.map((entry) => entry.collection!),
+						(collection, idx, arr) =>
+							arr.findIndex(
+								(otherCollection) => otherCollection === collection,
+							) === idx,
+					),
 			],
 		},
 	};
@@ -298,21 +300,23 @@ async function handleAddNewCollectionEntry(
 }
 
 async function handleDeleteSnippet(
-	itemData: ReactComponents.TreeViewItem<any>,
+	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 	_tabs: Tab[],
 	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
-	const _result = await Auth.AidboxCallWithMeta({
-		method: "DELETE",
-		url: `/ui_snippet/${itemData.meta.id}`,
-	});
+	if (itemData?.meta?.id) {
+		await Auth.AidboxCallWithMeta({
+			method: "DELETE",
+			url: `/ui_snippet/${itemData.meta.id}`,
+		});
+	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	// ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
 }
 
 async function handleDeleteCollection(
-	itemData: ReactComponents.TreeViewItem<any>,
+	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 ) {
 	await Auth.AidboxCallWithMeta({
@@ -334,9 +338,9 @@ function CollectionMoreButton({
 	tree,
 	itemId,
 }: {
-	itemData: ReactComponents.TreeViewItem<any>;
+	itemData: ReactComponents.TreeViewItem<ItemMeta>;
 	queryClient: QueryClient;
-	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>;
+	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>;
 	itemId: string;
 }) {
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
@@ -416,11 +420,11 @@ function SnippetMoreButton({
 	setTabs,
 	tree,
 }: {
-	itemData: ReactComponents.TreeViewItem<any>;
+	itemData: ReactComponents.TreeViewItem<ItemMeta>;
 	queryClient: QueryClient;
 	tabs: Tab[];
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
-	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>;
+	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>;
 }) {
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
@@ -440,7 +444,11 @@ function SnippetMoreButton({
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
 				<ReactComponents.DropdownMenuItem
-					onClick={() => tree.getItemInstance(itemData.meta.id).startRenaming()}
+					onClick={() => {
+						if (itemData.meta?.id !== undefined) {
+							tree.getItemInstance(itemData.meta.id).startRenaming();
+						}
+					}}
 				>
 					Rename
 				</ReactComponents.DropdownMenuItem>
@@ -493,12 +501,12 @@ function SnippetMoreButton({
 }
 
 function customItemView(
-	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
+	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 	tabs: Tab[],
 	queryClient: QueryClient,
 	setSelectedCollectionItemId: (id: string) => void,
-	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<any>>,
+	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	pinnedCollections: string[],
 	setPinnedCollections: (ids: string[]) => void,
 ) {
@@ -591,7 +599,7 @@ function customItemView(
 							autoFocus
 							{...item.getRenameInputProps()}
 						/>
-					) : itemData.meta.title ? (
+					) : itemData?.meta?.title ? (
 						<div>{itemData.meta.title}</div>
 					) : (
 						<div>{parsedCommand?.path || "New request"}</div>
@@ -658,7 +666,7 @@ const NoCollectionsView = ({
 };
 
 async function handleRenameSnippet(
-	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<any>>,
+	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	newTitle: string,
 	queryClient: QueryClient,
 ) {
@@ -699,7 +707,6 @@ export const CollectionsView = ({
 	setTabs,
 	tabs,
 	setSelectedCollectionItemId,
-	selectedCollectionItemId,
 }: {
 	tabs: Tab[];
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
@@ -714,65 +721,6 @@ export const CollectionsView = ({
 	const tree = buildTreeView(collectionEntries.data ?? [], pinnedCollections);
 	const selectedTab = tabs.find((tab) => tab.selected);
 	const queryClient = useQueryClient();
-
-	const selectedTabId = tabs.find((tab) => tab.selected)?.id;
-
-	const selectedTabEntry = collectionEntries.data?.find(
-		(entry) => entry.id === selectedCollectionItemId,
-	);
-
-	const [expandedItemIds, setExpandedItemIds] = useLocalStorage<string[]>({
-		key: "rest-console-expanded-items",
-		defaultValue: ["root", selectedTabEntry?.collection ?? ""],
-	});
-
-	function handleSelectItem(
-		itemId: string | null,
-		expandedItemIds: string[],
-		setExpandedItemIds: (ids: string[]) => void,
-	) {
-		if (itemId === null) {
-			return;
-		}
-
-		const item = tree[itemId];
-		if (item === undefined) {
-			return;
-		}
-
-		if (item.children !== undefined) {
-			if (expandedItemIds.includes(itemId)) {
-				setExpandedItemIds(expandedItemIds.filter((id) => id !== itemId));
-			} else {
-				setExpandedItemIds([...expandedItemIds, itemId]);
-			}
-			return;
-		}
-		const activeTab = tabs.find((tab) => tab.id === item.meta?.id);
-
-		if (activeTab) {
-			setTabs(
-				tabs.map((tab) => ({ ...tab, selected: tab.id === activeTab.id })),
-			);
-		} else {
-			setTabs([
-				...tabs.map((tab) => ({ ...tab, selected: false })),
-				{
-					id: item.meta?.id,
-					method: item.meta?.method,
-					path: item.meta?.path,
-					body: item.meta?.body,
-					headers: item.meta?.headers || [
-						{ id: "0", name: "", value: "", enabled: true },
-					],
-					params: item.meta?.params || [
-						{ id: "0", name: "", value: "", enabled: true },
-					],
-					selected: true,
-				} as Tab,
-			]);
-		}
-	}
 
 	if (collectionEntries.isPending) {
 		return <div>Loading...</div>;
@@ -797,18 +745,6 @@ export const CollectionsView = ({
 						}
 						rootItemId="root"
 						items={tree}
-						// focusedItem={selectedTabId ?? "root"}
-						// expandedItems={[
-						// 	...expandedItemIds,
-						// 	...(selectedTabEntry?.collection &&
-						// 	expandedItemIds.includes(selectedTabEntry.collection)
-						// 		? [selectedTabEntry.collection]
-						// 		: []),
-						// ]}
-						// onExpandedItemsChange={(newExpandedItems: any) => {
-						// 	console.log("HELLO");
-						// 	return setExpandedItemIds(newExpandedItems);
-						// }}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(item, newTitle, queryClient);
 						}}
@@ -824,9 +760,6 @@ export const CollectionsView = ({
 								setPinnedCollections,
 							)
 						}
-						// onFocusedItemChange={(item: any) =>
-						// 	handleSelectItem(item, expandedItemIds, setExpandedItemIds)
-						// }
 					/>
 				</div>
 			)}
