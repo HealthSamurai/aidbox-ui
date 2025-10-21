@@ -57,6 +57,23 @@ const VersionDiffDialog = ({
 	);
 };
 
+const VersionViewDialog = ({ resource }: { resource: any }) => {
+	return (
+		<HSComp.DialogContent className="w-[800px] min-w-[800px] max-h-full">
+			<HSComp.DialogHeader>
+				<HSComp.DialogTitle>Version {resource?.meta?.versionId}</HSComp.DialogTitle>
+			</HSComp.DialogHeader>
+			<div className="overflow-auto">
+				<HSComp.CodeEditor
+					readOnly
+					currentValue={JSON.stringify(resource, null, "  ")}
+					mode="json"
+				/>
+			</div>
+		</HSComp.DialogContent>
+	);
+};
+
 const calculateAffectedAttributes = (previous: any, current: any) => {
 	if (!previous) return new Set<(string | number)[]>();
 
@@ -137,7 +154,22 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		{
 			accessorKey: "versionId",
 			header: <span className="pl-5">versionId</span>,
-			cell: (info: any) => info.getValue(),
+			cell: (info: any) => {
+				const row = info.row.original;
+				return (
+					<HSComp.Dialog>
+						<HSComp.DialogTrigger asChild>
+							<button
+								type="button"
+								className="text-blue-600 hover:underline cursor-pointer"
+							>
+								{info.getValue()}
+							</button>
+						</HSComp.DialogTrigger>
+						<VersionViewDialog resource={row.resourceCurrent} />
+					</HSComp.Dialog>
+				);
+			},
 		},
 		{
 			accessorKey: "status",
