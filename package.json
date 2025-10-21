@@ -9,11 +9,13 @@
 		"typecheck": "pnpm tsc --noEmit --project tsconfig.app.json",
 		"build": "pnpm exec vite build",
 		"format": "biome format --write",
+		"format:check": "biome format",
 		"lint": "biome check",
 		"lint:check": "biome check",
 		"lint:fix": "biome check --write",
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"all": "pnpm format && pnpm typecheck && biome check --write --diagnostic-level=error"
+		"all": "pnpm format && pnpm typecheck && biome check --write --diagnostic-level=error",
+		"hooks": "cp .hooks/* .git/hooks/"
 	},
 	"keywords": [],
 	"author": "Health Samurai",
