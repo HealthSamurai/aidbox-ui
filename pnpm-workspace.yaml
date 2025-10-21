@@ -3,4 +3,4 @@ onlyBuiltDependencies:
   - esbuild
 
 overrides:
-  '@health-samurai/react-components': link:../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
+  '@health-samurai/react-components': link:../../.local/share/pnpm/global/5/node_modules/@health-samurai/react-components

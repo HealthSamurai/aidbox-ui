@@ -9,6 +9,9 @@ import {
 	type HistoryEntry,
 } from "./api";
 import { pageId } from "./types";
+import { DiffView } from "@git-diff-view/react";
+import "@git-diff-view/react/styles/diff-view-pure.css";
+import { generateDiffFile } from "@git-diff-view/file";
 
 const prettyStatus = (code: string) =>
 	({ "201": "Created", "200": "Updated", "204": "Deleted" })[code] || code;
@@ -22,6 +25,36 @@ type historyWithHistoryProps = {
 	resourceCurrent: HistoryEntry;
 	resourcePrevious: HistoryEntry | null;
 	affected: Set<(string | number)[]>;
+};
+
+const VersionDiffDialog = ({
+	previous,
+	current,
+}: {
+	previous: any;
+	current: any;
+}) => {
+	const diff = generateDiffFile(
+		"prev.json",
+		JSON.stringify(previous, null, "  "),
+		"current.json",
+		JSON.stringify(current, null, "  "),
+		"json",
+		"json",
+	);
+
+	const data = { hunks: diff._diffList };
+
+	return (
+		<HSComp.DialogContent className="max-w-[90vw] max-h-[90vh]">
+			<HSComp.DialogHeader>
+				<HSComp.DialogTitle>Version Diff</HSComp.DialogTitle>
+			</HSComp.DialogHeader>
+			<div className="overflow-auto">
+				<DiffView data={data} diffViewMode={4} diffViewHighlight={true} />
+			</div>
+		</HSComp.DialogContent>
+	);
 };
 
 const calculateAffectedAttributes = (previous: any, current: any) => {
@@ -121,9 +154,28 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 			header: <span className="pl-5">Affected attributes</span>,
 			cell: (info: any) => {
 				const items: (string | number)[][] = Array.from(info.getValue());
-				return [...new Set(items.map((e: (string | number)[]) => e.at(0)))]
+				const affectedStr = [
+					...new Set(items.map((e: (string | number)[]) => e.at(0))),
+				]
 					.sort()
 					.join(", ");
+				const row = info.row.original;
+				return (
+					<HSComp.Dialog>
+						<HSComp.DialogTrigger asChild>
+							<button
+								type="button"
+								className="text-blue-600 hover:underline cursor-pointer"
+							>
+								{affectedStr}
+							</button>
+						</HSComp.DialogTrigger>
+						<VersionDiffDialog
+							previous={row.resourcePrevious}
+							current={row.resourceCurrent}
+						/>
+					</HSComp.Dialog>
+				);
 			},
 		},
 	];
