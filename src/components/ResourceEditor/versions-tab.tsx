@@ -1,8 +1,10 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
+import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
+import * as utils from "../../api/utils";
 import {
 	fetchResourceHistory,
 	type HistoryBundle,
@@ -27,12 +29,59 @@ type historyWithHistoryProps = {
 	affected: Set<(string | number)[]>;
 };
 
+const ConfirmationDialog = ({
+	versionId,
+	lastUpdated,
+	onConfirm,
+	onCancel,
+}: {
+	versionId: string;
+	lastUpdated: string;
+	onConfirm: () => void;
+	onCancel: () => void;
+}) => {
+	return (
+		<HSComp.DialogContent showCloseButton={false}>
+			<HSComp.DialogHeader>
+				<HSComp.DialogTitle>Confirm Restore</HSComp.DialogTitle>
+			</HSComp.DialogHeader>
+			<div className="py-4">
+				<p>Are you sure you want to restore the resource to this version?</p>
+				<p className="mt-2">
+					<strong>Version ID:</strong> {versionId}
+				</p>
+				<p>
+					<strong>Created at:</strong> {lastUpdated}
+				</p>
+			</div>
+			<div className="flex gap-2 justify-end">
+				<HSComp.Button variant="secondary" onClick={onCancel}>
+					Cancel
+				</HSComp.Button>
+				<HSComp.Button variant="primary" onClick={onConfirm}>
+					Restore
+				</HSComp.Button>
+			</div>
+		</HSComp.DialogContent>
+	);
+};
+
+type OpenState = "hidden" | "shown" | "confirm";
+
 const VersionDiffDialog = ({
 	previous,
 	current,
+	resourceType,
+	resourceId,
+	openState,
+	onOpenChange,
 }: {
 	previous: any;
 	current: any;
+	resourceType: string;
+	resourceId: string;
+	openState: OpenState;
+	onOpenChange: (open: OpenState) => void;
 }) => {
 	const diff = generateDiffFile(
 		"prev.json",
@@ -44,33 +93,167 @@ const VersionDiffDialog = ({
 	);
 
 	const data = { hunks: diff._diffList };
+	const version = previous?.meta?.versionId;
+
+	const queryClient = useQueryClient();
+
+	const mutation = useMutation({
+		mutationFn: (resource: string) => {
+			return AidboxCallWithMeta({
+				method: "PUT",
+				url: `/fhir/${resourceType}/${resourceId}`,
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: resource,
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [pageId, resourceType, resourceId, "history"],
+			});
+			HSComp.toast.success(
+				version
+					? `Version ${version} restored successfully`
+					: `Version restored successfully`,
+				{
+					position: "bottom-right",
+					style: { margin: "1rem" },
+				},
+			);
+			onOpenChange("hidden");
+		},
+		onError: utils.onError(),
+	});
 
 	return (
-		<HSComp.DialogContent className="max-w-[90vw] max-h-[90vh]">
-			<HSComp.DialogHeader>
-				<HSComp.DialogTitle>Version Diff</HSComp.DialogTitle>
-			</HSComp.DialogHeader>
-			<div className="overflow-auto">
-				<DiffView data={data} diffViewMode={4} diffViewHighlight={true} />
-			</div>
-		</HSComp.DialogContent>
+		<>
+			<HSComp.DialogContent
+				className="max-w-[90vw] max-h-[90vh] flex flex-col"
+				showCloseButton={false}
+			>
+				<div className="overflow-auto flex-1">
+					<DiffView data={data} diffViewMode={4} diffViewHighlight={true} />
+				</div>
+				<div className="flex gap-2 justify-end pt-4">
+					<HSComp.DialogClose asChild>
+						<HSComp.Button variant="secondary">Cancel</HSComp.Button>
+					</HSComp.DialogClose>
+					<HSComp.Button
+						variant="primary"
+						onClick={() => onOpenChange("confirm")}
+					>
+						Restore
+					</HSComp.Button>
+				</div>
+			</HSComp.DialogContent>
+			{openState === "confirm" && (
+				<ConfirmationDialog
+					lastUpdated={
+						previous?.meta?.lastUpdated
+							? new Date(previous.meta.lastUpdated).toLocaleString()
+							: "-"
+					}
+					versionId={version || ""}
+					onConfirm={() => mutation.mutate(JSON.stringify(previous))}
+					onCancel={() => onOpenChange("shown")}
+				/>
+			)}
+		</>
 	);
 };
 
-const VersionViewDialog = ({ resource }: { resource: any }) => {
+const VersionViewDialog = ({
+	resource,
+	resourceType,
+	resourceId,
+	openState,
+	onOpenChange,
+}: {
+	resource: any;
+	resourceType: string;
+	resourceId: string;
+	openState: OpenState;
+	onOpenChange: (open: OpenState) => void;
+}) => {
+	const queryClient = useQueryClient();
+
+	const version = resource?.meta?.versionId;
+
+	const mutation = useMutation({
+		mutationFn: (resource: string) => {
+			return AidboxCallWithMeta({
+				method: "PUT",
+				url: `/fhir/${resourceType}/${resourceId}`,
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: resource,
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [pageId, resourceType, resourceId, "history"],
+			});
+			HSComp.toast.success(
+				version
+					? `Version ${version} restored successfully`
+					: `Version restored successfully`,
+				{
+					position: "bottom-right",
+					style: { margin: "1rem" },
+				},
+			);
+			onOpenChange("hidden");
+		},
+		onError: utils.onError(),
+	});
+
 	return (
-		<HSComp.DialogContent className="w-[800px] min-w-[800px] max-h-full">
-			<HSComp.DialogHeader>
-				<HSComp.DialogTitle>Version {resource?.meta?.versionId}</HSComp.DialogTitle>
-			</HSComp.DialogHeader>
-			<div className="overflow-auto">
-				<HSComp.CodeEditor
-					readOnly
-					currentValue={JSON.stringify(resource, null, "  ")}
-					mode="json"
+		<>
+			<HSComp.DialogContent
+				className="w-[800px] min-w-[800px] max-h-full flex flex-col"
+				showCloseButton={false}
+			>
+				<HSComp.DialogHeader>
+					<HSComp.DialogTitle>
+						Version {resource?.meta?.versionId}
+					</HSComp.DialogTitle>
+				</HSComp.DialogHeader>
+				<div className="overflow-auto flex-1">
+					<HSComp.CodeEditor
+						readOnly
+						currentValue={JSON.stringify(resource, null, "  ")}
+						mode="json"
+					/>
+				</div>
+				<div className="flex gap-2 justify-end pt-4">
+					<HSComp.DialogClose asChild>
+						<HSComp.Button variant="secondary">Cancel</HSComp.Button>
+					</HSComp.DialogClose>
+					<HSComp.Button
+						variant="primary"
+						onClick={() => onOpenChange("confirm")}
+					>
+						Restore
+					</HSComp.Button>
+				</div>
+			</HSComp.DialogContent>
+			{openState === "confirm" && (
+				<ConfirmationDialog
+					lastUpdated={
+						resource?.meta?.lastUpdated
+							? new Date(resource.meta.lastUpdated).toLocaleString()
+							: "-"
+					}
+					versionId={version || ""}
+					onConfirm={() => mutation.mutate(JSON.stringify(resource))}
+					onCancel={() => onOpenChange("shown")}
 				/>
-			</div>
-		</HSComp.DialogContent>
+			)}
+		</>
 	);
 };
 
@@ -156,8 +339,12 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 			header: <span className="pl-5">versionId</span>,
 			cell: (info: any) => {
 				const row = info.row.original;
+				const [open, setOpen] = React.useState<OpenState>("hidden");
 				return (
-					<HSComp.Dialog>
+					<HSComp.Dialog
+						open={open !== "hidden"}
+						onOpenChange={(open: boolean) => setOpen(open ? "shown" : "hidden")}
+					>
 						<HSComp.DialogTrigger asChild>
 							<button
 								type="button"
@@ -166,7 +353,13 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 								{info.getValue()}
 							</button>
 						</HSComp.DialogTrigger>
-						<VersionViewDialog resource={row.resourceCurrent} />
+						<VersionViewDialog
+							resource={row.resourceCurrent}
+							resourceType={resourceType}
+							resourceId={id}
+							openState={open}
+							onOpenChange={setOpen}
+						/>
 					</HSComp.Dialog>
 				);
 			},
@@ -192,8 +385,12 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 					.sort()
 					.join(", ");
 				const row = info.row.original;
+				const [open, setOpen] = React.useState<OpenState>("hidden");
 				return (
-					<HSComp.Dialog>
+					<HSComp.Dialog
+						open={open !== "hidden"}
+						onOpenChange={(open: boolean) => setOpen(open ? "shown" : "hidden")}
+					>
 						<HSComp.DialogTrigger asChild>
 							<button
 								type="button"
@@ -205,6 +402,10 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 						<VersionDiffDialog
 							previous={row.resourcePrevious}
 							current={row.resourceCurrent}
+							resourceType={resourceType}
+							resourceId={id}
+							onOpenChange={setOpen}
+							openState={open}
 						/>
 					</HSComp.Dialog>
 				);
