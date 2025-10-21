@@ -2,3 +2,8 @@
 @import "tw-animate-css";
 @import "@health-samurai/react-components/css";
 @source "../node_modules/@health-samurai/react-components";
+
+/* Show pin button on table row hover */
+tr:hover .pin-button {
+	opacity: 1 !important;
+}

@@ -7,11 +7,11 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
-	SidebarTrigger,
 	useSidebar,
 } from "@health-samurai/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+	Columns3Cog,
 	House,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -22,9 +22,34 @@ import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 
 const mainMenuItems = [
-	{ title: "Home", url: "/", icon: House },
-	{ title: "REST Console", url: "/rest", icon: SquareTerminal },
-];
+	<Link key="/" to="/">
+		<House />
+		Home
+	</Link>,
+	<Link key="/rest" to="/rest">
+		<SquareTerminal />
+		REST Console
+	</Link>,
+	<Link key="/resource" to="/resource">
+		<Columns3Cog />
+		Resource browser
+	</Link>,
+].map((link) => {
+	const linkChildren = link.props.children;
+	const title = linkChildren[linkChildren.length - 1];
+	return { link, url: link.props.to, title };
+});
+
+const isActiveNavItem = (
+	item: (typeof mainMenuItems)[number],
+	currentPath: string,
+) => {
+	return (
+		currentPath === item.url ||
+		(currentPath.startsWith(item.url) && item.url !== "/") ||
+		currentPath === `${UI_BASE_PATH}/${item.url}`
+	);
+};
 
 export function AidboxSidebar({
 	sidebarMode,
@@ -55,17 +80,11 @@ export function AidboxSidebar({
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton
 										asChild
-										isActive={
-											currentPath === item.url ||
-											currentPath === UI_BASE_PATH + "/" + item.url
-										}
+										isActive={isActiveNavItem(item, currentPath)}
 										tooltip={{ sideOffset: 16, children: item.title }}
 										className="text-nowrap"
 									>
-										<Link to={item.url}>
-											<item.icon />
-											{item.title}
-										</Link>
+										{item.link}
 									</SidebarMenuButton>
 								</SidebarMenuItem>
 							))}

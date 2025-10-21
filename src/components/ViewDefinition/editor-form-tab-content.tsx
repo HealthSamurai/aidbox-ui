@@ -13,10 +13,19 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
+	type TreeInstance,
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import { ChevronDown, Funnel, Pi, PlusIcon, TextQuote, X } from "lucide-react";
+import {
+	ChevronDown,
+	Funnel,
+	GripVertical,
+	Pi,
+	PlusIcon,
+	TextQuote,
+	X,
+} from "lucide-react";
 import React, {
 	useCallback,
 	useEffect,
@@ -27,6 +36,47 @@ import React, {
 import { useDebounce, useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
+
+type ItemMeta = {
+	type:
+		| "select-column"
+		| "select-forEach"
+		| "select-forEachOrNull"
+		| "select-unionAll"
+		| "column-item"
+		| "column-add"
+		| "select-add-nested"
+		| "constant-value"
+		| "where-value"
+		| "properties"
+		| "name"
+		| "title"
+		| "description"
+		| "status"
+		| "url"
+		| "publisher"
+		| "copyright"
+		| "experimental"
+		| "fhir version"
+		| "identifier"
+		| "system"
+		| "value"
+		| "constant"
+		| "constant-add"
+		| "where"
+		| "where-add"
+		| "select"
+		| "select-add"
+		| "column"
+		| "resource";
+	columnData?: ColumnItem;
+	selectData?: SelectItemInternal;
+	selectItemId?: string;
+	parentId?: string;
+	lastNode?: boolean;
+	constantData?: ConstantItem;
+	whereData?: WhereItem;
+};
 
 interface ConstantItem {
 	id: string;
@@ -111,13 +161,17 @@ const buildSelectArray = (
 					})),
 				};
 			} else if (item.type === "forEach") {
-				const result: any = { forEach: item.expression || "" };
+				const result: Types.ViewDefinitionSelectItem = {
+					forEach: item.expression || "",
+				};
 				if (item.children && item.children.length > 0) {
 					result.select = buildSelectArray(item.children);
 				}
 				return result;
 			} else if (item.type === "forEachOrNull") {
-				const result: any = { forEachOrNull: item.expression || "" };
+				const result: Types.ViewDefinitionSelectItem = {
+					forEachOrNull: item.expression || "",
+				};
 				if (item.children && item.children.length > 0) {
 					result.select = buildSelectArray(item.children);
 				}
@@ -134,7 +188,7 @@ const buildSelectArray = (
 
 const findPath = (
 	items: SelectItemInternal[],
-	targetId: string,
+	targetId: string | undefined,
 	path: string[] = [],
 ): string[] | null => {
 	for (const item of items) {
@@ -192,16 +246,9 @@ export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 
-	// State for managing constants dynamically
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
-
-	// State for managing where conditions dynamically
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
-
-	// State for managing select items dynamically (nested structure)
 	const [selectItems, setSelectItems] = useState<SelectItemInternal[]>([]);
-
-	// State for collapsed items using localStorage - tree renders fully expanded by default
 	const [collapsedItemIds, setCollapsedItemIds] = useLocalStorage<string[]>({
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
 		defaultValue: [],
@@ -217,12 +264,12 @@ export const FormTabContent = () => {
 		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
 			setLastViewDefId(viewDefinition.id || null);
 			if (
-				(viewDefinition as any)?.constant &&
-				Array.isArray((viewDefinition as any).constant) &&
-				(viewDefinition as any).constant.length > 0
+				viewDefinition?.constant &&
+				Array.isArray(viewDefinition.constant) &&
+				viewDefinition.constant.length > 0
 			) {
-				const constantsWithIds = (viewDefinition as any).constant.map(
-					(c: any, index: number) => ({
+				const constantsWithIds = viewDefinition.constant.map(
+					(c, index: number) => ({
 						id: `constant-${index}-${crypto.randomUUID()}`,
 						name: c.name || "",
 						valueString: c.valueString || "",
@@ -235,16 +282,14 @@ export const FormTabContent = () => {
 
 			// Initialize where conditions from viewDefinition
 			if (
-				(viewDefinition as any)?.where &&
-				Array.isArray((viewDefinition as any).where) &&
-				(viewDefinition as any).where.length > 0
+				viewDefinition?.where &&
+				Array.isArray(viewDefinition.where) &&
+				viewDefinition.where.length > 0
 			) {
-				const whereWithIds = (viewDefinition as any).where.map(
-					(w: any, index: number) => ({
-						id: `where-${index}-${crypto.randomUUID()}`,
-						path: w.path || "",
-					}),
-				);
+				const whereWithIds = viewDefinition.where.map((w, index: number) => ({
+					id: `where-${index}-${crypto.randomUUID()}`,
+					path: w.path || "",
+				}));
 				setWhereConditions(whereWithIds);
 			} else {
 				setWhereConditions([]);
@@ -264,7 +309,18 @@ export const FormTabContent = () => {
 		(
 			updatedConstants?: ConstantItem[],
 			updatedWhere?: WhereItem[],
-			updatedFields?: { name?: string },
+			updatedFields?: {
+				name?: string;
+				title?: string;
+				description?: string;
+				status?: string;
+				url?: string;
+				publisher?: string;
+				copyright?: string;
+				experimental?: boolean;
+				fhirVersion?: string[] | undefined;
+				identifier?: { system?: string; value?: string }[];
+			},
 			updatedSelectItems?: SelectItemInternal[],
 		) => {
 			if (viewDefinition) {
@@ -279,7 +335,7 @@ export const FormTabContent = () => {
 
 				const selectArray = buildSelectArray(updatedSelectItems || selectItems);
 
-				const updatedViewDef: any = {
+				const updatedViewDef = {
 					...viewDefinition,
 					...(updatedFields || {}),
 				};
@@ -487,7 +543,7 @@ export const FormTabContent = () => {
 			let target = updatedItems;
 			for (const id of parentPath) {
 				const item = target.find((i: SelectItemInternal) => i.id === id);
-				if (item && item.children) {
+				if (item?.children) {
 					target = item.children;
 				}
 			}
@@ -648,7 +704,7 @@ export const FormTabContent = () => {
 	};
 
 	// Dynamic tree generation based on current constants and where conditions
-	const tree: Record<string, TreeViewItem<any>> = useMemo(() => {
+	const tree: Record<string, TreeViewItem<ItemMeta>> = useMemo(() => {
 		const constantChildren =
 			constants.length > 0 ? constants.map((c) => c.id) : [];
 		constantChildren.push("_constant_add");
@@ -657,7 +713,7 @@ export const FormTabContent = () => {
 			whereConditions.length > 0 ? whereConditions.map((w) => w.id) : [];
 		whereChildren.push("_where_add");
 
-		const treeStructure: Record<string, TreeViewItem<any>> = {};
+		const treeStructure: Record<string, TreeViewItem<ItemMeta>> = {};
 
 		// Build tree for nested select items
 		const buildSelectTree = (items: SelectItemInternal[]): string[] => {
@@ -666,7 +722,7 @@ export const FormTabContent = () => {
 			items.forEach((item) => {
 				children.push(item.id);
 
-				treeStructure[item.id] = {
+				const currentItem: TreeViewItem<ItemMeta> = {
 					name: item.id,
 					meta: {
 						type: `select-${item.type}`,
@@ -674,6 +730,8 @@ export const FormTabContent = () => {
 					},
 					children: [],
 				};
+
+				treeStructure[item.id] = currentItem;
 
 				if (item.type === "column" && item.columns) {
 					const columnChildren: string[] = [];
@@ -696,7 +754,7 @@ export const FormTabContent = () => {
 							selectItemId: item.id,
 						},
 					};
-					treeStructure[item.id].children = columnChildren;
+					currentItem.children = columnChildren;
 				} else if (
 					item.type === "forEach" ||
 					item.type === "forEachOrNull" ||
@@ -718,14 +776,14 @@ export const FormTabContent = () => {
 						},
 					};
 
-					treeStructure[item.id].children = nodeChildren;
+					currentItem.children = nodeChildren;
 				}
 			});
 
 			return children;
 		};
 
-		Object.assign(treeStructure, {
+		const newTreeStructure: Record<string, TreeViewItem<ItemMeta>> = {
 			root: {
 				name: "root",
 				children: ["_properties", "_constant", "_where", "_select"],
@@ -860,7 +918,9 @@ export const FormTabContent = () => {
 					type: "select-add",
 				},
 			},
-		});
+		};
+
+		Object.assign(treeStructure, newTreeStructure);
 
 		constants.forEach((constant, index) => {
 			treeStructure[constant.id] = {
@@ -887,24 +947,168 @@ export const FormTabContent = () => {
 		return treeStructure;
 	}, [constants, whereConditions, selectItems]);
 
-	const onSelectTreeItem = (item: ItemInstance<TreeViewItem<any>>) => {
-		if (item.isFolder()) {
-			if (item.isExpanded()) {
-				const newItems = collapsedItemIds.filter((id) => id !== item.getId());
-				if (newItems.length !== collapsedItemIds.length) {
-					setCollapsedItemIds(newItems);
+	const onDropTreeItem = (
+		_tree: TreeInstance<TreeViewItem<ItemMeta>>,
+		item: ItemInstance<TreeViewItem<ItemMeta>>,
+		newChildren: string[],
+	) => {
+		item.getItemData().children = newChildren;
+
+		const itemId = item.getId();
+		const _itemMeta = item.getItemData()?.meta;
+
+		// Handle reordering of constants
+		if (itemId === "_constant") {
+			// Filter out the add button and reorder constants
+			const reorderedConstantIds = newChildren.filter(
+				(id) => id !== "_constant_add",
+			);
+			const reorderedConstants: ConstantItem[] = [];
+
+			for (const id of reorderedConstantIds) {
+				const constant = constants.find((c) => c.id === id);
+				if (constant) {
+					reorderedConstants.push(constant);
 				}
-			} else {
-				setCollapsedItemIds([...collapsedItemIds, item.getId()]);
+			}
+
+			if (reorderedConstants.length === constants.length) {
+				setConstants(reorderedConstants);
+				updateViewDefinition(reorderedConstants);
+			}
+		}
+
+		// Handle reordering of where conditions
+		else if (itemId === "_where") {
+			// Filter out the add button and reorder where conditions
+			const reorderedWhereIds = newChildren.filter((id) => id !== "_where_add");
+			const reorderedWhere: WhereItem[] = [];
+
+			for (const id of reorderedWhereIds) {
+				const where = whereConditions.find((w) => w.id === id);
+				if (where) {
+					reorderedWhere.push(where);
+				}
+			}
+
+			if (reorderedWhere.length === whereConditions.length) {
+				setWhereConditions(reorderedWhere);
+				updateViewDefinition(undefined, reorderedWhere);
+			}
+		}
+
+		// Handle reordering of top-level select items
+		else if (itemId === "_select") {
+			// Filter out the add button and reorder select items
+			const reorderedSelectIds = newChildren.filter(
+				(id) => id !== "_select_add",
+			);
+
+			const reorderSelectItems = (
+				items: SelectItemInternal[],
+				orderedIds: string[],
+			): SelectItemInternal[] => {
+				const reordered: SelectItemInternal[] = [];
+				for (const id of orderedIds) {
+					const item = items.find((i) => i.id === id);
+					if (item) {
+						reordered.push(item);
+					}
+				}
+				return reordered;
+			};
+
+			const reorderedSelect = reorderSelectItems(
+				selectItems,
+				reorderedSelectIds,
+			);
+			if (reorderedSelect.length === selectItems.length) {
+				setSelectItems(reorderedSelect);
+				updateViewDefinition(undefined, undefined, undefined, reorderedSelect);
+			}
+		}
+
+		// Handle reordering within a select item (columns or nested selects)
+		else {
+			// First, try to find the item in the flat structure (could be a column node or nested select)
+			const findAndUpdateItems = (
+				items: SelectItemInternal[],
+			): { updated: boolean; items: SelectItemInternal[] } => {
+				let wasUpdated = false;
+				const updatedItems = items.map((item) => {
+					// Check if this item matches
+					if (item.id === itemId) {
+						if (item.type === "column" && item.columns) {
+							// Reorder columns
+							const reorderedColumnIds = newChildren.filter(
+								(id) => !id.endsWith("_add_column"),
+							);
+							const reorderedColumns: ColumnItem[] = [];
+
+							for (const id of reorderedColumnIds) {
+								const column = item.columns.find((c) => c.id === id);
+								if (column) {
+									reorderedColumns.push(column);
+								}
+							}
+
+							if (reorderedColumns.length === item.columns.length) {
+								wasUpdated = true;
+								return { ...item, columns: reorderedColumns };
+							}
+						} else if (
+							(item.type === "forEach" ||
+								item.type === "forEachOrNull" ||
+								item.type === "unionAll") &&
+							item.children
+						) {
+							// Reorder nested select items
+							const reorderedChildIds = newChildren.filter(
+								(id) => !id.endsWith("_add_select"),
+							);
+							const reorderedChildren: SelectItemInternal[] = [];
+
+							for (const id of reorderedChildIds) {
+								const child = item.children.find((c) => c.id === id);
+								if (child) {
+									reorderedChildren.push(child);
+								}
+							}
+
+							if (reorderedChildren.length === item.children.length) {
+								wasUpdated = true;
+								return { ...item, children: reorderedChildren };
+							}
+						}
+					}
+					// If not matched, check children recursively
+					else if (item.children && item.children.length > 0) {
+						const result = findAndUpdateItems(item.children);
+						if (result.updated) {
+							wasUpdated = true;
+							return { ...item, children: result.items };
+						}
+					}
+					return item;
+				});
+
+				return { updated: wasUpdated, items: updatedItems };
+			};
+
+			const result = findAndUpdateItems(selectItems);
+			if (result.updated) {
+				setSelectItems(result.items);
+				updateViewDefinition(undefined, undefined, undefined, result.items);
 			}
 		}
 	};
 
-	const labelView = (item: ItemInstance<TreeViewItem<any>>) => {
+	const labelView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 		const selectData = item.getItemData()?.meta?.selectData;
+		const isFolder = item.isFolder();
 		let additionalClass = "";
-		let label = metaType;
+		let label: string | undefined = metaType;
 
 		if (metaType === "column") {
 			additionalClass = "text-blue-500 bg-blue-100";
@@ -952,21 +1156,52 @@ export const FormTabContent = () => {
 			} else {
 				item.expand();
 			}
-			onSelectTreeItem(item);
 		};
 
 		return (
-			<span
-				className={`uppercase px-1.5 py-0.5 rounded-md ${additionalClass}`}
+			<button
+				type="button"
+				className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
 				onClick={onLabelClickFn}
 			>
 				{label}
-			</span>
+			</button>
 		);
 	};
 
-	const customItemView = (item: ItemInstance<TreeViewItem<any>>) => {
+	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
+		const _itemId = item.getId();
+		const _itemProps = item.getProps();
+
+		// Helper function to render drag handle for draggable items
+		const renderDragHandle = () => {
+			// Only show drag handle for items that can be reordered
+			const isDraggable =
+				metaType === "constant-value" ||
+				metaType === "where-value" ||
+				metaType === "column-item" ||
+				metaType?.startsWith("select-");
+
+			if (!isDraggable) return null;
+
+			return (
+				<Button
+					draggable
+					data-slot="drag-handle"
+					variant="link"
+					size="small"
+					className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
+					onMouseDown={(e) => e.stopPropagation()}
+					asChild
+				>
+					<span>
+						<GripVertical size={16} />
+					</span>
+				</Button>
+			);
+		};
+
 		switch (metaType) {
 			case "name":
 				return (
@@ -988,7 +1223,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Title"
-								value={(viewDefinition as any)?.title || ""}
+								value={viewDefinition?.title || ""}
 								onChange={(value) => updateTitle(value)}
 							/>
 						</div>
@@ -1001,7 +1236,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Description"
-								value={(viewDefinition as any)?.description || ""}
+								value={viewDefinition?.description || ""}
 								onChange={(value) => updateDescription(value)}
 							/>
 						</div>
@@ -1013,7 +1248,7 @@ export const FormTabContent = () => {
 						{labelView(item)}
 						<div className="w-[50%]">
 							<Select
-								value={(viewDefinition as any)?.status || ""}
+								value={viewDefinition?.status || ""}
 								onValueChange={(value) => updateStatus(value)}
 							>
 								<SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
@@ -1036,7 +1271,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="URL"
-								value={(viewDefinition as any)?.url || ""}
+								value={viewDefinition?.url || ""}
 								onChange={(value) => updateUrl(value)}
 							/>
 						</div>
@@ -1049,7 +1284,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Publisher"
-								value={(viewDefinition as any)?.publisher || ""}
+								value={viewDefinition?.publisher || ""}
 								onChange={(value) => updatePublisher(value)}
 							/>
 						</div>
@@ -1062,7 +1297,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Copyright"
-								value={(viewDefinition as any)?.copyright || ""}
+								value={viewDefinition?.copyright || ""}
 								onChange={(value) => updateCopyright(value)}
 							/>
 						</div>
@@ -1074,7 +1309,7 @@ export const FormTabContent = () => {
 						{labelView(item)}
 						<div className="w-[50%] flex items-center pl-2">
 							<Checkbox
-								checked={(viewDefinition as any)?.experimental || false}
+								checked={viewDefinition?.experimental || false}
 								onCheckedChange={(checked) =>
 									updateExperimental(checked === true)
 								}
@@ -1109,7 +1344,7 @@ export const FormTabContent = () => {
 					{ value: "3.0.1", label: "3.0.1" },
 					{ value: "3.0.0", label: "3.0.0" },
 				];
-				const selectedVersions = (viewDefinition as any)?.fhirVersion || [];
+				const selectedVersions = viewDefinition?.fhirVersion || [];
 
 				return (
 					<div className="flex w-full items-center justify-between">
@@ -1136,10 +1371,10 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Identifier system"
-								value={(viewDefinition as any)?.identifier?.[0]?.system || ""}
+								value={viewDefinition?.identifier?.[0]?.system || ""}
 								onChange={(value) => {
 									const currentIdentifier =
-										(viewDefinition as any)?.identifier?.[0] || {};
+										viewDefinition?.identifier?.[0] || {};
 									updateViewDefinition(undefined, undefined, {
 										identifier: [{ ...currentIdentifier, system: value }],
 									});
@@ -1155,10 +1390,10 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Identifier value"
-								value={(viewDefinition as any)?.identifier?.[0]?.value || ""}
+								value={viewDefinition?.identifier?.[0]?.value || ""}
 								onChange={(value) => {
 									const currentIdentifier =
-										(viewDefinition as any)?.identifier?.[0] || {};
+										viewDefinition?.identifier?.[0] || {};
 									updateViewDefinition(undefined, undefined, {
 										identifier: [{ ...currentIdentifier, value }],
 									});
@@ -1235,44 +1470,44 @@ export const FormTabContent = () => {
 						<DropdownMenuContent align="start">
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"column",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("column", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								Column
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"forEach",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("forEach", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								forEach
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"forEachOrNull",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("forEachOrNull", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								forEachOrNull
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
-									const path = findPath(selectItems, parentId);
-									addSelectItem(
-										"unionAll",
-										path ? [...path, parentId] : [parentId],
-									);
+									const path = findPath(selectItems, parentId) ?? [];
+									addSelectItem("unionAll", [
+										...path,
+										...(parentId ? [parentId] : []),
+									]);
 								}}
 							>
 								unionAll
@@ -1285,7 +1520,22 @@ export const FormTabContent = () => {
 				const selectData = item.getItemData()?.meta?.selectData;
 				if (!selectData || selectData.type !== "column") return null;
 
-				return <div>{labelView(item)}</div>;
+				return (
+					<div className="flex items-center w-full gap-2">
+						{labelView(item)}
+						<Button
+							variant="link"
+							size="small"
+							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity ml-auto"
+							onClick={() => removeSelectItem(selectData.id)}
+							asChild
+						>
+							<span>
+								<X size={14} />
+							</span>
+						</Button>
+					</div>
+				);
 			}
 			case "select-forEach":
 			case "select-forEachOrNull": {
@@ -1371,6 +1621,7 @@ export const FormTabContent = () => {
 								<X size={14} />
 							</span>
 						</Button>
+						{renderDragHandle()}
 					</div>
 				);
 			}
@@ -1381,7 +1632,9 @@ export const FormTabContent = () => {
 						variant="link"
 						size="small"
 						className="px-0"
-						onClick={() => addColumnToSelectItem(selectItemId)}
+						onClick={() =>
+							selectItemId ? addColumnToSelectItem(selectItemId) : undefined
+						}
 						asChild
 					>
 						<span>
@@ -1431,6 +1684,7 @@ export const FormTabContent = () => {
 								<X size={14} />
 							</span>
 						</Button>
+						{renderDragHandle()}
 					</div>
 				);
 			}
@@ -1445,7 +1699,7 @@ export const FormTabContent = () => {
 					>
 						<span>
 							<PlusIcon size={16} strokeWidth={3} />
-							<span className="typo-label">Constant</span>
+							<span className="text-xs typo-label ">Constant</span>
 						</span>
 					</Button>
 				);
@@ -1484,19 +1738,12 @@ export const FormTabContent = () => {
 								<X size={14} />
 							</span>
 						</Button>
+						{renderDragHandle()}
 					</div>
 				);
 			}
 		}
 	};
-
-	// Calculate expandedItemIds: all tree item IDs except those in collapsedItemIds
-	const expandedItemIds = useMemo(() => {
-		const allItemIds = Object.keys(tree).filter(
-			(item) => item !== "_properties",
-		);
-		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
-	}, [tree, collapsedItemIds]);
 
 	// Initialize the tree keys on first render
 	useEffect(() => {
@@ -1512,8 +1759,9 @@ export const FormTabContent = () => {
 	return (
 		<TreeView
 			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
-			itemLabelClassFn={(item: ItemInstance<TreeViewItem<any>>) => {
+			itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 				const metaType = item.getItemData()?.meta?.type;
+
 				if (
 					metaType === "constant" ||
 					metaType === "select" ||
@@ -1522,25 +1770,23 @@ export const FormTabContent = () => {
 				) {
 					return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 				} else {
-					console.log(metaType);
-					if (metaType === "column-item" || metaType === "constant-value") {
-						return "pl-0! pr-0! ml-2.5 border-b";
+					if (
+						metaType === "column-item" ||
+						metaType === "constant-value" ||
+						metaType === "where-value"
+					) {
+						return "pl-0! pr-0! ml-2.5 border-y border-t-transparent";
 					} else {
 						return "pr-0";
 					}
 				}
 			}}
-			onSelectItem={onSelectTreeItem}
 			items={tree}
 			rootItemId="root"
-			expandedItems={expandedItemIds}
-			onExpandedItemsChange={(expandedItems) =>
-				setCollapsedItemIds(
-					Object.keys(tree).filter((item) => !expandedItems.includes(item)),
-				)
-			}
 			customItemView={customItemView}
 			disableHover={true}
+			canReorder={true}
+			onDropFn={onDropTreeItem}
 		/>
 	);
 };

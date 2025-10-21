@@ -77,7 +77,7 @@ export function SQLTab() {
 					</div>
 				</div>
 			) : (
-				<CodeEditor readOnly currentValue={data} mode="sql" />
+				<CodeEditor readOnly currentValue={data ?? ""} mode="sql" />
 			)}
 		</TabsContent>
 	);

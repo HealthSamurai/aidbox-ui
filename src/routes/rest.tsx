@@ -21,7 +21,8 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, Minimize2, Timer } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -50,11 +51,14 @@ type ResponseData = {
 	duration: number;
 };
 
+const TITLE = "REST Console";
+
 export const Route = createFileRoute("/rest")({
 	staticData: {
-		title: "REST Console",
+		title: TITLE,
 	},
 	component: RouteComponent,
+	loader: () => ({ breadCrumb: TITLE }),
 });
 
 function RequestLineEditorWrapper({
@@ -295,7 +299,6 @@ function ResponseView({
 				)
 					.map(([key, value]) => `${key}: ${value}`)
 					.join("\n")}\n\n${response.body}`;
-			case "body":
 			default:
 				try {
 					const parsed = JSON.parse(response.body);
@@ -560,11 +563,6 @@ function RouteComponent() {
 		getInitialValueInEffect: false,
 		defaultValue: true,
 	});
-
-	// State to store history refresh function
-	const [refreshHistory, setRefreshHistory] = React.useState<
-		(() => void) | null
-	>(null);
 
 	const [panelsMode, setPanelsMode] = useLocalStorage<
 		"horizontal" | "vertical"

@@ -6,6 +6,9 @@
 		"module": "ESNext",
 		"skipLibCheck": true,
 		"types": [],
+		"paths": {
+			"@aidbox-ui/*": ["./src/*"]
+		},
 
 		/* Bundler mode */
 		"moduleResolution": "bundler",
@@ -19,8 +22,8 @@
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"exactOptionalPropertyTypes": true,
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
+		"noUnusedLocals": false, // performing on biome side
+		"noUnusedParameters": false, // performing on biome side
 		"erasableSyntaxOnly": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true

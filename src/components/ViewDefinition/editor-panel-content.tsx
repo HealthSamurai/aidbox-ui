@@ -1,9 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { AidboxCallWithMeta } from "../../api/auth";
-import { useLocalStorage } from "../../hooks";
+import * as utils from "../../api/utils";
+
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { ViewDefinitionContext } from "./page";
@@ -35,6 +37,7 @@ export const EditorHeaderMenu = () => {
 };
 
 export const EditorPanelActions = () => {
+	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -52,16 +55,26 @@ export const EditorPanelActions = () => {
 				style: { margin: "1rem" },
 			});
 		},
-		onError: () => {
-			HSComp.toast.error("Failed to save ViewDefinition", {
-				position: "bottom-right",
-				style: {
-					margin: "1rem",
-					backgroundColor: "var(--destructive)",
-					color: "var(--accent)",
-				},
+		onError: utils.onError(),
+	});
+
+	const viewDefinitionCreateMutation = useMutation({
+		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+			return AidboxCallWithMeta({
+				method: "POST",
+				url: `/fhir/ViewDefinition/`,
+				body: JSON.stringify(viewDefinition),
 			});
 		},
+		onSuccess: (resp) => {
+			const id = JSON.parse(resp.body).id;
+			navigate({
+				to: "/resource/$resourceType/edit/$id",
+				params: { resourceType: "ViewDefinition", id: id },
+				search: { tab: "code", mode: "json" },
+			});
+		},
+		onError: utils.onError(),
 	});
 
 	const viewDefinitionRunMutation = useMutation({
@@ -108,16 +121,7 @@ export const EditorPanelActions = () => {
 				style: { margin: "1rem" },
 			});
 		},
-		onError: () => {
-			HSComp.toast.error("Failed to run ViewDefinition", {
-				position: "bottom-right",
-				style: {
-					margin: "1rem",
-					backgroundColor: "var(--destructive)",
-					color: "var(--accent)",
-				},
-			});
-		},
+		onError: utils.onError(),
 	});
 
 	const handleSave = () => {
@@ -132,12 +136,25 @@ export const EditorPanelActions = () => {
 		}
 	};
 
+	const handleCreate = () => {
+		if (viewDefinitionResource) {
+			viewDefinitionCreateMutation.mutate(viewDefinitionResource);
+		}
+	};
+
 	return (
 		<div className="flex items-center justify-end gap-2 py-3 px-6 border-t">
-			<HSComp.Button variant="secondary" onClick={handleSave}>
-				<Lucide.SaveIcon className="w-4 h-4" />
-				Save
-			</HSComp.Button>
+			{viewDefinitionContext.originalId ? (
+				<HSComp.Button variant="secondary" onClick={handleSave}>
+					<Lucide.SaveIcon className="w-4 h-4" />
+					Save
+				</HSComp.Button>
+			) : (
+				<HSComp.Button variant="secondary" onClick={handleCreate}>
+					<Lucide.SaveIcon className="w-4 h-4" />
+					Create
+				</HSComp.Button>
+			)}
 			<HSComp.Button onClick={handleRun}>
 				<Lucide.PlayIcon />
 				Run
@@ -147,15 +164,31 @@ export const EditorPanelActions = () => {
 };
 
 export const EditorPanelContent = () => {
-	const [selectedTab, setSelectedTab] =
-		useLocalStorage<Types.ViewDefinitionEditorTab>({
-			key: "view-definition-editor-tab-selected",
-			getInitialValueInEffect: false,
-			defaultValue: "form",
-		});
+	const navigate = useNavigate();
 
-	const handleOnTabSelect = (value: string) => {
-		setSelectedTab(value as Types.ViewDefinitionEditorTab);
+	const createSearch = useSearch({
+		from: "/resource/ViewDefinition/create",
+		shouldThrow: false,
+	});
+	const editSearch = useSearch({
+		from: "/resource/ViewDefinition/edit/$id",
+		shouldThrow: false,
+	});
+	const search = createSearch || editSearch;
+	if (search === undefined) {
+		console.error("createSearch and editSearch are undefined");
+		return <div>FAILED DUE TO UNDEFINED SEARCH</div>;
+	}
+	const { tab: selectedTab } = search;
+
+	const handleOnTabSelect = (value: Types.ViewDefinitionEditorTab) => {
+		navigate({
+			from:
+				createSearch !== undefined
+					? "/resource/ViewDefinition/create"
+					: "/resource/ViewDefinition/edit/$id",
+			search: { tab: value },
+		});
 	};
 
 	return (
@@ -165,10 +198,10 @@ export const EditorPanelContent = () => {
 			className="grow min-h-0"
 		>
 			<EditorHeaderMenu />
-			<HSComp.TabsContent value="form" className="py-1 px-2.5">
+			<HSComp.TabsContent value={"form"} className="py-1 px-2.5">
 				<FormTabContent />
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value="code">
+			<HSComp.TabsContent value={"code"}>
 				<CodeTabContent />
 			</HSComp.TabsContent>
 			<SQLTab />

@@ -53,28 +53,30 @@ export const ViewDefinitionErrorPage = ({
 	);
 };
 
-const ViewDefinitionPage = ({ id }: { id: string }) => {
+const ViewDefinitionPage = ({ id }: { id?: string }) => {
+	const [resouceTypeForViewDefinition, setResouceTypeForViewDefinition] =
+		React.useState<string>();
 	const [viewDefinition, setViewDefinition] =
 		React.useState<Types.ViewDefinition>();
-
 	const [runViewDefinition, setRunViewDefinition] =
 		React.useState<Types.ViewDefinition>();
 
-	const [viewDefinitionResourceType, setViewDefinitionResourceType] =
-		React.useState<string>();
-
 	const [runResult, setRunResult] = React.useState<string>();
-
 	const [runResultPage, setRunResultPage] = React.useState(1);
-
 	const [runResultPageSize, setRunResultPageSize] = React.useState(30);
 
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
 		queryFn: async () => {
-			const response = await fetchViewDefinition(id);
+			const viewDefinitionPlaceholder = {
+				resource: "Patient",
+				resourceType: "ViewDefinition",
+				select: [],
+			};
+			let response: Types.ViewDefinition = viewDefinitionPlaceholder;
+			if (id) response = await fetchViewDefinition(id);
+			setResouceTypeForViewDefinition(response.resource);
 			setViewDefinition(response);
-			setViewDefinitionResourceType(response.resource);
 			return response;
 		},
 		retry: false,
@@ -91,10 +93,10 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 	return (
 		<ViewDefinitionContext.Provider
 			value={{
+				originalId: id,
 				viewDefinition: viewDefinition,
 				setViewDefinition: setViewDefinition,
 				isLoadingViewDef: viewDefinitionQuery.isLoading,
-				originalId: id,
 				runResult: runResult,
 				setRunResult: setRunResult,
 				runResultPage: runResultPage,
@@ -107,8 +109,8 @@ const ViewDefinitionPage = ({ id }: { id: string }) => {
 		>
 			<ViewDefinitionResourceTypeContext.Provider
 				value={{
-					viewDefinitionResourceType: viewDefinitionResourceType,
-					setViewDefinitionResourceType: setViewDefinitionResourceType,
+					viewDefinitionResourceType: resouceTypeForViewDefinition,
+					setViewDefinitionResourceType: setResouceTypeForViewDefinition,
 				}}
 			>
 				<HSComp.ResizablePanelGroup

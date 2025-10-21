@@ -26,32 +26,15 @@ import AidboxLogo from "../assets/aidbox-logo.svg";
 
 function Breadcrumbs() {
 	const matches = useMatches();
-	const breadcrumbs = matches
-		.filter((match) => match.staticData?.title)
-		.flatMap((match) => {
-			const items = [
-				{
-					title: match.staticData.title as string,
-					path: match.pathname,
-				},
-			];
+	if (matches.length === 0) return <div>No router matches</div>;
 
-			// If the route has params and it's ViewDefinition, add ID as separate breadcrumb
-			if (
-				match.params &&
-				"id" in match.params &&
-				match.pathname.includes("/ViewDefinition/")
-			) {
-				items.push({
-					title: match.params.id as string,
-					path: match.pathname,
-				});
-			}
-
-			return items;
-		});
+	const breadcrumbs = matches.flatMap((match) => {
+		const breadCrumb = match.loaderData?.breadCrumb;
+		return breadCrumb ? [{ title: breadCrumb, path: match.pathname }] : [];
+	});
 
 	if (breadcrumbs.length === 0) {
+		console.warn("Breadcrumb ommited!");
 		return null;
 	}
 
@@ -65,7 +48,7 @@ function Breadcrumbs() {
 							{index === breadcrumbs.length - 1 ? (
 								<BreadcrumbPage>{crumb.title}</BreadcrumbPage>
 							) : (
-								<BreadcrumbLink asChild>
+								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>
 								</BreadcrumbLink>
 							)}
