@@ -1,6 +1,7 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
+import * as YAML from "js-yaml";
 import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
 import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
@@ -10,7 +11,7 @@ import {
 	type HistoryBundle,
 	type HistoryEntry,
 } from "./api";
-import { pageId } from "./types";
+import { pageId, type EditorMode } from "./types";
 import { DiffView } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view-pure.css";
 import { generateDiffFile } from "@git-diff-view/file";
@@ -169,15 +170,16 @@ const VersionViewDialog = ({
 	resourceType,
 	resourceId,
 	openState,
-	onOpenChange,
+	onOpenStateChange,
 }: {
 	resource: any;
 	resourceType: string;
 	resourceId: string;
 	openState: OpenState;
-	onOpenChange: (open: OpenState) => void;
+	onOpenStateChange: (open: OpenState) => void;
 }) => {
 	const queryClient = useQueryClient();
+	const [mode, setMode] = React.useState<EditorMode>("json");
 
 	const version = resource?.meta?.versionId;
 
@@ -206,10 +208,12 @@ const VersionViewDialog = ({
 					style: { margin: "1rem" },
 				},
 			);
-			onOpenChange("hidden");
+			onOpenStateChange("hidden");
 		},
 		onError: utils.onError(),
 	});
+
+	const indent = 2;
 
 	return (
 		<>
@@ -223,10 +227,30 @@ const VersionViewDialog = ({
 					</HSComp.DialogTitle>
 				</HSComp.DialogHeader>
 				<div className="overflow-auto flex-1">
+					<div className="absolute top-3 right-3 z-10">
+						<div className="flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary">
+							<HSComp.SegmentControl
+								defaultValue={mode}
+								name="version-view-format"
+								onValueChange={(value) => setMode(value as EditorMode)}
+							>
+								<HSComp.SegmentControlItem value="json">
+									JSON
+								</HSComp.SegmentControlItem>
+								<HSComp.SegmentControlItem value="yaml">
+									YAML
+								</HSComp.SegmentControlItem>
+							</HSComp.SegmentControl>
+						</div>
+					</div>
 					<HSComp.CodeEditor
 						readOnly
-						currentValue={JSON.stringify(resource, null, "  ")}
-						mode="json"
+						currentValue={
+							mode === "json"
+								? JSON.stringify(resource, null, indent)
+								: YAML.dump(resource, { indent })
+						}
+						mode={mode}
 					/>
 				</div>
 				<div className="flex gap-2 justify-end pt-4">
@@ -235,7 +259,7 @@ const VersionViewDialog = ({
 					</HSComp.DialogClose>
 					<HSComp.Button
 						variant="primary"
-						onClick={() => onOpenChange("confirm")}
+						onClick={() => onOpenStateChange("confirm")}
 					>
 						Restore
 					</HSComp.Button>
@@ -250,7 +274,7 @@ const VersionViewDialog = ({
 					}
 					versionId={version || ""}
 					onConfirm={() => mutation.mutate(JSON.stringify(resource))}
-					onCancel={() => onOpenChange("shown")}
+					onCancel={() => onOpenStateChange("shown")}
 				/>
 			)}
 		</>
@@ -358,7 +382,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 							resourceType={resourceType}
 							resourceId={id}
 							openState={open}
-							onOpenChange={setOpen}
+							onOpenStateChange={setOpen}
 						/>
 					</HSComp.Dialog>
 				);
