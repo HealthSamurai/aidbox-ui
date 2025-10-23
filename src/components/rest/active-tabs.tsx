@@ -51,7 +51,7 @@ export const DEFAULT_TAB: Tab = {
 	method: "GET",
 	name: "New request",
 	selected: true,
-	activeSubTab: "params",
+	activeSubTab: "raw",
 	headers: [
 		{ id: "1", name: "Content-Type", value: "application/json", enabled: true },
 		{ id: "2", name: "Accept", value: "application/json", enabled: true },
