@@ -593,7 +593,7 @@ function RouteComponent() {
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.ctrlKey && event.key === "Enter") {
+			if ((event.ctrlKey && event.key === "Enter") || event.key === "Enter") {
 				event.preventDefault();
 				handleSendRequest(selectedTab, setResponse, queryClient);
 			}
