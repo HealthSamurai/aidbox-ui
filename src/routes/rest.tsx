@@ -919,10 +919,10 @@ function RouteComponent() {
 		};
 	}, [selectedTab, queryClient]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: Need to clear response only on tab change
-	useEffect(() => {
-		setResponse(null);
-	}, [selectedTab.id]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: No need to clear response on tab change
+	// useEffect(() => {
+	// 	setResponse(null);
+	// }, [selectedTab.id]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
