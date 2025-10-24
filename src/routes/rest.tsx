@@ -23,8 +23,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, Minimize2, Timer } from "lucide-react";
 import * as yaml from "js-yaml";
-import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -65,28 +64,29 @@ export const Route = createFileRoute("/rest")({
 	loader: () => ({ breadCrumb: TITLE }),
 });
 
-function RequestLineEditorWrapper({
-	selectedTab,
-	handleTabPathChange,
-	handleTabMethodChange,
-}: {
-	selectedTab: Tab;
-	handleTabPathChange: (path: string) => void;
-	handleTabMethodChange: (method: string) => void;
-}) {
+const RequestLineEditorWrapper = React.forwardRef<
+	HTMLDivElement,
+	{
+		selectedTab: Tab;
+		handleTabPathChange: (path: string) => void;
+		handleTabMethodChange: (method: string) => void;
+	}
+>(({ selectedTab, handleTabPathChange, handleTabMethodChange }, ref) => {
 	return (
-		<RequestLineEditor
-			key={`request-line-editor-${selectedTab.id}`}
-			placeholder="/fhir/Patient"
-			autoFocus={selectedTab.path === ""}
-			className="w-full"
-			method={selectedTab.method}
-			path={selectedTab.path || ""}
-			onMethodChange={(method) => handleTabMethodChange(method)}
-			onPathChange={(event) => handleTabPathChange(event.target.value)}
-		/>
+		<div ref={ref} className="w-full">
+			<RequestLineEditor
+				key={`request-line-editor-${selectedTab.id}`}
+				placeholder="/fhir/Patient"
+				autoFocus={selectedTab.path === ""}
+				className="w-full"
+				method={selectedTab.method}
+				path={selectedTab.path || ""}
+				onMethodChange={(method) => handleTabMethodChange(method)}
+				onPathChange={(event) => handleTabPathChange(event.target.value)}
+			/>
+		</div>
 	);
-}
+});
 
 function RawEditor({
 	selectedTab,
@@ -892,9 +892,22 @@ function RouteComponent() {
 		string | undefined
 	>(selectedTab.id);
 
+	const requestLineRef = React.useRef<HTMLDivElement>(null);
+
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.ctrlKey && event.key === "Enter") {
+			const target = event.target as HTMLElement;
+			const isInRequestLine = requestLineRef.current?.contains(target);
+
+			// Send request on Enter in request line, or Ctrl+Enter anywhere
+			if (
+				(event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.metaKey &&
+					!event.altKey &&
+					isInRequestLine) ||
+				(event.ctrlKey && event.key === "Enter")
+			) {
 				event.preventDefault();
 				handleSendRequest(selectedTab, setResponse, queryClient, setIsLoading);
 			}
@@ -1164,6 +1177,7 @@ function RouteComponent() {
 					</div>
 					<div className="px-4 py-3 flex items-center border-b gap-2">
 						<RequestLineEditorWrapper
+							ref={requestLineRef}
 							selectedTab={selectedTab}
 							handleTabPathChange={(path) => {
 								setRequestLineVersion(crypto.randomUUID());
