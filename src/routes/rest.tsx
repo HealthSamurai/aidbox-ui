@@ -52,6 +52,7 @@ type ResponseData = {
 	headers: Record<string, string>;
 	body: string;
 	duration: number;
+	mode?: "json" | "yaml";
 };
 
 const TITLE = "REST Console";
@@ -164,7 +165,7 @@ function RequestView({
 		setBodyEditorValue(selectedTab.body || "");
 	}, [selectedTab.body]);
 
-	// Sync body mode when Content-Type header changes (from external sources like Raw/Headers tab)
+	// Sync body mode when Content-Type or Accept header changes (from external sources like Raw/Headers tab)
 	useEffect(() => {
 		// Skip if we're the ones updating the headers
 		if (isUpdatingHeadersRef.current) {
@@ -177,9 +178,15 @@ function RequestView({
 		const contentTypeHeader = headers.find(
 			(h) => h.name?.toLowerCase() === "content-type" && (h.enabled ?? true),
 		);
+		const acceptHeader = headers.find(
+			(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
+		);
 
-		if (contentTypeHeader?.value) {
-			const value = contentTypeHeader.value.toLowerCase().trim();
+		// Check Content-Type header first, then Accept header as fallback
+		const headerToCheck = contentTypeHeader || acceptHeader;
+
+		if (headerToCheck?.value) {
+			const value = headerToCheck.value.toLowerCase().trim();
 			if (value === "text/yaml" || value === "application/x-yaml") {
 				if (bodyMode !== "yaml") {
 					setBodyMode("yaml");
@@ -193,7 +200,7 @@ function RequestView({
 		}
 	}, [selectedTab.headers]);
 
-	// Update Content-Type header based on body mode
+	// Update Content-Type and Accept headers based on body mode
 	useEffect(() => {
 		const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
 
@@ -203,40 +210,95 @@ function RequestView({
 		const contentTypeIndex = headers.findIndex(
 			(h) => h.name?.toLowerCase() === "content-type",
 		);
+		const acceptIndex = headers.findIndex(
+			(h) => h.name?.toLowerCase() === "accept",
+		);
 
 		// Check if we need to update
-		const needsUpdate =
+		const needsContentTypeUpdate =
 			contentTypeIndex < 0 || headers[contentTypeIndex]?.value !== contentType;
+		const needsAcceptUpdate =
+			acceptIndex < 0 || headers[acceptIndex]?.value !== contentType;
 
-		if (needsUpdate) {
+		if (needsContentTypeUpdate || needsAcceptUpdate) {
 			isUpdatingHeadersRef.current = true;
 
-			if (contentTypeIndex >= 0) {
-				// Update existing Content-Type header
-				headers[contentTypeIndex] = {
-					...headers[contentTypeIndex],
-					value: contentType,
-				};
-			} else {
-				// Add Content-Type header if it doesn't exist (before the empty row)
-				const emptyRowIndex = headers.findIndex(
-					(h) => h.name === "" && h.value === "",
+			// Update or add Content-Type header
+			if (needsContentTypeUpdate) {
+				if (contentTypeIndex >= 0 && headers[contentTypeIndex]) {
+					// Update existing Content-Type header
+					const existingHeader = headers[contentTypeIndex];
+					headers[contentTypeIndex] = {
+						id: existingHeader.id,
+						name: existingHeader.name,
+						value: contentType,
+						...(existingHeader.enabled !== undefined && {
+							enabled: existingHeader.enabled,
+						}),
+					};
+				} else {
+					// Add Content-Type header if it doesn't exist (before the empty row)
+					const emptyRowIndex = headers.findIndex(
+						(h) => h.name === "" && h.value === "",
+					);
+
+					if (emptyRowIndex >= 0) {
+						headers.splice(emptyRowIndex, 0, {
+							id: crypto.randomUUID(),
+							name: "Content-Type",
+							value: contentType,
+							enabled: true,
+						});
+					} else {
+						headers.push({
+							id: crypto.randomUUID(),
+							name: "Content-Type",
+							value: contentType,
+							enabled: true,
+						});
+					}
+				}
+			}
+
+			// Update or add Accept header
+			if (needsAcceptUpdate) {
+				// Re-find acceptIndex since we may have modified the array
+				const currentAcceptIndex = headers.findIndex(
+					(h) => h.name?.toLowerCase() === "accept",
 				);
 
-				if (emptyRowIndex >= 0) {
-					headers.splice(emptyRowIndex, 0, {
-						id: crypto.randomUUID(),
-						name: "Content-Type",
+				if (currentAcceptIndex >= 0 && headers[currentAcceptIndex]) {
+					// Update existing Accept header
+					const existingHeader = headers[currentAcceptIndex];
+					headers[currentAcceptIndex] = {
+						id: existingHeader.id,
+						name: existingHeader.name,
 						value: contentType,
-						enabled: true,
-					});
+						...(existingHeader.enabled !== undefined && {
+							enabled: existingHeader.enabled,
+						}),
+					};
 				} else {
-					headers.push({
-						id: crypto.randomUUID(),
-						name: "Content-Type",
-						value: contentType,
-						enabled: true,
-					});
+					// Add Accept header if it doesn't exist (before the empty row)
+					const emptyRowIndex = headers.findIndex(
+						(h) => h.name === "" && h.value === "",
+					);
+
+					if (emptyRowIndex >= 0) {
+						headers.splice(emptyRowIndex, 0, {
+							id: crypto.randomUUID(),
+							name: "Accept",
+							value: contentType,
+							enabled: true,
+						});
+					} else {
+						headers.push({
+							id: crypto.randomUUID(),
+							name: "Accept",
+							value: contentType,
+							enabled: true,
+						});
+					}
 				}
 			}
 
@@ -465,16 +527,21 @@ function ResponseView({
 	response,
 	activeResponseTab,
 	isLoading,
+	responseMode,
 }: {
 	response: ResponseData | null;
 	activeResponseTab: ResponseTabs;
 	isLoading: boolean;
+	responseMode: "json" | "yaml";
 }) {
 	const getEditorContent = () => {
 		if (!response) return "";
 
 		switch (activeResponseTab) {
 			case "headers":
+				if (responseMode === "yaml") {
+					return yaml.dump(response.headers, { indent: 2 });
+				}
 				return JSON.stringify(response.headers, null, 2);
 			case "raw":
 				return `HTTP/1.1 ${response.status} ${response.statusText}\n${Object.entries(
@@ -483,6 +550,16 @@ function ResponseView({
 					.map(([key, value]) => `${key}: ${value}`)
 					.join("\n")}\n\n${response.body}`;
 			default:
+				if (responseMode === "yaml") {
+					try {
+						// Try to parse as JSON first, then convert to YAML
+						const parsed = JSON.parse(response.body);
+						return yaml.dump(parsed, { indent: 2 });
+					} catch {
+						// If it's already YAML or invalid, return as-is
+						return response.body;
+					}
+				}
 				try {
 					const parsed = JSON.parse(response.body);
 					return JSON.stringify(parsed, null, 2);
@@ -490,6 +567,11 @@ function ResponseView({
 					return response.body;
 				}
 		}
+	};
+
+	const getEditorMode = () => {
+		if (activeResponseTab === "raw") return "http";
+		return responseMode;
 	};
 
 	if (isLoading) {
@@ -507,9 +589,9 @@ function ResponseView({
 		return (
 			<CodeEditor
 				readOnly={true}
-				key={`response-${activeResponseTab}-${response.status}`}
+				key={`response-${activeResponseTab}-${response.status}-${responseMode}`}
 				currentValue={getEditorContent()}
-				mode={activeResponseTab === "raw" ? "http" : "json"}
+				mode={getEditorMode()}
 			/>
 		);
 	} else {
@@ -535,6 +617,9 @@ function ResponsePane({
 	const [activeResponseTab, setActiveResponseTab] = useState<
 		"body" | "headers" | "raw"
 	>("body");
+
+	// Use response mode from the response itself (set at request time)
+	const responseMode = response?.mode || "json";
 
 	return (
 		<Tabs
@@ -574,6 +659,7 @@ function ResponsePane({
 					response={response}
 					activeResponseTab={activeResponseTab}
 					isLoading={isLoading}
+					responseMode={responseMode}
 				/>
 			</div>
 		</Tabs>
@@ -634,6 +720,16 @@ function handleSendRequest(
 				{} as Record<string, string>,
 			) ?? {};
 
+	// Determine response mode based on Accept header at request time
+	const acceptHeader = selectedTab.headers?.find(
+		(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
+	);
+	const responseMode: "json" | "yaml" =
+		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ||
+		acceptHeader?.value?.toLowerCase().trim() === "application/x-yaml"
+			? "yaml"
+			: "json";
+
 	// Save to UI history (don't wait for it)
 	saveToUIHistory(selectedTab, queryClient);
 
@@ -646,7 +742,7 @@ function handleSendRequest(
 		body: selectedTab.body || "",
 	})
 		.then((response) => {
-			setResponse(response);
+			setResponse({ ...response, mode: responseMode });
 		})
 		.catch((error) => {
 			console.error("error", error);
@@ -657,6 +753,7 @@ function handleSendRequest(
 				headers: {},
 				body: JSON.stringify({ error: error.message }, null, 2),
 				duration: 0,
+				mode: responseMode,
 			};
 
 			setResponse(errorResponse);
