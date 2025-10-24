@@ -142,7 +142,7 @@ function RequestView({
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
 	const getEditorValue = () => {
-		return selectedTab.body || JSON.stringify({ resourceType: "" }, null, 2);
+		return selectedTab.body || "";
 	};
 
 	return (
