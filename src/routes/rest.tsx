@@ -260,6 +260,7 @@ type ResponsePaneProps = {
 	onSplitChange: (mode: SplitDirection) => void;
 	onFullScreenToggle: (state: "maximized" | "normal") => void;
 	fullScreenState: "maximized" | "normal";
+	isLoading: boolean;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -283,9 +284,11 @@ function ResponseInfo({ response }: { response: ResponseData }) {
 function ResponseView({
 	response,
 	activeResponseTab,
+	isLoading,
 }: {
 	response: ResponseData | null;
 	activeResponseTab: ResponseTabs;
+	isLoading: boolean;
 }) {
 	const getEditorContent = () => {
 		if (!response) return "";
@@ -308,6 +311,17 @@ function ResponseView({
 				}
 		}
 	};
+
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Loading...</div>
+					<div className="text-sm">Processing request</div>
+				</div>
+			</div>
+		);
+	}
 
 	if (response) {
 		return (
@@ -336,6 +350,7 @@ function ResponsePane({
 	response,
 	onFullScreenToggle,
 	fullScreenState,
+	isLoading,
 }: ResponsePaneProps) {
 	const [activeResponseTab, setActiveResponseTab] = useState<
 		"body" | "headers" | "raw"
@@ -378,6 +393,7 @@ function ResponsePane({
 				<ResponseView
 					response={response}
 					activeResponseTab={activeResponseTab}
+					isLoading={isLoading}
 				/>
 			</div>
 		</Tabs>
@@ -423,6 +439,7 @@ function handleSendRequest(
 	selectedTab: Tab,
 	setResponse: (response: ResponseData | null) => void,
 	queryClient: QueryClient,
+	setIsLoading: (loading: boolean) => void,
 ) {
 	const headers =
 		selectedTab.headers
@@ -439,6 +456,8 @@ function handleSendRequest(
 
 	// Save to UI history (don't wait for it)
 	saveToUIHistory(selectedTab, queryClient);
+
+	setIsLoading(true);
 
 	AidboxCallWithMeta({
 		method: selectedTab.method,
@@ -461,6 +480,9 @@ function handleSendRequest(
 			};
 
 			setResponse(errorResponse);
+		})
+		.finally(() => {
+			setIsLoading(false);
 		});
 }
 
@@ -582,6 +604,8 @@ function RouteComponent() {
 		"request" | "response" | null
 	>(null);
 
+	const [isLoading, setIsLoading] = useState(false);
+
 	const selectedTab = useMemo(() => {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
@@ -595,7 +619,7 @@ function RouteComponent() {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if ((event.ctrlKey && event.key === "Enter") || event.key === "Enter") {
 				event.preventDefault();
-				handleSendRequest(selectedTab, setResponse, queryClient);
+				handleSendRequest(selectedTab, setResponse, queryClient, setIsLoading);
 			}
 		};
 
@@ -859,7 +883,12 @@ function RouteComponent() {
 						/>
 						<SendButton
 							onClick={() =>
-								handleSendRequest(selectedTab, setResponse, queryClient)
+								handleSendRequest(
+									selectedTab,
+									setResponse,
+									queryClient,
+									setIsLoading,
+								)
 							}
 						/>
 						<RestCollections.SaveButton
@@ -916,6 +945,7 @@ function RouteComponent() {
 										? setFullscreenPanel("response")
 										: setFullscreenPanel(null)
 								}
+								isLoading={isLoading}
 							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>
