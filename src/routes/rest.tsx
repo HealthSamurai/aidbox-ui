@@ -10,6 +10,7 @@ import {
 	TabsContent,
 	TabsList,
 	TabsTrigger,
+	toast,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -21,6 +22,7 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fullscreen, Minimize2, Timer } from "lucide-react";
+import * as yaml from "js-yaml";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AidboxCallWithMeta } from "../api/auth";
@@ -39,6 +41,7 @@ import {
 } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
 import { SplitButton, type SplitDirection } from "../components/Split";
+import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menubar";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
@@ -126,6 +129,8 @@ function RequestView({
 	onParamRemove,
 	onFullScreenToggle,
 	fullScreenState,
+	onBodyModeChange,
+	onHeadersUpdate,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
@@ -138,11 +143,177 @@ function RequestView({
 	onParamRemove: (paramIndex: number) => void;
 	onFullScreenToggle: (state: "maximized" | "normal") => void;
 	fullScreenState: "maximized" | "normal";
+	onBodyModeChange: (mode: "json" | "yaml") => void;
+	onHeadersUpdate: (headers: Header[]) => void;
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
+	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
+		key: `rest-console-body-mode-${selectedTab.id}`,
+		getInitialValueInEffect: false,
+		defaultValue: "json",
+	});
+
+	const [bodyEditorValue, setBodyEditorValue] = useState(
+		selectedTab.body || "",
+	);
+
+	const isUpdatingHeadersRef = useState({ current: false })[0];
+
+	useEffect(() => {
+		setBodyEditorValue(selectedTab.body || "");
+	}, [selectedTab.body]);
+
+	// Sync body mode when Content-Type header changes (from external sources like Raw/Headers tab)
+	useEffect(() => {
+		// Skip if we're the ones updating the headers
+		if (isUpdatingHeadersRef.current) {
+			return;
+		}
+
+		const headers = Array.isArray(selectedTab.headers)
+			? selectedTab.headers
+			: [];
+		const contentTypeHeader = headers.find(
+			(h) => h.name?.toLowerCase() === "content-type" && (h.enabled ?? true),
+		);
+
+		if (contentTypeHeader?.value) {
+			const value = contentTypeHeader.value.toLowerCase().trim();
+			if (value === "text/yaml" || value === "application/x-yaml") {
+				if (bodyMode !== "yaml") {
+					setBodyMode("yaml");
+				}
+			} else if (value === "application/json") {
+				if (bodyMode !== "json") {
+					setBodyMode("json");
+				}
+			}
+			// If it's any other value, don't change the mode
+		}
+	}, [selectedTab.headers]);
+
+	// Update Content-Type header based on body mode
+	useEffect(() => {
+		const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
+
+		const headers = Array.isArray(selectedTab.headers)
+			? [...selectedTab.headers]
+			: [];
+		const contentTypeIndex = headers.findIndex(
+			(h) => h.name?.toLowerCase() === "content-type",
+		);
+
+		// Check if we need to update
+		const needsUpdate =
+			contentTypeIndex < 0 || headers[contentTypeIndex]?.value !== contentType;
+
+		if (needsUpdate) {
+			isUpdatingHeadersRef.current = true;
+
+			if (contentTypeIndex >= 0) {
+				// Update existing Content-Type header
+				headers[contentTypeIndex] = {
+					...headers[contentTypeIndex],
+					value: contentType,
+				};
+			} else {
+				// Add Content-Type header if it doesn't exist (before the empty row)
+				const emptyRowIndex = headers.findIndex(
+					(h) => h.name === "" && h.value === "",
+				);
+
+				if (emptyRowIndex >= 0) {
+					headers.splice(emptyRowIndex, 0, {
+						id: crypto.randomUUID(),
+						name: "Content-Type",
+						value: contentType,
+						enabled: true,
+					});
+				} else {
+					headers.push({
+						id: crypto.randomUUID(),
+						name: "Content-Type",
+						value: contentType,
+						enabled: true,
+					});
+				}
+			}
+
+			onHeadersUpdate(headers);
+
+			// Reset the flag after a short delay
+			setTimeout(() => {
+				isUpdatingHeadersRef.current = false;
+			}, 0);
+		}
+	}, [bodyMode]);
+
 	const getEditorValue = () => {
-		return selectedTab.body || "";
+		return bodyEditorValue;
+	};
+
+	const handleBodyModeChange = (newMode: "json" | "yaml") => {
+		try {
+			const currentBody = bodyEditorValue.trim();
+			if (!currentBody) {
+				setBodyMode(newMode);
+				onBodyModeChange(newMode);
+				return;
+			}
+
+			let convertedBody: string;
+			if (newMode === "yaml") {
+				const parsed = JSON.parse(currentBody);
+				convertedBody = yaml.dump(parsed, { indent: 2 });
+			} else {
+				const parsed = yaml.load(currentBody) as object;
+				convertedBody = JSON.stringify(parsed, null, 2);
+			}
+
+			setBodyEditorValue(convertedBody);
+			onBodyChange(convertedBody);
+			setBodyMode(newMode);
+			onBodyModeChange(newMode);
+		} catch (error) {
+			toast.error(`Failed to convert to ${newMode.toUpperCase()}`, {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+		}
+	};
+
+	const handleFormatBody = () => {
+		try {
+			const currentBody = bodyEditorValue.trim();
+			if (!currentBody) return;
+
+			let formattedBody: string;
+			if (bodyMode === "yaml") {
+				const parsed = yaml.load(currentBody);
+				formattedBody = yaml.dump(parsed, { indent: 2 });
+			} else {
+				const parsed = JSON.parse(currentBody);
+				formattedBody = JSON.stringify(parsed, null, 2);
+			}
+
+			setBodyEditorValue(formattedBody);
+			onBodyChange(formattedBody);
+			toast.success("Code formatted", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+		} catch (error) {
+			toast.error("Failed to format code", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+		}
+	};
+
+	const handleBodyEditorChange = (value: string) => {
+		setBodyEditorValue(value);
+		onBodyChange(value);
 	};
 
 	return (
@@ -184,12 +355,21 @@ function RequestView({
 						onHeaderRemove={onHeaderRemove}
 					/>
 				</TabsContent>
-				<TabsContent value="body">
+				<TabsContent value="body" className="relative h-full">
+					<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
+						<CodeEditorMenubar
+							mode={bodyMode}
+							onModeChange={handleBodyModeChange}
+							textToCopy={bodyEditorValue}
+							onFormat={handleFormatBody}
+						/>
+					</div>
 					<CodeEditor
 						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
 						key={`request-editor-${selectedTab.id}`}
-						defaultValue={getEditorValue()}
-						onChange={onBodyChange}
+						currentValue={getEditorValue()}
+						mode={bodyMode}
+						onChange={handleBodyEditorChange}
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
@@ -617,7 +797,7 @@ function RouteComponent() {
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if ((event.ctrlKey && event.key === "Enter") || event.key === "Enter") {
+			if (event.ctrlKey && event.key === "Enter") {
 				event.preventDefault();
 				handleSendRequest(selectedTab, setResponse, queryClient, setIsLoading);
 			}
@@ -841,6 +1021,19 @@ function RouteComponent() {
 		});
 	}
 
+	function handleBodyModeChange(mode: "json" | "yaml") {
+		// This handler is currently just a placeholder since the mode state
+		// is managed within RequestView component
+	}
+
+	function handleHeadersUpdate(headers: Header[]) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) =>
+				tab.selected ? { ...tab, headers } : tab,
+			) as Tab[];
+		});
+	}
+
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
 		queryFn: RestCollections.getCollectionsEntries,
@@ -925,6 +1118,8 @@ function RouteComponent() {
 								fullScreenState={
 									fullscreenPanel === "request" ? "maximized" : "normal"
 								}
+								onBodyModeChange={handleBodyModeChange}
+								onHeadersUpdate={handleHeadersUpdate}
 							/>
 						</ResizablePanel>
 						<ResizableHandle />
