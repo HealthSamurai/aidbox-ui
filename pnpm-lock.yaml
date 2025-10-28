@@ -18,8 +18,8 @@ importers:
         specifier: ^0.0.30
         version: 0.0.30(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@health-samurai/react-components':
-        specifier: ^0.0.0-alpha.8
-        version: 0.0.0-alpha.8(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)
+        specifier: ^0.0.0-alpha.10
+        version: 0.0.0-alpha.10(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)
       '@tanstack/react-query':
         specifier: ^5.85.3
         version: 5.90.2(react@19.1.1)
@@ -526,8 +526,8 @@ packages:
       react: '*'
       react-dom: '*'
 
-  '@health-samurai/react-components@0.0.0-alpha.8':
-    resolution: {integrity: sha512-/GNwdLnm2uJ09W+/NwdjKpx4DJabd7rQ35w+MjAUJRsbIik6jJgu3uFPK/F69zubvlr2PpqpRxk5BnunP55t+g==}
+  '@health-samurai/react-components@0.0.0-alpha.10':
+    resolution: {integrity: sha512-qOSASA7b8wL2FM+bjnisHXgaJQ4QWqh4M19KAl3tJJj7fuFVaDSjaD4ORxmC4xncqpEZGqqMtIekDiHrFmgC2A==}
 
   '@hookform/resolvers@5.2.2':
     resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
@@ -2935,7 +2935,7 @@ snapshots:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  '@health-samurai/react-components@0.0.0-alpha.8(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)':
+  '@health-samurai/react-components@0.0.0-alpha.10(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)':
     dependencies:
       '@codemirror/autocomplete': 6.19.0
       '@codemirror/commands': 6.9.0

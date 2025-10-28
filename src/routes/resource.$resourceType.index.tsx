@@ -6,6 +6,19 @@ export const Route = createFileRoute("/resource/$resourceType/")({
 	staticData: {
 		title: "View Definition",
 	},
+	validateSearch: (search) => {
+		const res: { searchQuery?: string; identifier?: string } = {};
+
+		if (typeof search.searchQuery === "string") {
+			res.searchQuery = search.searchQuery;
+		}
+
+		if (typeof search.identifier === "string") {
+			res.identifier = search.identifier;
+		}
+
+		return res;
+	},
 });
 
 function RouteComponent() {

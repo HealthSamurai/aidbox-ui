@@ -1,18 +1,19 @@
+import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
+import { DiffView } from "@git-diff-view/react";
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as YAML from "js-yaml";
+import React from "react";
+import * as utils from "../../api/utils";
 import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
-import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
-import * as utils from "../../api/utils";
 import {
 	fetchResourceHistory,
 	type HistoryBundle,
 	type HistoryEntry,
+	type HistoryEntryResource,
 } from "./api";
-import { pageId, type EditorMode } from "./types";
-import { DiffView } from "@git-diff-view/react";
+import { type EditorMode, pageId } from "./types";
 import "@git-diff-view/react/styles/diff-view-pure.css";
 import { generateDiffFile } from "@git-diff-view/file";
 
@@ -25,8 +26,8 @@ type historyWithHistoryProps = {
 	versionId: string;
 	date: Date | string;
 	status: string;
-	resourceCurrent: HistoryEntry;
-	resourcePrevious: HistoryEntry | null;
+	resourceCurrent: HistoryEntryResource;
+	resourcePrevious: HistoryEntryResource | null;
 	affected: Set<(string | number)[]>;
 };
 
@@ -77,8 +78,8 @@ const VersionDiffDialog = ({
 	openState,
 	onOpenChange,
 }: {
-	previous: any;
-	current: any;
+	previous: HistoryEntryResource | null;
+	current: HistoryEntryResource;
 	resourceType: string;
 	resourceId: string;
 	openState: OpenState;
@@ -172,7 +173,7 @@ const VersionViewDialog = ({
 	openState,
 	onOpenStateChange,
 }: {
-	resource: any;
+	resource: HistoryEntryResource;
 	resourceType: string;
 	resourceId: string;
 	openState: OpenState;
@@ -281,23 +282,114 @@ const VersionViewDialog = ({
 	);
 };
 
-const calculateAffectedAttributes = (previous: any, current: any) => {
+type NestedData = { [key: PropertyKey]: NestedData };
+
+function VersionIdCell({
+	resource,
+	resourceType,
+	versionId,
+	id,
+}: {
+	resource: HistoryEntryResource;
+	resourceType: string;
+	versionId: string;
+	id: string;
+}) {
+	const [open, setOpen] = React.useState<OpenState>("hidden");
+	return (
+		<HSComp.Dialog
+			open={open !== "hidden"}
+			onOpenChange={(open: boolean) => setOpen(open ? "shown" : "hidden")}
+		>
+			<HSComp.DialogTrigger asChild>
+				<button
+					type="button"
+					className="text-blue-600 hover:underline cursor-pointer"
+				>
+					{versionId}
+				</button>
+			</HSComp.DialogTrigger>
+			<VersionViewDialog
+				resource={resource}
+				resourceType={resourceType}
+				resourceId={id}
+				openState={open}
+				onOpenStateChange={setOpen}
+			/>
+		</HSComp.Dialog>
+	);
+}
+
+function AffectedCell({
+	resourceType,
+	id,
+	affected,
+	previousResource,
+	currentResource,
+}: {
+	previousResource: HistoryEntryResource | null;
+	currentResource: HistoryEntryResource;
+	resourceType: string;
+	id: string;
+	affected: Set<(string | number)[]>;
+}) {
+	const items: (string | number)[][] = Array.from(affected);
+	const affectedStr = [
+		...new Set(items.map((e: (string | number)[]) => e.at(0))),
+	]
+		.sort()
+		.join(", ");
+	const [open, setOpen] = React.useState<OpenState>("hidden");
+	return (
+		<HSComp.Dialog
+			open={open !== "hidden"}
+			onOpenChange={(open: boolean) => setOpen(open ? "shown" : "hidden")}
+		>
+			<HSComp.DialogTrigger asChild>
+				<button
+					type="button"
+					className="text-blue-600 hover:underline cursor-pointer"
+				>
+					{affectedStr}
+				</button>
+			</HSComp.DialogTrigger>
+			<VersionDiffDialog
+				previous={previousResource}
+				current={currentResource}
+				resourceType={resourceType}
+				resourceId={id}
+				onOpenChange={setOpen}
+				openState={open}
+			/>
+		</HSComp.Dialog>
+	);
+}
+
+const calculateAffectedAttributes = (
+	previous: HistoryEntryResource | null,
+	current: HistoryEntryResource,
+) => {
 	if (!previous) return new Set<(string | number)[]>();
 
 	const [inPrevious, inCurrent] = diff(previous, current);
 
 	const changes = [inPrevious, inCurrent];
 
-	const pathTree = traverseTree(
+	const pathTree = traverseTree<NestedData>(
 		(acc, x, path) => {
 			if (x && path.length > 1) {
 				const pathCopy = [...path.slice(1)];
-				let current: any = acc;
+				let current = acc;
 				pathCopy.forEach((key) => {
+					let next: NestedData;
 					if (!(key in current)) {
-						current[key] = {};
+						next = {};
+						current[key] = next;
+					} else {
+						next = current[key] as NonNullable<(typeof current)[typeof key]>;
 					}
-					current = current[key];
+
+					current = next;
 				});
 				const lastKey = pathCopy.at(-1);
 				if (lastKey !== undefined) {
@@ -357,83 +449,41 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		return <div>Error loading history: {(error as Error).message}</div>;
 	}
 
-	const columns = [
+	const columns: HSComp.ColumnDef<historyWithHistoryProps>[] = [
 		{
 			accessorKey: "versionId",
-			header: <span className="pl-5">versionId</span>,
-			cell: (info: any) => {
-				const row = info.row.original;
-				const [open, setOpen] = React.useState<OpenState>("hidden");
-				return (
-					<HSComp.Dialog
-						open={open !== "hidden"}
-						onOpenChange={(open: boolean) => setOpen(open ? "shown" : "hidden")}
-					>
-						<HSComp.DialogTrigger asChild>
-							<button
-								type="button"
-								className="text-blue-600 hover:underline cursor-pointer"
-							>
-								{info.getValue()}
-							</button>
-						</HSComp.DialogTrigger>
-						<VersionViewDialog
-							resource={row.resourceCurrent}
-							resourceType={resourceType}
-							resourceId={id}
-							openState={open}
-							onOpenStateChange={setOpen}
-						/>
-					</HSComp.Dialog>
-				);
-			},
+			header: () => <span className="pl-5">versionId</span>,
+			cell: (info) => (
+				<VersionIdCell
+					resource={info.row.original.resourceCurrent}
+					resourceType={resourceType}
+					id={id}
+					versionId={info.getValue() as historyWithHistoryProps["versionId"]}
+				/>
+			),
 		},
 		{
 			accessorKey: "status",
-			header: <span className="pl-5">Status</span>,
-			cell: (info: any) => info.getValue(),
+			header: () => <span className="pl-5">Status</span>,
+			cell: (info) => info.getValue(),
 		},
 		{
 			accessorKey: "date",
-			header: <span className="pl-5">Date</span>,
-			cell: (info: any) => info.getValue(),
+			header: () => <span className="pl-5">Date</span>,
+			cell: (info) => info.getValue(),
 		},
 		{
 			accessorKey: "affected",
-			header: <span className="pl-5">Affected attributes</span>,
-			cell: (info: any) => {
-				const items: (string | number)[][] = Array.from(info.getValue());
-				const affectedStr = [
-					...new Set(items.map((e: (string | number)[]) => e.at(0))),
-				]
-					.sort()
-					.join(", ");
-				const row = info.row.original;
-				const [open, setOpen] = React.useState<OpenState>("hidden");
-				return (
-					<HSComp.Dialog
-						open={open !== "hidden"}
-						onOpenChange={(open: boolean) => setOpen(open ? "shown" : "hidden")}
-					>
-						<HSComp.DialogTrigger asChild>
-							<button
-								type="button"
-								className="text-blue-600 hover:underline cursor-pointer"
-							>
-								{affectedStr}
-							</button>
-						</HSComp.DialogTrigger>
-						<VersionDiffDialog
-							previous={row.resourcePrevious}
-							current={row.resourceCurrent}
-							resourceType={resourceType}
-							resourceId={id}
-							onOpenChange={setOpen}
-							openState={open}
-						/>
-					</HSComp.Dialog>
-				);
-			},
+			header: () => <span className="pl-5">Affected attributes</span>,
+			cell: (info) => (
+				<AffectedCell
+					id={id}
+					resourceType={resourceType}
+					currentResource={info.row.original.resourceCurrent}
+					previousResource={info.row.original.resourcePrevious}
+					affected={info.getValue() as historyWithHistoryProps["affected"]}
+				/>
+			),
 		},
 	];
 
@@ -445,8 +495,11 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		)
 		.reduce(
 			(
-				acc: { result: historyWithHistoryProps[]; prev: HistoryEntry | null },
-				entry: any,
+				acc: {
+					result: historyWithHistoryProps[];
+					prev: HistoryEntryResource | null;
+				},
+				entry,
 			) => {
 				const resource = entry.resource;
 				acc.result.push({
@@ -467,7 +520,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 
 	return (
 		<HSComp.DataTable
-			columns={columns as any}
+			columns={columns}
 			data={historyWithHistory.result.reverse()}
 			stickyHeader
 		/>

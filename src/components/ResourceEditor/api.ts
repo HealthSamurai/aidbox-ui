@@ -25,15 +25,17 @@ export interface HistoryBundle {
 	entry: HistoryEntry[];
 }
 
-export interface HistoryEntry {
-	resource: {
-		meta: {
-			versionId: string;
-			lastUpdated: string;
-		};
-		resourceType: string;
-		id: string;
+export type HistoryEntryResource = {
+	meta: {
+		versionId: string;
+		lastUpdated: string;
 	};
+	resourceType: string;
+	id: string;
+};
+
+export interface HistoryEntry {
+	resource: HistoryEntryResource;
 	response: { status: string };
 }
 

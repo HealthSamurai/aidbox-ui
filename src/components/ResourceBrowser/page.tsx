@@ -11,9 +11,17 @@ import type * as VDTypes from "../ViewDefinition/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
 
+type FhirSchema = {
+	elements: Record<string, unknown>;
+	url: string;
+	name: string;
+	version: string;
+};
+
 interface Schema {
 	differential: Array<VDTypes.Snapshot>;
 	snapshot: Array<VDTypes.Snapshot>;
+	entity: FhirSchema;
 	"default?": boolean;
 }
 
@@ -47,7 +55,7 @@ export const ResourcePageTabList = () => {
 export const ResourcesTabSarchInput = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
-	const search: any = Router.useSearch({
+	const search = Router.useSearch({
 		strict: false,
 	});
 
@@ -124,7 +132,7 @@ export const ResourcesTabHeader = ({
 
 const fetchSchemas = async (
 	resourceType: string,
-): Promise<unknown | undefined> => {
+): Promise<Record<string, Schema> | undefined> => {
 	const response = await AidboxCallWithMeta({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
@@ -146,7 +154,7 @@ const fetchSchemas = async (
 
 const fetchDefaultSchema = async (
 	resourceType: string,
-): Promise<unknown | undefined> => {
+): Promise<Schema | undefined> => {
 	const schemas = await fetchSchemas(resourceType);
 
 	if (!schemas) return undefined;
@@ -159,7 +167,7 @@ const fetchDefaultSchema = async (
 };
 
 const resourcesWithKeys = (
-	profiles: any,
+	profiles: Schema | undefined,
 	resources: Array<Record<string, unknown>>,
 ) => {
 	const resourceKeys: Record<string, undefined> = resources.reduce(
@@ -172,7 +180,7 @@ const resourcesWithKeys = (
 		{},
 	);
 
-	const snapshot = profiles.entity.elements;
+	const snapshot = profiles?.entity?.elements;
 
 	return {
 		resources: resources.map((resource) => ({ ...resourceKeys, ...resource })),
@@ -183,7 +191,7 @@ const resourcesWithKeys = (
 				k !== "lastUpdated" &&
 				k !== "resourceType",
 		),
-		snapshot: snapshot,
+		...(snapshot ? { snapshot: snapshot as Humanize.Snapshot } : {}),
 	};
 };
 
@@ -203,11 +211,11 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 
 	const { resources, resourceKeys, snapshot } = data;
 
-	const columns = [
+	const columns: HSComp.ColumnDef<Types.Resource, string>[] = [
 		{
 			accessorKey: "id",
-			header: <span className="pl-5">ID</span>,
-			cell: (info: any) => (
+			header: () => <span className="pl-5">ID</span>,
+			cell: (info) => (
 				<Router.Link
 					className="text-text-link hover:underline pl-5"
 					to="/resource/$resourceType/edit/$id"
@@ -223,11 +231,11 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 		},
 		{
 			accessorKey: "lastUpdated",
-			header: <span className="pl-5">lastUpdated</span>,
-			cell: (info: any) =>
+			header: () => <span className="pl-5">lastUpdated</span>,
+			cell: (info) =>
 				Humanize.humanizeValue(
 					"lastUpdated",
-					info.row.original.meta.lastUpdated,
+					info.row.original.meta?.lastUpdated,
 					{},
 				),
 		},
@@ -237,28 +245,28 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 		if (k !== "id" && k !== "meta")
 			columns.push({
 				accessorKey: k,
-				header: <span className="pl-5">{k}</span>,
-				cell: (info: any) =>
-					Humanize.humanizeValue(k, info.getValue(), snapshot),
+				header: () => <span className="pl-5">{k}</span>,
+				cell: (info) =>
+					Humanize.humanizeValue(k, info.getValue(), snapshot ?? {}),
 			});
 	});
 
 	return (
 		<div className="h-full overflow-hidden">
-			<HSComp.DataTable
-				columns={columns as any}
-				data={resources}
-				stickyHeader
-			/>
+			<HSComp.DataTable columns={columns} data={resources} stickyHeader />
 		</div>
 	);
+};
+
+type FhirBundle<T> = {
+	entry: { resource: T }[];
 };
 
 const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	const navigate = Router.useNavigate();
-	const search: any = Router.useSearch({
+	const search = Router.useSearch({
 		strict: false,
 	});
 
@@ -273,9 +281,11 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			const data = JSON.parse(response.body).entry.map(
-				(entry: any) => entry.resource,
+			const bundle: FhirBundle<Record<string, unknown>> = JSON.parse(
+				response.body,
 			);
+
+			const data = bundle.entry.map((entry) => entry.resource);
 			const schema = await fetchDefaultSchema(resourceType);
 			return resourcesWithKeys(schema, data);
 		},
@@ -285,9 +295,10 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		navigate({
+			to: ".",
 			search: {
 				searchQuery: btoa(e.currentTarget.searchQuery.value),
-			} as any,
+			},
 		});
 	};
 
@@ -302,7 +313,9 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 };
 
 const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
-	const [selectedProfile, setSelectedProfile] = React.useState<any>(null);
+	const [selectedProfile, setSelectedProfile] = React.useState<Schema | null>(
+		null,
+	);
 	const [detailTab, setDetailTab] = React.useState<string>("differential");
 
 	const { data, isLoading } = ReactQuery.useQuery({
@@ -322,22 +335,28 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 		return <div>No profiles found</div>;
 	}
 
-	const makeClickableCell = (renderer: (info: any) => any) => {
-		return (info: any) => (
-			<div
+	const makeClickableCell = <T,>(
+		renderer: (info: {
+			row: { original: Schema };
+			getValue: () => T;
+		}) => React.ReactNode,
+	) => {
+		return (info: { row: { original: Schema }; getValue: () => T }) => (
+			<button
+				type="button"
 				className="cursor-pointer"
 				onClick={() => setSelectedProfile(info.row.original)}
 			>
 				{renderer(info)}
-			</div>
+			</button>
 		);
 	};
 
-	const columns = [
+	const columns: HSComp.ColumnDef<Schema, string>[] = [
 		{
 			accessorKey: "default?",
 			size: 16,
-			header: <span className="pl-5"></span>,
+			header: () => <span className="pl-5"></span>,
 			cell: makeClickableCell((info) =>
 				info.getValue() ? (
 					<span title="default profile">
@@ -350,24 +369,24 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 		},
 		{
 			accessorKey: "url",
-			header: <span className="pl-5">URL</span>,
+			header: () => <span className="pl-5">URL</span>,
 			cell: makeClickableCell((info) => info.row.original.entity?.url || ""),
 		},
 		{
 			accessorKey: "name",
-			header: <span className="pl-5">Name</span>,
+			header: () => <span className="pl-5">Name</span>,
 			cell: makeClickableCell((info) => info.row.original.entity?.name || ""),
 		},
 		{
 			accessorKey: "version",
-			header: <span className="pl-5">Version</span>,
+			header: () => <span className="pl-5">Version</span>,
 			cell: makeClickableCell(
 				(info) => info.row.original.entity?.version || "",
 			),
 		},
 		{
 			accessorKey: "ig",
-			header: <span className="pl-5">IG</span>,
+			header: () => <span className="pl-5">IG</span>,
 			cell: makeClickableCell((info) => {
 				const { name, version } = info.row.original.entity;
 				const ig = `${name}#${version}`;
@@ -381,7 +400,7 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 		return (
 			<div className="h-full overflow-hidden">
 				<HSComp.DataTable
-					columns={columns as any}
+					columns={columns}
 					data={Object.values(data)}
 					stickyHeader
 				/>
@@ -397,7 +416,7 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 			>
 				<HSComp.ResizablePanel minSize={30}>
 					<HSComp.DataTable
-						columns={columns as any}
+						columns={columns}
 						data={Object.values(data)}
 						stickyHeader
 					/>
@@ -435,20 +454,16 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 							<HSComp.Tabs value={detailTab}>
 								<HSComp.TabsContent value="differential">
 									<HSComp.FhirStructureView
-										tree={
-											Utils.transformSnapshotToTree(
-												selectedProfile.differential,
-											) as any
-										}
+										tree={Utils.transformSnapshotToTree(
+											selectedProfile.differential,
+										)}
 									/>
 								</HSComp.TabsContent>
 								<HSComp.TabsContent value="snapshot">
 									<HSComp.FhirStructureView
-										tree={
-											Utils.transformSnapshotToTree(
-												selectedProfile.snapshot,
-											) as any
-										}
+										tree={Utils.transformSnapshotToTree(
+											selectedProfile.snapshot,
+										)}
 									/>
 								</HSComp.TabsContent>
 								<HSComp.TabsContent value="fhirschema">
@@ -471,6 +486,38 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	);
 };
 
+type SearchParameterTableData = {
+	// Not in FHIR?
+	code?: string;
+	name: string;
+	type?: string;
+	definition?: string;
+	documentation?: string;
+};
+
+type SearchParamExtension = {
+	url: string;
+	valueCode?: string;
+};
+
+type CapabilityStatementSearchParam = {
+	name: string;
+	type?: string;
+	definition?: string;
+	documentation?: string;
+	extension?: SearchParamExtension[];
+};
+
+type PartialFhirCapabilityStatement = {
+	rest?: {
+		searchParam?: CapabilityStatementSearchParam[];
+		resource?: {
+			type: string;
+			searchParam?: CapabilityStatementSearchParam[];
+		}[];
+	}[];
+};
+
 const SearchParametersTabContent = ({
 	resourceType,
 }: Types.ResourcesPageProps) => {
@@ -486,7 +533,8 @@ const SearchParametersTabContent = ({
 			});
 
 			const data = JSON.parse(response.body);
-			return data;
+			// FIXME: validate
+			return data as PartialFhirCapabilityStatement;
 		},
 		retry: false,
 	});
@@ -501,58 +549,59 @@ const SearchParametersTabContent = ({
 
 	const rest = data.rest.at(0) || {};
 
-	const resourceTypeParams = rest.resource.find(
-		(item: any) => item.type === resourceType,
-	).searchParam;
-	const commonParams = rest.searchParam;
+	const resourceTypeParams =
+		rest.resource?.find((item) => item.type === resourceType)?.searchParam ??
+		[];
+	const commonParams = rest.searchParam ?? [];
 	const allParams = [...resourceTypeParams, ...commonParams];
 
-	allParams.map((param: any) => {
+	const paramsWithCode: SearchParameterTableData[] = allParams.map((param) => {
 		if (param.extension) {
 			const code = param.extension.find(
-				(e: any) =>
+				(e) =>
 					e.url ===
 					"https://fhir.aidbox.app/fhir/StructureDefinition/search-parameter-code",
 			);
-			param.code = code.valueCode;
+			const valueCode = code?.valueCode;
+			return {
+				...param,
+				...(valueCode ? { code: valueCode } : {}),
+			} satisfies SearchParameterTableData;
 		}
+		return param satisfies SearchParameterTableData;
 	});
 
-	const columns = [
+	const columns: HSComp.ColumnDef<SearchParameterTableData, string>[] = [
 		{
 			accessorKey: "code",
-			header: <span className="pl-5">Code</span>,
-			cell: (row: any) => row.getValue() || "-",
+			header: () => <span className="pl-5">Code</span>,
+			cell: (row) => row.getValue() || "-",
 		},
 		{
 			accessorKey: "name",
-			header: <span className="pl-5">Name</span>,
-			cell: (row: any) => row.getValue() || "-",
+			header: () => <span className="pl-5">Name</span>,
+			cell: (row) => row.getValue() || "-",
 		},
 		{
 			accessorKey: "type",
-			header: <span className="pl-5">Type</span>,
-			cell: (row: any) => row.getValue() || "-",
+			header: () => <span className="pl-5">Type</span>,
+			cell: (row) => row.getValue() || "-",
 		},
 		{
 			accessorKey: "definition",
-			header: <span className="pl-5">Definition</span>,
-			cell: (row: any) => row.getValue() || "-",
+			header: () => <span className="pl-5">Definition</span>,
+			cell: (row) => row.getValue() || "-",
 		},
 		{
 			accessorKey: "documentation",
-			header: <span className="pl-5">Description</span>,
-			cell: (row: any) => row.getValue() || "-",
+			header: () => <span className="pl-5">Description</span>,
+			cell: (row) => row.getValue() || "-",
 		},
 	];
 
 	return (
 		<div className="h-full overflow-hidden">
-			<HSComp.DataTable
-				columns={columns as any}
-				data={allParams}
-				stickyHeader
-			/>
+			<HSComp.DataTable columns={columns} data={paramsWithCode} stickyHeader />
 		</div>
 	);
 };

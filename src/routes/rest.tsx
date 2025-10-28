@@ -10,10 +10,10 @@ import {
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-	toast,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
+	toast,
 } from "@health-samurai/react-components";
 import {
 	type QueryClient,
@@ -21,9 +21,15 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fullscreen, Minimize2, Timer } from "lucide-react";
 import * as yaml from "js-yaml";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Fullscreen, Minimize2, Timer } from "lucide-react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { AidboxCallWithMeta } from "../api/auth";
 import {
 	ActiveTabs,
@@ -159,49 +165,61 @@ function RequestView({
 		selectedTab.body || "",
 	);
 
-	const isUpdatingHeadersRef = useState({ current: false })[0];
+	const isUpdatingHeadersRef = useRef(false);
 
 	useEffect(() => {
 		setBodyEditorValue(selectedTab.body || "");
 	}, [selectedTab.body]);
 
 	// Sync body mode when Content-Type or Accept header changes (from external sources like Raw/Headers tab)
-	useEffect(() => {
+	const [prevSelectedTabHeaders, setPrevSelectedTabHeaders] = useState<
+		typeof selectedTab.headers | null
+	>(null);
+
+	if (selectedTab.headers !== prevSelectedTabHeaders) {
+		setPrevSelectedTabHeaders(selectedTab.headers);
+
 		// Skip if we're the ones updating the headers
 		if (isUpdatingHeadersRef.current) {
-			return;
-		}
+			// Do nothing
+		} else {
+			const headers = Array.isArray(selectedTab.headers)
+				? selectedTab.headers
+				: [];
+			const contentTypeHeader = headers.find(
+				(h) => h.name?.toLowerCase() === "content-type" && (h.enabled ?? true),
+			);
+			const acceptHeader = headers.find(
+				(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
+			);
 
-		const headers = Array.isArray(selectedTab.headers)
-			? selectedTab.headers
-			: [];
-		const contentTypeHeader = headers.find(
-			(h) => h.name?.toLowerCase() === "content-type" && (h.enabled ?? true),
-		);
-		const acceptHeader = headers.find(
-			(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
-		);
+			// Check Content-Type header first, then Accept header as fallback
+			const headerToCheck = contentTypeHeader || acceptHeader;
 
-		// Check Content-Type header first, then Accept header as fallback
-		const headerToCheck = contentTypeHeader || acceptHeader;
-
-		if (headerToCheck?.value) {
-			const value = headerToCheck.value.toLowerCase().trim();
-			if (value === "text/yaml" || value === "application/x-yaml") {
-				if (bodyMode !== "yaml") {
-					setBodyMode("yaml");
+			if (headerToCheck?.value) {
+				const value = headerToCheck.value.toLowerCase().trim();
+				if (value === "text/yaml" || value === "application/x-yaml") {
+					if (bodyMode !== "yaml") {
+						setBodyMode("yaml");
+					}
+				} else if (value === "application/json") {
+					if (bodyMode !== "json") {
+						setBodyMode("json");
+					}
 				}
-			} else if (value === "application/json") {
-				if (bodyMode !== "json") {
-					setBodyMode("json");
-				}
+				// If it's any other value, don't change the mode
 			}
-			// If it's any other value, don't change the mode
 		}
-	}, [selectedTab.headers]);
+	}
+
+	const [prevBodyMode, setPrevBodyMode] = useState<typeof bodyMode | null>(
+		null,
+	);
 
 	// Update Content-Type and Accept headers based on body mode
-	useEffect(() => {
+	if (bodyMode !== prevBodyMode) {
+		setPrevBodyMode(bodyMode);
+
 		const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
 
 		const headers = Array.isArray(selectedTab.headers)
@@ -309,7 +327,7 @@ function RequestView({
 				isUpdatingHeadersRef.current = false;
 			}, 0);
 		}
-	}, [bodyMode]);
+	}
 
 	const getEditorValue = () => {
 		return bodyEditorValue;
@@ -337,7 +355,7 @@ function RequestView({
 			onBodyChange(convertedBody);
 			setBodyMode(newMode);
 			onBodyModeChange(newMode);
-		} catch (error) {
+		} catch (_error) {
 			toast.error(`Failed to convert to ${newMode.toUpperCase()}`, {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -365,7 +383,7 @@ function RequestView({
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to format code", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -919,11 +937,6 @@ function RouteComponent() {
 		};
 	}, [selectedTab, queryClient]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: No need to clear response on tab change
-	// useEffect(() => {
-	// 	setResponse(null);
-	// }, [selectedTab.id]);
-
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
 		setTabs((currentTabs) =>
@@ -1131,7 +1144,7 @@ function RouteComponent() {
 		});
 	}
 
-	function handleBodyModeChange(mode: "json" | "yaml") {
+	function handleBodyModeChange(_mode: "json" | "yaml") {
 		// This handler is currently just a placeholder since the mode state
 		// is managed within RequestView component
 	}
