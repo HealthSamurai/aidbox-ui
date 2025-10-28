@@ -1,13 +1,22 @@
+import type { Snapshot } from "@aidbox-ui/humanize";
+
 export interface ResourcesPageProps {
 	resourceType: string;
 }
 
+export type Resource = {
+	id?: string;
+	meta?: {
+		lastUpdated: string;
+	};
+};
+
 export interface ResourcesTabTableProps {
 	data:
 		| {
-				resources: any[];
-				resourceKeys: any;
-				snapshot: any;
+				resources: Resource[];
+				resourceKeys: string[];
+				snapshot?: Snapshot;
 		  }
 		| undefined;
 }

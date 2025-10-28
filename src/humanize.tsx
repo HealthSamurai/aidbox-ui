@@ -67,7 +67,7 @@ interface Element {
 	refers?: string[];
 }
 
-interface Snapshot {
+export interface Snapshot {
 	[key: string]: Element;
 }
 

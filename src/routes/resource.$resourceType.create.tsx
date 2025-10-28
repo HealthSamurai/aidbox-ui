@@ -1,14 +1,10 @@
-import {
-	ResourceEditorPage,
-	ResourceEditorPageWithLoader,
-} from "@aidbox-ui/components/ResourceEditor/page";
+import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
 	type EditorMode,
 	isEditorMode,
 	isResourceEditorTab,
 	type ResourceEditorTab,
 } from "@aidbox-ui/components/ResourceEditor/types";
-import { useLocalStorage } from "@aidbox-ui/hooks";
 import {
 	createFileRoute,
 	useMatch,

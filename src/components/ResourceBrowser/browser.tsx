@@ -88,9 +88,10 @@ const ResourceList = memo(
 			);
 		}, [tableData, filterQuery]);
 
-		const makeClickableCell = (renderer: (value: any) => any) => {
-			return (info: any) => (
-				<div
+		const makeClickableCell = <T,>(renderer: (value: T) => React.ReactNode) => {
+			return (info: { row: { original: ResourceRow }; getValue: () => T }) => (
+				<button
+					type="button"
 					className="cursor-pointer"
 					onClick={() =>
 						navigate({
@@ -100,16 +101,18 @@ const ResourceList = memo(
 					}
 				>
 					{renderer(info.getValue())}
-				</div>
+				</button>
 			);
 		};
 
-		const columns = [
+		const columns: {
+			[K in keyof ResourceRow]: HSComp.ColumnDef<ResourceRow, ResourceRow[K]>;
+		}[keyof ResourceRow][] = [
 			{
 				accessorKey: "favorite",
-				header: <Pin size={14} />,
+				header: () => <Pin size={14} />,
 				size: 20,
-				cell: (info: any) => {
+				cell: (info) => {
 					const resourceType = info.row.original.resourceType;
 					return (
 						<FavoriteCell
@@ -123,7 +126,7 @@ const ResourceList = memo(
 			{
 				accessorKey: "resourceType",
 				header: "Resource type",
-				cell: makeClickableCell((value) => value),
+				cell: makeClickableCell<string>((value) => value),
 			},
 			{
 				accessorKey: "tableSize",
@@ -143,17 +146,13 @@ const ResourceList = memo(
 			{
 				accessorKey: "defaultProfile",
 				header: "Default profile",
-				cell: makeClickableCell((value) => value),
+				cell: makeClickableCell<string>((value) => value),
 			},
 		];
 
 		return (
 			<div className="h-full">
-				<HSComp.DataTable
-					columns={columns as any}
-					data={filteredData}
-					stickyHeader
-				/>
+				<HSComp.DataTable columns={columns} data={filteredData} stickyHeader />
 			</div>
 		);
 	},
@@ -165,8 +164,26 @@ const ResourceList = memo(
 	},
 );
 
+type ResourceTypeInfo = {
+	"system?": boolean;
+	"fhir?": boolean;
+	"custom?": boolean;
+	"default-profile": string;
+};
+
+type ResourceDataStats = {
+	total_size?: number;
+	index_size?: number;
+	num_rows?: number;
+};
+
+type ResourceData = {
+	resources: Record<string, ResourceTypeInfo>;
+	stats: Record<string, ResourceDataStats>;
+};
+
 function useResourceData() {
-	return useQuery({
+	return useQuery<ResourceData>({
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {
 			const [resourceTypes, stats] = await Promise.all([
@@ -188,32 +205,30 @@ function useResourceData() {
 }
 
 function useProcessedData(
-	data: any,
+	data: ResourceData | undefined,
 	favorites: Set<string>,
 ): { allTableData: ResourceRow[]; subsets: Subsets } {
 	const allTableData = useMemo(() => {
 		if (!data) return [];
 		const { resources, stats } = data;
 
-		return Object.entries(resources || {}).map(
-			([key, value]: [string, any]) => {
-				const keyLower = key.toLowerCase();
-				const resourceStats = stats[keyLower] || {};
-				const historyStats = stats[`${keyLower}_history`] || {};
+		return Object.entries(resources || {}).map(([key, value]) => {
+			const keyLower = key.toLowerCase();
+			const resourceStats = stats[keyLower] || {};
+			const historyStats = stats[`${keyLower}_history`] || {};
 
-				return {
-					resourceType: key,
-					tableSize: resourceStats.total_size || 0,
-					historySize: historyStats.total_size || 0,
-					indexSize: resourceStats.index_size || 0,
-					defaultProfile: value["default-profile"],
-					system: value["system?"],
-					fhir: value["fhir?"],
-					custom: value["custom?"],
-					populated: resourceStats.num_rows > 0,
-				};
-			},
-		);
+			return {
+				resourceType: key,
+				tableSize: resourceStats.total_size || 0,
+				historySize: historyStats.total_size || 0,
+				indexSize: resourceStats.index_size || 0,
+				defaultProfile: value["default-profile"],
+				system: value["system?"],
+				fhir: value["fhir?"],
+				custom: value["custom?"],
+				populated: (resourceStats.num_rows ?? 0) > 0,
+			};
+		});
 	}, [data]).sort((a, b) => a.resourceType.localeCompare(b.resourceType));
 
 	// Memoize static subsets separately (don't depend on favorites)

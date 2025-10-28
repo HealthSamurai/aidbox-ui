@@ -21,14 +21,19 @@ export interface CollectionEntry {
 	collection?: string;
 }
 
+type FhirSearchBundle<T> = {
+	entry?: {
+		resource: T;
+	}[];
+};
+
 export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
 	const response = await Auth.AidboxCallWithMeta({
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	return (
-		JSON.parse(response.body).entry?.map((entry: any) => entry.resource) ?? []
-	);
+	const bundle = JSON.parse(response.body) as FhirSearchBundle<CollectionEntry>;
+	return bundle.entry?.map((entry) => entry.resource) ?? [];
 }
 
 async function SaveRequest(
