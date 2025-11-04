@@ -719,6 +719,11 @@ function handleTabRequestPathChange(
 	);
 }
 
+const canonicalHeaderNames: Record<string, string> = {
+	"content-type": "Content-Type",
+	accept: "Accept",
+};
+
 function handleSendRequest(
 	selectedTab: Tab,
 	setResponse: (response: ResponseData | null) => void,
@@ -732,7 +737,9 @@ function handleSendRequest(
 			)
 			.reduce(
 				(acc, header) => {
-					acc[header.name] = header.value;
+					const name: string =
+						canonicalHeaderNames[header.name.toLowerCase()] || header.name;
+					acc[name] = header.value;
 					return acc;
 				},
 				{} as Record<string, string>,
@@ -743,10 +750,7 @@ function handleSendRequest(
 		(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
 	);
 	const responseMode: "json" | "yaml" =
-		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ||
-		acceptHeader?.value?.toLowerCase().trim() === "application/x-yaml"
-			? "yaml"
-			: "json";
+		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
 
 	// Save to UI history (don't wait for it)
 	saveToUIHistory(selectedTab, queryClient);
