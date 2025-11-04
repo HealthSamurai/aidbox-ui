@@ -35,6 +35,7 @@ import {
 	ActiveTabs,
 	DEFAULT_TAB,
 	type Header,
+	type ResponseData,
 	type Tab,
 } from "../components/rest/active-tabs";
 import * as RestCollections from "../components/rest/collections";
@@ -50,15 +51,6 @@ import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menu
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
-
-type ResponseData = {
-	status: number;
-	statusText: string;
-	headers: Record<string, string>;
-	body: string;
-	duration: number;
-	mode?: "json" | "yaml";
-};
 
 const TITLE = "REST Console";
 
@@ -521,6 +513,8 @@ type ResponsePaneProps = {
 	onFullScreenToggle: (state: "maximized" | "normal") => void;
 	fullScreenState: "maximized" | "normal";
 	isLoading: boolean;
+	activeResponseTab: ResponseTabs;
+	onResponseTabChange: (tab: ResponseTabs) => void;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -631,11 +625,9 @@ function ResponsePane({
 	onFullScreenToggle,
 	fullScreenState,
 	isLoading,
+	activeResponseTab,
+	onResponseTabChange,
 }: ResponsePaneProps) {
-	const [activeResponseTab, setActiveResponseTab] = useState<
-		"body" | "headers" | "raw"
-	>("body");
-
 	// Use response mode from the response itself (set at request time)
 	const responseMode = response?.mode || "json";
 
@@ -644,7 +636,7 @@ function ResponsePane({
 			value={activeResponseTab}
 			className="h-full"
 			onValueChange={(value) =>
-				setActiveResponseTab(value as "body" | "headers" | "raw")
+				onResponseTabChange(value as "body" | "headers" | "raw")
 			}
 		>
 			<div className="flex flex-col h-full">
@@ -729,6 +721,7 @@ function handleSendRequest(
 	setResponse: (response: ResponseData | null) => void,
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
+	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
 ) {
 	const headers =
 		selectedTab.headers
@@ -764,7 +757,14 @@ function handleSendRequest(
 		body: selectedTab.body || "",
 	})
 		.then((response) => {
-			setResponse({ ...response, mode: responseMode });
+			const responseData = { ...response, mode: responseMode };
+			setResponse(responseData);
+			// Store response in tab
+			setTabs((currentTabs) =>
+				currentTabs.map((tab) =>
+					tab.selected ? { ...tab, response: responseData } : tab,
+				),
+			);
 		})
 		.catch((error) => {
 			console.error("error", error);
@@ -779,6 +779,12 @@ function handleSendRequest(
 			};
 
 			setResponse(errorResponse);
+			// Store error response in tab
+			setTabs((currentTabs) =>
+				currentTabs.map((tab) =>
+					tab.selected ? { ...tab, response: errorResponse } : tab,
+				),
+			);
 		})
 		.finally(() => {
 			setIsLoading(false);
@@ -893,7 +899,13 @@ function RouteComponent() {
 		defaultValue: "vertical",
 	});
 
-	const [response, setResponse] = useState<ResponseData | null>(null);
+	const selectedTab = useMemo(() => {
+		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
+	}, [tabs]);
+
+	const [response, setResponse] = useState<ResponseData | null>(
+		selectedTab.response || null,
+	);
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
 		crypto.randomUUID(),
@@ -905,9 +917,10 @@ function RouteComponent() {
 
 	const [isLoading, setIsLoading] = useState(false);
 
-	const selectedTab = useMemo(() => {
-		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
-	}, [tabs]);
+	// Update response when selectedTab changes
+	useEffect(() => {
+		setResponse(selectedTab.response || null);
+	}, [selectedTab.response]);
 
 	const queryClient = useQueryClient();
 	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
@@ -931,7 +944,13 @@ function RouteComponent() {
 				(event.ctrlKey && event.key === "Enter")
 			) {
 				event.preventDefault();
-				handleSendRequest(selectedTab, setResponse, queryClient, setIsLoading);
+				handleSendRequest(
+					selectedTab,
+					setResponse,
+					queryClient,
+					setIsLoading,
+					setTabs,
+				);
 			}
 		};
 
@@ -939,7 +958,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, queryClient]);
+	}, [selectedTab, queryClient, setTabs]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1161,6 +1180,14 @@ function RouteComponent() {
 		});
 	}
 
+	function handleResponseTabChange(responseTab: ResponseTabs) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) =>
+				tab.selected ? { ...tab, activeResponseTab: responseTab } : tab,
+			) as Tab[];
+		});
+	}
+
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
 		queryFn: RestCollections.getCollectionsEntries,
@@ -1209,6 +1236,7 @@ function RouteComponent() {
 									setResponse,
 									queryClient,
 									setIsLoading,
+									setTabs,
 								)
 							}
 						/>
@@ -1269,6 +1297,8 @@ function RouteComponent() {
 										: setFullscreenPanel(null)
 								}
 								isLoading={isLoading}
+								activeResponseTab={selectedTab.activeResponseTab || "body"}
+								onResponseTabChange={handleResponseTabChange}
 							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>

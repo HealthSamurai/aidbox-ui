@@ -31,6 +31,15 @@ export type Header = {
 	enabled?: boolean;
 };
 
+export type ResponseData = {
+	status: number;
+	statusText: string;
+	headers: Record<string, string>;
+	body: string;
+	duration: number;
+	mode?: "json" | "yaml";
+};
+
 export interface Tab {
 	id: TabId;
 	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -42,6 +51,8 @@ export interface Tab {
 	name?: string;
 	activeSubTab?: "params" | "headers" | "body" | "raw";
 	historyId?: string;
+	response?: ResponseData;
+	activeResponseTab?: "body" | "headers" | "raw";
 }
 
 export const DEFAULT_TAB_ID: TabId = "active-tab-example";
