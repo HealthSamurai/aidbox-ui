@@ -73,16 +73,15 @@ export const ResourceEditorPage = ({
 	navigate,
 	initialResource,
 }: ResourceEditorPageProps & { initialResource: Resource }) => {
-	const [formatSignal, setFormatSignal] = React.useState<unknown>({});
 	const [resource, setResource] = React.useState<Resource>(initialResource);
-	const [resourceText, setResourceText] = React.useState<string>(
-		JSON.stringify(initialResource, undefined, indent),
-	);
-	const setMode = (mode: EditorMode) => {
-		navigate({ search: { mode: mode } });
-	};
+	const [resourceText, setResourceText] = React.useState<string>(() => {
+		if (mode === "yaml") {
+			return YAML.dump(initialResource, { indent });
+		}
+		return JSON.stringify(initialResource, undefined, indent);
+	});
 
-	React.useEffect(() => {
+	const triggerFormat = () => {
 		let text: string;
 		if (mode === "yaml") {
 			text = YAML.dump(resource, { indent });
@@ -90,8 +89,23 @@ export const ResourceEditorPage = ({
 			text = JSON.stringify(resource, null, indent);
 		}
 		setResourceText(text);
-		formatSignal; // NOTE: for side effect only
-	}, [resource, mode, indent, formatSignal]);
+	};
+
+	const setMode = (newMode: EditorMode) => {
+		try {
+			const parsed =
+				mode === "json" ? JSON.parse(resourceText) : YAML.load(resourceText);
+			const newText =
+				newMode === "yaml"
+					? YAML.dump(parsed, { indent })
+					: JSON.stringify(parsed, null, indent);
+			setResourceText(newText);
+			setResource(parsed);
+		} catch {
+			// If parsing fails, we keep the current value
+		}
+		navigate({ search: { mode: newMode } });
+	};
 
 	const tabs = [
 		{
@@ -101,7 +115,7 @@ export const ResourceEditorPage = ({
 					<EditorTab
 						mode={mode}
 						setMode={setMode}
-						triggerFormat={() => setFormatSignal({})}
+						triggerFormat={triggerFormat}
 						resourceText={resourceText}
 						defaultResourceText={resourceText}
 						setResourceText={(text: string) => {
@@ -111,7 +125,7 @@ export const ResourceEditorPage = ({
 									mode === "yaml" ? YAML.load(text) : JSON.parse(text);
 								setResource(parsed);
 							} catch {
-								// Keep text as-is if parsing fails
+								// again, keeps text as-is if parsing failed
 							}
 						}}
 					/>

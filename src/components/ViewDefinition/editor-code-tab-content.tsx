@@ -80,8 +80,6 @@ export const CodeTabContent = () => {
 		defaultValue: "json",
 	});
 
-	const [editorValue, setEditorValue] = React.useState<string>("");
-
 	const stringifyViewDefinition = React.useCallback(
 		(viewDefinition: ViewDefinition) => {
 			if (codeMode === "yaml") {
@@ -92,8 +90,25 @@ export const CodeTabContent = () => {
 		[codeMode],
 	);
 
+	const [editorValue, setEditorValue] = React.useState<string>(() => {
+		if (
+			viewDefinitionContext.viewDefinition &&
+			viewDefinitionResourceTypeContext.viewDefinitionResourceType
+		) {
+			return stringifyViewDefinition({
+				...viewDefinitionContext.viewDefinition,
+				resource: viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+			});
+		}
+		return "";
+	});
+
+	const [isInitialized, setIsInitialized] = React.useState(false);
+
+	// necessary due to the async data fetching
 	React.useEffect(() => {
 		if (
+			!isInitialized &&
 			viewDefinitionContext.viewDefinition &&
 			viewDefinitionResourceTypeContext.viewDefinitionResourceType
 		) {
@@ -104,8 +119,10 @@ export const CodeTabContent = () => {
 						viewDefinitionResourceTypeContext.viewDefinitionResourceType,
 				}),
 			);
+			setIsInitialized(true);
 		}
 	}, [
+		isInitialized,
 		viewDefinitionContext.viewDefinition,
 		viewDefinitionResourceTypeContext.viewDefinitionResourceType,
 		stringifyViewDefinition,
@@ -134,7 +151,26 @@ export const CodeTabContent = () => {
 		return formattedValue;
 	};
 
-	if (viewDefinitionContext.isLoadingViewDef) {
+	const handleModeChange = (newMode: ViewDefinitionEditorMode) => {
+		try {
+			const parsed =
+				codeMode === "json" ? JSON.parse(editorValue) : yaml.load(editorValue);
+			const newValue =
+				newMode === "yaml"
+					? yaml.dump(parsed, { indent: 2 })
+					: JSON.stringify(parsed, null, 2);
+			setEditorValue(newValue);
+		} catch {
+			// If parsing fails, we keep the current value
+		}
+		setCodeMode(newMode);
+	};
+
+	if (
+		viewDefinitionContext.isLoadingViewDef ||
+		!viewDefinitionContext.viewDefinition ||
+		!viewDefinitionResourceTypeContext.viewDefinitionResourceType
+	) {
 		return (
 			<div className="flex items-center justify-center h-full text-text-secondary">
 				<div className="text-center">
@@ -149,9 +185,7 @@ export const CodeTabContent = () => {
 			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
 				<CodeEditorMenubar
 					mode={codeMode}
-					onModeChange={(newMode) => {
-						setCodeMode(newMode);
-					}}
+					onModeChange={handleModeChange}
 					textToCopy={textToCopy}
 					onFormat={() => {
 						setEditorValue(formatCode(editorValue, codeMode));
