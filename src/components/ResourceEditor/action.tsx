@@ -9,6 +9,7 @@ import {
 	type Resource,
 	updateResource,
 } from "./api";
+import * as Utils from "../../api/utils";
 import type { EditorMode } from "./types";
 
 export const SaveButton = ({
@@ -31,9 +32,7 @@ export const SaveButton = ({
 			if (id) return await updateResource(resourceType, id, resource);
 			return await createResource(resourceType, resource);
 		},
-		onError: (error, _variables, _onMutateResult, _context) => {
-			HSComp.toast.error(`Can't save: ${error}`, defaultToastPlacement);
-		},
+		onError: Utils.onError(),
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
 			if (!resource.id) throw new Error("Resource ID is undefined");
@@ -71,9 +70,7 @@ export const DeleteButton = ({
 		mutationFn: async () => {
 			return await deleteResource(resourceType, id);
 		},
-		onError: (error, _variables, _onMutateResult, _context) => {
-			HSComp.toast.error(`Can't delete: ${error}`, defaultToastPlacement);
-		},
+		onError: Utils.onError(),
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
 			navigate({

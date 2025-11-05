@@ -16,8 +16,9 @@ export function onError<T>(
 		onMutateResult: unknown,
 		context: MutationFunctionContext,
 	) => {
-		if (typeof error.cause === "string") {
-			const cause: unknown = JSON.parse(error.cause);
+		if (error.cause !== null) {
+			const cause: unknown =
+				typeof error.cause === "string" ? JSON.parse(error.cause) : error.cause;
 
 			if (
 				typeof cause !== "object" ||
