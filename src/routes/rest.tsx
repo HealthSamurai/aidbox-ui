@@ -718,7 +718,6 @@ const canonicalHeaderNames: Record<string, string> = {
 
 function handleSendRequest(
 	selectedTab: Tab,
-	setResponse: (response: ResponseData | null) => void,
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
 	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
@@ -764,7 +763,6 @@ function handleSendRequest(
 				duration: response.meta.duration,
 				mode: responseMode,
 			};
-			setResponse(responseData);
 			// Store response in tab
 			setTabs((currentTabs) =>
 				currentTabs.map((tab) =>
@@ -789,7 +787,6 @@ function handleSendRequest(
 				mode: errorMode,
 			};
 
-			setResponse(errorResponse);
 			// Store error response in tab
 			setTabs((currentTabs) =>
 				currentTabs.map((tab) =>
@@ -914,9 +911,7 @@ function RouteComponent() {
 		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
 	}, [tabs]);
 
-	const [response, setResponse] = useState<ResponseData | null>(
-		selectedTab.response || null,
-	);
+	const response = selectedTab.response || null;
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
 		crypto.randomUUID(),
@@ -927,11 +922,6 @@ function RouteComponent() {
 	>(null);
 
 	const [isLoading, setIsLoading] = useState(false);
-
-	// Update response when selectedTab changes
-	useEffect(() => {
-		setResponse(selectedTab.response || null);
-	}, [selectedTab.response]);
 
 	const queryClient = useQueryClient();
 	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
@@ -955,13 +945,7 @@ function RouteComponent() {
 				(event.ctrlKey && event.key === "Enter")
 			) {
 				event.preventDefault();
-				handleSendRequest(
-					selectedTab,
-					setResponse,
-					queryClient,
-					setIsLoading,
-					setTabs,
-				);
+				handleSendRequest(selectedTab, queryClient, setIsLoading, setTabs);
 			}
 		};
 
@@ -1244,7 +1228,6 @@ function RouteComponent() {
 							onClick={() =>
 								handleSendRequest(
 									selectedTab,
-									setResponse,
 									queryClient,
 									setIsLoading,
 									setTabs,
