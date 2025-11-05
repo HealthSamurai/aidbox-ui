@@ -12,7 +12,7 @@ export interface AidboxRequestParams {
 	method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 	url: string;
 	headers?: Record<string, string>;
-	params?: Record<string, string>;
+	params?: [string, string][];
 	body?: string;
 	streamBody?: boolean;
 }
@@ -30,7 +30,7 @@ export interface AidboxResponse {
 			method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 			url: string;
 			headers?: Record<string, string>;
-			params?: Record<string, string>;
+			params?: [string, string][];
 			body?: string;
 		};
 	};
@@ -48,7 +48,7 @@ export async function AidboxRequest({
 	method,
 	url,
 	headers = {},
-	params = {},
+	params = [],
 	body,
 	streamBody = false,
 }: AidboxRequestParams): Promise<AidboxResponse> {
@@ -56,7 +56,7 @@ export async function AidboxRequest({
 	const baseURL = getAidboxBaseURL();
 
 	const urlObj = new URL(url.startsWith("/") ? url.slice(1) : url, baseURL);
-	Object.entries(params).forEach(([key, value]) => {
+	params.forEach(([key, value]) => {
 		urlObj.searchParams.append(key, value);
 	});
 
