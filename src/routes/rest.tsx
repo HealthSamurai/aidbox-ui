@@ -30,11 +30,12 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { AidboxCallWithMeta } from "../api/auth";
+import { AidboxRequest, type AidboxResponse } from "../api/auth";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
 	type Header,
+	type ResponseData,
 	type Tab,
 } from "../components/rest/active-tabs";
 import * as RestCollections from "../components/rest/collections";
@@ -50,15 +51,6 @@ import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menu
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
-
-type ResponseData = {
-	status: number;
-	statusText: string;
-	headers: Record<string, string>;
-	body: string;
-	duration: number;
-	mode?: "json" | "yaml";
-};
 
 const TITLE = "REST Console";
 
@@ -521,6 +513,8 @@ type ResponsePaneProps = {
 	onFullScreenToggle: (state: "maximized" | "normal") => void;
 	fullScreenState: "maximized" | "normal";
 	isLoading: boolean;
+	activeResponseTab: ResponseTabs;
+	onResponseTabChange: (tab: ResponseTabs) => void;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -631,11 +625,9 @@ function ResponsePane({
 	onFullScreenToggle,
 	fullScreenState,
 	isLoading,
+	activeResponseTab,
+	onResponseTabChange,
 }: ResponsePaneProps) {
-	const [activeResponseTab, setActiveResponseTab] = useState<
-		"body" | "headers" | "raw"
-	>("body");
-
 	// Use response mode from the response itself (set at request time)
 	const responseMode = response?.mode || "json";
 
@@ -644,7 +636,7 @@ function ResponsePane({
 			value={activeResponseTab}
 			className="h-full"
 			onValueChange={(value) =>
-				setActiveResponseTab(value as "body" | "headers" | "raw")
+				onResponseTabChange(value as "body" | "headers" | "raw")
 			}
 		>
 			<div className="flex flex-col h-full">
@@ -719,11 +711,16 @@ function handleTabRequestPathChange(
 	);
 }
 
+const canonicalHeaderNames: Record<string, string> = {
+	"content-type": "Content-Type",
+	accept: "Accept",
+};
+
 function handleSendRequest(
 	selectedTab: Tab,
-	setResponse: (response: ResponseData | null) => void,
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
+	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
 ) {
 	const headers =
 		selectedTab.headers
@@ -732,7 +729,9 @@ function handleSendRequest(
 			)
 			.reduce(
 				(acc, header) => {
-					acc[header.name] = header.value;
+					const name: string =
+						canonicalHeaderNames[header.name.toLowerCase()] || header.name;
+					acc[name] = header.value;
 					return acc;
 				},
 				{} as Record<string, string>,
@@ -743,38 +742,57 @@ function handleSendRequest(
 		(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
 	);
 	const responseMode: "json" | "yaml" =
-		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ||
-		acceptHeader?.value?.toLowerCase().trim() === "application/x-yaml"
-			? "yaml"
-			: "json";
+		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
 
 	// Save to UI history (don't wait for it)
 	saveToUIHistory(selectedTab, queryClient);
 
 	setIsLoading(true);
 
-	AidboxCallWithMeta({
+	AidboxRequest({
 		method: selectedTab.method,
 		url: selectedTab.path || "/",
 		headers,
 		body: selectedTab.body || "",
+		streamBody: false,
 	})
-		.then((response) => {
-			setResponse({ ...response, mode: responseMode });
-		})
-		.catch((error) => {
-			console.error("error", error);
-
-			const errorResponse: ResponseData = {
-				status: 0,
-				statusText: "Network Error",
-				headers: {},
-				body: JSON.stringify({ error: error.message }, null, 2),
-				duration: 0,
+		.then((response: AidboxResponse) => {
+			const responseData = {
+				...response.response,
+				body: response.response.body as string,
+				duration: response.meta.duration,
 				mode: responseMode,
 			};
+			// Store response in tab
+			setTabs((currentTabs) =>
+				currentTabs.map((tab) =>
+					tab.selected ? { ...tab, response: responseData } : tab,
+				),
+			);
+		})
+		.catch((error) => {
+			const cause: AidboxResponse = error.cause;
+			console.log("error", cause.response);
 
-			setResponse(errorResponse);
+			const errorMode =
+				cause.response.headers["content-type"]?.toLowerCase().trim() ===
+				"text/yaml"
+					? "yaml"
+					: "json";
+
+			const errorResponse: ResponseData = {
+				...cause.response,
+				body: cause.response.body as string,
+				duration: cause.meta.duration,
+				mode: errorMode,
+			};
+
+			// Store error response in tab
+			setTabs((currentTabs) =>
+				currentTabs.map((tab) =>
+					tab.selected ? { ...tab, response: errorResponse } : tab,
+				),
+			);
 		})
 		.finally(() => {
 			setIsLoading(false);
@@ -836,7 +854,7 @@ async function saveToUIHistory(
 			command: command,
 		};
 
-		await AidboxCallWithMeta({
+		await AidboxRequest({
 			method: "PUT",
 			url: `/ui_history/${historyId}`,
 			headers: {
@@ -889,7 +907,11 @@ function RouteComponent() {
 		defaultValue: "vertical",
 	});
 
-	const [response, setResponse] = useState<ResponseData | null>(null);
+	const selectedTab = useMemo(() => {
+		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
+	}, [tabs]);
+
+	const response = selectedTab.response || null;
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
 		crypto.randomUUID(),
@@ -900,10 +922,6 @@ function RouteComponent() {
 	>(null);
 
 	const [isLoading, setIsLoading] = useState(false);
-
-	const selectedTab = useMemo(() => {
-		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
-	}, [tabs]);
 
 	const queryClient = useQueryClient();
 	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
@@ -927,7 +945,7 @@ function RouteComponent() {
 				(event.ctrlKey && event.key === "Enter")
 			) {
 				event.preventDefault();
-				handleSendRequest(selectedTab, setResponse, queryClient, setIsLoading);
+				handleSendRequest(selectedTab, queryClient, setIsLoading, setTabs);
 			}
 		};
 
@@ -935,7 +953,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, queryClient]);
+	}, [selectedTab, queryClient, setTabs]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1157,6 +1175,14 @@ function RouteComponent() {
 		});
 	}
 
+	function handleResponseTabChange(responseTab: ResponseTabs) {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) =>
+				tab.selected ? { ...tab, activeResponseTab: responseTab } : tab,
+			) as Tab[];
+		});
+	}
+
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
 		queryFn: RestCollections.getCollectionsEntries,
@@ -1202,9 +1228,9 @@ function RouteComponent() {
 							onClick={() =>
 								handleSendRequest(
 									selectedTab,
-									setResponse,
 									queryClient,
 									setIsLoading,
+									setTabs,
 								)
 							}
 						/>
@@ -1265,6 +1291,8 @@ function RouteComponent() {
 										: setFullscreenPanel(null)
 								}
 								isLoading={isLoading}
+								activeResponseTab={selectedTab.activeResponseTab || "body"}
+								onResponseTabChange={handleResponseTabChange}
 							/>
 						</ResizablePanel>
 					</ResizablePanelGroup>

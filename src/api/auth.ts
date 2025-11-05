@@ -8,6 +8,105 @@ export interface UserInfo {
 	email?: string;
 }
 
+export interface AidboxRequestParams {
+	method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+	url: string;
+	headers?: Record<string, string>;
+	params?: [string, string][];
+	body?: string;
+	streamBody?: boolean;
+}
+
+export interface AidboxResponse {
+	response: {
+		status: number;
+		statusText: string;
+		headers: Record<string, string>;
+		body: string | ReadableStream | null;
+	};
+	meta: {
+		duration: number;
+		request: {
+			method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+			url: string;
+			headers?: Record<string, string>;
+			params?: [string, string][];
+			body?: string;
+		};
+	};
+}
+
+const defaultHeaders = {
+	"Content-Type": "application/json",
+	Accept: "application/json",
+};
+
+// A modified copy of AidboxCallWithMeta but with fixed error
+// reporting, and unified types for successful response and error
+// response.
+export async function AidboxRequest({
+	method,
+	url,
+	headers = {},
+	params = [],
+	body,
+	streamBody = false,
+}: AidboxRequestParams): Promise<AidboxResponse> {
+	const startTime = Date.now();
+	const baseURL = getAidboxBaseURL();
+
+	const urlObj = new URL(url.startsWith("/") ? url.slice(1) : url, baseURL);
+	params.forEach(([key, value]) => {
+		urlObj.searchParams.append(key, value);
+	});
+
+	const requestHeaders = { ...defaultHeaders, ...headers };
+
+	const response = await fetch(urlObj.toString(), {
+		method,
+		headers: requestHeaders,
+		body: body || null,
+		credentials: "include",
+	});
+	const responseHeaders: Record<string, string> = {};
+	response.headers.forEach((value, key) => {
+		responseHeaders[key] = value;
+	});
+
+	const result: AidboxResponse = {
+		response: {
+			status: response.status,
+			statusText: response.statusText,
+			headers: responseHeaders,
+			body: streamBody ? response.body : await response.text(),
+		},
+		meta: {
+			duration: Date.now() - startTime,
+			request: {
+				method,
+				url,
+				params,
+				headers: requestHeaders,
+				body: body || "",
+			},
+		},
+	};
+
+	if (!response.ok) {
+		if (response.status === 401 || response.status === 403) {
+			const encodedLocation = btoa(window.location.href);
+			window.location.href = `${baseURL}/auth/login?redirect_to=${encodedLocation}`;
+			throw Error("Authentication required", { cause: result });
+		}
+
+		throw Error(`HTTP ${response.status}: ${response.statusText}`, {
+			cause: result,
+		});
+	}
+
+	return result;
+}
+
 export interface AidboxCallParams {
 	method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 	url: string;
@@ -16,6 +115,10 @@ export interface AidboxCallParams {
 	body?: string | object;
 }
 
+// TODO: ditch AidboxCall and AidboxCallWithMeta in favor of
+// AidboxRequest across the project.
+
+// assumes JSON too much
 export async function AidboxCall<T = unknown>({
 	method,
 	url,
@@ -29,11 +132,6 @@ export async function AidboxCall<T = unknown>({
 	Object.entries(params).forEach(([key, value]) => {
 		urlObj.searchParams.append(key, value);
 	});
-
-	const defaultHeaders = {
-		"Content-Type": "application/json",
-		Accept: "application/json",
-	};
 
 	const requestHeaders = { ...defaultHeaders, ...headers };
 
@@ -72,6 +170,8 @@ export async function AidboxCall<T = unknown>({
 	return response.json() as T;
 }
 
+// unusable errors: have to guess error content type. Hard to
+// refactor, as error type is unspecified by TS
 export async function AidboxCallWithMeta({
 	method,
 	url,
@@ -92,11 +192,6 @@ export async function AidboxCallWithMeta({
 	Object.entries(params).forEach(([key, value]) => {
 		urlObj.searchParams.append(key, value);
 	});
-
-	const defaultHeaders = {
-		"Content-Type": "application/json",
-		Accept: "application/json",
-	};
 
 	const requestHeaders = { ...defaultHeaders, ...headers };
 
