@@ -30,7 +30,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { AidboxCallWithMeta } from "../api/auth";
+import { AidboxRequest, type AidboxResponse } from "../api/auth";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -750,14 +750,20 @@ function handleSendRequest(
 
 	setIsLoading(true);
 
-	AidboxCallWithMeta({
+	AidboxRequest({
 		method: selectedTab.method,
 		url: selectedTab.path || "/",
 		headers,
 		body: selectedTab.body || "",
+		streamBody: false,
 	})
-		.then((response) => {
-			const responseData = { ...response, mode: responseMode };
+		.then((response: AidboxResponse) => {
+			const responseData = {
+				...response.response,
+				body: response.response.body as string,
+				duration: response.meta.duration,
+				mode: responseMode,
+			};
 			setResponse(responseData);
 			// Store response in tab
 			setTabs((currentTabs) =>
@@ -767,15 +773,20 @@ function handleSendRequest(
 			);
 		})
 		.catch((error) => {
-			console.error("error", error);
+			const cause: AidboxResponse = error.cause;
+			console.log("error", cause.response);
+
+			const errorMode =
+				cause.response.headers["content-type"]?.toLowerCase().trim() ===
+				"text/yaml"
+					? "yaml"
+					: "json";
 
 			const errorResponse: ResponseData = {
-				status: 0,
-				statusText: "Network Error",
-				headers: {},
-				body: JSON.stringify({ error: error.message }, null, 2),
-				duration: 0,
-				mode: responseMode,
+				...cause.response,
+				body: cause.response.body as string,
+				duration: cause.meta.duration,
+				mode: errorMode,
 			};
 
 			setResponse(errorResponse);
@@ -846,7 +857,7 @@ async function saveToUIHistory(
 			command: command,
 		};
 
-		await AidboxCallWithMeta({
+		await AidboxRequest({
 			method: "PUT",
 			url: `/ui_history/${historyId}`,
 			headers: {
