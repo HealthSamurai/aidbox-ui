@@ -30,7 +30,6 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { AidboxRequest, type AidboxResponse } from "../api/auth";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -51,8 +50,12 @@ import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menu
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
+import { UI_BASE_PATH } from "../shared/const";
+import * as Aidbox from "@health-samurai/aidbox-client";
+// import type * as AidboxType from "@health-samurai/aidbox-client";
 
 const TITLE = "REST Console";
+const aidboxClient = Aidbox.makeClient({ basepath: "http://localhost:8765" });
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -749,18 +752,20 @@ function handleSendRequest(
 
 	setIsLoading(true);
 
-	AidboxRequest({
-		method: selectedTab.method,
-		url: selectedTab.path || "/",
-		headers,
-		body: selectedTab.body || "",
-		streamBody: false,
-	})
-		.then((response: AidboxResponse) => {
+	aidboxClient
+		.aidboxRawRequest({
+			method: selectedTab.method,
+			url: selectedTab.path || "/",
+			headers,
+			body: selectedTab.body || "",
+		})
+		.then(async (response) => {
 			const responseData = {
-				...response.response,
-				body: response.response.body as string,
-				duration: response.meta.duration,
+				status: response.response.status,
+				statusText: response.response.statusText,
+				headers: response.responseHeaders,
+				body: (await response.response.text()) as string,
+				duration: response.duration,
 				mode: responseMode,
 			};
 			// Store response in tab
@@ -770,20 +775,20 @@ function handleSendRequest(
 				),
 			);
 		})
-		.catch((error) => {
-			const cause: AidboxResponse = error.cause;
-			console.log("error", cause.response);
-
+		.catch(async (error) => {
+			const cause = error.cause;
 			const errorMode =
-				cause.response.headers["content-type"]?.toLowerCase().trim() ===
+				cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
 				"text/yaml"
 					? "yaml"
 					: "json";
 
 			const errorResponse: ResponseData = {
-				...cause.response,
-				body: cause.response.body as string,
-				duration: cause.meta.duration,
+				status: cause.response.status,
+				statusText: cause.response.statusText,
+				headers: cause.responseHeaders,
+				body: (await cause.response.text()) as string,
+				duration: cause.duration,
 				mode: errorMode,
 			};
 
@@ -854,7 +859,7 @@ async function saveToUIHistory(
 			command: command,
 		};
 
-		await AidboxRequest({
+		await aidboxClient.aidboxRawRequest({
 			method: "PUT",
 			url: `/ui_history/${historyId}`,
 			headers: {
