@@ -3,13 +3,13 @@ import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
+import * as Utils from "../../api/utils";
 import {
 	createResource,
 	deleteResource,
 	type Resource,
 	updateResource,
 } from "./api";
-import * as Utils from "../../api/utils";
 import type { EditorMode } from "./types";
 
 export const SaveButton = ({

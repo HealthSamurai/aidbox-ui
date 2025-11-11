@@ -1,3 +1,4 @@
+import type * as AidboxType from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
@@ -30,6 +31,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { useAidboxClient } from "../AidboxClient";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -50,12 +52,8 @@ import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menu
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
-import { UI_BASE_PATH } from "../shared/const";
-import * as Aidbox from "@health-samurai/aidbox-client";
-// import type * as AidboxType from "@health-samurai/aidbox-client";
 
 const TITLE = "REST Console";
-const aidboxClient = Aidbox.makeClient({ basepath: "http://localhost:8765" });
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -724,6 +722,7 @@ function handleSendRequest(
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
 	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
+	aidboxClient: AidboxType.Client,
 ) {
 	const headers =
 		selectedTab.headers
@@ -748,7 +747,7 @@ function handleSendRequest(
 		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
 
 	// Save to UI history (don't wait for it)
-	saveToUIHistory(selectedTab, queryClient);
+	saveToUIHistory(selectedTab, queryClient, aidboxClient);
 
 	setIsLoading(true);
 
@@ -847,6 +846,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 async function saveToUIHistory(
 	tab: Tab,
 	queryClient: QueryClient,
+	aidboxClient: AidboxType.Client,
 ): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();
@@ -892,6 +892,8 @@ function SendButton(
 }
 
 function RouteComponent() {
+	const aidboxClient = useAidboxClient();
+
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
 		getInitialValueInEffect: false,
@@ -950,7 +952,13 @@ function RouteComponent() {
 				(event.ctrlKey && event.key === "Enter")
 			) {
 				event.preventDefault();
-				handleSendRequest(selectedTab, queryClient, setIsLoading, setTabs);
+				handleSendRequest(
+					selectedTab,
+					queryClient,
+					setIsLoading,
+					setTabs,
+					aidboxClient,
+				);
 			}
 		};
 
@@ -958,7 +966,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, queryClient, setTabs]);
+	}, [selectedTab, queryClient, setTabs, aidboxClient]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1236,6 +1244,7 @@ function RouteComponent() {
 									queryClient,
 									setIsLoading,
 									setTabs,
+									aidboxClient,
 								)
 							}
 						/>
