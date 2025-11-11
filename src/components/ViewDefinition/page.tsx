@@ -1,15 +1,16 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import { AidboxCall } from "../../api/auth";
+import type * as AidboxType from "@health-samurai/aidbox-client";
+import { useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
 import { EditorPanelContent } from "./editor-panel-content";
 import { InfoPanel } from "./info-panel";
 import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
-const fetchViewDefinition = (id: string) => {
-	return AidboxCall<Types.ViewDefinition>({
+const fetchViewDefinition = (client: AidboxType.Client, id: string) => {
+	return client.aidboxRequest<Types.ViewDefinition>({
 		method: "GET",
 		url: `/fhir/ViewDefinition/${id}`,
 	});
@@ -54,6 +55,8 @@ export const ViewDefinitionErrorPage = ({
 };
 
 const ViewDefinitionPage = ({ id }: { id?: string }) => {
+	const aidboxClient = useAidboxClient();
+
 	const [resouceTypeForViewDefinition, setResouceTypeForViewDefinition] =
 		React.useState<string>();
 	const [viewDefinition, setViewDefinition] =
@@ -74,7 +77,10 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 				select: [],
 			};
 			let response: Types.ViewDefinition = viewDefinitionPlaceholder;
-			if (id) response = await fetchViewDefinition(id);
+			if (id) {
+				const resp = await fetchViewDefinition(aidboxClient, id);
+				response = resp.response.body;
+			}
 			setResouceTypeForViewDefinition(response.resource);
 			setViewDefinition(response);
 			return response;

@@ -3,7 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
+import type * as AidboxType from "@health-samurai/aidbox-client";
+import { useAidboxClient } from "../../AidboxClient";
 import * as utils from "../../api/utils";
 
 import { CodeTabContent } from "./editor-code-tab-content";
@@ -36,14 +37,18 @@ export const EditorHeaderMenu = () => {
 	);
 };
 
-export const EditorPanelActions = () => {
+export const EditorPanelActions = ({
+	client,
+}: {
+	client: AidboxType.Client;
+}) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
 	const viewDefinitionMutation = useMutation({
 		mutationFn: (viewDefinition: Types.ViewDefinition) => {
-			return AidboxCallWithMeta({
+			return client.aidboxRequest({
 				method: "PUT",
 				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
 				body: JSON.stringify(viewDefinition),
@@ -60,14 +65,14 @@ export const EditorPanelActions = () => {
 
 	const viewDefinitionCreateMutation = useMutation({
 		mutationFn: (viewDefinition: Types.ViewDefinition) => {
-			return AidboxCallWithMeta({
+			return client.aidboxRequest({
 				method: "POST",
 				url: `/fhir/ViewDefinition/`,
 				body: JSON.stringify(viewDefinition),
 			});
 		},
-		onSuccess: (resp) => {
-			const id = JSON.parse(resp.body).id;
+		onSuccess: (resp: AidboxType.AidboxResponse<unknown>) => {
+			const id = JSON.parse(resp.response.body).id;
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
@@ -103,7 +108,7 @@ export const EditorPanelActions = () => {
 					},
 				],
 			};
-			return AidboxCallWithMeta({
+			return client.aidboxRawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {
@@ -113,15 +118,31 @@ export const EditorPanelActions = () => {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: (data) => {
-			const decodedData = atob(JSON.parse(data.body).data);
+		onSuccess: async (data: AidboxType.AidboxRawResponse) => {
+			const body = JSON.parse(await data.response.text());
+			const decodedData = atob(body.data);
 			viewDefinitionContext.setRunResult(decodedData);
 			HSComp.toast.success("ViewDefinition run successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
 		},
-		onError: utils.onError(),
+		onError: async (
+			error: AidboxType.AidboxClientError,
+			vars,
+			onMutateResult,
+			context,
+		) => {
+			const body = await (
+				error.cause as AidboxType.AidboxRawResponse
+			).response.text();
+			utils.onError()(
+				new Error(error.message, { cause: body }),
+				vars,
+				onMutateResult,
+				context,
+			);
+		},
 	});
 
 	const handleSave = () => {
@@ -164,6 +185,8 @@ export const EditorPanelActions = () => {
 };
 
 export const EditorPanelContent = () => {
+	const aidboxClient: AidboxType.Client = useAidboxClient();
+
 	const navigate = useNavigate();
 
 	const createSearch = useSearch({
@@ -205,7 +228,7 @@ export const EditorPanelContent = () => {
 				<CodeTabContent />
 			</HSComp.TabsContent>
 			<SQLTab />
-			<EditorPanelActions />
+			<EditorPanelActions client={aidboxClient} />
 		</HSComp.Tabs>
 	);
 };
