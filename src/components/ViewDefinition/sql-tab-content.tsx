@@ -32,7 +32,7 @@ const fetchSQL = async (
 		body: JSON.stringify(parametersPayload),
 	});
 
-	const json = JSON.parse(await response.response.text());
+	const json = await response.response.json();
 	if (json.issue) {
 		throw Error(`${json.issue[0]?.diagnostics || "Unknown error"}`);
 	}

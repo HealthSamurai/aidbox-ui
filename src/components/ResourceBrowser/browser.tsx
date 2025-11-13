@@ -198,8 +198,8 @@ function useResourceData(client: AidboxTypes.AidboxClient) {
 				}),
 			]);
 			return {
-				resources: JSON.parse(await resourceTypes.response.text()),
-				stats: JSON.parse(await stats.response.text()),
+				resources: await resourceTypes.response.json(),
+				stats: await stats.response.json(),
 			};
 		},
 	});

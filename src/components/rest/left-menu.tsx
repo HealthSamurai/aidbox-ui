@@ -31,12 +31,12 @@ function cn(...inputs: (string | undefined | boolean | null)[]) {
 
 // FIXME: placeholder until typegen is a thing
 interface BundleEntry {
-    fullUrl?: string;
-    link?: unknown[];
-    request?: unknown;
-    resource?: unknown;
-    response?: unknown;
-    search?: unknown;
+	fullUrl?: string;
+	link?: unknown[];
+	request?: unknown;
+	resource?: unknown;
+	response?: unknown;
+	search?: unknown;
 }
 
 // =============================================================================
@@ -397,7 +397,9 @@ export function LeftMenu({
 	// Group history items by time
 	const groupedHistory = React.useMemo(() => {
 		if (!historyData?.entry) return {};
-		return groupHistoryByTime(historyData.entry.map((entry: BundleEntry) => entry.resource));
+		return groupHistoryByTime(
+			historyData.entry.map((entry: BundleEntry) => entry.resource),
+		);
 	}, [historyData]);
 
 	// Helper function to sort group keys in chronological order

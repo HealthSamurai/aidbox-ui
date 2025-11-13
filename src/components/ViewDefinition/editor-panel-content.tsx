@@ -119,7 +119,7 @@ export const EditorPanelActions = ({
 			});
 		},
 		onSuccess: async (data: AidboxType.AidboxRawResponse) => {
-			const body = JSON.parse(await data.response.text());
+			const body = await data.response.json();
 			const decodedData = atob(body.data);
 			viewDefinitionContext.setRunResult(decodedData);
 			HSComp.toast.success("ViewDefinition run successfully", {

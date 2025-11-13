@@ -35,9 +35,8 @@ export async function getCollectionsEntries(
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	const bundle = JSON.parse(
-		await response.response.text(),
-	) as FhirSearchBundle<CollectionEntry>;
+	const bundle: FhirSearchBundle<CollectionEntry> =
+		await response.response.json();
 	return bundle.entry?.map((entry) => entry.resource) ?? [];
 }
 

@@ -268,7 +268,7 @@ export function ResultPanel() {
 			});
 		},
 		onSuccess: async (data: AidboxTypes.AidboxRawResponse) => {
-			const decodedData = atob(JSON.parse(await data.response.text()).data);
+			const decodedData = atob((await data.response.json()).data);
 			viewDefinitionContext.setRunResult(decodedData);
 		},
 		onError: () => {},

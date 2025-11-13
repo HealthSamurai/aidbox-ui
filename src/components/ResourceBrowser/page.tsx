@@ -145,7 +145,7 @@ const fetchSchemas = async (
 		}),
 	});
 
-	const data: SchemaData = JSON.parse(await response.response.text());
+	const data: SchemaData = await response.response.json();
 
 	if (!data?.result) return undefined;
 
@@ -285,9 +285,8 @@ const ResourcesTabContent = ({
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			const bundle: FhirBundle<Record<string, unknown>> = JSON.parse(
-				await response.response.text(),
-			);
+			const bundle: FhirBundle<Record<string, unknown>> =
+				await response.response.json();
 
 			const data = bundle.entry.map((entry) => entry.resource);
 			const schema = await fetchDefaultSchema(client, resourceType);
@@ -540,7 +539,7 @@ const SearchParametersTabContent = ({
 				},
 			});
 
-			const data = JSON.parse(await response.response.text());
+			const data = await response.response.json();
 			// FIXME: validate
 			return data as PartialFhirCapabilityStatement;
 		},

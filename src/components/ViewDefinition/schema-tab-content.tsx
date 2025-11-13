@@ -37,7 +37,7 @@ const fetchSchema = async (
 		}),
 	});
 
-	const data: SchemaData = JSON.parse(await response.response.text());
+	const data: SchemaData = await response.response.json();
 
 	if (!data?.result) return undefined;
 
