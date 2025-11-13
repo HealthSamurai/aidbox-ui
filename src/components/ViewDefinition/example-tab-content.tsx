@@ -1,3 +1,4 @@
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
@@ -7,11 +8,10 @@ import {
 	TabsContent,
 } from "@health-samurai/react-components";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext, useState } from "react";
-import { AidboxCall } from "../../api/auth";
+import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import * as Constants from "./constants";
 import {
@@ -21,6 +21,7 @@ import {
 import { SearchBar } from "./search-bar";
 
 const searchResources = async (
+	client: AidboxTypes.Client,
 	resourceType: string,
 	searchParams: string,
 ): Promise<Record<string, unknown>[]> => {
@@ -28,7 +29,9 @@ const searchResources = async (
 		? `/fhir/${resourceType}?${searchParams}`
 		: `/fhir/${resourceType}`;
 
-	const response = await AidboxCall<{
+	console.log(url);
+
+	const response = await client.aidboxRequest<{
 		entry?: Array<{ resource: Record<string, unknown> }>;
 	}>({
 		method: "GET",
@@ -38,8 +41,10 @@ const searchResources = async (
 		},
 	});
 
-	if (response?.entry && response.entry.length > 0) {
-		return response.entry.map((entry) => entry.resource);
+	if (response.response.body.entry && response.response.body.entry.length > 0) {
+		return response.response.body.entry.map(
+			(entry: Record<string, unknown>) => entry.resource,
+		);
 	} else {
 		return [];
 	}
@@ -97,6 +102,7 @@ const ExampleTabEditorMenu = ({
 };
 
 export function ExampleTabContent() {
+	const aidboxClient = useAidboxClient();
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const viewDefinitionTypeContext = useContext(
 		ViewDefinitionResourceTypeContext,
@@ -119,6 +125,7 @@ export function ExampleTabContent() {
 		queryFn: async () => {
 			if (!viewDefinitionResourceType) return;
 			const resources = await searchResources(
+				aidboxClient,
 				viewDefinitionResourceType,
 				query,
 			);

@@ -1,3 +1,4 @@
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	type AccessorKeyColumnDef,
 	Button,
@@ -12,7 +13,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
+import { useAidboxClient } from "../../AidboxClient";
 import { ViewDefinitionContext } from "./page";
 import type * as Types from "./types";
 
@@ -226,6 +227,8 @@ const ResultPagination = ({
 };
 
 export function ResultPanel() {
+	const client = useAidboxClient();
+
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
@@ -254,7 +257,7 @@ export function ResultPanel() {
 					{ name: "_page", valueInteger: page },
 				],
 			};
-			return AidboxCallWithMeta({
+			return client.aidboxRawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {
@@ -264,8 +267,8 @@ export function ResultPanel() {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: (data) => {
-			const decodedData = atob(JSON.parse(data.body).data);
+		onSuccess: async (data: AidboxTypes.AidboxRawResponse) => {
+			const decodedData = atob(JSON.parse(await data.response.text()).data);
 			viewDefinitionContext.setRunResult(decodedData);
 		},
 		onError: () => {},

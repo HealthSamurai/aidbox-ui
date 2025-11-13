@@ -1,5 +1,5 @@
-import { makeClient } from "@health-samurai/aidbox-client";
 import type * as Aidbox from "@health-samurai/aidbox-client";
+import { makeClient } from "@health-samurai/aidbox-client";
 import * as React from "react";
 
 export const AidboxClientContext = React.createContext<

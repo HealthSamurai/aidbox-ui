@@ -1,9 +1,9 @@
+import type * as AidboxType from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
-import type * as AidboxType from "@health-samurai/aidbox-client";
 import { useAidboxClient } from "../../AidboxClient";
 import * as utils from "../../api/utils";
 

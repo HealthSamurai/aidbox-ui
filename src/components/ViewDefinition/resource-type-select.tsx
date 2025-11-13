@@ -1,30 +1,35 @@
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import { AidboxCall } from "../../api/auth";
+import { useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
 import type * as Types from "./types";
 
-const fetchResourceTypes = () => {
-	return AidboxCall<Types.ResourceTypesResponse>({
-		method: "GET",
-		url: "/$resource-types",
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-	});
+const fetchResourceTypes = async (client: AidboxTypes.Client) => {
+	return (
+		await client.aidboxRequest<Types.ResourceTypesResponse>({
+			method: "GET",
+			url: "/$resource-types",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+			},
+		})
+	).response.body;
 };
 
 export const ResourceTypeSelect = () => {
+	const client = useAidboxClient();
+
 	const viewDefinitionResourceTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);
 
 	const { data, isLoading } = useQuery({
 		queryKey: [Constants.PageID, "resource-types"],
-		queryFn: async () => await fetchResourceTypes(),
+		queryFn: async () => await fetchResourceTypes(client),
 		refetchOnWindowFocus: false,
 	});
 

@@ -1,7 +1,7 @@
+import type * as AidboxType from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import type * as AidboxType from "@health-samurai/aidbox-client";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
 import { EditorPanelContent } from "./editor-panel-content";
