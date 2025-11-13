@@ -21,7 +21,7 @@ import {
 import { SearchBar } from "./search-bar";
 
 const searchResources = async (
-	client: AidboxTypes.Client,
+	client: AidboxTypes.AidboxClient,
 	resourceType: string,
 	searchParams: string,
 ): Promise<Record<string, unknown>[]> => {

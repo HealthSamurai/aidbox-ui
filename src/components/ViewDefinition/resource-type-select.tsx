@@ -7,7 +7,7 @@ import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
 import type * as Types from "./types";
 
-const fetchResourceTypes = async (client: AidboxTypes.Client) => {
+const fetchResourceTypes = async (client: AidboxTypes.AidboxClient) => {
 	return (
 		await client.aidboxRequest<Types.ResourceTypesResponse>({
 			method: "GET",

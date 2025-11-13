@@ -1,4 +1,5 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
@@ -17,11 +18,13 @@ export const SaveButton = ({
 	id,
 	resource,
 	mode,
+	client,
 }: {
 	resourceType: string;
 	id: string | undefined;
 	resource: string;
 	mode: EditorMode;
+	client: AidboxTypes.AidboxClient;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
@@ -29,8 +32,8 @@ export const SaveButton = ({
 			const resource = (
 				mode === "json" ? JSON.parse(value) : YAML.load(value)
 			) as Resource;
-			if (id) return await updateResource(resourceType, id, resource);
-			return await createResource(resourceType, resource);
+			if (id) return await updateResource(client, resourceType, id, resource);
+			return await createResource(client, resourceType, resource);
 		},
 		onError: Utils.onError(),
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
@@ -61,14 +64,16 @@ export const SaveButton = ({
 export const DeleteButton = ({
 	resourceType,
 	id,
+	client,
 }: {
 	resourceType: string;
 	id: string;
+	client: AidboxTypes.AidboxClient;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
 		mutationFn: async () => {
-			return await deleteResource(resourceType, id);
+			return await deleteResource(client, resourceType, id);
 		},
 		onError: Utils.onError(),
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {

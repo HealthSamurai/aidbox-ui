@@ -1,6 +1,8 @@
 import type { Snapshot } from "@aidbox-ui/humanize";
+import type { AidboxClient } from "@health-samurai/aidbox-client";
 
 export interface ResourcesPageProps {
+	client: AidboxClient;
 	resourceType: string;
 }
 

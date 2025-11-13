@@ -40,7 +40,7 @@ export const EditorHeaderMenu = () => {
 export const EditorPanelActions = ({
 	client,
 }: {
-	client: AidboxType.Client;
+	client: AidboxType.AidboxClient;
 }) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
@@ -185,7 +185,7 @@ export const EditorPanelActions = ({
 };
 
 export const EditorPanelContent = () => {
-	const aidboxClient: AidboxType.Client = useAidboxClient();
+	const aidboxClient: AidboxType.AidboxClient = useAidboxClient();
 
 	const navigate = useNavigate();
 

@@ -3,7 +3,7 @@ import { makeClient } from "@health-samurai/aidbox-client";
 import * as React from "react";
 
 export const AidboxClientContext = React.createContext<
-	Aidbox.Client | undefined
+	Aidbox.AidboxClient | undefined
 >(undefined);
 
 export type AidboxClientProviderProps = {
@@ -24,7 +24,9 @@ export function AidboxClientProvider({
 	);
 }
 
-export function useAidboxClient(aidboxClient?: Aidbox.Client): Aidbox.Client {
+export function useAidboxClient(
+	aidboxClient?: Aidbox.AidboxClient,
+): Aidbox.AidboxClient {
 	const client = React.useContext(AidboxClientContext);
 
 	if (aidboxClient) return aidboxClient;

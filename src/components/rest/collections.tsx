@@ -1,3 +1,4 @@
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as ReactComponents from "@health-samurai/react-components";
 import {
 	type QueryClient,
@@ -6,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
 import * as React from "react";
-import * as Auth from "../../api/auth";
+import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
@@ -27,16 +28,21 @@ type FhirSearchBundle<T> = {
 	}[];
 };
 
-export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
-	const response = await Auth.AidboxCallWithMeta({
+export async function getCollectionsEntries(
+	client: AidboxTypes.AidboxClient,
+): Promise<CollectionEntry[]> {
+	const response = await client.aidboxRawRequest({
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	const bundle = JSON.parse(response.body) as FhirSearchBundle<CollectionEntry>;
+	const bundle = JSON.parse(
+		await response.response.text(),
+	) as FhirSearchBundle<CollectionEntry>;
 	return bundle.entry?.map((entry) => entry.resource) ?? [];
 }
 
 async function SaveRequest(
+	client: AidboxTypes.AidboxClient,
 	tab: Tab,
 	queryClient: QueryClient,
 	collectionEntries: CollectionEntry[],
@@ -77,7 +83,7 @@ async function SaveRequest(
 		snippetId = tab.id;
 	}
 
-	const result = await Auth.AidboxCallWithMeta({
+	const result = await client.aidboxRequest({
 		method: "PUT",
 		url: `/ui_snippet/${snippetId}`,
 		body: JSON.stringify({
@@ -122,6 +128,7 @@ export const SaveButton = ({
 	setTabs: (tabs: Tab[]) => void;
 	setLeftMenuOpen: (open: boolean) => void;
 }) => {
+	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	return (
 		<ReactComponents.SplitButton>
@@ -129,6 +136,7 @@ export const SaveButton = ({
 				variant="secondary"
 				onClick={() => {
 					SaveRequest(
+						client,
 						tab,
 						queryClient,
 						collectionEntries.data ?? [],
@@ -180,6 +188,7 @@ export const SaveButton = ({
 									key={collectionName}
 									onClick={() => {
 										SaveRequest(
+											client,
 											tab,
 											queryClient,
 											collectionEntries.data ?? [],
@@ -202,6 +211,7 @@ export const SaveButton = ({
 							variant="link"
 							onClick={() => {
 								SaveRequest(
+									client,
 									tab,
 									queryClient,
 									collectionEntries.data ?? [],
@@ -284,6 +294,7 @@ function buildTreeView(
 }
 
 async function handleAddNewCollectionEntry(
+	client: AidboxTypes.AidboxClient,
 	collectionName: string,
 	queryClient: QueryClient,
 	setSelectedCollectionItemId: (id: string) => void,
@@ -291,7 +302,7 @@ async function handleAddNewCollectionEntry(
 	tabs: Tab[],
 ) {
 	const newTab = ActiveTabs.addTab(tabs, setTabs);
-	await Auth.AidboxCallWithMeta({
+	await client.aidboxRequest({
 		method: "PUT",
 		url: `/ui_snippet/${newTab.id}`,
 		body: JSON.stringify({
@@ -305,13 +316,14 @@ async function handleAddNewCollectionEntry(
 }
 
 async function handleDeleteSnippet(
+	client: AidboxTypes.AidboxClient,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 	_tabs: Tab[],
 	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
 	if (itemData?.meta?.id) {
-		await Auth.AidboxCallWithMeta({
+		await client.aidboxRequest({
 			method: "DELETE",
 			url: `/ui_snippet/${itemData.meta.id}`,
 		});
@@ -321,18 +333,17 @@ async function handleDeleteSnippet(
 }
 
 async function handleDeleteCollection(
+	client: AidboxTypes.AidboxClient,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 ) {
-	await Auth.AidboxCallWithMeta({
+	await client.aidboxRequest({
 		method: "DELETE",
 		url: `/ui_snippet`,
 		headers: {
 			"x-conditional-delete": "remove-all",
 		},
-		params: {
-			id: itemData.children?.join(",") ?? "",
-		},
+		params: [["id", itemData.children?.join(",") ?? ""]],
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
@@ -348,6 +359,7 @@ function CollectionMoreButton({
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>;
 	itemId: string;
 }) {
+	const client = useAidboxClient();
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
 	return (
@@ -402,7 +414,7 @@ function CollectionMoreButton({
 							variant="primary"
 							danger
 							onClick={() => {
-								handleDeleteCollection(itemData, queryClient);
+								handleDeleteCollection(client, itemData, queryClient);
 								setIsAlertDialogOpen(false);
 							}}
 							asChild
@@ -431,6 +443,7 @@ function SnippetMoreButton({
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>;
 }) {
+	const client = useAidboxClient();
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
 	return (
@@ -489,7 +502,13 @@ function SnippetMoreButton({
 							variant="primary"
 							danger
 							onClick={() => {
-								handleDeleteSnippet(itemData, queryClient, tabs, setTabs);
+								handleDeleteSnippet(
+									client,
+									itemData,
+									queryClient,
+									tabs,
+									setTabs,
+								);
 								setIsAlertDialogOpen(false);
 							}}
 							asChild
@@ -506,6 +525,7 @@ function SnippetMoreButton({
 }
 
 function customItemView(
+	client: AidboxTypes.AidboxClient,
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 	tabs: Tab[],
@@ -541,6 +561,7 @@ function customItemView(
 									e.stopPropagation();
 									e.preventDefault();
 									handleAddNewCollectionEntry(
+										client,
 										itemData?.name,
 										queryClient,
 										setSelectedCollectionItemId,
@@ -637,6 +658,7 @@ const NoCollectionsView = ({
 	setTabs: (tabs: Tab[]) => void;
 	tabs: Tab[];
 }) => {
+	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	if (selectedTab) {
 		return (
@@ -649,6 +671,7 @@ const NoCollectionsView = ({
 						variant="link"
 						onClick={() =>
 							SaveRequest(
+								client,
 								selectedTab,
 								queryClient,
 								collectionEntries,
@@ -671,13 +694,14 @@ const NoCollectionsView = ({
 };
 
 async function handleRenameSnippet(
+	client: AidboxTypes.AidboxClient,
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	newTitle: string,
 	queryClient: QueryClient,
 ) {
 	if (item.isFolder()) {
 		const snippetIds = item.getChildren().map((child) => child.getId());
-		await Auth.AidboxCallWithMeta({
+		await client.aidboxRequest({
 			method: "POST",
 			url: `/`,
 			body: JSON.stringify({
@@ -696,7 +720,7 @@ async function handleRenameSnippet(
 			}),
 		});
 	} else {
-		await Auth.AidboxCallWithMeta({
+		await client.aidboxRequest({
 			method: "PATCH",
 			url: `/ui_snippet/${item.getItemData().meta?.id}`,
 			body: JSON.stringify({
@@ -719,6 +743,7 @@ export const CollectionsView = ({
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
 }) => {
+	const client = useAidboxClient();
 	const [pinnedCollections, setPinnedCollections] = useLocalStorage<string[]>({
 		key: "rest-console-pinned-collections",
 		defaultValue: [],
@@ -751,10 +776,11 @@ export const CollectionsView = ({
 						rootItemId="root"
 						items={tree}
 						onRename={(item, newTitle) => {
-							handleRenameSnippet(item, newTitle, queryClient);
+							handleRenameSnippet(client, item, newTitle, queryClient);
 						}}
 						customItemView={(data, tree) =>
 							customItemView(
+								client,
 								data,
 								setTabs,
 								tabs,

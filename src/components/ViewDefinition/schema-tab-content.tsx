@@ -22,7 +22,7 @@ interface SchemaData {
 }
 
 const fetchSchema = async (
-	client: AidboxTypes.Client,
+	client: AidboxTypes.AidboxClient,
 	resourceType: string,
 ): Promise<Array<Snapshot> | undefined> => {
 	const response = await client.aidboxRawRequest({

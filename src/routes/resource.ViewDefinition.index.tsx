@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useAidboxClient } from "../AidboxClient";
 import { ResourcesPage } from "../components/ResourceBrowser/page";
 
 export const Route = createFileRoute("/resource/ViewDefinition/")({
@@ -16,5 +17,6 @@ export const Route = createFileRoute("/resource/ViewDefinition/")({
 });
 
 function RouteComponent() {
-	return <ResourcesPage resourceType={"ViewDefinition"} />;
+	const client = useAidboxClient();
+	return <ResourcesPage client={client} resourceType={"ViewDefinition"} />;
 }

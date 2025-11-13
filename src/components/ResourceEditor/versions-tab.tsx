@@ -1,9 +1,9 @@
-import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
 import { DiffView } from "@git-diff-view/react";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as YAML from "js-yaml";
 import React from "react";
+import { useAidboxClient } from "../../AidboxClient";
 import * as utils from "../../api/utils";
 import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
@@ -85,6 +85,8 @@ const VersionDiffDialog = ({
 	openState: OpenState;
 	onOpenChange: (open: OpenState) => void;
 }) => {
+	const client = useAidboxClient();
+
 	const diff = generateDiffFile(
 		"prev.json",
 		JSON.stringify(previous, null, "  "),
@@ -101,7 +103,7 @@ const VersionDiffDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return AidboxCallWithMeta({
+			return client.aidboxRequest({
 				method: "PUT",
 				url: `/fhir/${resourceType}/${resourceId}`,
 				headers: {
@@ -179,6 +181,8 @@ const VersionViewDialog = ({
 	openState: OpenState;
 	onOpenStateChange: (open: OpenState) => void;
 }) => {
+	const client = useAidboxClient();
+
 	const queryClient = useQueryClient();
 	const [mode, setMode] = React.useState<EditorMode>("json");
 
@@ -186,7 +190,7 @@ const VersionViewDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return AidboxCallWithMeta({
+			return client.aidboxRequest({
 				method: "PUT",
 				url: `/fhir/${resourceType}/${resourceId}`,
 				headers: {
@@ -422,6 +426,8 @@ const calculateAffectedAttributes = (
 };
 
 export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
+	const client = useAidboxClient();
+
 	const [history, setHistory] = React.useState<HistoryBundle>();
 
 	const {
@@ -431,7 +437,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 	} = useQuery({
 		queryKey: [pageId, resourceType, id, "history"],
 		queryFn: async () => {
-			return await fetchResourceHistory(resourceType, id);
+			return await fetchResourceHistory(client, resourceType, id);
 		},
 	});
 

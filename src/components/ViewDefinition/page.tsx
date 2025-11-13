@@ -9,7 +9,7 @@ import { InfoPanel } from "./info-panel";
 import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
-const fetchViewDefinition = (client: AidboxType.Client, id: string) => {
+const fetchViewDefinition = (client: AidboxType.AidboxClient, id: string) => {
 	return client.aidboxRequest<Types.ViewDefinition>({
 		method: "GET",
 		url: `/fhir/ViewDefinition/${id}`,

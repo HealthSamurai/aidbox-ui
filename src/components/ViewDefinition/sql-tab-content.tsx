@@ -9,7 +9,7 @@ import { ViewDefinitionContext } from "./page";
 import type { ViewDefinition } from "./types";
 
 const fetchSQL = async (
-	client: AidboxTypes.Client,
+	client: AidboxTypes.AidboxClient,
 	viewDefinition: ViewDefinition,
 ): Promise<string> => {
 	const parametersPayload = {

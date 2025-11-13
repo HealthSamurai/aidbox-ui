@@ -722,7 +722,7 @@ function handleSendRequest(
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
 	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
-	aidboxClient: AidboxType.Client,
+	aidboxClient: AidboxType.AidboxClient,
 ) {
 	const headers =
 		selectedTab.headers
@@ -846,7 +846,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 async function saveToUIHistory(
 	tab: Tab,
 	queryClient: QueryClient,
-	aidboxClient: AidboxType.Client,
+	aidboxClient: AidboxType.AidboxClient,
 ): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();
@@ -892,7 +892,7 @@ function SendButton(
 }
 
 function RouteComponent() {
-	const aidboxClient = useAidboxClient();
+	const client = useAidboxClient();
 
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
@@ -957,7 +957,7 @@ function RouteComponent() {
 					queryClient,
 					setIsLoading,
 					setTabs,
-					aidboxClient,
+					client,
 				);
 			}
 		};
@@ -966,7 +966,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, queryClient, setTabs, aidboxClient]);
+	}, [selectedTab, queryClient, setTabs, client]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1198,7 +1198,7 @@ function RouteComponent() {
 
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
-		queryFn: RestCollections.getCollectionsEntries,
+		queryFn: () => RestCollections.getCollectionsEntries(client),
 		refetchOnWindowFocus: false,
 	});
 
@@ -1244,7 +1244,7 @@ function RouteComponent() {
 									queryClient,
 									setIsLoading,
 									setTabs,
-									aidboxClient,
+									client,
 								)
 							}
 						/>

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useAidboxClient } from "../AidboxClient";
 import { ResourcesPage } from "../components/ResourceBrowser/page";
 
 export const Route = createFileRoute("/resource/$resourceType/")({
@@ -23,5 +24,6 @@ export const Route = createFileRoute("/resource/$resourceType/")({
 
 function RouteComponent() {
 	const { resourceType } = Route.useParams();
-	return <ResourcesPage resourceType={resourceType} />;
+	const client = useAidboxClient();
+	return <ResourcesPage client={client} resourceType={resourceType} />;
 }

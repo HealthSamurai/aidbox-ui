@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
+import { useAidboxClient } from "../../AidboxClient";
 import { DeleteButton, SaveButton } from "./action";
 import { fetchResource, type Resource } from "./api";
 import { EditorTab } from "./editor-tab";
@@ -23,6 +24,8 @@ interface ResourceEditorPageProps {
 export const ResourceEditorPageWithLoader = (
 	props: ResourceEditorPageProps,
 ) => {
+	const client = useAidboxClient();
+
 	const { resourceType, id } = props;
 
 	const {
@@ -34,7 +37,7 @@ export const ResourceEditorPageWithLoader = (
 		queryKey: [pageId, resourceType, id],
 		queryFn: async () => {
 			if (!id) throw new Error("Impossible");
-			return await fetchResource(resourceType, id);
+			return await fetchResource(client, resourceType, id);
 		},
 		retry: false,
 	});
@@ -73,6 +76,8 @@ export const ResourceEditorPage = ({
 	navigate,
 	initialResource,
 }: ResourceEditorPageProps & { initialResource: Resource }) => {
+	const client = useAidboxClient();
+
 	const [resource, setResource] = React.useState<Resource>(initialResource);
 	const [resourceText, setResourceText] = React.useState<string>(() => {
 		if (mode === "yaml") {
@@ -142,6 +147,7 @@ export const ResourceEditorPage = ({
 					id={id}
 					resource={resourceText}
 					mode={mode}
+					client={client}
 				/>
 			),
 		},
@@ -159,7 +165,9 @@ export const ResourceEditorPage = ({
 			),
 		});
 		actions.push({
-			content: <DeleteButton resourceType={resourceType} id={id} />,
+			content: (
+				<DeleteButton client={client} resourceType={resourceType} id={id} />
+			),
 		});
 	}
 

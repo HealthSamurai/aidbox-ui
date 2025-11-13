@@ -1,3 +1,4 @@
+// import type { BundleEntry } from "@fhir-types/hl7-fhir-r4-core";
 import {
 	Button,
 	Command,
@@ -26,6 +27,16 @@ import { type CollectionEntry, CollectionsView } from "./collections";
 // Utility function for combining classes
 function cn(...inputs: (string | undefined | boolean | null)[]) {
 	return inputs.filter(Boolean).join(" ");
+}
+
+// FIXME: placeholder until typegen is a thing
+interface BundleEntry {
+    fullUrl?: string;
+    link?: unknown[];
+    request?: unknown;
+    resource?: unknown;
+    response?: unknown;
+    search?: unknown;
 }
 
 // =============================================================================
@@ -386,7 +397,7 @@ export function LeftMenu({
 	// Group history items by time
 	const groupedHistory = React.useMemo(() => {
 		if (!historyData?.entry) return {};
-		return groupHistoryByTime(historyData.entry.map((entry) => entry.resource));
+		return groupHistoryByTime(historyData.entry.map((entry: BundleEntry) => entry.resource));
 	}, [historyData]);
 
 	// Helper function to sort group keys in chronological order

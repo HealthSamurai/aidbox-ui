@@ -1,10 +1,9 @@
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
-import * as AidboxClient from "../../api/auth";
-import { AidboxCallWithMeta } from "../../api/auth";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import type * as VDTypes from "../ViewDefinition/types";
@@ -131,9 +130,10 @@ export const ResourcesTabHeader = ({
 };
 
 const fetchSchemas = async (
+	client: AidboxTypes.AidboxClient,
 	resourceType: string,
 ): Promise<Record<string, Schema> | undefined> => {
-	const response = await AidboxCallWithMeta({
+	const response = await client.aidboxRawRequest({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
 		headers: {
@@ -145,7 +145,7 @@ const fetchSchemas = async (
 		}),
 	});
 
-	const data: SchemaData = JSON.parse(response.body);
+	const data: SchemaData = JSON.parse(await response.response.text());
 
 	if (!data?.result) return undefined;
 
@@ -153,9 +153,10 @@ const fetchSchemas = async (
 };
 
 const fetchDefaultSchema = async (
+	client: AidboxTypes.AidboxClient,
 	resourceType: string,
 ): Promise<Schema | undefined> => {
-	const schemas = await fetchSchemas(resourceType);
+	const schemas = await fetchSchemas(client, resourceType);
 
 	if (!schemas) return undefined;
 
@@ -262,7 +263,10 @@ type FhirBundle<T> = {
 	entry: { resource: T }[];
 };
 
-const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
+const ResourcesTabContent = ({
+	client,
+	resourceType,
+}: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	const navigate = Router.useNavigate();
@@ -277,16 +281,16 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
-			const response = await AidboxClient.AidboxCallWithMeta({
+			const response = await client.aidboxRawRequest({
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
 			const bundle: FhirBundle<Record<string, unknown>> = JSON.parse(
-				response.body,
+				await response.response.text(),
 			);
 
 			const data = bundle.entry.map((entry) => entry.resource);
-			const schema = await fetchDefaultSchema(resourceType);
+			const schema = await fetchDefaultSchema(client, resourceType);
 			return resourcesWithKeys(schema, data);
 		},
 		retry: false,
@@ -312,7 +316,10 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	);
 };
 
-const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
+const ProfilesTabContent = ({
+	client,
+	resourceType,
+}: Types.ResourcesPageProps) => {
 	const [selectedProfile, setSelectedProfile] = React.useState<Schema | null>(
 		null,
 	);
@@ -321,7 +328,7 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-profiles-list"],
 		queryFn: async () => {
-			const schema = await fetchSchemas(resourceType);
+			const schema = await fetchSchemas(client, resourceType);
 			return schema;
 		},
 		retry: false,
@@ -519,12 +526,13 @@ type PartialFhirCapabilityStatement = {
 };
 
 const SearchParametersTabContent = ({
+	client,
 	resourceType,
 }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-search-parameters-list"],
 		queryFn: async () => {
-			const response = await AidboxCallWithMeta({
+			const response = await client.aidboxRawRequest({
 				method: "GET",
 				url: "/fhir/metadata?include-custom-resources=true",
 				headers: {
@@ -532,7 +540,7 @@ const SearchParametersTabContent = ({
 				},
 			});
 
-			const data = JSON.parse(response.body);
+			const data = JSON.parse(await response.response.text());
 			// FIXME: validate
 			return data as PartialFhirCapabilityStatement;
 		},
@@ -606,19 +614,25 @@ const SearchParametersTabContent = ({
 	);
 };
 
-export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
+export const ResourcesPage = ({
+	client,
+	resourceType,
+}: Types.ResourcesPageProps) => {
 	return (
 		<ResourcesPageContext.Provider value={{ resourceType }}>
 			<HSComp.Tabs defaultValue="resources">
 				<ResourcePageTabList />
 				<HSComp.TabsContent value="resources" className="overflow-hidden">
-					<ResourcesTabContent resourceType={resourceType} />
+					<ResourcesTabContent client={client} resourceType={resourceType} />
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="profiles">
-					<ProfilesTabContent resourceType={resourceType} />
+					<ProfilesTabContent client={client} resourceType={resourceType} />
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="extensions">
-					<SearchParametersTabContent resourceType={resourceType} />
+					<SearchParametersTabContent
+						client={client}
+						resourceType={resourceType}
+					/>
 				</HSComp.TabsContent>
 			</HSComp.Tabs>
 		</ResourcesPageContext.Provider>
