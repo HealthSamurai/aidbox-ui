@@ -16,7 +16,8 @@
 			"tsconfig.json",
 			"tsconfig.node.json",
 			"vite.config.ts",
-			"!src/**/routeTree.gen.ts"
+			"!src/**/routeTree.gen.ts",
+			"scripts/**"
 		],
 		"ignoreUnknown": false
 	},

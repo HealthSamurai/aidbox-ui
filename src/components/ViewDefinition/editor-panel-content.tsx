@@ -1,3 +1,4 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import type * as AidboxType from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
@@ -6,7 +7,6 @@ import * as Lucide from "lucide-react";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as utils from "../../api/utils";
-
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { ViewDefinitionContext } from "./page";
@@ -47,7 +47,7 @@ export const EditorPanelActions = ({
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
 	const viewDefinitionMutation = useMutation({
-		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+		mutationFn: (viewDefinition: ViewDefinition) => {
 			return client.aidboxRequest({
 				method: "PUT",
 				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
@@ -64,7 +64,7 @@ export const EditorPanelActions = ({
 	});
 
 	const viewDefinitionCreateMutation = useMutation({
-		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+		mutationFn: (viewDefinition: ViewDefinition) => {
 			return client.aidboxRequest({
 				method: "POST",
 				url: `/fhir/ViewDefinition/`,
@@ -83,7 +83,7 @@ export const EditorPanelActions = ({
 	});
 
 	const viewDefinitionRunMutation = useMutation({
-		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+		mutationFn: (viewDefinition: ViewDefinition) => {
 			viewDefinitionContext.setRunResultPage(1);
 			viewDefinitionContext.setRunViewDefinition(viewDefinition);
 

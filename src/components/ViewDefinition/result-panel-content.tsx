@@ -1,3 +1,4 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	type AccessorKeyColumnDef,
@@ -244,7 +245,7 @@ export function ResultPanel() {
 			page,
 			pageSize,
 		}: {
-			viewDefinition: Types.ViewDefinition | undefined;
+			viewDefinition: ViewDefinition | undefined;
 			page: number;
 			pageSize: number;
 		}) => {

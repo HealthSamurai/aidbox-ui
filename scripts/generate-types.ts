@@ -5,9 +5,16 @@ console.log("📦 Generating FHIR R4 Core Types...");
 const builder = new APIBuilder()
 	.verbose()
 	.throwException()
-	.fromPackage("hl7.fhir.r4.core", "4.0.1")
-	.typescript({ withDebugComment: false })
+	.typescript({ withDebugComment: false, generateProfile: false })
+	.fromPackageRef("https://build.fhir.org/ig/FHIR/sql-on-fhir-v2//package.tgz")
 	.outputTo("./src/fhir-types")
+	// .writeTypeTree("./src/fhir-types/tree.yaml")
+	.treeShake({
+		// "hl7.fhir.r5.core": {"http://hl7.org/fhir/StructureDefinition/Meta": {}},
+		"org.sql-on-fhir.ig": {
+			"https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition": {},
+		},
+	})
 	.cleanOutput(true);
 
 const report = await builder.generate();
@@ -15,8 +22,8 @@ const report = await builder.generate();
 console.log(report);
 
 if (report.success) {
-	console.log("✅ FHIR R4 types generated successfully!");
+	console.log("✅ FHIR types generated successfully!");
 } else {
-	console.error("❌ FHIR R4 types generation failed.");
+	console.error("❌ FHIR types generation failed.");
 	process.exit(1);
 }

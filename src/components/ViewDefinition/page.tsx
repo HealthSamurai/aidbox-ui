@@ -1,3 +1,4 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import type * as AidboxType from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +11,7 @@ import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
 const fetchViewDefinition = (client: AidboxType.AidboxClient, id: string) => {
-	return client.aidboxRequest<Types.ViewDefinition>({
+	return client.aidboxRequest<ViewDefinition>({
 		method: "GET",
 		url: `/fhir/ViewDefinition/${id}`,
 	});
@@ -59,10 +60,9 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 
 	const [resouceTypeForViewDefinition, setResouceTypeForViewDefinition] =
 		React.useState<string>();
-	const [viewDefinition, setViewDefinition] =
-		React.useState<Types.ViewDefinition>();
+	const [viewDefinition, setViewDefinition] = React.useState<ViewDefinition>();
 	const [runViewDefinition, setRunViewDefinition] =
-		React.useState<Types.ViewDefinition>();
+		React.useState<ViewDefinition>();
 
 	const [runResult, setRunResult] = React.useState<string>();
 	const [runResultPage, setRunResultPage] = React.useState(1);
@@ -76,7 +76,7 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 				resourceType: "ViewDefinition",
 				select: [],
 			};
-			let response: Types.ViewDefinition = viewDefinitionPlaceholder;
+			let response: ViewDefinition = viewDefinitionPlaceholder as any;
 			if (id) {
 				const resp = await fetchViewDefinition(aidboxClient, id);
 				response = resp.response.body;

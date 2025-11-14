@@ -1,3 +1,4 @@
+import type { ViewDefinitionSelect } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig/ViewDefinition";
 import {
 	Button,
 	Checkbox,
@@ -105,7 +106,7 @@ interface SelectItemInternal {
 
 // Helper functions
 const parseSelectItems = (
-	items: Types.ViewDefinitionSelectItem[],
+	items: ViewDefinitionSelect[],
 	parentId = "",
 ): SelectItemInternal[] => {
 	return items
@@ -150,7 +151,7 @@ const parseSelectItems = (
 
 const buildSelectArray = (
 	items: SelectItemInternal[],
-): Types.ViewDefinitionSelectItem[] => {
+): ViewDefinitionSelect[] => {
 	return items
 		.map((item) => {
 			if (item.type === "column" && item.columns) {
@@ -161,7 +162,7 @@ const buildSelectArray = (
 					})),
 				};
 			} else if (item.type === "forEach") {
-				const result: Types.ViewDefinitionSelectItem = {
+				const result: ViewDefinitionSelect = {
 					forEach: item.expression || "",
 				};
 				if (item.children && item.children.length > 0) {
@@ -169,7 +170,7 @@ const buildSelectArray = (
 				}
 				return result;
 			} else if (item.type === "forEachOrNull") {
-				const result: Types.ViewDefinitionSelectItem = {
+				const result: ViewDefinitionSelect = {
 					forEachOrNull: item.expression || "",
 				};
 				if (item.children && item.children.length > 0) {
@@ -183,7 +184,7 @@ const buildSelectArray = (
 			}
 			return null;
 		})
-		.filter(Boolean) as Types.ViewDefinitionSelectItem[];
+		.filter(Boolean) as ViewDefinitionSelect[];
 };
 
 const findPath = (
@@ -355,10 +356,10 @@ export const FormTabContent = () => {
 				if (selectArray.length > 0) {
 					updatedViewDef.select = selectArray;
 				} else {
-					delete updatedViewDef.select;
+					delete (updatedViewDef as any).select;
 				}
 
-				viewDefinitionContext.setViewDefinition(updatedViewDef);
+				viewDefinitionContext.setViewDefinition(updatedViewDef as any);
 			}
 		},
 		[
@@ -1352,7 +1353,7 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<MultiCombobox
 								options={fhirVersionOptions}
-								value={selectedVersions}
+								value={selectedVersions as any}
 								onValueChange={updateFhirVersions}
 								placeholder="Select FHIR versions"
 								searchPlaceholder="Search versions..."
