@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { redirect } from "@tanstack/react-router";
 import { useAidboxClient } from "../AidboxClient";
 
 export interface UserInfo {
@@ -24,7 +25,12 @@ export function useLogout() {
 		mutationFn: client.performLogout,
 		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: ["userInfo"] });
-		},
+			const encodedLocation = btoa(window.location.href);
+			const redirectTo = `${client.getAidboxBaseUrl()}/auth/login?redirect_to=${encodedLocation}`;
+			window.location.href = redirectTo;
+			// FIXME: doesn't work without window.location.href
+			throw redirect({href: redirectTo});
+		}
 	});
 }
 

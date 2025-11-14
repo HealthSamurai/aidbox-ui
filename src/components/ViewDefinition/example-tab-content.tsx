@@ -29,8 +29,6 @@ const searchResources = async (
 		? `/fhir/${resourceType}?${searchParams}`
 		: `/fhir/${resourceType}`;
 
-	console.log(url);
-
 	const response = await client.aidboxRequest<{
 		entry?: Array<{ resource: Record<string, unknown> }>;
 	}>({
