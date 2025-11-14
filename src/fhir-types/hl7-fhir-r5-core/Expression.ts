@@ -8,14 +8,14 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Expression
 export interface Expression extends DataType {
-    description?: string;
-    _description?: Element;
-    expression?: string;
-    _expression?: Element;
-    language?: string;
-    _language?: Element;
-    name?: string;
-    _name?: Element;
-    reference?: string;
-    _reference?: Element;
+	description?: string;
+	_description?: Element;
+	expression?: string;
+	_expression?: Element;
+	language?: string;
+	_language?: Element;
+	name?: string;
+	_name?: Element;
+	reference?: string;
+	_reference?: Element;
 }

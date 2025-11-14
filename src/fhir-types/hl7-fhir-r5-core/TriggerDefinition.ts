@@ -18,19 +18,27 @@ export type { Timing } from "../hl7-fhir-r5-core/Timing";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/TriggerDefinition
 export interface TriggerDefinition extends DataType {
-    code?: CodeableConcept;
-    condition?: Expression;
-    data?: DataRequirement[];
-    name?: string;
-    _name?: Element;
-    subscriptionTopic?: string;
-    _subscriptionTopic?: Element;
-    timingDate?: string;
-    _timingDate?: Element;
-    timingDateTime?: string;
-    _timingDateTime?: Element;
-    timingReference?: Reference<"Schedule">;
-    timingTiming?: Timing;
-    type: "named-event" | "periodic" | "data-changed" | "data-added" | "data-modified" | "data-removed" | "data-accessed" | "data-access-ended";
-    _type?: Element;
+	code?: CodeableConcept;
+	condition?: Expression;
+	data?: DataRequirement[];
+	name?: string;
+	_name?: Element;
+	subscriptionTopic?: string;
+	_subscriptionTopic?: Element;
+	timingDate?: string;
+	_timingDate?: Element;
+	timingDateTime?: string;
+	_timingDateTime?: Element;
+	timingReference?: Reference<"Schedule">;
+	timingTiming?: Timing;
+	type:
+		| "named-event"
+		| "periodic"
+		| "data-changed"
+		| "data-added"
+		| "data-modified"
+		| "data-removed"
+		| "data-accessed"
+		| "data-access-ended";
+	_type?: Element;
 }

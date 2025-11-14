@@ -14,21 +14,57 @@ export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/RelatedArtifact
 export interface RelatedArtifact extends DataType {
-    citation?: string;
-    _citation?: Element;
-    classifier?: CodeableConcept[];
-    display?: string;
-    _display?: Element;
-    document?: Attachment;
-    label?: string;
-    _label?: Element;
-    publicationDate?: string;
-    _publicationDate?: Element;
-    publicationStatus?: "draft" | "active" | "retired" | "unknown";
-    _publicationStatus?: Element;
-    resource?: string;
-    _resource?: Element;
-    resourceReference?: Reference<"Resource">;
-    type: "documentation" | "justification" | "citation" | "predecessor" | "successor" | "derived-from" | "depends-on" | "composed-of" | "part-of" | "amends" | "amended-with" | "appends" | "appended-with" | "cites" | "cited-by" | "comments-on" | "comment-in" | "contains" | "contained-in" | "corrects" | "correction-in" | "replaces" | "replaced-with" | "retracts" | "retracted-by" | "signs" | "similar-to" | "supports" | "supported-with" | "transforms" | "transformed-into" | "transformed-with" | "documents" | "specification-of" | "created-with" | "cite-as";
-    _type?: Element;
+	citation?: string;
+	_citation?: Element;
+	classifier?: CodeableConcept[];
+	display?: string;
+	_display?: Element;
+	document?: Attachment;
+	label?: string;
+	_label?: Element;
+	publicationDate?: string;
+	_publicationDate?: Element;
+	publicationStatus?: "draft" | "active" | "retired" | "unknown";
+	_publicationStatus?: Element;
+	resource?: string;
+	_resource?: Element;
+	resourceReference?: Reference<"Resource">;
+	type:
+		| "documentation"
+		| "justification"
+		| "citation"
+		| "predecessor"
+		| "successor"
+		| "derived-from"
+		| "depends-on"
+		| "composed-of"
+		| "part-of"
+		| "amends"
+		| "amended-with"
+		| "appends"
+		| "appended-with"
+		| "cites"
+		| "cited-by"
+		| "comments-on"
+		| "comment-in"
+		| "contains"
+		| "contained-in"
+		| "corrects"
+		| "correction-in"
+		| "replaces"
+		| "replaced-with"
+		| "retracts"
+		| "retracted-by"
+		| "signs"
+		| "similar-to"
+		| "supports"
+		| "supported-with"
+		| "transforms"
+		| "transformed-into"
+		| "transformed-with"
+		| "documents"
+		| "specification-of"
+		| "created-with"
+		| "cite-as";
+	_type?: Element;
 }

@@ -19,6 +19,7 @@ import {
 	ViewDefinitionResourceTypeContext,
 } from "./page";
 import { SearchBar } from "./search-bar";
+import type { ViewDefinitionEditorMode } from "./types";
 
 const searchResources = async (
 	client: AidboxTypes.AidboxClient,
@@ -57,8 +58,8 @@ const ExampleTabEditorMenu = ({
 	canGoToPrevious,
 	canGoToNext,
 }: {
-	mode: "json" | "yaml";
-	onModeChange: (mode: "json" | "yaml") => void;
+	mode: ViewDefinitionEditorMode;
+	onModeChange: (mode: ViewDefinitionEditorMode) => void;
 	textToCopy: string;
 	onPrevious: () => void;
 	onNext: () => void;
@@ -70,7 +71,9 @@ const ExampleTabEditorMenu = ({
 			<SegmentControl
 				defaultValue={mode}
 				name="example-editor-menu"
-				onValueChange={(value) => onModeChange(value as "json" | "yaml")}
+				onValueChange={(value) =>
+					onModeChange(value as ViewDefinitionEditorMode)
+				}
 			>
 				<SegmentControlItem value="json">JSON</SegmentControlItem>
 				<SegmentControlItem value="yaml">YAML</SegmentControlItem>
@@ -110,10 +113,11 @@ export function ExampleTabContent() {
 	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 
 	const [currentResultIndex, setCurrentResultIndex] = useState(0);
-	const [exampleMode, setExampleMode] = useLocalStorage<"json" | "yaml">({
-		key: `viewDefinition-infoPanel-exampleMode`,
-		defaultValue: "json",
-	});
+	const [exampleMode, setExampleMode] =
+		useLocalStorage<ViewDefinitionEditorMode>({
+			key: `viewDefinition-infoPanel-exampleMode`,
+			defaultValue: "json",
+		});
 
 	const [query, setQuery] = useState("");
 	const queryClient = useQueryClient();

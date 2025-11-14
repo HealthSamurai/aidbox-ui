@@ -8,14 +8,14 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Quantity
 export interface Quantity extends DataType {
-    code?: string;
-    _code?: Element;
-    comparator?: "<" | "<=" | ">=" | ">" | "ad";
-    _comparator?: Element;
-    system?: string;
-    _system?: Element;
-    unit?: string;
-    _unit?: Element;
-    value?: number;
-    _value?: Element;
+	code?: string;
+	_code?: Element;
+	comparator?: "<" | "<=" | ">=" | ">" | "ad";
+	_comparator?: Element;
+	system?: string;
+	_system?: Element;
+	unit?: string;
+	_unit?: Element;
+	value?: number;
+	_value?: Element;
 }

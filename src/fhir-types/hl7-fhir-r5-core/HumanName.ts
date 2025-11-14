@@ -10,17 +10,24 @@ export type { Period } from "../hl7-fhir-r5-core/Period";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/HumanName
 export interface HumanName extends DataType {
-    family?: string;
-    _family?: Element;
-    given?: string[];
-    _given?: Element;
-    period?: Period;
-    prefix?: string[];
-    _prefix?: Element;
-    suffix?: string[];
-    _suffix?: Element;
-    text?: string;
-    _text?: Element;
-    use?: "usual" | "official" | "temp" | "nickname" | "anonymous" | "old" | "maiden";
-    _use?: Element;
+	family?: string;
+	_family?: Element;
+	given?: string[];
+	_given?: Element;
+	period?: Period;
+	prefix?: string[];
+	_prefix?: Element;
+	suffix?: string[];
+	_suffix?: Element;
+	text?: string;
+	_text?: Element;
+	use?:
+		| "usual"
+		| "official"
+		| "temp"
+		| "nickname"
+		| "anonymous"
+		| "old"
+		| "maiden";
+	_use?: Element;
 }

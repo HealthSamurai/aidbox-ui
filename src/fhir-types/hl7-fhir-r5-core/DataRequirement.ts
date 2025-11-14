@@ -19,48 +19,48 @@ export type { Period } from "../hl7-fhir-r5-core/Period";
 export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 export interface DataRequirementCodeFilter extends Element {
-    code?: Coding[];
-    path?: string;
-    searchParam?: string;
-    valueSet?: string;
+	code?: Coding[];
+	path?: string;
+	searchParam?: string;
+	valueSet?: string;
 }
 
 export interface DataRequirementDateFilter extends Element {
-    path?: string;
-    searchParam?: string;
-    valueDateTime?: string;
-    valueDuration?: Duration;
-    valuePeriod?: Period;
+	path?: string;
+	searchParam?: string;
+	valueDateTime?: string;
+	valueDuration?: Duration;
+	valuePeriod?: Period;
 }
 
 export interface DataRequirementSort extends Element {
-    direction: "ascending" | "descending";
-    path: string;
+	direction: "ascending" | "descending";
+	path: string;
 }
 
 export interface DataRequirementValueFilter extends Element {
-    comparator?: "eq" | "gt" | "lt" | "ge" | "le" | "sa" | "eb";
-    path?: string;
-    searchParam?: string;
-    valueDateTime?: string;
-    valueDuration?: Duration;
-    valuePeriod?: Period;
+	comparator?: "eq" | "gt" | "lt" | "ge" | "le" | "sa" | "eb";
+	path?: string;
+	searchParam?: string;
+	valueDateTime?: string;
+	valueDuration?: Duration;
+	valuePeriod?: Period;
 }
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/DataRequirement
 export interface DataRequirement extends DataType {
-    codeFilter?: Element[];
-    dateFilter?: Element[];
-    limit?: number;
-    _limit?: Element;
-    mustSupport?: string[];
-    _mustSupport?: Element;
-    profile?: string[];
-    _profile?: Element;
-    sort?: Element[];
-    subjectCodeableConcept?: CodeableConcept;
-    subjectReference?: Reference<"Group">;
-    type: string;
-    _type?: Element;
-    valueFilter?: Element[];
+	codeFilter?: Element[];
+	dateFilter?: Element[];
+	limit?: number;
+	_limit?: Element;
+	mustSupport?: string[];
+	_mustSupport?: Element;
+	profile?: string[];
+	_profile?: Element;
+	sort?: Element[];
+	subjectCodeableConcept?: CodeableConcept;
+	subjectReference?: Reference<"Group">;
+	type: string;
+	_type?: Element;
+	valueFilter?: Element[];
 }

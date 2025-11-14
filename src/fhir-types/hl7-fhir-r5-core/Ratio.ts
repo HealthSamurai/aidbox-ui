@@ -10,6 +10,6 @@ export type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Ratio
 export interface Ratio extends DataType {
-    denominator?: Quantity;
-    numerator?: Quantity;
+	denominator?: Quantity;
+	numerator?: Quantity;
 }

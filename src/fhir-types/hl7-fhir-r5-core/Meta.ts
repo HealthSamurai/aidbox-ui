@@ -10,14 +10,14 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Meta
 export interface Meta extends DataType {
-    lastUpdated?: string;
-    _lastUpdated?: Element;
-    profile?: string[];
-    _profile?: Element;
-    security?: Coding[];
-    source?: string;
-    _source?: Element;
-    tag?: Coding[];
-    versionId?: string;
-    _versionId?: Element;
+	lastUpdated?: string;
+	_lastUpdated?: Element;
+	profile?: string[];
+	_profile?: Element;
+	security?: Coding[];
+	source?: string;
+	_source?: Element;
+	tag?: Coding[];
+	versionId?: string;
+	_versionId?: Element;
 }

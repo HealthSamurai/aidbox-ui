@@ -10,5 +10,5 @@ export type { Extension } from "../hl7-fhir-r5-core/Extension";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/BackboneElement
 export interface BackboneElement extends Element {
-    modifierExtension?: Extension[];
+	modifierExtension?: Extension[];
 }

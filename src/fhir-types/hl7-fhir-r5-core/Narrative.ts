@@ -8,8 +8,8 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Narrative
 export interface Narrative extends DataType {
-    div: string;
-    _div?: Element;
-    status: "generated" | "extensions" | "additional" | "empty";
-    _status?: Element;
+	div: string;
+	_div?: Element;
+	status: "generated" | "extensions" | "additional" | "empty";
+	_status?: Element;
 }

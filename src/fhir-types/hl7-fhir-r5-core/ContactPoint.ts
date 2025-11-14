@@ -10,13 +10,13 @@ export type { Period } from "../hl7-fhir-r5-core/Period";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/ContactPoint
 export interface ContactPoint extends DataType {
-    period?: Period;
-    rank?: number;
-    _rank?: Element;
-    system?: "phone" | "fax" | "email" | "pager" | "url" | "sms" | "other";
-    _system?: Element;
-    use?: "home" | "work" | "temp" | "old" | "mobile";
-    _use?: Element;
-    value?: string;
-    _value?: Element;
+	period?: Period;
+	rank?: number;
+	_rank?: Element;
+	system?: "phone" | "fax" | "email" | "pager" | "url" | "sms" | "other";
+	_system?: Element;
+	use?: "home" | "work" | "temp" | "old" | "mobile";
+	_use?: Element;
+	value?: string;
+	_value?: Element;
 }

@@ -10,7 +10,7 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/CodeableConcept
 export interface CodeableConcept extends DataType {
-    coding?: Coding[];
-    text?: string;
-    _text?: Element;
+	coding?: Coding[];
+	text?: string;
+	_text?: Element;
 }

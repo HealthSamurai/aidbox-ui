@@ -10,11 +10,17 @@ export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Annotation
 export interface Annotation extends DataType {
-    authorReference?: Reference<"Organization" | "Patient" | "Practitioner" | "PractitionerRole" | "RelatedPerson">;
-    authorString?: string;
-    _authorString?: Element;
-    text: string;
-    _text?: Element;
-    time?: string;
-    _time?: Element;
+	authorReference?: Reference<
+		| "Organization"
+		| "Patient"
+		| "Practitioner"
+		| "PractitionerRole"
+		| "RelatedPerson"
+	>;
+	authorString?: string;
+	_authorString?: Element;
+	text: string;
+	_text?: Element;
+	time?: string;
+	_time?: Element;
 }

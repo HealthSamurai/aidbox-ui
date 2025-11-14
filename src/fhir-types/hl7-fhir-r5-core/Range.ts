@@ -10,6 +10,6 @@ export type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Range
 export interface Range extends DataType {
-    high?: Quantity;
-    low?: Quantity;
+	high?: Quantity;
+	low?: Quantity;
 }

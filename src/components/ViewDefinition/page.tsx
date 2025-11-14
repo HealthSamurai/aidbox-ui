@@ -71,12 +71,13 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
 		queryFn: async () => {
-			const viewDefinitionPlaceholder = {
+			const viewDefinitionPlaceholder: ViewDefinition = {
 				resource: "Patient",
 				resourceType: "ViewDefinition",
+				status: "draft",
 				select: [],
 			};
-			let response: ViewDefinition = viewDefinitionPlaceholder as any;
+			let response: ViewDefinition = viewDefinitionPlaceholder;
 			if (id) {
 				const resp = await fetchViewDefinition(aidboxClient, id);
 				response = resp.response.body;

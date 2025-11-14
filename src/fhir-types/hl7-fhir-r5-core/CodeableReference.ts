@@ -12,6 +12,6 @@ export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/CodeableReference
 export interface CodeableReference extends DataType {
-    concept?: CodeableConcept;
-    reference?: Reference;
+	concept?: CodeableConcept;
+	reference?: Reference;
 }

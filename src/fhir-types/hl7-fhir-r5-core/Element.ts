@@ -8,7 +8,7 @@ export type { Extension } from "../hl7-fhir-r5-core/Extension";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Element
 export interface Element {
-    extension?: Extension[];
-    id?: string;
-    _id?: Element;
+	extension?: Extension[];
+	id?: string;
+	_id?: Element;
 }

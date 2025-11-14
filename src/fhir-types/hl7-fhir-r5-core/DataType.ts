@@ -7,5 +7,4 @@ import type { Element } from "../hl7-fhir-r5-core/Element";
 export type { Element } from "../hl7-fhir-r5-core/Element";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/DataType
-export interface DataType extends Element {
-}
+export interface DataType extends Element {}

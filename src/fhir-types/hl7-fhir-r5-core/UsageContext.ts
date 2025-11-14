@@ -18,9 +18,17 @@ export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/UsageContext
 export interface UsageContext extends DataType {
-    code: Coding;
-    valueCodeableConcept?: CodeableConcept;
-    valueQuantity?: Quantity;
-    valueRange?: Range;
-    valueReference?: Reference<"Group" | "HealthcareService" | "InsurancePlan" | "Location" | "Organization" | "PlanDefinition" | "ResearchStudy">;
+	code: Coding;
+	valueCodeableConcept?: CodeableConcept;
+	valueQuantity?: Quantity;
+	valueRange?: Range;
+	valueReference?: Reference<
+		| "Group"
+		| "HealthcareService"
+		| "InsurancePlan"
+		| "Location"
+		| "Organization"
+		| "PlanDefinition"
+		| "ResearchStudy"
+	>;
 }

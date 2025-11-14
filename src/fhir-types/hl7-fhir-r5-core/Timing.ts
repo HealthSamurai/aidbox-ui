@@ -17,29 +17,57 @@ export type { Period } from "../hl7-fhir-r5-core/Period";
 export type { Range } from "../hl7-fhir-r5-core/Range";
 
 export interface TimingRepeat extends Element {
-    boundsDuration?: Duration;
-    boundsPeriod?: Period;
-    boundsRange?: Range;
-    count?: number;
-    countMax?: number;
-    dayOfWeek?: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"[];
-    duration?: number;
-    durationMax?: number;
-    durationUnit?: "s" | "min" | "h" | "d" | "wk" | "mo" | "a";
-    frequency?: number;
-    frequencyMax?: number;
-    offset?: number;
-    period?: number;
-    periodMax?: number;
-    periodUnit?: "s" | "min" | "h" | "d" | "wk" | "mo" | "a";
-    timeOfDay?: string[];
-    when?: "MORN" | "MORN.early" | "MORN.late" | "NOON" | "AFT" | "AFT.early" | "AFT.late" | "EVE" | "EVE.early" | "EVE.late" | "NIGHT" | "PHS" | "IMD" | "HS" | "WAKE" | "C" | "CM" | "CD" | "CV" | "AC" | "ACM" | "ACD" | "ACV" | "PC" | "PCM" | "PCD" | "PCV"[];
+	boundsDuration?: Duration;
+	boundsPeriod?: Period;
+	boundsRange?: Range;
+	count?: number;
+	countMax?: number;
+	dayOfWeek?: ("mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun")[];
+	duration?: number;
+	durationMax?: number;
+	durationUnit?: "s" | "min" | "h" | "d" | "wk" | "mo" | "a";
+	frequency?: number;
+	frequencyMax?: number;
+	offset?: number;
+	period?: number;
+	periodMax?: number;
+	periodUnit?: "s" | "min" | "h" | "d" | "wk" | "mo" | "a";
+	timeOfDay?: string[];
+	when?: (
+		| "MORN"
+		| "MORN.early"
+		| "MORN.late"
+		| "NOON"
+		| "AFT"
+		| "AFT.early"
+		| "AFT.late"
+		| "EVE"
+		| "EVE.early"
+		| "EVE.late"
+		| "NIGHT"
+		| "PHS"
+		| "IMD"
+		| "HS"
+		| "WAKE"
+		| "C"
+		| "CM"
+		| "CD"
+		| "CV"
+		| "AC"
+		| "ACM"
+		| "ACD"
+		| "ACV"
+		| "PC"
+		| "PCM"
+		| "PCD"
+		| "PCV"
+	)[];
 }
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Timing
 export interface Timing extends BackboneType {
-    code?: CodeableConcept;
-    event?: string[];
-    _event?: Element;
-    repeat?: Element;
+	code?: CodeableConcept;
+	event?: string[];
+	_event?: Element;
+	repeat?: Element;
 }

@@ -16,7 +16,6 @@ import { Maximize2, Minimize2 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { ViewDefinitionContext } from "./page";
-import type * as Types from "./types";
 
 interface ProcessedTableData {
 	tableData: Record<string, unknown>[];

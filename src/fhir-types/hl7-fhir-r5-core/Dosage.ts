@@ -19,32 +19,32 @@ export type { Ratio } from "../hl7-fhir-r5-core/Ratio";
 export type { Timing } from "../hl7-fhir-r5-core/Timing";
 
 export interface DosageDoseAndRate extends Element {
-    doseQuantity?: Quantity;
-    doseRange?: Range;
-    rateQuantity?: Quantity;
-    rateRange?: Range;
-    rateRatio?: Ratio;
-    type?: CodeableConcept;
+	doseQuantity?: Quantity;
+	doseRange?: Range;
+	rateQuantity?: Quantity;
+	rateRange?: Range;
+	rateRatio?: Ratio;
+	type?: CodeableConcept;
 }
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Dosage
 export interface Dosage extends BackboneType {
-    additionalInstruction?: CodeableConcept[];
-    asNeeded?: boolean;
-    _asNeeded?: Element;
-    asNeededFor?: CodeableConcept[];
-    doseAndRate?: Element[];
-    maxDosePerAdministration?: Quantity;
-    maxDosePerLifetime?: Quantity;
-    maxDosePerPeriod?: Ratio[];
-    method?: CodeableConcept;
-    patientInstruction?: string;
-    _patientInstruction?: Element;
-    route?: CodeableConcept;
-    sequence?: number;
-    _sequence?: Element;
-    site?: CodeableConcept;
-    text?: string;
-    _text?: Element;
-    timing?: Timing;
+	additionalInstruction?: CodeableConcept[];
+	asNeeded?: boolean;
+	_asNeeded?: Element;
+	asNeededFor?: CodeableConcept[];
+	doseAndRate?: Element[];
+	maxDosePerAdministration?: Quantity;
+	maxDosePerLifetime?: Quantity;
+	maxDosePerPeriod?: Ratio[];
+	method?: CodeableConcept;
+	patientInstruction?: string;
+	_patientInstruction?: Element;
+	route?: CodeableConcept;
+	sequence?: number;
+	_sequence?: Element;
+	site?: CodeableConcept;
+	text?: string;
+	_text?: Element;
+	timing?: Timing;
 }

@@ -10,13 +10,17 @@ export type { Meta } from "../hl7-fhir-r5-core/Meta";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Resource
 export interface Resource extends Base {
-    resourceType: "CanonicalResource" | "DomainResource" | "Resource" | "ViewDefinition";
+	resourceType:
+		| "CanonicalResource"
+		| "DomainResource"
+		| "Resource"
+		| "ViewDefinition";
 
-    id?: string;
-    _id?: Element;
-    implicitRules?: string;
-    _implicitRules?: Element;
-    language?: string;
-    _language?: Element;
-    meta?: Meta;
+	id?: string;
+	_id?: Element;
+	implicitRules?: string;
+	_implicitRules?: Element;
+	language?: string;
+	_language?: Element;
+	meta?: Meta;
 }

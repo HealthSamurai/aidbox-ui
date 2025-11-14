@@ -10,23 +10,23 @@ export type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/SampledData
 export interface SampledData extends DataType {
-    codeMap?: string;
-    _codeMap?: Element;
-    data?: string;
-    _data?: Element;
-    dimensions: number;
-    _dimensions?: Element;
-    factor?: number;
-    _factor?: Element;
-    interval?: number;
-    _interval?: Element;
-    intervalUnit: string;
-    _intervalUnit?: Element;
-    lowerLimit?: number;
-    _lowerLimit?: Element;
-    offsets?: string;
-    _offsets?: Element;
-    origin: Quantity;
-    upperLimit?: number;
-    _upperLimit?: Element;
+	codeMap?: string;
+	_codeMap?: Element;
+	data?: string;
+	_data?: Element;
+	dimensions: number;
+	_dimensions?: Element;
+	factor?: number;
+	_factor?: Element;
+	interval?: number;
+	_interval?: Element;
+	intervalUnit: string;
+	_intervalUnit?: Element;
+	lowerLimit?: number;
+	_lowerLimit?: Element;
+	offsets?: string;
+	_offsets?: Element;
+	origin: Quantity;
+	upperLimit?: number;
+	_upperLimit?: Element;
 }

@@ -10,11 +10,11 @@ export type { Identifier } from "../hl7-fhir-r5-core/Identifier";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Reference
 export interface Reference<T extends string = string> extends DataType {
-    display?: string;
-    _display?: Element;
-    identifier?: Identifier;
-    reference?: `${T}/${string}`;
-    _reference?: Element;
-    type?: string;
-    _type?: Element;
+	display?: string;
+	_display?: Element;
+	identifier?: Identifier;
+	reference?: `${T}/${string}`;
+	_reference?: Element;
+	type?: string;
+	_type?: Element;
 }

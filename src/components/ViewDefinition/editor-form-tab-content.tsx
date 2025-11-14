@@ -1,4 +1,9 @@
-import type { ViewDefinitionSelect } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig/ViewDefinition";
+import type { CanonicalResource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type {
+	ViewDefinition,
+	ViewDefinitionSelect,
+	ViewDefinitionSelectColumn,
+} from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import {
 	Button,
 	Checkbox,
@@ -36,7 +41,6 @@ import React, {
 } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
-import type * as Types from "./types";
 
 type ItemMeta = {
 	type:
@@ -105,86 +109,117 @@ interface SelectItemInternal {
 }
 
 // Helper functions
+
+const parseColumn = (id: string, column: ViewDefinitionSelectColumn[]) => {
+	return {
+		id,
+		type: "column" as const,
+		columns: column.map((c, idx) => ({
+			id: `${id}-col-${idx}-${crypto.randomUUID()}`,
+			name: c.name || "",
+			path: c.path || "",
+		})),
+	};
+};
+
+const parseForEach = (
+	id: string,
+	forEach: string,
+	select: ViewDefinitionSelect[] | undefined,
+) => {
+	return {
+		id,
+		type: "forEach" as const,
+		expression: forEach,
+		children: select ? parseSelectItems(select, `${id}-`) : [],
+	};
+};
+
+const parseForEachOrNull = (
+	id: string,
+	forEachOrNull: string,
+	select: ViewDefinitionSelect[] | undefined,
+) => {
+	return {
+		id,
+		type: "forEachOrNull" as const,
+		expression: forEachOrNull,
+		children: select ? parseSelectItems(select, `${id}-`) : [],
+	};
+};
+
+const parseUnionAll = (
+	id: string,
+	unionAll: ViewDefinitionSelect[] | undefined,
+) => {
+	return {
+		id,
+		type: "unionAll" as const,
+		children: unionAll ? parseSelectItems(unionAll, `${id}-`) : [],
+	};
+};
+
 const parseSelectItems = (
 	items: ViewDefinitionSelect[],
 	parentId = "",
 ): SelectItemInternal[] => {
-	return items
-		.map((item, index) => {
-			const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+	return items.flatMap((item, index) => {
+		const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+		if (item.column) return parseColumn(id, item.column);
+		else if (item.forEach) return parseForEach(id, item.forEach, item.select);
+		else if (item.forEachOrNull)
+			return parseForEachOrNull(id, item.forEachOrNull, item.select);
+		else if (item.unionAll) return parseUnionAll(id, item.unionAll);
+		else return [];
+	});
+};
 
-			if (item.column) {
-				return {
-					id,
-					type: "column" as const,
-					columns: item.column.map((c, idx) => ({
-						id: `${id}-col-${idx}-${crypto.randomUUID()}`,
-						name: c.name || "",
-						path: c.path || "",
-					})),
-				};
-			} else if (item.forEach !== undefined) {
-				return {
-					id,
-					type: "forEach" as const,
-					expression: item.forEach,
-					children: item.select ? parseSelectItems(item.select, `${id}-`) : [],
-				};
-			} else if (item.forEachOrNull !== undefined) {
-				return {
-					id,
-					type: "forEachOrNull" as const,
-					expression: item.forEachOrNull,
-					children: item.select ? parseSelectItems(item.select, `${id}-`) : [],
-				};
-			} else if (item.unionAll) {
-				return {
-					id,
-					type: "unionAll" as const,
-					children: parseSelectItems(item.unionAll, `${id}-`),
-				};
-			}
-			return null;
-		})
-		.filter(Boolean) as SelectItemInternal[];
+const buildColumn = (columns: ColumnItem[]) => {
+	return {
+		column: columns.map((col) => ({
+			name: col.name,
+			path: col.path,
+		})),
+	};
+};
+
+const buildForEach = ({ expression, children }: SelectItemInternal) => {
+	const result: ViewDefinitionSelect = {
+		forEach: expression || "",
+	};
+	if (children && children.length > 0) {
+		result.select = buildSelectArray(children);
+	}
+	return result;
+};
+
+const buildForEachOrNull = ({ expression, children }: SelectItemInternal) => {
+	const result: ViewDefinitionSelect = {
+		forEachOrNull: expression || "",
+	};
+	if (children && children.length > 0) {
+		result.select = buildSelectArray(children);
+	}
+	return result;
+};
+
+const buildUnionAll = ({ children }: SelectItemInternal) => {
+	return {
+		unionAll: children ? buildSelectArray(children) : [],
+	};
 };
 
 const buildSelectArray = (
 	items: SelectItemInternal[],
 ): ViewDefinitionSelect[] => {
-	return items
-		.map((item) => {
-			if (item.type === "column" && item.columns) {
-				return {
-					column: item.columns.map((col) => ({
-						name: col.name,
-						path: col.path,
-					})),
-				};
-			} else if (item.type === "forEach") {
-				const result: ViewDefinitionSelect = {
-					forEach: item.expression || "",
-				};
-				if (item.children && item.children.length > 0) {
-					result.select = buildSelectArray(item.children);
-				}
-				return result;
-			} else if (item.type === "forEachOrNull") {
-				const result: ViewDefinitionSelect = {
-					forEachOrNull: item.expression || "",
-				};
-				if (item.children && item.children.length > 0) {
-					result.select = buildSelectArray(item.children);
-				}
-				return result;
-			} else if (item.type === "unionAll") {
-				return {
-					unionAll: item.children ? buildSelectArray(item.children) : [],
-				};
-			}
-			return null;
-		})
-		.filter(Boolean) as ViewDefinitionSelect[];
+	return items.flatMap((item) => {
+		if (item.type === "column" && item.columns)
+			return buildColumn(item.columns);
+		else if (item.type === "forEach") return buildForEach(item);
+		else if (item.type === "forEachOrNull") return buildForEachOrNull(item);
+		else if (item.type === "unionAll") return buildUnionAll(item);
+		else return [];
+	});
 };
 
 const findPath = (
@@ -310,18 +345,7 @@ export const FormTabContent = () => {
 		(
 			updatedConstants?: ConstantItem[],
 			updatedWhere?: WhereItem[],
-			updatedFields?: {
-				name?: string;
-				title?: string;
-				description?: string;
-				status?: string;
-				url?: string;
-				publisher?: string;
-				copyright?: string;
-				experimental?: boolean;
-				fhirVersion?: string[] | undefined;
-				identifier?: { system?: string; value?: string }[];
-			},
+			updatedFields?: Partial<ViewDefinition>,
 			updatedSelectItems?: SelectItemInternal[],
 		) => {
 			if (viewDefinition) {
@@ -336,7 +360,7 @@ export const FormTabContent = () => {
 
 				const selectArray = buildSelectArray(updatedSelectItems || selectItems);
 
-				const updatedViewDef = {
+				const updatedViewDef: ViewDefinition = {
 					...viewDefinition,
 					...(updatedFields || {}),
 				};
@@ -353,13 +377,9 @@ export const FormTabContent = () => {
 					delete updatedViewDef.where;
 				}
 
-				if (selectArray.length > 0) {
-					updatedViewDef.select = selectArray;
-				} else {
-					delete (updatedViewDef as any).select;
-				}
+				updatedViewDef.select = selectArray;
 
-				viewDefinitionContext.setViewDefinition(updatedViewDef as any);
+				viewDefinitionContext.setViewDefinition(updatedViewDef);
 			}
 		},
 		[
@@ -458,7 +478,7 @@ export const FormTabContent = () => {
 	};
 
 	// Function to update status field
-	const updateStatus = (status: string) => {
+	const updateStatus = (status: CanonicalResource["status"]) => {
 		updateViewDefinition(undefined, undefined, { status });
 	};
 
@@ -483,9 +503,10 @@ export const FormTabContent = () => {
 	};
 
 	// Function to update fhirVersion field
-	const updateFhirVersions = (fhirVersions: string[]) => {
+	const updateFhirVersions = (fhirVersions: ViewDefinition["fhirVersion"]) => {
 		updateViewDefinition(undefined, undefined, {
-			fhirVersion: fhirVersions.length > 0 ? fhirVersions : undefined,
+			fhirVersion:
+				fhirVersions && fhirVersions.length > 0 ? fhirVersions : undefined,
 		});
 	};
 
@@ -956,7 +977,6 @@ export const FormTabContent = () => {
 		item.getItemData().children = newChildren;
 
 		const itemId = item.getId();
-		const _itemMeta = item.getItemData()?.meta;
 
 		// Handle reordering of constants
 		if (itemId === "_constant") {
@@ -1172,8 +1192,6 @@ export const FormTabContent = () => {
 
 	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
-		const _itemId = item.getId();
-		const _itemProps = item.getProps();
 
 		// Helper function to render drag handle for draggable items
 		const renderDragHandle = () => {
@@ -1250,7 +1268,9 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<Select
 								value={viewDefinition?.status || ""}
-								onValueChange={(value) => updateStatus(value)}
+								onValueChange={(value: CanonicalResource["status"]) =>
+									updateStatus(value)
+								}
 							>
 								<SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
 									<SelectValue placeholder="Select status" />
@@ -1353,8 +1373,10 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<MultiCombobox
 								options={fhirVersionOptions}
-								value={selectedVersions as any}
-								onValueChange={updateFhirVersions}
+								value={selectedVersions}
+								onValueChange={(props: string[]) =>
+									updateFhirVersions(props as ViewDefinition["fhirVersion"])
+								}
 								placeholder="Select FHIR versions"
 								searchPlaceholder="Search versions..."
 								className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary"

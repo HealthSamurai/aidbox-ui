@@ -10,7 +10,7 @@ export type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/RatioRange
 export interface RatioRange extends DataType {
-    denominator?: Quantity;
-    highNumerator?: Quantity;
-    lowNumerator?: Quantity;
+	denominator?: Quantity;
+	highNumerator?: Quantity;
+	lowNumerator?: Quantity;
 }

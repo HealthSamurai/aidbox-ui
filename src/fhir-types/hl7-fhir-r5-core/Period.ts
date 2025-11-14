@@ -8,8 +8,8 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Period
 export interface Period extends DataType {
-    end?: string;
-    _end?: Element;
-    start?: string;
-    _start?: Element;
+	end?: string;
+	_end?: Element;
+	start?: string;
+	_start?: Element;
 }

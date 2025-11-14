@@ -11,19 +11,19 @@ export type { Element } from "../hl7-fhir-r5-core/Element";
 export type { Period } from "../hl7-fhir-r5-core/Period";
 
 export interface AvailabilityAvailableTime extends Element {
-    allDay?: boolean;
-    availableEndTime?: string;
-    availableStartTime?: string;
-    daysOfWeek?: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"[];
+	allDay?: boolean;
+	availableEndTime?: string;
+	availableStartTime?: string;
+	daysOfWeek?: ("mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun")[];
 }
 
 export interface AvailabilityNotAvailableTime extends Element {
-    description?: string;
-    during?: Period;
+	description?: string;
+	during?: Period;
 }
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Availability
 export interface Availability extends DataType {
-    availableTime?: Element[];
-    notAvailableTime?: Element[];
+	availableTime?: Element[];
+	notAvailableTime?: Element[];
 }

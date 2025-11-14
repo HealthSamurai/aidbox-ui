@@ -14,13 +14,13 @@ export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Identifier
 export interface Identifier extends DataType {
-    assigner?: Reference<"Organization">;
-    period?: Period;
-    system?: string;
-    _system?: Element;
-    type?: CodeableConcept;
-    use?: "usual" | "official" | "temp" | "secondary" | "old";
-    _use?: Element;
-    value?: string;
-    _value?: Element;
+	assigner?: Reference<"Organization">;
+	period?: Period;
+	system?: string;
+	_system?: Element;
+	type?: CodeableConcept;
+	use?: "usual" | "official" | "temp" | "secondary" | "old";
+	_use?: Element;
+	value?: string;
+	_value?: Element;
 }

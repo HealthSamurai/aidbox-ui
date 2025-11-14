@@ -8,18 +8,18 @@ export type { DataType } from "../hl7-fhir-r5-core/DataType";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/ParameterDefinition
 export interface ParameterDefinition extends DataType {
-    documentation?: string;
-    _documentation?: Element;
-    max?: string;
-    _max?: Element;
-    min?: number;
-    _min?: Element;
-    name?: string;
-    _name?: Element;
-    profile?: string;
-    _profile?: Element;
-    type: string;
-    _type?: Element;
-    use: "in" | "out";
-    _use?: Element;
+	documentation?: string;
+	_documentation?: Element;
+	max?: string;
+	_max?: Element;
+	min?: number;
+	_min?: Element;
+	name?: string;
+	_name?: Element;
+	profile?: string;
+	_profile?: Element;
+	type: string;
+	_type?: Element;
+	use: "in" | "out";
+	_use?: Element;
 }

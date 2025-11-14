@@ -26,11 +26,11 @@ export function useLogout() {
 		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: ["userInfo"] });
 			const encodedLocation = btoa(window.location.href);
-			const redirectTo = `${client.getAidboxBaseUrl()}/auth/login?redirect_to=${encodedLocation}`;
+			const redirectTo = `${client.getAidboxBaseURL()}/auth/login?redirect_to=${encodedLocation}`;
 			window.location.href = redirectTo;
 			// FIXME: doesn't work without window.location.href
-			throw redirect({href: redirectTo});
-		}
+			throw redirect({ href: redirectTo });
+		},
 	});
 }
 

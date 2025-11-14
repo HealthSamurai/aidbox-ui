@@ -11,10 +11,10 @@ export type { Narrative } from "../hl7-fhir-r5-core/Narrative";
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/DomainResource
 export interface DomainResource extends Resource {
-    resourceType: "CanonicalResource" | "DomainResource" | "ViewDefinition";
+	resourceType: "CanonicalResource" | "DomainResource" | "ViewDefinition";
 
-    contained?: Resource[];
-    extension?: Extension[];
-    modifierExtension?: Extension[];
-    text?: Narrative;
+	contained?: Resource[];
+	extension?: Extension[];
+	modifierExtension?: Extension[];
+	text?: Narrative;
 }
