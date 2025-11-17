@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
-import * as utils from "../../api/utils";
+import * as Utils from "../../api/utils";
 import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
 import {
@@ -128,7 +128,7 @@ const VersionDiffDialog = ({
 			);
 			onOpenChange("hidden");
 		},
-		onError: utils.onError(),
+		onError: Utils.toastAidboxClientError,
 	});
 
 	return (
@@ -215,7 +215,7 @@ const VersionViewDialog = ({
 			);
 			onOpenStateChange("hidden");
 		},
-		onError: utils.onError(),
+		onError: Utils.toastAidboxClientError,
 	});
 
 	const indent = 2;

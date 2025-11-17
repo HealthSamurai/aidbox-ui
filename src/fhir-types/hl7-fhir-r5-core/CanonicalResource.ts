@@ -51,3 +51,12 @@ export interface CanonicalResource extends DomainResource {
 	versionAlgorithmString?: string;
 	_versionAlgorithmString?: Element;
 }
+export const isCanonicalResource = (
+	resource: unknown,
+): resource is CanonicalResource => {
+	return (
+		resource !== null &&
+		typeof resource === "object" &&
+		(resource as { resourceType: string }).resourceType === "CanonicalResource"
+	);
+};

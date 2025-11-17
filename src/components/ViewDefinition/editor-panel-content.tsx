@@ -1,12 +1,14 @@
+import type { OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
-import type * as AidboxType from "@health-samurai/aidbox-client";
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
-import * as utils from "../../api/utils";
+import * as Utils from "../../api/utils";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { ViewDefinitionContext } from "./page";
@@ -37,10 +39,17 @@ export const EditorHeaderMenu = () => {
 	);
 };
 
+type RunResult = {
+	body: {
+		contentType: string;
+		data: string;
+	};
+};
+
 export const EditorPanelActions = ({
 	client,
 }: {
-	client: AidboxType.AidboxClient;
+	client: AidboxTypes.AidboxClient;
 }) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
@@ -60,7 +69,7 @@ export const EditorPanelActions = ({
 				style: { margin: "1rem" },
 			});
 		},
-		onError: utils.onError(),
+		onError: Utils.toastAidboxClientError,
 	});
 
 	const viewDefinitionCreateMutation = useMutation({
@@ -71,7 +80,7 @@ export const EditorPanelActions = ({
 				body: JSON.stringify(viewDefinition),
 			});
 		},
-		onSuccess: (resp: AidboxType.AidboxResponse<unknown>) => {
+		onSuccess: (resp: AidboxTypes.AidboxResponse<unknown>) => {
 			const id = JSON.parse(resp.response.body).id;
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
@@ -79,7 +88,7 @@ export const EditorPanelActions = ({
 				search: { tab: "code", mode: "json" },
 			});
 		},
-		onError: utils.onError(),
+		onError: Utils.toastAidboxClientError,
 	});
 
 	const viewDefinitionRunMutation = useMutation({
@@ -108,7 +117,7 @@ export const EditorPanelActions = ({
 					},
 				],
 			};
-			return client.aidboxRawRequest({
+			return client.aidboxRequest<RunResult>({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {
@@ -118,31 +127,22 @@ export const EditorPanelActions = ({
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: async (data: AidboxType.AidboxRawResponse) => {
-			const body = await data.response.json();
-			const decodedData = atob(body.data);
-			viewDefinitionContext.setRunResult(decodedData);
-			HSComp.toast.success("ViewDefinition run successfully", {
-				position: "bottom-right",
-				style: { margin: "1rem" },
-			});
-		},
-		onError: async (
-			error: AidboxType.AidboxClientError,
-			vars,
-			onMutateResult,
-			context,
+		onSuccess: async (
+			data: AidboxTypes.AidboxResponse<RunResult | OperationOutcome>,
 		) => {
-			const body = await (
-				error.cause as AidboxType.AidboxRawResponse
-			).response.text();
-			utils.onError()(
-				new Error(error.message, { cause: body }),
-				vars,
-				onMutateResult,
-				context,
-			);
+			const body = data.response.body;
+			if (isOperationOutcome(body)) {
+				Utils.toastOperationOutcome(body);
+			} else {
+				const decodedData = atob(body.data);
+				viewDefinitionContext.setRunResult(decodedData);
+				HSComp.toast.success("ViewDefinition run successfully", {
+					position: "bottom-right",
+					style: { margin: "1rem" },
+				});
+			}
 		},
+		onError: Utils.toastAidboxClientError,
 	});
 
 	const handleSave = () => {
@@ -185,7 +185,7 @@ export const EditorPanelActions = ({
 };
 
 export const EditorPanelContent = () => {
-	const aidboxClient: AidboxType.AidboxClient = useAidboxClient();
+	const aidboxClient: AidboxTypes.AidboxClient = useAidboxClient();
 
 	const navigate = useNavigate();
 

@@ -13,6 +13,7 @@ export interface Resource extends Base {
 	resourceType:
 		| "CanonicalResource"
 		| "DomainResource"
+		| "OperationOutcome"
 		| "Resource"
 		| "ViewDefinition";
 
@@ -24,3 +25,10 @@ export interface Resource extends Base {
 	_language?: Element;
 	meta?: Meta;
 }
+export const isResource = (resource: unknown): resource is Resource => {
+	return (
+		resource !== null &&
+		typeof resource === "object" &&
+		(resource as { resourceType: string }).resourceType === "Resource"
+	);
+};

@@ -3,4 +3,4 @@
 // Any manual changes made to this file may be overwritten.
 
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Base
-export type Base = {};
+export type Base = object;

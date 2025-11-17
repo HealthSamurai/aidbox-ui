@@ -10,7 +10,9 @@ const builder = new APIBuilder()
 	.outputTo("./src/fhir-types")
 	// .writeTypeTree("./src/fhir-types/tree.yaml")
 	.treeShake({
-		// "hl7.fhir.r5.core": {"http://hl7.org/fhir/StructureDefinition/Meta": {}},
+		"hl7.fhir.r5.core": {
+			"http://hl7.org/fhir/StructureDefinition/OperationOutcome": {},
+		},
 		"org.sql-on-fhir.ig": {
 			"https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition": {},
 		},

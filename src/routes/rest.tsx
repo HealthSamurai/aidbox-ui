@@ -1,4 +1,4 @@
-import type * as AidboxType from "@health-samurai/aidbox-client";
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
@@ -722,7 +722,7 @@ function handleSendRequest(
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
 	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
-	aidboxClient: AidboxType.AidboxClient,
+	aidboxClient: AidboxTypes.AidboxClient,
 ) {
 	const headers =
 		selectedTab.headers
@@ -758,7 +758,7 @@ function handleSendRequest(
 			headers,
 			body: selectedTab.body || "",
 		})
-		.then(async (response) => {
+		.then(async (response: AidboxTypes.AidboxRawResponse) => {
 			const responseData = {
 				status: response.response.status,
 				statusText: response.response.statusText,
@@ -774,8 +774,8 @@ function handleSendRequest(
 				),
 			);
 		})
-		.catch(async (error) => {
-			const cause = error.cause;
+		.catch(async (error: AidboxTypes.AidboxClientError) => {
+			const cause = error.rawResponse;
 			const errorMode =
 				cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
 				"text/yaml"
@@ -846,7 +846,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 async function saveToUIHistory(
 	tab: Tab,
 	queryClient: QueryClient,
-	aidboxClient: AidboxType.AidboxClient,
+	aidboxClient: AidboxTypes.AidboxClient,
 ): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();

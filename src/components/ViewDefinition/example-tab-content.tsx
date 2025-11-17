@@ -1,3 +1,4 @@
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
@@ -39,6 +40,10 @@ const searchResources = async (
 			Accept: "application/json",
 		},
 	});
+
+	if (isOperationOutcome(response.response)) {
+		throw new Error("searchResources error", { cause: response.response });
+	}
 
 	if (response.response.body.entry && response.response.body.entry.length > 0) {
 		return response.response.body.entry.map(

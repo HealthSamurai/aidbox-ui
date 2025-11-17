@@ -6,3 +6,4 @@ export type {
 	ViewDefinitionSelectColumnTag,
 	ViewDefinitionWhere,
 } from "./ViewDefinition";
+export { isViewDefinition } from "./ViewDefinition";

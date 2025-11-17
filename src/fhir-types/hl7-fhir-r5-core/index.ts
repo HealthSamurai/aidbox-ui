@@ -7,6 +7,7 @@ export type { BackboneElement } from "./BackboneElement";
 export type { BackboneType } from "./BackboneType";
 export type { Base } from "./Base";
 export type { CanonicalResource } from "./CanonicalResource";
+export { isCanonicalResource } from "./CanonicalResource";
 export type { CodeableConcept } from "./CodeableConcept";
 export type { CodeableReference } from "./CodeableReference";
 export type { Coding } from "./Coding";
@@ -17,6 +18,7 @@ export type { DataRequirement } from "./DataRequirement";
 export type { DataType } from "./DataType";
 export type { Distance } from "./Distance";
 export type { DomainResource } from "./DomainResource";
+export { isDomainResource } from "./DomainResource";
 export type { Dosage } from "./Dosage";
 export type { Duration } from "./Duration";
 export type { Element } from "./Element";
@@ -28,6 +30,11 @@ export type { Identifier } from "./Identifier";
 export type { Meta } from "./Meta";
 export type { Money } from "./Money";
 export type { Narrative } from "./Narrative";
+export type {
+	OperationOutcome,
+	OperationOutcomeIssue,
+} from "./OperationOutcome";
+export { isOperationOutcome } from "./OperationOutcome";
 export type { ParameterDefinition } from "./ParameterDefinition";
 export type { Period } from "./Period";
 export type { Quantity } from "./Quantity";
@@ -37,6 +44,7 @@ export type { RatioRange } from "./RatioRange";
 export type { Reference } from "./Reference";
 export type { RelatedArtifact } from "./RelatedArtifact";
 export type { Resource } from "./Resource";
+export { isResource } from "./Resource";
 export type { SampledData } from "./SampledData";
 export type { Signature } from "./Signature";
 export type { Timing } from "./Timing";

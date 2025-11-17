@@ -132,3 +132,12 @@ export interface ViewDefinition extends CanonicalResource {
 	select: ViewDefinitionSelect[];
 	where?: ViewDefinitionWhere[];
 }
+export const isViewDefinition = (
+	resource: unknown,
+): resource is ViewDefinition => {
+	return (
+		resource !== null &&
+		typeof resource === "object" &&
+		(resource as { resourceType: string }).resourceType === "ViewDefinition"
+	);
+};
