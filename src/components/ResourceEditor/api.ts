@@ -1,10 +1,7 @@
-import type { AidboxClient } from "@health-samurai/aidbox-client";
-
-export type Resource = {
-	resourceType: string;
-	id?: string;
-	[key: string]: unknown;
-};
+import { parseOperationOutcome } from "@aidbox-ui/api/utils";
+import type { Bundle, Resource, OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { AidboxClient, AidboxResponse } from "@health-samurai/aidbox-client";
 
 export const fetchResource = async (
 	client: AidboxClient,
@@ -24,13 +21,6 @@ export const fetchResource = async (
 	return raw;
 };
 
-export interface HistoryBundle {
-	resourceType: "Bundle";
-	type: "history";
-	total: number;
-	entry: HistoryEntry[];
-}
-
 export type HistoryEntryResource = {
 	meta: {
 		versionId: string;
@@ -49,22 +39,32 @@ export const fetchResourceHistory = async (
 	client: AidboxClient,
 	resourceType: string,
 	id: string,
-) => {
-	const raw = (
-		await client.aidboxRequest<HistoryBundle>({
-			method: "GET",
-			url: `/fhir/${resourceType}/${id}/_history`,
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			params: [
-				["_page", "1"],
-				["_count", "100"],
-			],
-		})
-	).response.body;
-	return raw as HistoryBundle;
+): Promise<Bundle> => {
+	const res: AidboxResponse<Bundle> = await client.aidboxRequest<Bundle>({
+		method: "GET",
+		url: `/fhir/${resourceType}/${id}/_history`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+		params: [
+			["_page", "1"],
+			["_count", "100"],
+		],
+	});
+	const response = res.response;
+
+	const body = response.body;
+
+	if (isOperationOutcome(body))
+		throw new Error(
+			parseOperationOutcome(body)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: body },
+		);
+
+	return body;
 };
 
 export const createResource = async (

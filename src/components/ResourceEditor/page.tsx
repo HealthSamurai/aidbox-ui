@@ -1,3 +1,4 @@
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
@@ -5,7 +6,7 @@ import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { DeleteButton, SaveButton } from "./action";
-import { fetchResource, type Resource } from "./api";
+import { fetchResource } from "./api";
 import { EditorTab } from "./editor-tab";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";

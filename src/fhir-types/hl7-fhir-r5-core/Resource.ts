@@ -11,6 +11,7 @@ export type { Meta } from "../hl7-fhir-r5-core/Meta";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Resource
 export interface Resource extends Base {
 	resourceType:
+		| "Bundle"
 		| "CanonicalResource"
 		| "DomainResource"
 		| "OperationOutcome"

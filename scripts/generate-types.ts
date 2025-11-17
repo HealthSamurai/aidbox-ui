@@ -12,6 +12,8 @@ const builder = new APIBuilder()
 	.treeShake({
 		"hl7.fhir.r5.core": {
 			"http://hl7.org/fhir/StructureDefinition/OperationOutcome": {},
+			"http://hl7.org/fhir/StructureDefinition/Bundle": {},
+			"http://hl7.org/fhir/StructureDefinition/Resource": {},
 		},
 		"org.sql-on-fhir.ig": {
 			"https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition": {},

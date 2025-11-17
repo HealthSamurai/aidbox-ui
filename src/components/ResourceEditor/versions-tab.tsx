@@ -1,3 +1,4 @@
+import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { DiffView } from "@git-diff-view/react";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,6 @@ import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
 import {
 	fetchResourceHistory,
-	type HistoryBundle,
 	type HistoryEntry,
 	type HistoryEntryResource,
 } from "./api";
@@ -428,7 +428,7 @@ const calculateAffectedAttributes = (
 export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 	const client = useAidboxClient();
 
-	const [history, setHistory] = React.useState<HistoryBundle>();
+	const [history, setHistory] = React.useState<Bundle>();
 
 	const {
 		data: historyData,

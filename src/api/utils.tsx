@@ -6,29 +6,40 @@ import { AidboxClientError } from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import type { MutationFunctionContext } from "@tanstack/react-query";
 
-export function toastOperationOutcome(oo: OperationOutcome) {
+export function parseOperationOutcome(
+	oo: OperationOutcome,
+): { expression: string; diagnostics: string }[] {
 	const issues = oo.issue;
-	issues.forEach((o) => {
-		if (typeof o !== "object" || o === null) {
-			console.error("Invalid OperationOutcome error");
-			return;
+
+	return issues.flatMap((issue) => {
+		if (typeof issue !== "object" || issue === null) {
+			return [];
 		}
 
 		const expression =
-			hasProperty(o, "expression") && typeof o.expression === "string"
-				? o.expression
+			hasProperty(issue, "expression") && typeof issue.expression === "string"
+				? issue.expression
 				: null;
 
 		const diagnostics =
-			hasProperty(o, "diagnostics") && typeof o.diagnostics === "string"
-				? o.diagnostics
+			hasProperty(issue, "diagnostics") && typeof issue.diagnostics === "string"
+				? issue.diagnostics
 				: null;
 
-		if (expression === null && diagnostics === null) {
-			console.error("Empty OperationOutcome error");
-			return;
+		if (expression === null || diagnostics === null) {
+			return [];
 		}
 
+		return { expression, diagnostics };
+	});
+}
+
+export function toastOperationOutcome(oo: OperationOutcome) {
+	const issues = parseOperationOutcome(oo);
+	if (issues.length === 0)
+		throw new Error("Invalid OperationOutcome", { cause: oo });
+
+	issues.forEach(({ expression, diagnostics }) => {
 		HSComp.toast.error(
 			<div className="text-left">
 				<b>{expression}</b>

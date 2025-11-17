@@ -6,6 +6,15 @@ export type { Availability } from "./Availability";
 export type { BackboneElement } from "./BackboneElement";
 export type { BackboneType } from "./BackboneType";
 export type { Base } from "./Base";
+export type {
+	Bundle,
+	BundleEntry,
+	BundleEntryRequest,
+	BundleEntryResponse,
+	BundleEntrySearch,
+	BundleLink,
+} from "./Bundle";
+export { isBundle } from "./Bundle";
 export type { CanonicalResource } from "./CanonicalResource";
 export { isCanonicalResource } from "./CanonicalResource";
 export type { CodeableConcept } from "./CodeableConcept";
