@@ -31,7 +31,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { useAidboxClient } from "../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -722,7 +722,7 @@ function handleSendRequest(
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
 	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
-	aidboxClient: AidboxTypes.AidboxClient,
+	aidboxClient: AidboxClientR5,
 ) {
 	const headers =
 		selectedTab.headers
@@ -846,7 +846,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 async function saveToUIHistory(
 	tab: Tab,
 	queryClient: QueryClient,
-	aidboxClient: AidboxTypes.AidboxClient,
+	aidboxClient: AidboxClientR5,
 ): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();

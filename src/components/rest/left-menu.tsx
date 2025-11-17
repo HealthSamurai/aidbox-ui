@@ -1,4 +1,4 @@
-// import type { BundleEntry } from "@fhir-types/hl7-fhir-r4-core";
+import type { Resource, BundleEntry } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import {
 	Button,
 	Command,
@@ -20,23 +20,12 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
 import { useUIHistory } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
-import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
 import { type CollectionEntry, CollectionsView } from "./collections";
 
 // Utility function for combining classes
 function cn(...inputs: (string | undefined | boolean | null)[]) {
 	return inputs.filter(Boolean).join(" ");
-}
-
-// FIXME: placeholder until typegen is a thing
-interface BundleEntry {
-	fullUrl?: string;
-	link?: unknown[];
-	request?: unknown;
-	resource?: unknown;
-	response?: unknown;
-	search?: unknown;
 }
 
 // =============================================================================
@@ -170,8 +159,8 @@ function getTimeGroup(dateString: string): string {
 }
 
 // Helper function to group history items by time
-function groupHistoryByTime(items: UIHistoryResource[]) {
-	const groups: Record<string, UIHistoryResource[]> = {};
+function groupHistoryByTime(items: Resource[]) {
+	const groups: Record<string, Resource[]> = {};
 
 	items.forEach((item) => {
 		const group = getTimeGroup(item.meta.createdAt);
@@ -198,7 +187,7 @@ function groupHistoryByTime(items: UIHistoryResource[]) {
 
 // Helper function to check if history item matches selected tab
 function isHistoryItemSelected(
-	item: UIHistoryResource,
+	item: Resource,
 	selectedTab?: Tab,
 ): boolean {
 	if (!selectedTab || !selectedTab.historyId) return false;
@@ -235,11 +224,11 @@ function HistoryCommand({
 	onItemClick,
 	onItemMiddleClick,
 }: {
-	groupedHistory: Record<string, UIHistoryResource[]>;
-	getSortedGroupKeys: (groups: Record<string, UIHistoryResource[]>) => string[];
+	groupedHistory: Record<string, Resource[]>;
+	getSortedGroupKeys: (groups: Record<string, Resource[]>) => string[];
 	selectedTab?: Tab;
-	onItemClick: (item: UIHistoryResource) => void;
-	onItemMiddleClick: (item: UIHistoryResource) => void;
+	onItemClick: (item: Resource) => void;
+	onItemMiddleClick: (item: Resource) => void;
 }) {
 	const getMethodColor = (method: string) => {
 		return (
@@ -250,7 +239,7 @@ function HistoryCommand({
 
 	const handleItemMouseDown = (
 		event: React.MouseEvent,
-		item: UIHistoryResource,
+		item: Resource,
 	) => {
 		// Middle mouse button (wheel click) - button 1
 		if (event.button === 1) {
@@ -260,7 +249,7 @@ function HistoryCommand({
 		}
 	};
 
-	const createSearchableText = (item: UIHistoryResource) => {
+	const createSearchableText = (item: Resource) => {
 		const { method, path, headers, body } = parseHttpCommand(item.command);
 		const headersText = headers.map((h) => `${h.key}:${h.value}`).join(" ");
 		return `${method} ${path} ${headersText} ${body}`.toLowerCase();
@@ -334,7 +323,7 @@ export function LeftMenu({
 	const leftMenuStatus = React.useContext(LeftMenuContext);
 	const { data: historyData, isLoading, error } = useUIHistory();
 
-	const handleHistoryItemClick = (item: UIHistoryResource) => {
+	const handleHistoryItemClick = (item: Resource) => {
 		const { method, path, headers, body } = parseHttpCommand(item.command);
 
 		// Extract params from path
@@ -386,7 +375,7 @@ export function LeftMenu({
 		});
 	};
 
-	const handleHistoryItemMiddleClick = (item: UIHistoryResource) => {
+	const handleHistoryItemMiddleClick = (item: Resource) => {
 		// Find tab with this historyId and close it
 		const existingTab = tabs.find((tab) => tab.historyId === item.id);
 		if (existingTab) {
@@ -398,13 +387,13 @@ export function LeftMenu({
 	const groupedHistory = React.useMemo(() => {
 		if (!historyData?.entry) return {};
 		return groupHistoryByTime(
-			historyData.entry.map((entry: BundleEntry) => entry.resource),
+			historyData.entry.flatMap((entry: BundleEntry) => entry.resource || []),
 		);
 	}, [historyData]);
 
 	// Helper function to sort group keys in chronological order
 	const getSortedGroupKeys = React.useCallback(
-		(groups: Record<string, UIHistoryResource[]>) => {
+		(groups: Record<string, Resource[]>) => {
 			return Object.keys(groups).sort((a, b) => {
 				// TODAY should be first
 				if (a === "TODAY") return -1;

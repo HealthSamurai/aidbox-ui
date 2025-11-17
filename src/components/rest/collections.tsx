@@ -1,4 +1,3 @@
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as ReactComponents from "@health-samurai/react-components";
 import {
 	type QueryClient,
@@ -7,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
 import * as React from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
@@ -29,7 +28,7 @@ type FhirSearchBundle<T> = {
 };
 
 export async function getCollectionsEntries(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 ): Promise<CollectionEntry[]> {
 	const response = await client.aidboxRawRequest({
 		method: "GET",
@@ -41,7 +40,7 @@ export async function getCollectionsEntries(
 }
 
 async function SaveRequest(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	tab: Tab,
 	queryClient: QueryClient,
 	collectionEntries: CollectionEntry[],
@@ -293,7 +292,7 @@ function buildTreeView(
 }
 
 async function handleAddNewCollectionEntry(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	collectionName: string,
 	queryClient: QueryClient,
 	setSelectedCollectionItemId: (id: string) => void,
@@ -315,7 +314,7 @@ async function handleAddNewCollectionEntry(
 }
 
 async function handleDeleteSnippet(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 	_tabs: Tab[],
@@ -332,7 +331,7 @@ async function handleDeleteSnippet(
 }
 
 async function handleDeleteCollection(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 ) {
@@ -524,7 +523,7 @@ function SnippetMoreButton({
 }
 
 function customItemView(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 	tabs: Tab[],
@@ -693,7 +692,7 @@ const NoCollectionsView = ({
 };
 
 async function handleRenameSnippet(
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	newTitle: string,
 	queryClient: QueryClient,

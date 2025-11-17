@@ -1,16 +1,17 @@
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
-import type * as AidboxType from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import * as Constants from "./constants";
 import { EditorPanelContent } from "./editor-panel-content";
 import { InfoPanel } from "./info-panel";
 import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
-const fetchViewDefinition = (client: AidboxType.AidboxClient, id: string) => {
+const fetchViewDefinition = (client: AidboxClientR5, id: string) => {
 	return client.aidboxRequest<ViewDefinition>({
 		method: "GET",
 		url: `/fhir/ViewDefinition/${id}`,
@@ -80,6 +81,17 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			let response: ViewDefinition = viewDefinitionPlaceholder;
 			if (id) {
 				const resp = await fetchViewDefinition(aidboxClient, id);
+				if (isOperationOutcome(resp.response.body)) {
+					throw new Error(
+						Utils.parseOperationOutcome(resp.response.body)
+							.map(
+								({ expression, diagnostics }) =>
+									`${expression}: ${diagnostics}`,
+							)
+							.join("; "),
+						{ cause: resp.response.body },
+					);
+				}
 				response = resp.response.body;
 			}
 			setResouceTypeForViewDefinition(response.resource);

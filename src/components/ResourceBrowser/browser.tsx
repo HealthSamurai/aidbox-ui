@@ -1,11 +1,10 @@
 import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Pin } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 
 type ResourceRow = {
 	resourceType: string;
@@ -183,7 +182,7 @@ type ResourceData = {
 	stats: Record<string, ResourceDataStats>;
 };
 
-function useResourceData(client: AidboxTypes.AidboxClient) {
+function useResourceData(client: AidboxClientR5) {
 	return useQuery<ResourceData>({
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {

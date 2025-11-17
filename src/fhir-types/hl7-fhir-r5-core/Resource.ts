@@ -16,7 +16,8 @@ export interface Resource extends Base {
 		| "DomainResource"
 		| "OperationOutcome"
 		| "Resource"
-		| "ViewDefinition";
+		| "ViewDefinition"
+		| string;
 
 	id?: string;
 	_id?: Element;

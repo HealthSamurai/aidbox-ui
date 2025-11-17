@@ -2,9 +2,12 @@ import type * as Aidbox from "@health-samurai/aidbox-client";
 import { makeClient } from "@health-samurai/aidbox-client";
 import { redirect } from "@tanstack/react-router";
 import * as React from "react";
+import type { Bundle, OperationOutcome } from "./fhir-types/hl7-fhir-r5-core";
+
+export type AidboxClientR5 = Aidbox.AidboxClient<Bundle, OperationOutcome>;
 
 export const AidboxClientContext = React.createContext<
-	Aidbox.AidboxClient | undefined
+	AidboxClientR5 | undefined
 >(undefined);
 
 export type AidboxClientProviderProps = {
@@ -29,7 +32,7 @@ export function AidboxClientProvider({
 	baseurl,
 	children,
 }: AidboxClientProviderProps): React.JSX.Element {
-	const client = makeClient({
+	const client = makeClient<Bundle, OperationOutcome>({
 		baseurl,
 		onRawResponseHook: makeAuthHandler(baseurl),
 	});
@@ -41,9 +44,7 @@ export function AidboxClientProvider({
 	);
 }
 
-export function useAidboxClient(
-	aidboxClient?: Aidbox.AidboxClient,
-): Aidbox.AidboxClient {
+export function useAidboxClient(aidboxClient?: AidboxClientR5): AidboxClientR5 {
 	const client = React.useContext(AidboxClientContext);
 
 	if (aidboxClient) return aidboxClient;

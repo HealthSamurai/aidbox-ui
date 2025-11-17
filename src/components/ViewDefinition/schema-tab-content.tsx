@@ -1,11 +1,10 @@
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	FhirStructureView,
 	TabsContent,
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { transformSnapshotToTree } from "../../utils";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
@@ -22,7 +21,7 @@ interface SchemaData {
 }
 
 const fetchSchema = async (
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Array<Snapshot> | undefined> => {
 	const response = await client.aidboxRawRequest({

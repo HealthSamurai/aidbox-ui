@@ -1,15 +1,14 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import { CodeEditor, TabsContent } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { format as formatSQL } from "sql-formatter";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
 import { ViewDefinitionContext } from "./page";
 
 const fetchSQL = async (
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	viewDefinition: ViewDefinition,
 ): Promise<string> => {
 	const parametersPayload = {

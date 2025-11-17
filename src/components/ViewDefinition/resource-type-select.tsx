@@ -1,13 +1,12 @@
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
 import type * as Types from "./types";
 
-const fetchResourceTypes = async (client: AidboxTypes.AidboxClient) => {
+const fetchResourceTypes = async (client: AidboxClientR5) => {
 	return (
 		await client.aidboxRequest<Types.ResourceTypesResponse>({
 			method: "GET",

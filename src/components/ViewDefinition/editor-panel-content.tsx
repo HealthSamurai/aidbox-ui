@@ -7,7 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
@@ -40,17 +40,11 @@ export const EditorHeaderMenu = () => {
 };
 
 type RunResult = {
-	body: {
-		contentType: string;
-		data: string;
-	};
+	contentType: string;
+	data: string;
 };
 
-export const EditorPanelActions = ({
-	client,
-}: {
-	client: AidboxTypes.AidboxClient;
-}) => {
+export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
@@ -74,14 +68,25 @@ export const EditorPanelActions = ({
 
 	const viewDefinitionCreateMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
-			return client.aidboxRequest({
+			return client.aidboxRequest<ViewDefinition>({
 				method: "POST",
 				url: `/fhir/ViewDefinition/`,
 				body: JSON.stringify(viewDefinition),
 			});
 		},
-		onSuccess: (resp: AidboxTypes.AidboxResponse<unknown>) => {
-			const id = JSON.parse(resp.response.body).id;
+		onSuccess: (
+			resp: AidboxTypes.AidboxResponse<ViewDefinition | OperationOutcome>,
+		) => {
+			if (isOperationOutcome(resp.response.body)) {
+				return Utils.toastOperationOutcome(resp.response.body);
+			}
+			const id = resp.response.body.id;
+			if (!id)
+				return Utils.toastError(
+					"Error saving ViewDefinition",
+					"Missing an ID field in response",
+				);
+
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
@@ -185,7 +190,7 @@ export const EditorPanelActions = ({
 };
 
 export const EditorPanelContent = () => {
-	const aidboxClient: AidboxTypes.AidboxClient = useAidboxClient();
+	const aidboxClient: AidboxClientR5 = useAidboxClient();
 
 	const navigate = useNavigate();
 

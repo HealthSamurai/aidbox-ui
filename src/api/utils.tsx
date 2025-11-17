@@ -6,12 +6,30 @@ import { AidboxClientError } from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import type { MutationFunctionContext } from "@tanstack/react-query";
 
+export function toastError(expression: string, diagnostics: string) {
+	HSComp.toast.error(
+		<div className="text-left">
+			<b>{expression}</b>
+			<p>{diagnostics}</p>
+		</div>,
+		{
+			position: "bottom-right",
+			style: {
+				margin: "1rem",
+				backgroundColor: "var(--destructive)",
+				color: "var(--accent)",
+			},
+		},
+	);
+}
+
 export function parseOperationOutcome(
 	oo: OperationOutcome,
 ): { expression: string; diagnostics: string }[] {
 	const issues = oo.issue;
 
 	return issues.flatMap((issue) => {
+		console.log(issue);
 		if (typeof issue !== "object" || issue === null) {
 			return [];
 		}
@@ -26,11 +44,14 @@ export function parseOperationOutcome(
 				? issue.diagnostics
 				: null;
 
-		if (expression === null || diagnostics === null) {
+		if (expression === null && diagnostics === null) {
 			return [];
 		}
 
-		return { expression, diagnostics };
+		return {
+			expression: expression || "Error",
+			diagnostics: diagnostics || "unknown error",
+		};
 	});
 }
 
@@ -40,20 +61,7 @@ export function toastOperationOutcome(oo: OperationOutcome) {
 		throw new Error("Invalid OperationOutcome", { cause: oo });
 
 	issues.forEach(({ expression, diagnostics }) => {
-		HSComp.toast.error(
-			<div className="text-left">
-				<b>{expression}</b>
-				<p>{diagnostics}</p>
-			</div>,
-			{
-				position: "bottom-right",
-				style: {
-					margin: "1rem",
-					backgroundColor: "var(--destructive)",
-					color: "var(--accent)",
-				},
-			},
-		);
+		toastError(expression, diagnostics);
 	});
 }
 

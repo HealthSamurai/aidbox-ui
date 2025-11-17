@@ -1,10 +1,10 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
+import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { createResource, deleteResource, updateResource } from "./api";
 import type { EditorMode } from "./types";
@@ -20,7 +20,7 @@ export const SaveButton = ({
 	id: string | undefined;
 	resource: string;
 	mode: EditorMode;
-	client: AidboxTypes.AidboxClient;
+	client: AidboxClientR5;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
@@ -64,7 +64,7 @@ export const DeleteButton = ({
 }: {
 	resourceType: string;
 	id: string;
-	client: AidboxTypes.AidboxClient;
+	client: AidboxClientR5;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({

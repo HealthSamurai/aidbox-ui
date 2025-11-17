@@ -1,9 +1,9 @@
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
+import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import type * as VDTypes from "../ViewDefinition/types";
@@ -130,7 +130,7 @@ export const ResourcesTabHeader = ({
 };
 
 const fetchSchemas = async (
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Record<string, Schema> | undefined> => {
 	const response = await client.aidboxRawRequest({
@@ -153,7 +153,7 @@ const fetchSchemas = async (
 };
 
 const fetchDefaultSchema = async (
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Schema | undefined> => {
 	const schemas = await fetchSchemas(client, resourceType);

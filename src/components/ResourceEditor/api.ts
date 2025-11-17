@@ -1,46 +1,42 @@
 import { parseOperationOutcome } from "@aidbox-ui/api/utils";
-import type { Bundle, Resource, OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
-import type { AidboxClient, AidboxResponse } from "@health-samurai/aidbox-client";
+import type { AidboxClientR5 } from "../../AidboxClient";
 
 export const fetchResource = async (
-	client: AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 	id: string,
-) => {
-	const raw = (
-		await client.aidboxRequest<Resource>({
-			method: "GET",
-			url: `/fhir/${resourceType}/${id}`,
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-		})
-	).response.body;
-	return raw;
-};
+): Promise<Resource> => {
+	const {
+		response: { body },
+	} = await client.aidboxRequest<Resource>({
+		method: "GET",
+		url: `/fhir/${resourceType}/${id}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+	});
 
-export type HistoryEntryResource = {
-	meta: {
-		versionId: string;
-		lastUpdated: string;
-	};
-	resourceType: string;
-	id: string;
+	if (isOperationOutcome(body))
+		throw new Error(
+			parseOperationOutcome(body)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: body },
+		);
+	else return body;
 };
-
-export interface HistoryEntry {
-	resource: HistoryEntryResource;
-	response: { status: string };
-}
 
 export const fetchResourceHistory = async (
-	client: AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 	id: string,
 ): Promise<Bundle> => {
-	const res: AidboxResponse<Bundle> = await client.aidboxRequest<Bundle>({
+	const {
+		response: { body },
+	} = await client.aidboxRequest<Bundle>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}/_history`,
 		headers: {
@@ -52,9 +48,6 @@ export const fetchResourceHistory = async (
 			["_count", "100"],
 		],
 	});
-	const response = res.response;
-
-	const body = response.body;
 
 	if (isOperationOutcome(body))
 		throw new Error(
@@ -68,7 +61,7 @@ export const fetchResourceHistory = async (
 };
 
 export const createResource = async (
-	client: AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 	resource: Resource,
 ) => {
@@ -87,7 +80,7 @@ export const createResource = async (
 };
 
 export const updateResource = async (
-	client: AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 	id: string,
 	resource: Resource,
@@ -107,7 +100,7 @@ export const updateResource = async (
 };
 
 export const deleteResource = async (
-	client: AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 	id: string,
 ) => {

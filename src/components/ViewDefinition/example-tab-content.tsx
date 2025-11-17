@@ -1,5 +1,9 @@
-import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
+import {
+	type Bundle,
+	type BundleEntry,
+	isOperationOutcome,
+	type Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import {
 	Button,
 	CodeEditor,
@@ -12,7 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext, useState } from "react";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import * as Constants from "./constants";
 import {
@@ -23,17 +27,15 @@ import { SearchBar } from "./search-bar";
 import type { ViewDefinitionEditorMode } from "./types";
 
 const searchResources = async (
-	client: AidboxTypes.AidboxClient,
+	client: AidboxClientR5,
 	resourceType: string,
 	searchParams: string,
-): Promise<Record<string, unknown>[]> => {
+): Promise<Resource[]> => {
 	const url = searchParams.trim()
 		? `/fhir/${resourceType}?${searchParams}`
 		: `/fhir/${resourceType}`;
 
-	const response = await client.aidboxRequest<{
-		entry?: Array<{ resource: Record<string, unknown> }>;
-	}>({
+	const response = await client.aidboxRequest<Bundle>({
 		method: "GET",
 		url: url,
 		headers: {
@@ -41,13 +43,13 @@ const searchResources = async (
 		},
 	});
 
-	if (isOperationOutcome(response.response)) {
+	if (isOperationOutcome(response.response.body)) {
 		throw new Error("searchResources error", { cause: response.response });
 	}
 
 	if (response.response.body.entry && response.response.body.entry.length > 0) {
-		return response.response.body.entry.map(
-			(entry: Record<string, unknown>) => entry.resource,
+		return response.response.body.entry.flatMap(
+			(entry: BundleEntry) => entry.resource || [],
 		);
 	} else {
 		return [];
