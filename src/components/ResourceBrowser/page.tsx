@@ -1,3 +1,8 @@
+import {
+	type Bundle,
+	isOperationOutcome,
+	type Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
@@ -169,10 +174,10 @@ const fetchDefaultSchema = async (
 
 const resourcesWithKeys = (
 	profiles: Schema | undefined,
-	resources: Array<Record<string, unknown>>,
+	resources: Resource[],
 ) => {
 	const resourceKeys: Record<string, undefined> = resources.reduce(
-		(acc: Record<string, undefined>, resource: Record<string, unknown>) => {
+		(acc: Record<string, undefined>, resource: Resource) => {
 			Object.keys(resource).forEach((key) => {
 				acc[key] = undefined;
 			});
@@ -212,7 +217,7 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 
 	const { resources, resourceKeys, snapshot } = data;
 
-	const columns: HSComp.ColumnDef<Types.Resource, string>[] = [
+	const columns: HSComp.ColumnDef<Resource, string>[] = [
 		{
 			accessorKey: "id",
 			header: () => <span className="pl-5">ID</span>,
@@ -259,10 +264,6 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 	);
 };
 
-type FhirBundle<T> = {
-	entry: { resource: T }[];
-};
-
 const ResourcesTabContent = ({
 	client,
 	resourceType,
@@ -281,14 +282,20 @@ const ResourcesTabContent = ({
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
-			const response = await client.aidboxRawRequest({
+			const response = await client.aidboxRequest<Bundle>({
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			const bundle: FhirBundle<Record<string, unknown>> =
-				await response.response.json();
+			if (isOperationOutcome(response.response.body))
+				throw new Error("error obtaining resource list", {
+					cause: response.response.body,
+				});
 
-			const data = bundle.entry.map((entry) => entry.resource);
+			const bundle = response.response.body;
+
+			const data =
+				bundle?.entry?.flatMap(({ resource }) => (resource ? resource : [])) ??
+				[];
 			const schema = await fetchDefaultSchema(client, resourceType);
 			return resourcesWithKeys(schema, data);
 		},
