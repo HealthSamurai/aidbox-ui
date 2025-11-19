@@ -13,7 +13,11 @@ export type User = Resource & {
 	email?: string;
 };
 
-export type AidboxClientR5 = Aidbox.AidboxClient<Bundle, OperationOutcome, User>;
+export type AidboxClientR5 = Aidbox.AidboxClient<
+	Bundle,
+	OperationOutcome,
+	User
+>;
 
 export const AidboxClientContext = React.createContext<
 	AidboxClientR5 | undefined

@@ -1,3 +1,4 @@
+import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as ReactComponents from "@health-samurai/react-components";
 import {
 	type QueryClient,
@@ -13,18 +14,11 @@ import { parseHttpRequest } from "../../utils";
 import * as ActiveTabs from "./active-tabs";
 import { methodColors, type Tab } from "./active-tabs";
 
-export interface CollectionEntry {
-	id: string;
+export type CollectionEntry = Resource & {
 	type: string;
 	command: string;
 	title?: string;
 	collection?: string;
-}
-
-type FhirSearchBundle<T> = {
-	entry?: {
-		resource: T;
-	}[];
 };
 
 export async function getCollectionsEntries(
@@ -34,9 +28,13 @@ export async function getCollectionsEntries(
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	const bundle: FhirSearchBundle<CollectionEntry> =
-		await response.response.json();
-	return bundle.entry?.map((entry) => entry.resource) ?? [];
+	const bundle: Bundle = await response.response.json();
+	return (
+		bundle.entry?.flatMap(({ resource }) => {
+			if (resource) return resource as CollectionEntry;
+			return [];
+		}) ?? []
+	);
 }
 
 async function SaveRequest(
@@ -266,6 +264,9 @@ function buildTreeView(
 
 	entries.forEach((entry) => {
 		const parsedCommand = parseHttpRequest(entry.command);
+		if (!entry.id)
+			throw new Error("missing id in collection entry", { cause: entry });
+
 		tree[entry.id] = {
 			name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
 			meta: {
