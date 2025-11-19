@@ -2,11 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 import { useAidboxClient } from "../AidboxClient";
 
-export interface UserInfo {
-	id: string;
-	email?: string;
-}
-
 export function useUserInfo() {
 	const client = useAidboxClient();
 

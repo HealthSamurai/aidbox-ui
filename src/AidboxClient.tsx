@@ -2,9 +2,18 @@ import type * as Aidbox from "@health-samurai/aidbox-client";
 import { makeClient } from "@health-samurai/aidbox-client";
 import { redirect } from "@tanstack/react-router";
 import * as React from "react";
-import type { Bundle, OperationOutcome } from "./fhir-types/hl7-fhir-r5-core";
+import type {
+	Bundle,
+	OperationOutcome,
+	Resource,
+} from "./fhir-types/hl7-fhir-r5-core";
 
-export type AidboxClientR5 = Aidbox.AidboxClient<Bundle, OperationOutcome>;
+// FIXME: sansara#6557 Generate from IG
+export type User = Resource & {
+	email?: string;
+};
+
+export type AidboxClientR5 = Aidbox.AidboxClient<Bundle, OperationOutcome, User>;
 
 export const AidboxClientContext = React.createContext<
 	AidboxClientR5 | undefined
@@ -32,7 +41,7 @@ export function AidboxClientProvider({
 	baseurl,
 	children,
 }: AidboxClientProviderProps): React.JSX.Element {
-	const client = makeClient<Bundle, OperationOutcome>({
+	const client = makeClient<Bundle, OperationOutcome, User>({
 		baseurl,
 		onRawResponseHook: makeAuthHandler(baseurl),
 	});
