@@ -29,15 +29,14 @@ export type AidboxClientProviderProps = {
 };
 
 function makeAuthHandler(baseurl: string) {
-	return (response: Aidbox.AidboxRawResponse) => {
-		if (response.response.status === 401 || response.response.status === 403) {
+	return (response: Response): void => {
+		if (response.status === 401 || response.status === 403) {
 			const encodedLocation = btoa(window.location.href);
 			const redirectTo = `${baseurl}/auth/login?redirect_to=${encodedLocation}`;
 			window.location.href = redirectTo;
 			// FIXME: doesn't work without window.location.href
 			throw redirect({ href: redirectTo });
 		}
-		return response;
 	};
 }
 
@@ -47,7 +46,7 @@ export function AidboxClientProvider({
 }: AidboxClientProviderProps): React.JSX.Element {
 	const client = makeClient<Bundle, OperationOutcome, User>({
 		baseurl,
-		onRawResponseHook: makeAuthHandler(baseurl),
+		onResponse: makeAuthHandler(baseurl),
 	});
 
 	return (
