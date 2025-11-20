@@ -5,8 +5,12 @@ console.log("📦 Generating FHIR R4 Core Types...");
 const builder = new APIBuilder()
 	.verbose()
 	.throwException()
-	.typescript({ withDebugComment: false, generateProfile: false })
-	.fromPackageRef("https://build.fhir.org/ig/FHIR/sql-on-fhir-v2//package.tgz")
+	.typescript({
+		withDebugComment: false,
+		generateProfile: false,
+		openResourceTypeSet: true,
+	})
+	.fromPackageRef("https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/package.tgz")
 	.outputTo("./src/fhir-types")
 	// .writeTypeTree("./src/fhir-types/tree.yaml")
 	.treeShake({
