@@ -63,7 +63,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				style: { margin: "1rem" },
 			});
 		},
-		onError: Utils.toastAidboxClientError,
+		onError: Utils.toastAidboxErrorResponse,
 	});
 
 	const viewDefinitionCreateMutation = useMutation({
@@ -93,7 +93,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				search: { tab: "code", mode: "json" },
 			});
 		},
-		onError: Utils.toastAidboxClientError,
+		onError: Utils.toastAidboxErrorResponse,
 	});
 
 	const viewDefinitionRunMutation = useMutation({
@@ -147,7 +147,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				});
 			}
 		},
-		onError: Utils.toastAidboxClientError,
+		onError: Utils.toastAidboxErrorResponse,
 	});
 
 	const handleSave = () => {

@@ -2,7 +2,7 @@ import type { OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { hasProperty } from "@aidbox-ui/type-utils";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
-import { AidboxClientError } from "@health-samurai/aidbox-client";
+import { AidboxErrorResponse } from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import type { MutationFunctionContext } from "@tanstack/react-query";
 
@@ -29,7 +29,6 @@ export function parseOperationOutcome(
 	const issues = oo.issue;
 
 	return issues.flatMap((issue) => {
-		console.log(issue);
 		if (typeof issue !== "object" || issue === null) {
 			return [];
 		}
@@ -65,13 +64,13 @@ export function toastOperationOutcome(oo: OperationOutcome) {
 	});
 }
 
-export async function toastAidboxClientError<T>(
+export async function toastAidboxErrorResponse<T>(
 	error: Error,
 	_vars: T,
 	_onMutateResult: unknown,
 	_context: MutationFunctionContext,
 ) {
-	if (error instanceof AidboxClientError) {
+	if (error instanceof AidboxErrorResponse) {
 		const reason: AidboxTypes.AidboxRawResponse = error.rawResponse;
 		const body = await reason.response.text();
 		try {

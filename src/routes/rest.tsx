@@ -774,7 +774,7 @@ function handleSendRequest(
 				),
 			);
 		})
-		.catch(async (error: AidboxTypes.AidboxClientError) => {
+		.catch(async (error: AidboxTypes.AidboxErrorResponse) => {
 			const cause = error.rawResponse;
 			const errorMode =
 				cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
@@ -790,7 +790,6 @@ function handleSendRequest(
 				duration: cause.duration,
 				mode: errorMode,
 			};
-
 			// Store error response in tab
 			setTabs((currentTabs) =>
 				currentTabs.map((tab) =>

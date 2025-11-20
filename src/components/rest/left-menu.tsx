@@ -309,7 +309,6 @@ function HistoryCommand({
 				<CommandEmpty>No history found.</CommandEmpty>
 				{getSortedGroupKeys(groupedHistory).map((groupKey) => {
 					const items = groupedHistory[groupKey];
-					console.log(items);
 					if (!items || items.length === 0) return null;
 
 					const allGroupKeys = getSortedGroupKeys(groupedHistory);

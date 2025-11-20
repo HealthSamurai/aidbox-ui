@@ -43,9 +43,8 @@ const searchResources = async (
 		},
 	});
 
-	if (isOperationOutcome(response.response.body)) {
+	if (isOperationOutcome(response.response.body))
 		throw new Error("searchResources error", { cause: response.response });
-	}
 
 	if (response.response.body.entry && response.response.body.entry.length > 0) {
 		return response.response.body.entry.flatMap(
