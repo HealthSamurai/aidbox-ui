@@ -77,10 +77,10 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 		onSuccess: (
 			resp: AidboxTypes.AidboxResponse<ViewDefinition | OperationOutcome>,
 		) => {
-			if (isOperationOutcome(resp.response.body)) {
-				return Utils.toastOperationOutcome(resp.response.body);
+			if (isOperationOutcome(resp.responseBody)) {
+				return Utils.toastOperationOutcome(resp.responseBody);
 			}
-			const id = resp.response.body.id;
+			const id = resp.responseBody.id;
 			if (!id)
 				return Utils.toastError(
 					"Error saving ViewDefinition",
@@ -135,7 +135,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 		onSuccess: async (
 			data: AidboxTypes.AidboxResponse<RunResult | OperationOutcome>,
 		) => {
-			const body = data.response.body;
+			const body = data.responseBody;
 			if (isOperationOutcome(body)) {
 				Utils.toastOperationOutcome(body);
 			} else {

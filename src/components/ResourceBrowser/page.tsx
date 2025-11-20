@@ -286,12 +286,12 @@ const ResourcesTabContent = ({
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			if (isOperationOutcome(response.response.body))
+			if (isOperationOutcome(response.responseBody))
 				throw new Error("error obtaining resource list", {
-					cause: response.response.body,
+					cause: response.responseBody,
 				});
 
-			const bundle = response.response.body;
+			const bundle = response.responseBody;
 
 			const data =
 				bundle?.entry?.flatMap(({ resource }) => (resource ? resource : [])) ??

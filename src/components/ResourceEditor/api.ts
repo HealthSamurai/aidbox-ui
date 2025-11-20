@@ -8,9 +8,7 @@ export const fetchResource = async (
 	resourceType: string,
 	id: string,
 ): Promise<Resource> => {
-	const {
-		response: { body },
-	} = await client.aidboxRequest<Resource>({
+	const { responseBody } = await client.aidboxRequest<Resource>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}`,
 		headers: {
@@ -19,14 +17,14 @@ export const fetchResource = async (
 		},
 	});
 
-	if (isOperationOutcome(body))
+	if (isOperationOutcome(responseBody))
 		throw new Error(
-			parseOperationOutcome(body)
+			parseOperationOutcome(responseBody)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: body },
+			{ cause: responseBody },
 		);
-	else return body;
+	else return responseBody;
 };
 
 export const fetchResourceHistory = async (
@@ -34,9 +32,7 @@ export const fetchResourceHistory = async (
 	resourceType: string,
 	id: string,
 ): Promise<Bundle> => {
-	const {
-		response: { body },
-	} = await client.aidboxRequest<Bundle>({
+	const { responseBody } = await client.aidboxRequest<Bundle>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}/_history`,
 		headers: {
@@ -49,15 +45,15 @@ export const fetchResourceHistory = async (
 		],
 	});
 
-	if (isOperationOutcome(body))
+	if (isOperationOutcome(responseBody))
 		throw new Error(
-			parseOperationOutcome(body)
+			parseOperationOutcome(responseBody)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: body },
+			{ cause: responseBody },
 		);
 
-	return body;
+	return responseBody;
 };
 
 export const createResource = async (
@@ -75,7 +71,7 @@ export const createResource = async (
 			},
 			body: JSON.stringify(resource),
 		})
-	).response.body;
+	).responseBody;
 	return res;
 };
 
@@ -95,7 +91,7 @@ export const updateResource = async (
 			},
 			body: JSON.stringify(resource),
 		})
-	).response.body;
+	).responseBody;
 	return res;
 };
 
@@ -104,7 +100,7 @@ export const deleteResource = async (
 	resourceType: string,
 	id: string,
 ) => {
-	const res = (
+	return (
 		await client.aidboxRequest<Resource>({
 			method: "DELETE",
 			url: `/fhir/${resourceType}/${id}`,
@@ -113,6 +109,5 @@ export const deleteResource = async (
 				Accept: "application/json",
 			},
 		})
-	).response.body;
-	return res;
+	).responseBody;
 };

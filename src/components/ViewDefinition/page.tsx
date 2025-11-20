@@ -81,18 +81,18 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			let response: ViewDefinition = viewDefinitionPlaceholder;
 			if (id) {
 				const resp = await fetchViewDefinition(aidboxClient, id);
-				if (isOperationOutcome(resp.response.body)) {
+				if (isOperationOutcome(resp.responseBody)) {
 					throw new Error(
-						Utils.parseOperationOutcome(resp.response.body)
+						Utils.parseOperationOutcome(resp.responseBody)
 							.map(
 								({ expression, diagnostics }) =>
 									`${expression}: ${diagnostics}`,
 							)
 							.join("; "),
-						{ cause: resp.response.body },
+						{ cause: resp.responseBody },
 					);
 				}
-				response = resp.response.body;
+				response = resp.responseBody;
 			}
 			setResouceTypeForViewDefinition(response.resource);
 			setViewDefinition(response);

@@ -16,7 +16,7 @@ const fetchResourceTypes = async (client: AidboxClientR5) => {
 				Accept: "application/json",
 			},
 		})
-	).response.body;
+	).responseBody;
 };
 
 export const ResourceTypeSelect = () => {
