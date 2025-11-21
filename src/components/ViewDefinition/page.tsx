@@ -1,15 +1,18 @@
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import { AidboxCall } from "../../api/auth";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import * as Constants from "./constants";
 import { EditorPanelContent } from "./editor-panel-content";
 import { InfoPanel } from "./info-panel";
 import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
-const fetchViewDefinition = (id: string) => {
-	return AidboxCall<Types.ViewDefinition>({
+const fetchViewDefinition = (client: AidboxClientR5, id: string) => {
+	return client.request<ViewDefinition>({
 		method: "GET",
 		url: `/fhir/ViewDefinition/${id}`,
 	});
@@ -54,12 +57,13 @@ export const ViewDefinitionErrorPage = ({
 };
 
 const ViewDefinitionPage = ({ id }: { id?: string }) => {
+	const aidboxClient = useAidboxClient();
+
 	const [resouceTypeForViewDefinition, setResouceTypeForViewDefinition] =
 		React.useState<string>();
-	const [viewDefinition, setViewDefinition] =
-		React.useState<Types.ViewDefinition>();
+	const [viewDefinition, setViewDefinition] = React.useState<ViewDefinition>();
 	const [runViewDefinition, setRunViewDefinition] =
-		React.useState<Types.ViewDefinition>();
+		React.useState<ViewDefinition>();
 
 	const [runResult, setRunResult] = React.useState<string>();
 	const [runResultPage, setRunResultPage] = React.useState(1);
@@ -68,13 +72,28 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
 		queryFn: async () => {
-			const viewDefinitionPlaceholder = {
+			const viewDefinitionPlaceholder: ViewDefinition = {
 				resource: "Patient",
 				resourceType: "ViewDefinition",
+				status: "draft",
 				select: [],
 			};
-			let response: Types.ViewDefinition = viewDefinitionPlaceholder;
-			if (id) response = await fetchViewDefinition(id);
+			let response: ViewDefinition = viewDefinitionPlaceholder;
+			if (id) {
+				const resp = await fetchViewDefinition(aidboxClient, id);
+				if (isOperationOutcome(resp.responseBody)) {
+					throw new Error(
+						Utils.parseOperationOutcome(resp.responseBody)
+							.map(
+								({ expression, diagnostics }) =>
+									`${expression}: ${diagnostics}`,
+							)
+							.join("; "),
+						{ cause: resp.responseBody },
+					);
+				}
+				response = resp.responseBody;
+			}
 			setResouceTypeForViewDefinition(response.resource);
 			setViewDefinition(response);
 			return response;

@@ -1,15 +1,12 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
-import {
-	createResource,
-	deleteResource,
-	type Resource,
-	updateResource,
-} from "./api";
+import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { createResource, deleteResource, updateResource } from "./api";
 import type { EditorMode } from "./types";
 
 export const SaveButton = ({
@@ -17,11 +14,13 @@ export const SaveButton = ({
 	id,
 	resource,
 	mode,
+	client,
 }: {
 	resourceType: string;
 	id: string | undefined;
 	resource: string;
 	mode: EditorMode;
+	client: AidboxClientR5;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
@@ -29,13 +28,17 @@ export const SaveButton = ({
 			const resource = (
 				mode === "json" ? JSON.parse(value) : YAML.load(value)
 			) as Resource;
-			if (id) return await updateResource(resourceType, id, resource);
-			return await createResource(resourceType, resource);
+			if (id) return await updateResource(client, resourceType, id, resource);
+			return await createResource(client, resourceType, resource);
 		},
-		onError: Utils.onError(),
+		onError: Utils.onMutationError,
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
-			if (!resource.id) throw new Error("Resource ID is undefined");
+			if (!resource.id)
+				return Utils.toastError(
+					"Failed to open saved resource",
+					"resource is missing an ID field",
+				);
 			if (!id)
 				navigate({
 					to: `/resource/$resourceType/edit/$id`,
@@ -61,16 +64,18 @@ export const SaveButton = ({
 export const DeleteButton = ({
 	resourceType,
 	id,
+	client,
 }: {
 	resourceType: string;
 	id: string;
+	client: AidboxClientR5;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
 		mutationFn: async () => {
-			return await deleteResource(resourceType, id);
+			return await deleteResource(client, resourceType, id);
 		},
-		onError: Utils.onError(),
+		onError: Utils.onMutationError,
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
 			navigate({
