@@ -8,7 +8,7 @@ import type * as Types from "./types";
 
 const fetchResourceTypes = async (client: AidboxClientR5) => {
 	return (
-		await client.aidboxRequest<Types.ResourceTypesResponse>({
+		await client.request<Types.ResourceTypesResponse>({
 			method: "GET",
 			url: "/$resource-types",
 			headers: {

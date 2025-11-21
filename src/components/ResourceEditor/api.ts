@@ -8,7 +8,7 @@ export const fetchResource = async (
 	resourceType: string,
 	id: string,
 ): Promise<Resource> => {
-	const { responseBody } = await client.aidboxRequest<Resource>({
+	const { responseBody } = await client.request<Resource>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}`,
 		headers: {
@@ -32,7 +32,7 @@ export const fetchResourceHistory = async (
 	resourceType: string,
 	id: string,
 ): Promise<Bundle> => {
-	const { responseBody } = await client.aidboxRequest<Bundle>({
+	const { responseBody } = await client.request<Bundle>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}/_history`,
 		headers: {
@@ -62,7 +62,7 @@ export const createResource = async (
 	resource: Resource,
 ) => {
 	const res = (
-		await client.aidboxRequest<Resource>({
+		await client.request<Resource>({
 			method: "POST",
 			url: `/fhir/${resourceType}`,
 			headers: {
@@ -82,7 +82,7 @@ export const updateResource = async (
 	resource: Resource,
 ) => {
 	const res = (
-		await client.aidboxRequest<Resource>({
+		await client.request<Resource>({
 			method: "PUT",
 			url: `/fhir/${resourceType}/${id}`,
 			headers: {
@@ -101,7 +101,7 @@ export const deleteResource = async (
 	id: string,
 ) => {
 	return (
-		await client.aidboxRequest<Resource>({
+		await client.request<Resource>({
 			method: "DELETE",
 			url: `/fhir/${resourceType}/${id}`,
 			headers: {

@@ -752,7 +752,7 @@ function handleSendRequest(
 	setIsLoading(true);
 
 	aidboxClient
-		.aidboxRawRequest({
+		.rawRequest({
 			method: selectedTab.method,
 			url: selectedTab.path || "/",
 			headers,
@@ -858,7 +858,7 @@ async function saveToUIHistory(
 			command: command,
 		};
 
-		await aidboxClient.aidboxRawRequest({
+		await aidboxClient.rawRequest({
 			method: "PUT",
 			url: `/ui_history/${historyId}`,
 			headers: {

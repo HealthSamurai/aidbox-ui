@@ -24,7 +24,7 @@ const fetchSchema = async (
 	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Array<Snapshot> | undefined> => {
-	const response = await client.aidboxRawRequest({
+	const response = await client.rawRequest({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
 		headers: {

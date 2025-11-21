@@ -24,7 +24,7 @@ export type CollectionEntry = Resource & {
 export async function getCollectionsEntries(
 	client: AidboxClientR5,
 ): Promise<CollectionEntry[]> {
-	const response = await client.aidboxRawRequest({
+	const response = await client.rawRequest({
 		method: "GET",
 		url: `/ui_snippet`,
 	});
@@ -79,7 +79,7 @@ async function SaveRequest(
 		snippetId = tab.id;
 	}
 
-	const result = await client.aidboxRequest({
+	const result = await client.request({
 		method: "PUT",
 		url: `/ui_snippet/${snippetId}`,
 		body: JSON.stringify({
@@ -301,7 +301,7 @@ async function handleAddNewCollectionEntry(
 	tabs: Tab[],
 ) {
 	const newTab = ActiveTabs.addTab(tabs, setTabs);
-	await client.aidboxRequest({
+	await client.request({
 		method: "PUT",
 		url: `/ui_snippet/${newTab.id}`,
 		body: JSON.stringify({
@@ -322,7 +322,7 @@ async function handleDeleteSnippet(
 	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
 	if (itemData?.meta?.id) {
-		await client.aidboxRequest({
+		await client.request({
 			method: "DELETE",
 			url: `/ui_snippet/${itemData.meta.id}`,
 		});
@@ -336,7 +336,7 @@ async function handleDeleteCollection(
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 ) {
-	await client.aidboxRequest({
+	await client.request({
 		method: "DELETE",
 		url: `/ui_snippet`,
 		headers: {
@@ -700,7 +700,7 @@ async function handleRenameSnippet(
 ) {
 	if (item.isFolder()) {
 		const snippetIds = item.getChildren().map((child) => child.getId());
-		await client.aidboxRequest({
+		await client.request({
 			method: "POST",
 			url: `/`,
 			body: JSON.stringify({
@@ -719,7 +719,7 @@ async function handleRenameSnippet(
 			}),
 		});
 	} else {
-		await client.aidboxRequest({
+		await client.request({
 			method: "PATCH",
 			url: `/ui_snippet/${item.getItemData().meta?.id}`,
 			body: JSON.stringify({

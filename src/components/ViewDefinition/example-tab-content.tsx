@@ -35,7 +35,7 @@ const searchResources = async (
 		? `/fhir/${resourceType}?${searchParams}`
 		: `/fhir/${resourceType}`;
 
-	const response = await client.aidboxRequest<Bundle>({
+	const response = await client.request<Bundle>({
 		method: "GET",
 		url: url,
 		headers: {

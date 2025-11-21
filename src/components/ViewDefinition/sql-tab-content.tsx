@@ -21,7 +21,7 @@ const fetchSQL = async (
 		],
 	};
 
-	const response = await client.aidboxRawRequest({
+	const response = await client.rawRequest({
 		method: "POST",
 		url: "/fhir/ViewDefinition/$sql",
 		headers: {

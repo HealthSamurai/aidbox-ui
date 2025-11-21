@@ -187,11 +187,11 @@ function useResourceData(client: AidboxClientR5) {
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {
 			const [resourceTypes, stats] = await Promise.all([
-				client.aidboxRawRequest({
+				client.rawRequest({
 					method: "GET",
 					url: "/$resource-types",
 				}),
-				client.aidboxRawRequest({
+				client.rawRequest({
 					method: "GET",
 					url: "/$resource-types-pg-stats",
 				}),

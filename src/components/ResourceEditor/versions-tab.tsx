@@ -103,7 +103,7 @@ const VersionDiffDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return client.aidboxRequest({
+			return client.request({
 				method: "PUT",
 				url: `/fhir/${resourceType}/${resourceId}`,
 				headers: {
@@ -190,7 +190,7 @@ const VersionViewDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return client.aidboxRequest({
+			return client.request({
 				method: "PUT",
 				url: `/fhir/${resourceType}/${resourceId}`,
 				headers: {

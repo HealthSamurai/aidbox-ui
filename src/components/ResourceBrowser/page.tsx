@@ -138,7 +138,7 @@ const fetchSchemas = async (
 	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Record<string, Schema> | undefined> => {
-	const response = await client.aidboxRawRequest({
+	const response = await client.rawRequest({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
 		headers: {
@@ -282,7 +282,7 @@ const ResourcesTabContent = ({
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
-			const response = await client.aidboxRequest<Bundle>({
+			const response = await client.request<Bundle>({
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
@@ -538,7 +538,7 @@ const SearchParametersTabContent = ({
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-search-parameters-list"],
 		queryFn: async () => {
-			const response = await client.aidboxRawRequest({
+			const response = await client.rawRequest({
 				method: "GET",
 				url: "/fhir/metadata?include-custom-resources=true",
 				headers: {

@@ -257,7 +257,7 @@ export function ResultPanel() {
 					{ name: "_page", valueInteger: page },
 				],
 			};
-			return client.aidboxRawRequest({
+			return client.rawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {

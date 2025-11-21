@@ -51,7 +51,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 
 	const viewDefinitionMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
-			return client.aidboxRequest({
+			return client.request({
 				method: "PUT",
 				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
 				body: JSON.stringify(viewDefinition),
@@ -68,7 +68,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 
 	const viewDefinitionCreateMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
-			return client.aidboxRequest<ViewDefinition>({
+			return client.request<ViewDefinition>({
 				method: "POST",
 				url: `/fhir/ViewDefinition/`,
 				body: JSON.stringify(viewDefinition),
@@ -122,7 +122,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 					},
 				],
 			};
-			return client.aidboxRequest<RunResult>({
+			return client.request<RunResult>({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {
