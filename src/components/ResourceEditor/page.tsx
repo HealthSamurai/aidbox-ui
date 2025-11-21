@@ -64,7 +64,17 @@ export const ResourceEditorPageWithLoader = (
 			</div>
 		);
 	}
-	if (!resourceData) throw new Error("Resource not found");
+
+	if (!resourceData)
+		return (
+			<div className="flex items-center justify-center h-full text-red-500">
+				<div className="text-center">
+					<div className="text-lg mb-2">Failed to load resource</div>
+					<div className="text-sm">Resource not found</div>
+				</div>
+			</div>
+		);
+
 	return <ResourceEditorPage initialResource={resourceData} {...props} />;
 };
 

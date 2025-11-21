@@ -15,6 +15,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import { ViewDefinitionContext } from "./page";
 
 interface ProcessedTableData {
@@ -271,7 +272,7 @@ export function ResultPanel() {
 			const decodedData = atob((await data.response.json()).data);
 			viewDefinitionContext.setRunResult(decodedData);
 		},
-		onError: () => {},
+		onError: Utils.onMutationError,
 	});
 
 	const handlePageChange = (direction: "next" | "previous") => {

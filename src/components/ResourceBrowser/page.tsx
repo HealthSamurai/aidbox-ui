@@ -279,7 +279,7 @@ const ResourcesTabContent = ({
 		? atob(search.searchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
 
-	const { data, isLoading } = ReactQuery.useQuery({
+	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
 			const response = await client.request<Bundle>({
@@ -301,6 +301,16 @@ const ResourcesTabContent = ({
 		},
 		retry: false,
 	});
+
+	if (error)
+		return (
+			<div className="flex items-center justify-center h-full text-red-500">
+				<div className="text-center">
+					<div className="text-lg mb-2">Failed to load resource</div>
+					<div className="text-sm">{error.message}</div>
+				</div>
+			</div>
+		);
 
 	const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();

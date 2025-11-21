@@ -8,6 +8,7 @@ import {
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import { onError } from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
@@ -262,32 +263,36 @@ function buildTreeView(
 		},
 	};
 
-	entries.forEach((entry) => {
-		const parsedCommand = parseHttpRequest(entry.command);
-		if (!entry.id)
-			throw new Error("missing id in collection entry", { cause: entry });
+	try {
+		entries.forEach((entry) => {
+			const parsedCommand = parseHttpRequest(entry.command);
+			if (!entry.id)
+				throw new Error("missing id in collection entry", { cause: entry });
 
-		tree[entry.id] = {
-			name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
-			meta: {
-				...parsedCommand,
-				...(entry.title ? { title: entry.title } : {}),
-				id: entry.id,
-			},
-		};
-		if (entry.collection) {
-			if (tree[entry.collection]) {
-				tree[entry.collection]?.children?.push(entry.id);
+			tree[entry.id] = {
+				name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
+				meta: {
+					...parsedCommand,
+					...(entry.title ? { title: entry.title } : {}),
+					id: entry.id,
+				},
+			};
+			if (entry.collection) {
+				if (tree[entry.collection]) {
+					tree[entry.collection]?.children?.push(entry.id);
+				} else {
+					tree[entry.collection] = {
+						name: entry.collection,
+						children: [entry.id],
+					};
+				}
 			} else {
-				tree[entry.collection] = {
-					name: entry.collection,
-					children: [entry.id],
-				};
+				tree.root?.children?.push(entry.id);
 			}
-		} else {
-			tree.root?.children?.push(entry.id);
-		}
-	});
+		});
+	} catch (e) {
+		onError(e);
+	}
 
 	return tree;
 }

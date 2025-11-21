@@ -5,22 +5,32 @@ import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import { AidboxErrorResponse } from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import type { MutationFunctionContext } from "@tanstack/react-query";
+import type { JSX } from "react";
 
-export function toastError(expression: string, diagnostics: string) {
-	HSComp.toast.error(
-		<div className="text-left">
-			<b>{expression}</b>
-			<p>{diagnostics}</p>
-		</div>,
-		{
-			position: "bottom-right",
-			style: {
-				margin: "1rem",
-				backgroundColor: "var(--destructive)",
-				color: "var(--accent)",
-			},
+export function toastError(expression: string, diagnostics?: string) {
+	let message: JSX.Element;
+	if (diagnostics) {
+		message = (
+			<div className="text-left">
+				<b>{expression}</b>
+				<p>{diagnostics}</p>
+			</div>
+		);
+	} else {
+		message = (
+			<div className="text-left">
+				<b>{expression}</b>
+			</div>
+		);
+	}
+	HSComp.toast.error(message, {
+		position: "bottom-right",
+		style: {
+			margin: "1rem",
+			backgroundColor: "var(--destructive)",
+			color: "var(--accent)",
 		},
-	);
+	});
 }
 
 export function parseOperationOutcome(
@@ -57,36 +67,47 @@ export function parseOperationOutcome(
 export function toastOperationOutcome(oo: OperationOutcome) {
 	const issues = parseOperationOutcome(oo);
 	if (issues.length === 0)
-		throw new Error("Invalid OperationOutcome", { cause: oo });
+		return toastError(
+			"Invalid OperationOutcome: no details provided",
+			JSON.stringify(oo),
+		);
 
 	issues.forEach(({ expression, diagnostics }) => {
 		toastError(expression, diagnostics);
 	});
 }
 
-export async function toastAidboxErrorResponse<T>(
-	error: Error,
-	_vars: T,
-	_onMutateResult: unknown,
-	_context: MutationFunctionContext,
-) {
+export async function toastAidboxErrorResponse(error: Error) {
 	if (error instanceof AidboxErrorResponse) {
 		const reason: AidboxTypes.AidboxRawResponse = error.rawResponse;
 		const body = await reason.response.text();
 		try {
 			const parsed = JSON.parse(body);
 			if (isOperationOutcome(parsed)) return toastOperationOutcome(parsed);
-		} catch {
-			// we don't care if error couln't be parsed
-		}
+		} catch {}
 	}
-	HSComp.toast.error("Unknown error", {
-		position: "bottom-right",
-		style: {
-			margin: "1rem",
-			backgroundColor: "var(--destructive)",
-			color: "var(--accent)",
-		},
-	});
-	return;
+	return toastError("Error", error.message);
+}
+
+export async function onError(error: unknown) {
+	if (error instanceof Error) {
+		if (error instanceof AidboxErrorResponse)
+			return await toastAidboxErrorResponse(error);
+
+		if (isOperationOutcome(error.cause))
+			return toastOperationOutcome(error.cause);
+
+		return toastError("Error", error.message);
+	} else {
+		return toastError("Error", "unknown error");
+	}
+}
+
+export async function onMutationError<T>(
+	error: Error,
+	_vars: T,
+	_onMutateResult: unknown,
+	_context: MutationFunctionContext,
+) {
+	return onError(error);
 }

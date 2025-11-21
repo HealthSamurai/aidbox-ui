@@ -24,7 +24,8 @@ export const fetchResource = async (
 				.join("; "),
 			{ cause: responseBody },
 		);
-	else return responseBody;
+
+	return responseBody;
 };
 
 export const fetchResourceHistory = async (
@@ -72,6 +73,15 @@ export const createResource = async (
 			body: JSON.stringify(resource),
 		})
 	).responseBody;
+
+	if (isOperationOutcome(res))
+		throw new Error(
+			parseOperationOutcome(res)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: res },
+		);
+
 	return res;
 };
 
@@ -92,6 +102,15 @@ export const updateResource = async (
 			body: JSON.stringify(resource),
 		})
 	).responseBody;
+
+	if (isOperationOutcome(res))
+		throw new Error(
+			parseOperationOutcome(res)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: res },
+		);
+
 	return res;
 };
 
@@ -100,7 +119,7 @@ export const deleteResource = async (
 	resourceType: string,
 	id: string,
 ) => {
-	return (
+	const res = (
 		await client.request<Resource>({
 			method: "DELETE",
 			url: `/fhir/${resourceType}/${id}`,
@@ -110,4 +129,14 @@ export const deleteResource = async (
 			},
 		})
 	).responseBody;
+
+	if (isOperationOutcome(res))
+		throw new Error(
+			parseOperationOutcome(res)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: res },
+		);
+
+	return res;
 };

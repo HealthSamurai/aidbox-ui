@@ -2,22 +2,6 @@ import type { TreeViewItem } from "@health-samurai/react-components";
 import type { Header, Tab } from "./components/rest/active-tabs";
 import type { Meta, Snapshot } from "./components/ViewDefinition/types";
 
-export function getAidboxBaseURL(): string {
-	const cookies = document.cookie.split("; ");
-	for (const cookie of cookies) {
-		const [name, rest] = cookie.split("=");
-		if (name === "aidbox-base-url") {
-			return decodeURIComponent(rest ?? "");
-		}
-	}
-
-	const vite_base_url = import.meta.env.VITE_AIDBOX_BASE_URL;
-	if (vite_base_url) {
-		return vite_base_url;
-	}
-	return `${window.location.protocol}//${window.location.host}`;
-}
-
 export function parseHttpRequest(rawText: string): {
 	method: string;
 	path: string;

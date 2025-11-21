@@ -128,7 +128,7 @@ const VersionDiffDialog = ({
 			);
 			onOpenChange("hidden");
 		},
-		onError: Utils.toastAidboxErrorResponse,
+		onError: Utils.onMutationError,
 	});
 
 	return (
@@ -215,7 +215,7 @@ const VersionViewDialog = ({
 			);
 			onOpenStateChange("hidden");
 		},
-		onError: Utils.toastAidboxErrorResponse,
+		onError: Utils.onMutationError,
 	});
 
 	const indent = 2;

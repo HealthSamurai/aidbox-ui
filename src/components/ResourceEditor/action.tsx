@@ -31,10 +31,14 @@ export const SaveButton = ({
 			if (id) return await updateResource(client, resourceType, id, resource);
 			return await createResource(client, resourceType, resource);
 		},
-		onError: Utils.toastAidboxErrorResponse,
+		onError: Utils.onMutationError,
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
-			if (!resource.id) throw new Error("Resource ID is undefined");
+			if (!resource.id)
+				return Utils.toastError(
+					"Failed to open saved resource",
+					"resource is missing an ID field",
+				);
 			if (!id)
 				navigate({
 					to: `/resource/$resourceType/edit/$id`,
@@ -71,7 +75,7 @@ export const DeleteButton = ({
 		mutationFn: async () => {
 			return await deleteResource(client, resourceType, id);
 		},
-		onError: Utils.toastAidboxErrorResponse,
+		onError: Utils.onMutationError,
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
 			navigate({
