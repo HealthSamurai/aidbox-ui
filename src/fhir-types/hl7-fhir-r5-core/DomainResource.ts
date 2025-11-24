@@ -15,7 +15,6 @@ export interface DomainResource extends Resource {
 		| "CanonicalResource"
 		| "DomainResource"
 		| "OperationOutcome"
-		| "Patient"
 		| "ViewDefinition"
 		| string;
 

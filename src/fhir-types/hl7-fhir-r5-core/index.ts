@@ -45,13 +45,6 @@ export type {
 } from "./OperationOutcome";
 export { isOperationOutcome } from "./OperationOutcome";
 export type { ParameterDefinition } from "./ParameterDefinition";
-export type {
-	Patient,
-	PatientCommunication,
-	PatientContact,
-	PatientLink,
-} from "./Patient";
-export { isPatient } from "./Patient";
 export type { Period } from "./Period";
 export type { Quantity } from "./Quantity";
 export type { Range } from "./Range";
