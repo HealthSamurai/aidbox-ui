@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
+import { AidboxClientProvider } from "./AidboxClient";
 import { UI_BASE_PATH } from "./shared/const";
 
 const router = createRouter({ basepath: UI_BASE_PATH, routeTree });
@@ -25,7 +26,9 @@ if (root) {
 	createRoot(root).render(
 		<StrictMode>
 			<QueryClientProvider client={queryClient}>
-				<RouterProvider router={router} />
+				<AidboxClientProvider baseurl={"http://localhost:8765"}>
+					<RouterProvider router={router} />
+				</AidboxClientProvider>
 			</QueryClientProvider>
 		</StrictMode>,
 	);

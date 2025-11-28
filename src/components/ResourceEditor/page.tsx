@@ -1,10 +1,12 @@
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
+import { useAidboxClient } from "../../AidboxClient";
 import { DeleteButton, SaveButton } from "./action";
-import { fetchResource, type Resource } from "./api";
+import { fetchResource } from "./api";
 import { EditorTab } from "./editor-tab";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
@@ -23,6 +25,8 @@ interface ResourceEditorPageProps {
 export const ResourceEditorPageWithLoader = (
 	props: ResourceEditorPageProps,
 ) => {
+	const client = useAidboxClient();
+
 	const { resourceType, id } = props;
 
 	const {
@@ -34,7 +38,7 @@ export const ResourceEditorPageWithLoader = (
 		queryKey: [pageId, resourceType, id],
 		queryFn: async () => {
 			if (!id) throw new Error("Impossible");
-			return await fetchResource(resourceType, id);
+			return await fetchResource(client, resourceType, id);
 		},
 		retry: false,
 	});
@@ -60,7 +64,17 @@ export const ResourceEditorPageWithLoader = (
 			</div>
 		);
 	}
-	if (!resourceData) throw new Error("Resource not found");
+
+	if (!resourceData)
+		return (
+			<div className="flex items-center justify-center h-full text-red-500">
+				<div className="text-center">
+					<div className="text-lg mb-2">Failed to load resource</div>
+					<div className="text-sm">Resource not found</div>
+				</div>
+			</div>
+		);
+
 	return <ResourceEditorPage initialResource={resourceData} {...props} />;
 };
 
@@ -73,6 +87,8 @@ export const ResourceEditorPage = ({
 	navigate,
 	initialResource,
 }: ResourceEditorPageProps & { initialResource: Resource }) => {
+	const client = useAidboxClient();
+
 	const [resource, setResource] = React.useState<Resource>(initialResource);
 	const [resourceText, setResourceText] = React.useState<string>(() => {
 		if (mode === "yaml") {
@@ -142,6 +158,7 @@ export const ResourceEditorPage = ({
 					id={id}
 					resource={resourceText}
 					mode={mode}
+					client={client}
 				/>
 			),
 		},
@@ -159,7 +176,9 @@ export const ResourceEditorPage = ({
 			),
 		});
 		actions.push({
-			content: <DeleteButton resourceType={resourceType} id={id} />,
+			content: (
+				<DeleteButton client={client} resourceType={resourceType} id={id} />
+			),
 		});
 	}
 
