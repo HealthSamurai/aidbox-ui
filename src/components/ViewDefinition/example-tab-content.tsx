@@ -1,8 +1,7 @@
-import {
-	type Bundle,
-	type BundleEntry,
-	isOperationOutcome,
-	type Resource,
+import type {
+	Bundle,
+	BundleEntry,
+	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import {
 	Button,
@@ -35,7 +34,7 @@ const searchResources = async (
 		? `/fhir/${resourceType}?${searchParams}`
 		: `/fhir/${resourceType}`;
 
-	const response = await client.request<Bundle>({
+	const result = await client.request<Bundle>({
 		method: "GET",
 		url: url,
 		headers: {
@@ -43,13 +42,13 @@ const searchResources = async (
 		},
 	});
 
-	if (isOperationOutcome(response.responseBody))
-		throw new Error("searchResources error", { cause: response.response });
+	if (result.isErr())
+		throw new Error("searchResources error", { cause: result.error.resource });
 
-	if (response.responseBody.entry && response.responseBody.entry.length > 0) {
-		return response.responseBody.entry.flatMap(
-			(entry: BundleEntry) => entry.resource || [],
-		);
+	const { entry } = result.value.resource;
+
+	if (entry && entry.length > 0) {
+		return entry.flatMap((entry: BundleEntry) => entry.resource || []);
 	} else {
 		return [];
 	}

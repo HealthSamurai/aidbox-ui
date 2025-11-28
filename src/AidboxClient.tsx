@@ -13,7 +13,7 @@ export type User = Resource & {
 	email?: string;
 };
 
-export type AidboxClientR5 = Aidbox.AidboxClient<
+export type AidboxClientR5 = Aidbox.FhirServerClient<
 	Bundle,
 	OperationOutcome,
 	User

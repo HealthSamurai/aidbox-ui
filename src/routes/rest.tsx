@@ -758,7 +758,7 @@ function handleSendRequest(
 			headers,
 			body: selectedTab.body || "",
 		})
-		.then(async (response: AidboxTypes.AidboxRawResponse) => {
+		.then(async (response: AidboxTypes.ResponseWithMeta) => {
 			const responseData = {
 				status: response.response.status,
 				statusText: response.response.statusText,
@@ -774,8 +774,8 @@ function handleSendRequest(
 				),
 			);
 		})
-		.catch(async (error: AidboxTypes.AidboxErrorResponse) => {
-			const cause = error.rawResponse;
+		.catch(async (error: AidboxTypes.ErrorResponse) => {
+			const cause = error.responseWithMeta;
 			const errorMode =
 				cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
 				"text/yaml"

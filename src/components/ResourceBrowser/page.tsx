@@ -1,8 +1,4 @@
-import {
-	type Bundle,
-	isOperationOutcome,
-	type Resource,
-} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
@@ -282,16 +278,16 @@ const ResourcesTabContent = ({
 	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
-			const response = await client.request<Bundle>({
+			const result = await client.request<Bundle>({
 				method: "GET",
 				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
 			});
-			if (isOperationOutcome(response.responseBody))
+			if (result.isErr())
 				throw new Error("error obtaining resource list", {
-					cause: response.responseBody,
+					cause: result.error,
 				});
 
-			const bundle = response.responseBody;
+			const { resource: bundle } = result.value;
 
 			const data =
 				bundle?.entry?.flatMap(({ resource }) => (resource ? resource : [])) ??

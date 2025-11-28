@@ -1,4 +1,3 @@
-import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
@@ -80,19 +79,19 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			};
 			let response: ViewDefinition = viewDefinitionPlaceholder;
 			if (id) {
-				const resp = await fetchViewDefinition(aidboxClient, id);
-				if (isOperationOutcome(resp.responseBody)) {
+				const result = await fetchViewDefinition(aidboxClient, id);
+				if (result.isErr()) {
 					throw new Error(
-						Utils.parseOperationOutcome(resp.responseBody)
+						Utils.parseOperationOutcome(result.error.resource)
 							.map(
 								({ expression, diagnostics }) =>
 									`${expression}: ${diagnostics}`,
 							)
 							.join("; "),
-						{ cause: resp.responseBody },
+						{ cause: result.error.resource },
 					);
 				}
-				response = resp.responseBody;
+				response = result.value.resource;
 			}
 			setResouceTypeForViewDefinition(response.resource);
 			setViewDefinition(response);

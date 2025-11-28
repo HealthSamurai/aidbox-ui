@@ -2,7 +2,7 @@ import type { OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { hasProperty } from "@aidbox-ui/type-utils";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
-import { AidboxErrorResponse } from "@health-samurai/aidbox-client";
+import { ErrorResponse } from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import type { MutationFunctionContext } from "@tanstack/react-query";
 import type { JSX } from "react";
@@ -77,9 +77,9 @@ export function toastOperationOutcome(oo: OperationOutcome) {
 	});
 }
 
-export async function toastAidboxErrorResponse(error: Error) {
-	if (error instanceof AidboxErrorResponse) {
-		const reason: AidboxTypes.AidboxRawResponse = error.rawResponse;
+export async function toastErrorResponse(error: Error) {
+	if (error instanceof ErrorResponse) {
+		const reason: AidboxTypes.ResponseWithMeta = error.responseWithMeta;
 		const body = await reason.response.text();
 		try {
 			const parsed = JSON.parse(body);
@@ -91,8 +91,7 @@ export async function toastAidboxErrorResponse(error: Error) {
 
 export async function onError(error: unknown) {
 	if (error instanceof Error) {
-		if (error instanceof AidboxErrorResponse)
-			return await toastAidboxErrorResponse(error);
+		if (error instanceof ErrorResponse) return await toastErrorResponse(error);
 
 		if (isOperationOutcome(error.cause))
 			return toastOperationOutcome(error.cause);

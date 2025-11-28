@@ -1,6 +1,5 @@
 import { parseOperationOutcome } from "@aidbox-ui/api/utils";
 import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
-import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { AidboxClientR5 } from "../../AidboxClient";
 
 export const fetchResource = async (
@@ -8,7 +7,7 @@ export const fetchResource = async (
 	resourceType: string,
 	id: string,
 ): Promise<Resource> => {
-	const { responseBody } = await client.request<Resource>({
+	const result = await client.request<Resource>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}`,
 		headers: {
@@ -17,15 +16,15 @@ export const fetchResource = async (
 		},
 	});
 
-	if (isOperationOutcome(responseBody))
+	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(responseBody)
+			parseOperationOutcome(result.error.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: responseBody },
+			{ cause: result.error.resource },
 		);
 
-	return responseBody;
+	return result.value.resource;
 };
 
 export const fetchResourceHistory = async (
@@ -33,7 +32,7 @@ export const fetchResourceHistory = async (
 	resourceType: string,
 	id: string,
 ): Promise<Bundle> => {
-	const { responseBody } = await client.request<Bundle>({
+	const result = await client.request<Bundle>({
 		method: "GET",
 		url: `/fhir/${resourceType}/${id}/_history`,
 		headers: {
@@ -46,15 +45,15 @@ export const fetchResourceHistory = async (
 		],
 	});
 
-	if (isOperationOutcome(responseBody))
+	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(responseBody)
+			parseOperationOutcome(result.error.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: responseBody },
+			{ cause: result.error.resource },
 		);
 
-	return responseBody;
+	return result.value.resource;
 };
 
 export const createResource = async (
@@ -62,27 +61,25 @@ export const createResource = async (
 	resourceType: string,
 	resource: Resource,
 ) => {
-	const res = (
-		await client.request<Resource>({
-			method: "POST",
-			url: `/fhir/${resourceType}`,
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(resource),
-		})
-	).responseBody;
+	const result = await client.request<Resource>({
+		method: "POST",
+		url: `/fhir/${resourceType}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+		body: JSON.stringify(resource),
+	});
 
-	if (isOperationOutcome(res))
+	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(res)
+			parseOperationOutcome(result.error.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: res },
+			{ cause: result.error.resource },
 		);
 
-	return res;
+	return result.value.resource;
 };
 
 export const updateResource = async (
@@ -91,27 +88,25 @@ export const updateResource = async (
 	id: string,
 	resource: Resource,
 ) => {
-	const res = (
-		await client.request<Resource>({
-			method: "PUT",
-			url: `/fhir/${resourceType}/${id}`,
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(resource),
-		})
-	).responseBody;
+	const result = await client.request<Resource>({
+		method: "PUT",
+		url: `/fhir/${resourceType}/${id}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+		body: JSON.stringify(resource),
+	});
 
-	if (isOperationOutcome(res))
+	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(res)
+			parseOperationOutcome(result.error.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: res },
+			{ cause: result.error },
 		);
 
-	return res;
+	return result.value.resource;
 };
 
 export const deleteResource = async (
@@ -119,24 +114,22 @@ export const deleteResource = async (
 	resourceType: string,
 	id: string,
 ) => {
-	const res = (
-		await client.request<Resource>({
-			method: "DELETE",
-			url: `/fhir/${resourceType}/${id}`,
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-		})
-	).responseBody;
+	const result = await client.request<Resource>({
+		method: "DELETE",
+		url: `/fhir/${resourceType}/${id}`,
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+	});
 
-	if (isOperationOutcome(res))
+	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(res)
+			parseOperationOutcome(result.error.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: res },
+			{ cause: result.error.resource },
 		);
 
-	return res;
+	return result.value.resource;
 };

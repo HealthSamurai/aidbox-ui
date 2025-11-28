@@ -1,7 +1,4 @@
-import type { OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
-import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -74,13 +71,11 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				body: JSON.stringify(viewDefinition),
 			});
 		},
-		onSuccess: (
-			resp: AidboxTypes.AidboxResponse<ViewDefinition | OperationOutcome>,
-		) => {
-			if (isOperationOutcome(resp.responseBody)) {
-				return Utils.toastOperationOutcome(resp.responseBody);
-			}
-			const id = resp.responseBody.id;
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.error.resource);
+
+			const id = result.value.resource.id;
 			if (!id)
 				return Utils.toastError(
 					"Error saving ViewDefinition",
@@ -132,14 +127,12 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: async (
-			data: AidboxTypes.AidboxResponse<RunResult | OperationOutcome>,
-		) => {
-			const body = data.responseBody;
-			if (isOperationOutcome(body)) {
-				Utils.toastOperationOutcome(body);
+		onSuccess: async (result) => {
+			if (result.isErr()) {
+				Utils.toastOperationOutcome(result.error.resource);
 			} else {
-				const decodedData = atob(body.data);
+				const { data } = result.value.resource;
+				const decodedData = atob(data);
 				viewDefinitionContext.setRunResult(decodedData);
 				HSComp.toast.success("ViewDefinition run successfully", {
 					position: "bottom-right",

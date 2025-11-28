@@ -1,3 +1,4 @@
+import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 import { useAidboxClient } from "../AidboxClient";
@@ -34,7 +35,25 @@ export function useUIHistory() {
 
 	return useQuery({
 		queryKey: ["uiHistory"],
-		queryFn: client.fetchUIHistory,
+		queryFn: async () => {
+			const result = await client.request<Bundle>({
+				method: "GET",
+				url: "/fhir/ui_history",
+				params: [
+					[".type", "http"],
+					["_sort", "-_lastUpdated"],
+					["_count", "100"],
+				],
+			});
+
+			if (result.isOk()) {
+				const { resource: history } = result.value;
+				return history;
+			} else {
+				const { resource: oo } = result.error;
+				throw new Error("error fetching history", { cause: oo });
+			}
+		},
 		refetchOnWindowFocus: false,
 		staleTime: 30000, // 30 seconds
 	});

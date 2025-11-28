@@ -7,16 +7,17 @@ import { ViewDefinitionResourceTypeContext } from "./page";
 import type * as Types from "./types";
 
 const fetchResourceTypes = async (client: AidboxClientR5) => {
-	return (
-		await client.request<Types.ResourceTypesResponse>({
-			method: "GET",
-			url: "/$resource-types",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-		})
-	).responseBody;
+	const result = await client.request<Types.ResourceTypesResponse>({
+		method: "GET",
+		url: "/$resource-types",
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+	});
+	if (result.isErr())
+		throw new Error("error fetching resource types", { cause: result.error });
+	return result.value;
 };
 
 export const ResourceTypeSelect = () => {
