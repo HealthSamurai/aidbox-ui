@@ -1,4 +1,4 @@
-import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 import { useAidboxClient } from "../AidboxClient";
@@ -50,7 +50,7 @@ export function useUIHistory() {
 				const { resource: history } = result.value;
 				return history;
 			} else {
-				const { resource: oo } = result.error;
+				const { resource: oo } = result.value;
 				throw new Error("error fetching history", { cause: oo });
 			}
 		},

@@ -43,7 +43,7 @@ const searchResources = async (
 	});
 
 	if (result.isErr())
-		throw new Error("searchResources error", { cause: result.error.resource });
+		throw new Error("searchResources error", { cause: result.value.resource });
 
 	const { entry } = result.value.resource;
 

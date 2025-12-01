@@ -73,7 +73,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 		},
 		onSuccess: (result) => {
 			if (result.isErr())
-				return Utils.toastOperationOutcome(result.error.resource);
+				return Utils.toastOperationOutcome(result.value.resource);
 
 			const id = result.value.resource.id;
 			if (!id)
@@ -129,7 +129,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 		},
 		onSuccess: async (result) => {
 			if (result.isErr()) {
-				Utils.toastOperationOutcome(result.error.resource);
+				Utils.toastOperationOutcome(result.value.resource);
 			} else {
 				const { data } = result.value.resource;
 				const decodedData = atob(data);

@@ -18,10 +18,10 @@ export const fetchResource = async (
 
 	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(result.error.resource)
+			parseOperationOutcome(result.value.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: result.error.resource },
+			{ cause: result.value.resource },
 		);
 
 	return result.value.resource;
@@ -47,10 +47,10 @@ export const fetchResourceHistory = async (
 
 	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(result.error.resource)
+			parseOperationOutcome(result.value.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: result.error.resource },
+			{ cause: result.value.resource },
 		);
 
 	return result.value.resource;
@@ -73,10 +73,10 @@ export const createResource = async (
 
 	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(result.error.resource)
+			parseOperationOutcome(result.value.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: result.error.resource },
+			{ cause: result.value.resource },
 		);
 
 	return result.value.resource;
@@ -100,10 +100,10 @@ export const updateResource = async (
 
 	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(result.error.resource)
+			parseOperationOutcome(result.value.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: result.error },
+			{ cause: result.value },
 		);
 
 	return result.value.resource;
@@ -125,10 +125,10 @@ export const deleteResource = async (
 
 	if (result.isErr())
 		throw new Error(
-			parseOperationOutcome(result.error.resource)
+			parseOperationOutcome(result.value.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: result.error.resource },
+			{ cause: result.value.resource },
 		);
 
 	return result.value.resource;

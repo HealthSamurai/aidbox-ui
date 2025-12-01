@@ -284,7 +284,7 @@ const ResourcesTabContent = ({
 			});
 			if (result.isErr())
 				throw new Error("error obtaining resource list", {
-					cause: result.error,
+					cause: result.value,
 				});
 
 			const { resource: bundle } = result.value;

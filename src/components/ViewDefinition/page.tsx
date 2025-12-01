@@ -82,13 +82,13 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 				const result = await fetchViewDefinition(aidboxClient, id);
 				if (result.isErr()) {
 					throw new Error(
-						Utils.parseOperationOutcome(result.error.resource)
+						Utils.parseOperationOutcome(result.value.resource)
 							.map(
 								({ expression, diagnostics }) =>
 									`${expression}: ${diagnostics}`,
 							)
 							.join("; "),
-						{ cause: result.error.resource },
+						{ cause: result.value.resource },
 					);
 				}
 				response = result.value.resource;

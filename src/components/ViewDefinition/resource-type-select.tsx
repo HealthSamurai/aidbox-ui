@@ -16,7 +16,9 @@ const fetchResourceTypes = async (client: AidboxClientR5) => {
 		},
 	});
 	if (result.isErr())
-		throw new Error("error fetching resource types", { cause: result.error });
+		throw new Error("error fetching resource types", {
+			cause: result.value.resource,
+		});
 	return result.value;
 };
 
