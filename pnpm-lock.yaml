@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@health-samurai/aidbox-client': link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-client
-
 importers:
 
   .:
@@ -21,8 +18,8 @@ importers:
         specifier: ^0.0.30
         version: 0.0.30(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@health-samurai/aidbox-client':
-        specifier: link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-client
-        version: link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-client
+        specifier: 0.0.0-alpha.2
+        version: 0.0.0-alpha.2
       '@health-samurai/react-components':
         specifier: ^0.0.0-alpha.10
         version: 0.0.0-alpha.10(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)
@@ -549,6 +546,9 @@ packages:
       '@headless-tree/core': '*'
       react: '*'
       react-dom: '*'
+
+  '@health-samurai/aidbox-client@0.0.0-alpha.2':
+    resolution: {integrity: sha512-mols3sjKuAgO8G89qlDqP+KZSczdS8mBroIPP8yYBSNX2av/MtPBH3J+PmLMVJBKR14uUSNBiU9FgUxJB179AA==}
 
   '@health-samurai/react-components@0.0.0-alpha.10':
     resolution: {integrity: sha512-qOSASA7b8wL2FM+bjnisHXgaJQ4QWqh4M19KAl3tJJj7fuFVaDSjaD4ORxmC4xncqpEZGqqMtIekDiHrFmgC2A==}
@@ -3310,6 +3310,10 @@ snapshots:
       '@headless-tree/core': 1.5.1
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
+
+  '@health-samurai/aidbox-client@0.0.0-alpha.2':
+    dependencies:
+      yaml: 2.8.1
 
   '@health-samurai/react-components@0.0.0-alpha.10(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)':
     dependencies:

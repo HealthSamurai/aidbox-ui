@@ -1,6 +1,5 @@
 import type * as Aidbox from "@health-samurai/aidbox-client";
-import { makeClient } from "@health-samurai/aidbox-client";
-import { redirect } from "@tanstack/react-router";
+import { makeClient, BrowserAuthProvider } from "@health-samurai/aidbox-client";
 import * as React from "react";
 import type {
 	Bundle,
@@ -13,7 +12,7 @@ export type User = Resource & {
 	email?: string;
 };
 
-export type AidboxClientR5 = Aidbox.FhirServerClient<
+export type AidboxClientR5 = Aidbox.AidboxClient<
 	Bundle,
 	OperationOutcome,
 	User
@@ -28,25 +27,13 @@ export type AidboxClientProviderProps = {
 	children: React.ReactNode;
 };
 
-function makeAuthHandler(baseurl: string) {
-	return (response: Response): void => {
-		if (response.status === 401 || response.status === 403) {
-			const encodedLocation = btoa(window.location.href);
-			const redirectTo = `${baseurl}/auth/login?redirect_to=${encodedLocation}`;
-			window.location.href = redirectTo;
-			// FIXME: doesn't work without window.location.href
-			throw redirect({ href: redirectTo });
-		}
-	};
-}
-
 export function AidboxClientProvider({
 	baseurl,
 	children,
 }: AidboxClientProviderProps): React.JSX.Element {
 	const client = makeClient<Bundle, OperationOutcome, User>({
-		baseurl,
-		onResponse: makeAuthHandler(baseurl),
+		baseUrl: baseurl,
+		authProvider: new BrowserAuthProvider(baseurl),
 	});
 
 	return (

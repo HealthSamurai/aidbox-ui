@@ -1,6 +1,0 @@
-onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
-  - esbuild
-
-overrides:
-  '@health-samurai/aidbox-client': link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-client
