@@ -8,7 +8,7 @@ export function useUserInfo() {
 
 	return useQuery({
 		queryKey: ["userInfo"],
-		queryFn: client.fetchUserInfo,
+		queryFn: client.userinfo,
 		refetchOnWindowFocus: false,
 	});
 }
@@ -18,7 +18,7 @@ export function useLogout() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: client.performLogout,
+		mutationFn: client.logout,
 		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: ["userInfo"] });
 			const encodedLocation = btoa(window.location.href);

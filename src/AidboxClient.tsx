@@ -1,5 +1,8 @@
 import type * as Aidbox from "@health-samurai/aidbox-client";
-import { makeClient, BrowserAuthProvider } from "@health-samurai/aidbox-client";
+import {
+	AidboxClient,
+	BrowserAuthProvider,
+} from "@health-samurai/aidbox-client";
 import * as React from "react";
 import type {
 	Bundle,
@@ -31,10 +34,10 @@ export function AidboxClientProvider({
 	baseurl,
 	children,
 }: AidboxClientProviderProps): React.JSX.Element {
-	const client = makeClient<Bundle, OperationOutcome, User>({
-		baseUrl: baseurl,
-		authProvider: new BrowserAuthProvider(baseurl),
-	});
+	const client = new AidboxClient<Bundle, OperationOutcome, User>(
+		baseurl,
+		new BrowserAuthProvider(baseurl),
+	);
 
 	return (
 		<AidboxClientContext.Provider value={client}>
