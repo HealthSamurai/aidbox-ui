@@ -13,7 +13,9 @@ export const CodeEditorFormatSelect = ({
 		<HSComp.SegmentControl
 			defaultValue={mode}
 			name="code-editor-menu"
-			onValueChange={(value) => onModeChange(value as "json" | "yaml")}
+			onValueChange={(value) =>
+				onModeChange(value as Types.ViewDefinitionEditorMode)
+			}
 		>
 			<HSComp.SegmentControlItem value="json">JSON</HSComp.SegmentControlItem>
 			<HSComp.SegmentControlItem value="yaml">YAML</HSComp.SegmentControlItem>

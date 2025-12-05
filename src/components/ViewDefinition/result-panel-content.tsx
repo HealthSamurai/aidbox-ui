@@ -1,3 +1,5 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	type AccessorKeyColumnDef,
 	Button,
@@ -12,9 +14,9 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
+import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import { ViewDefinitionContext } from "./page";
-import type * as Types from "./types";
 
 interface ProcessedTableData {
 	tableData: Record<string, unknown>[];
@@ -226,6 +228,8 @@ const ResultPagination = ({
 };
 
 export function ResultPanel() {
+	const client = useAidboxClient();
+
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
@@ -241,7 +245,7 @@ export function ResultPanel() {
 			page,
 			pageSize,
 		}: {
-			viewDefinition: Types.ViewDefinition | undefined;
+			viewDefinition: ViewDefinition | undefined;
 			page: number;
 			pageSize: number;
 		}) => {
@@ -254,7 +258,7 @@ export function ResultPanel() {
 					{ name: "_page", valueInteger: page },
 				],
 			};
-			return AidboxCallWithMeta({
+			return client.rawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {
@@ -264,11 +268,11 @@ export function ResultPanel() {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: (data) => {
-			const decodedData = atob(JSON.parse(data.body).data);
+		onSuccess: async (data: AidboxTypes.ResponseWithMeta) => {
+			const decodedData = atob((await data.response.json()).data);
 			viewDefinitionContext.setRunResult(decodedData);
 		},
-		onError: () => {},
+		onError: Utils.onMutationError,
 	});
 
 	const handlePageChange = (direction: "next" | "previous") => {

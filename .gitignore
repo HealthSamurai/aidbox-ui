@@ -2,3 +2,5 @@
 /dist
 .DS_Store
 /.tanstack
+/tmp
+/.codegen-cache/
