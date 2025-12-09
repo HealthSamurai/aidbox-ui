@@ -4,7 +4,7 @@ import {
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { transformSnapshotToTree } from "../../utils";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
@@ -21,9 +21,10 @@ interface SchemaData {
 }
 
 const fetchSchema = async (
+	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Array<Snapshot> | undefined> => {
-	const response = await AidboxCallWithMeta({
+	const response = await client.rawRequest({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
 		headers: {
@@ -35,7 +36,7 @@ const fetchSchema = async (
 		}),
 	});
 
-	const data: SchemaData = JSON.parse(response.body);
+	const data: SchemaData = await response.response.json();
 
 	if (!data?.result) return undefined;
 
@@ -47,6 +48,8 @@ const fetchSchema = async (
 };
 
 export function SchemaTabContent() {
+	const client = useAidboxClient();
+
 	const viewDefinitionTypeContext = useContext(
 		ViewDefinitionResourceTypeContext,
 	);
@@ -57,7 +60,7 @@ export function SchemaTabContent() {
 		queryKey: [viewDefinitionResourceType, Constants.PageID],
 		queryFn: () => {
 			if (!viewDefinitionResourceType) return;
-			return fetchSchema(viewDefinitionResourceType);
+			return fetchSchema(client, viewDefinitionResourceType);
 		},
 		retry: false,
 		refetchOnWindowFocus: false,

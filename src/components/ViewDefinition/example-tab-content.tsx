@@ -1,3 +1,7 @@
+import type {
+	BundleEntry,
+	Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import {
 	Button,
 	CodeEditor,
@@ -7,39 +11,37 @@ import {
 	TabsContent,
 } from "@health-samurai/react-components";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext, useState } from "react";
-import { AidboxCall } from "../../api/auth";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
+import * as Utils from "../../utils";
 import * as Constants from "./constants";
 import {
 	ViewDefinitionContext,
 	ViewDefinitionResourceTypeContext,
 } from "./page";
 import { SearchBar } from "./search-bar";
+import type { ViewDefinitionEditorMode } from "./types";
 
 const searchResources = async (
+	client: AidboxClientR5,
 	resourceType: string,
 	searchParams: string,
-): Promise<Record<string, unknown>[]> => {
-	const url = searchParams.trim()
-		? `/fhir/${resourceType}?${searchParams}`
-		: `/fhir/${resourceType}`;
-
-	const response = await AidboxCall<{
-		entry?: Array<{ resource: Record<string, unknown> }>;
-	}>({
-		method: "GET",
-		url: url,
-		headers: {
-			Accept: "application/json",
-		},
+): Promise<Resource[]> => {
+	const result = await client.searchType({
+		type: resourceType,
+		query: searchParams.trim() ? Utils.formatSearchQuery(searchParams) : [],
 	});
 
-	if (response?.entry && response.entry.length > 0) {
-		return response.entry.map((entry) => entry.resource);
+	if (result.isErr())
+		throw new Error("searchResources error", { cause: result.value.resource });
+
+	const { entry } = result.value.resource;
+
+	if (entry && entry.length > 0) {
+		return entry.flatMap((entry: BundleEntry) => entry.resource || []);
 	} else {
 		return [];
 	}
@@ -54,8 +56,8 @@ const ExampleTabEditorMenu = ({
 	canGoToPrevious,
 	canGoToNext,
 }: {
-	mode: "json" | "yaml";
-	onModeChange: (mode: "json" | "yaml") => void;
+	mode: ViewDefinitionEditorMode;
+	onModeChange: (mode: ViewDefinitionEditorMode) => void;
 	textToCopy: string;
 	onPrevious: () => void;
 	onNext: () => void;
@@ -67,7 +69,9 @@ const ExampleTabEditorMenu = ({
 			<SegmentControl
 				defaultValue={mode}
 				name="example-editor-menu"
-				onValueChange={(value) => onModeChange(value as "json" | "yaml")}
+				onValueChange={(value) =>
+					onModeChange(value as ViewDefinitionEditorMode)
+				}
 			>
 				<SegmentControlItem value="json">JSON</SegmentControlItem>
 				<SegmentControlItem value="yaml">YAML</SegmentControlItem>
@@ -97,6 +101,7 @@ const ExampleTabEditorMenu = ({
 };
 
 export function ExampleTabContent() {
+	const aidboxClient = useAidboxClient();
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const viewDefinitionTypeContext = useContext(
 		ViewDefinitionResourceTypeContext,
@@ -106,10 +111,11 @@ export function ExampleTabContent() {
 	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 
 	const [currentResultIndex, setCurrentResultIndex] = useState(0);
-	const [exampleMode, setExampleMode] = useLocalStorage<"json" | "yaml">({
-		key: `viewDefinition-infoPanel-exampleMode`,
-		defaultValue: "json",
-	});
+	const [exampleMode, setExampleMode] =
+		useLocalStorage<ViewDefinitionEditorMode>({
+			key: `viewDefinition-infoPanel-exampleMode`,
+			defaultValue: "json",
+		});
 
 	const [query, setQuery] = useState("");
 	const queryClient = useQueryClient();
@@ -119,6 +125,7 @@ export function ExampleTabContent() {
 		queryFn: async () => {
 			if (!viewDefinitionResourceType) return;
 			const resources = await searchResources(
+				aidboxClient,
 				viewDefinitionResourceType,
 				query,
 			);

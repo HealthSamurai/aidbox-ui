@@ -1,3 +1,4 @@
+import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as ReactComponents from "@health-samurai/react-components";
 import {
 	type QueryClient,
@@ -6,37 +7,39 @@ import {
 } from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
 import * as React from "react";
-import * as Auth from "../../api/auth";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import { onError } from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
 import { parseHttpRequest } from "../../utils";
 import * as ActiveTabs from "./active-tabs";
 import { methodColors, type Tab } from "./active-tabs";
 
-export interface CollectionEntry {
-	id: string;
+export type CollectionEntry = Resource & {
 	type: string;
 	command: string;
 	title?: string;
 	collection?: string;
-}
-
-type FhirSearchBundle<T> = {
-	entry?: {
-		resource: T;
-	}[];
 };
 
-export async function getCollectionsEntries(): Promise<CollectionEntry[]> {
-	const response = await Auth.AidboxCallWithMeta({
+export async function getCollectionsEntries(
+	client: AidboxClientR5,
+): Promise<CollectionEntry[]> {
+	const response = await client.rawRequest({
 		method: "GET",
 		url: `/ui_snippet`,
 	});
-	const bundle = JSON.parse(response.body) as FhirSearchBundle<CollectionEntry>;
-	return bundle.entry?.map((entry) => entry.resource) ?? [];
+	const bundle: Bundle = await response.response.json();
+	return (
+		bundle.entry?.flatMap(({ resource }) => {
+			if (resource) return resource as CollectionEntry;
+			return [];
+		}) ?? []
+	);
 }
 
 async function SaveRequest(
+	client: AidboxClientR5,
 	tab: Tab,
 	queryClient: QueryClient,
 	collectionEntries: CollectionEntry[],
@@ -77,14 +80,14 @@ async function SaveRequest(
 		snippetId = tab.id;
 	}
 
-	const result = await Auth.AidboxCallWithMeta({
-		method: "PUT",
-		url: `/ui_snippet/${snippetId}`,
-		body: JSON.stringify({
+	const result = await client.update({
+		type: "ui_snippet",
+		id: snippetId,
+		resource: {
 			type: "http",
 			command: Utils.generateHttpRequest(tab),
 			...(collection ? { collection } : {}),
-		}),
+		},
 	});
 	setSelectedCollectionItemId(snippetId);
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
@@ -122,6 +125,7 @@ export const SaveButton = ({
 	setTabs: (tabs: Tab[]) => void;
 	setLeftMenuOpen: (open: boolean) => void;
 }) => {
+	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	return (
 		<ReactComponents.SplitButton>
@@ -129,6 +133,7 @@ export const SaveButton = ({
 				variant="secondary"
 				onClick={() => {
 					SaveRequest(
+						client,
 						tab,
 						queryClient,
 						collectionEntries.data ?? [],
@@ -180,6 +185,7 @@ export const SaveButton = ({
 									key={collectionName}
 									onClick={() => {
 										SaveRequest(
+											client,
 											tab,
 											queryClient,
 											collectionEntries.data ?? [],
@@ -202,6 +208,7 @@ export const SaveButton = ({
 							variant="link"
 							onClick={() => {
 								SaveRequest(
+									client,
 									tab,
 									queryClient,
 									collectionEntries.data ?? [],
@@ -256,34 +263,42 @@ function buildTreeView(
 		},
 	};
 
-	entries.forEach((entry) => {
-		const parsedCommand = parseHttpRequest(entry.command);
-		tree[entry.id] = {
-			name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
-			meta: {
-				...parsedCommand,
-				...(entry.title ? { title: entry.title } : {}),
-				id: entry.id,
-			},
-		};
-		if (entry.collection) {
-			if (tree[entry.collection]) {
-				tree[entry.collection]?.children?.push(entry.id);
+	try {
+		entries.forEach((entry) => {
+			const parsedCommand = parseHttpRequest(entry.command);
+			if (!entry.id)
+				throw new Error("missing id in collection entry", { cause: entry });
+
+			tree[entry.id] = {
+				name: entry.title ?? `${parsedCommand.method} ${parsedCommand.path}`,
+				meta: {
+					...parsedCommand,
+					...(entry.title ? { title: entry.title } : {}),
+					id: entry.id,
+				},
+			};
+			if (entry.collection) {
+				if (tree[entry.collection]) {
+					tree[entry.collection]?.children?.push(entry.id);
+				} else {
+					tree[entry.collection] = {
+						name: entry.collection,
+						children: [entry.id],
+					};
+				}
 			} else {
-				tree[entry.collection] = {
-					name: entry.collection,
-					children: [entry.id],
-				};
+				tree.root?.children?.push(entry.id);
 			}
-		} else {
-			tree.root?.children?.push(entry.id);
-		}
-	});
+		});
+	} catch (e) {
+		onError(e);
+	}
 
 	return tree;
 }
 
 async function handleAddNewCollectionEntry(
+	client: AidboxClientR5,
 	collectionName: string,
 	queryClient: QueryClient,
 	setSelectedCollectionItemId: (id: string) => void,
@@ -291,29 +306,30 @@ async function handleAddNewCollectionEntry(
 	tabs: Tab[],
 ) {
 	const newTab = ActiveTabs.addTab(tabs, setTabs);
-	await Auth.AidboxCallWithMeta({
-		method: "PUT",
-		url: `/ui_snippet/${newTab.id}`,
-		body: JSON.stringify({
+	await client.update({
+		type: "ui_snippet",
+		id: newTab.id,
+		resource: {
 			type: "http",
 			collection: collectionName,
 			command: Utils.generateHttpRequest(newTab),
-		}),
+		},
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	setSelectedCollectionItemId(newTab.id);
 }
 
 async function handleDeleteSnippet(
+	client: AidboxClientR5,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 	_tabs: Tab[],
 	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
 	if (itemData?.meta?.id) {
-		await Auth.AidboxCallWithMeta({
-			method: "DELETE",
-			url: `/ui_snippet/${itemData.meta.id}`,
+		await client.delete({
+			type: "ui_snippet",
+			id: itemData.meta.id,
 		});
 	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
@@ -321,18 +337,18 @@ async function handleDeleteSnippet(
 }
 
 async function handleDeleteCollection(
+	client: AidboxClientR5,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 ) {
-	await Auth.AidboxCallWithMeta({
+	// FIXME: client doesn't accept additional headers
+	await client.request({
 		method: "DELETE",
 		url: `/ui_snippet`,
 		headers: {
 			"x-conditional-delete": "remove-all",
 		},
-		params: {
-			id: itemData.children?.join(",") ?? "",
-		},
+		params: [["id", itemData.children?.join(",") ?? ""]],
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
@@ -348,6 +364,7 @@ function CollectionMoreButton({
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>;
 	itemId: string;
 }) {
+	const client = useAidboxClient();
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
 	return (
@@ -402,7 +419,7 @@ function CollectionMoreButton({
 							variant="primary"
 							danger
 							onClick={() => {
-								handleDeleteCollection(itemData, queryClient);
+								handleDeleteCollection(client, itemData, queryClient);
 								setIsAlertDialogOpen(false);
 							}}
 							asChild
@@ -431,6 +448,7 @@ function SnippetMoreButton({
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	tree: ReactComponents.TreeInstance<ReactComponents.TreeViewItem<ItemMeta>>;
 }) {
+	const client = useAidboxClient();
 	const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState(false);
 
 	return (
@@ -489,7 +507,13 @@ function SnippetMoreButton({
 							variant="primary"
 							danger
 							onClick={() => {
-								handleDeleteSnippet(itemData, queryClient, tabs, setTabs);
+								handleDeleteSnippet(
+									client,
+									itemData,
+									queryClient,
+									tabs,
+									setTabs,
+								);
 								setIsAlertDialogOpen(false);
 							}}
 							asChild
@@ -506,6 +530,7 @@ function SnippetMoreButton({
 }
 
 function customItemView(
+	client: AidboxClientR5,
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 	tabs: Tab[],
@@ -541,6 +566,7 @@ function customItemView(
 									e.stopPropagation();
 									e.preventDefault();
 									handleAddNewCollectionEntry(
+										client,
 										itemData?.name,
 										queryClient,
 										setSelectedCollectionItemId,
@@ -637,6 +663,7 @@ const NoCollectionsView = ({
 	setTabs: (tabs: Tab[]) => void;
 	tabs: Tab[];
 }) => {
+	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	if (selectedTab) {
 		return (
@@ -649,6 +676,7 @@ const NoCollectionsView = ({
 						variant="link"
 						onClick={() =>
 							SaveRequest(
+								client,
 								selectedTab,
 								queryClient,
 								collectionEntries,
@@ -671,16 +699,16 @@ const NoCollectionsView = ({
 };
 
 async function handleRenameSnippet(
+	client: AidboxClientR5,
 	item: ReactComponents.ItemInstance<ReactComponents.TreeViewItem<ItemMeta>>,
 	newTitle: string,
 	queryClient: QueryClient,
 ) {
 	if (item.isFolder()) {
 		const snippetIds = item.getChildren().map((child) => child.getId());
-		await Auth.AidboxCallWithMeta({
-			method: "POST",
-			url: `/`,
-			body: JSON.stringify({
+		await client.transaction({
+			format: "application/json",
+			bundle: {
 				resourceType: "Bundle",
 				type: "transaction",
 				entry: snippetIds.map((id) => ({
@@ -693,10 +721,11 @@ async function handleRenameSnippet(
 						collection: newTitle,
 					},
 				})),
-			}),
+			},
 		});
 	} else {
-		await Auth.AidboxCallWithMeta({
+		// FIXME: client.patch expects a JSON-patch object
+		await client.request({
 			method: "PATCH",
 			url: `/ui_snippet/${item.getItemData().meta?.id}`,
 			body: JSON.stringify({
@@ -719,6 +748,7 @@ export const CollectionsView = ({
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
 }) => {
+	const client = useAidboxClient();
 	const [pinnedCollections, setPinnedCollections] = useLocalStorage<string[]>({
 		key: "rest-console-pinned-collections",
 		defaultValue: [],
@@ -751,10 +781,11 @@ export const CollectionsView = ({
 						rootItemId="root"
 						items={tree}
 						onRename={(item, newTitle) => {
-							handleRenameSnippet(item, newTitle, queryClient);
+							handleRenameSnippet(client, item, newTitle, queryClient);
 						}}
 						customItemView={(data, tree) =>
 							customItemView(
+								client,
 								data,
 								setTabs,
 								tabs,
