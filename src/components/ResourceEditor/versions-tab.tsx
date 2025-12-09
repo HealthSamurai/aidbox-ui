@@ -103,14 +103,10 @@ const VersionDiffDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return client.request({
-				method: "PUT",
-				url: `/fhir/${resourceType}/${resourceId}`,
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: resource,
+			return client.update({
+				type: resourceType,
+				id: resourceId,
+				resource: resource,
 			});
 		},
 		onSuccess: () => {
@@ -190,14 +186,10 @@ const VersionViewDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return client.request({
-				method: "PUT",
-				url: `/fhir/${resourceType}/${resourceId}`,
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: resource,
+			return client.update({
+				type: resourceType,
+				id: resourceId,
+				resource: resource,
 			});
 		},
 		onSuccess: () => {

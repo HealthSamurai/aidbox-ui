@@ -332,3 +332,12 @@ export function transformSnapshotToTree(
 
 	return tree;
 }
+
+// FIXME: remove this after migrating everywhere to passing search queries as [string, string][]
+export function formatSearchQuery(q: string): [string, string][] {
+	return q.split("&").flatMap((sub: string) => {
+		const [name, val] = sub.split("=");
+		if (name && val) return [[name, val]];
+		return [];
+	});
+}

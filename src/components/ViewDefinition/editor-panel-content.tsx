@@ -48,11 +48,13 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 
 	const viewDefinitionMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
-			return client.request({
-				method: "PUT",
-				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
-				body: JSON.stringify(viewDefinition),
-			});
+			if (viewDefinitionContext.originalId)
+				return client.update({
+					type: "ViewDefinition",
+					id: viewDefinitionContext.originalId,
+					resource: viewDefinition,
+				});
+			throw Error("missing originalId in the ViewDefinitionContext");
 		},
 		onSuccess: () => {
 			HSComp.toast.success("ViewDefinition saved successfully", {
@@ -65,10 +67,9 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 
 	const viewDefinitionCreateMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
-			return client.request<ViewDefinition>({
-				method: "POST",
-				url: `/fhir/ViewDefinition/`,
-				body: JSON.stringify(viewDefinition),
+			return client.create<ViewDefinition>({
+				type: "ViewDefinition",
+				resource: viewDefinition,
 			});
 		},
 		onSuccess: (result) => {

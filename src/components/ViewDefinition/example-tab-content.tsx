@@ -1,5 +1,4 @@
 import type {
-	Bundle,
 	BundleEntry,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
@@ -17,6 +16,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
+import * as Utils from "../../utils";
 import * as Constants from "./constants";
 import {
 	ViewDefinitionContext,
@@ -30,16 +30,9 @@ const searchResources = async (
 	resourceType: string,
 	searchParams: string,
 ): Promise<Resource[]> => {
-	const url = searchParams.trim()
-		? `/fhir/${resourceType}?${searchParams}`
-		: `/fhir/${resourceType}`;
-
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: url,
-		headers: {
-			Accept: "application/json",
-		},
+	const result = await client.searchType({
+		type: resourceType,
+		query: searchParams.trim() ? Utils.formatSearchQuery(searchParams) : [],
 	});
 
 	if (result.isErr())

@@ -11,9 +11,9 @@ import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
 
 const fetchViewDefinition = (client: AidboxClientR5, id: string) => {
-	return client.request<ViewDefinition>({
-		method: "GET",
-		url: `/fhir/ViewDefinition/${id}`,
+	return client.read<ViewDefinition>({
+		type: "ViewDefinition",
+		id: id,
 	});
 };
 

@@ -80,14 +80,14 @@ async function SaveRequest(
 		snippetId = tab.id;
 	}
 
-	const result = await client.request({
-		method: "PUT",
-		url: `/ui_snippet/${snippetId}`,
-		body: JSON.stringify({
+	const result = await client.update({
+		type: "ui_snippet",
+		id: snippetId,
+		resource: {
 			type: "http",
 			command: Utils.generateHttpRequest(tab),
 			...(collection ? { collection } : {}),
-		}),
+		},
 	});
 	setSelectedCollectionItemId(snippetId);
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
@@ -306,14 +306,14 @@ async function handleAddNewCollectionEntry(
 	tabs: Tab[],
 ) {
 	const newTab = ActiveTabs.addTab(tabs, setTabs);
-	await client.request({
-		method: "PUT",
-		url: `/ui_snippet/${newTab.id}`,
-		body: JSON.stringify({
+	await client.update({
+		type: "ui_snippet",
+		id: newTab.id,
+		resource: {
 			type: "http",
 			collection: collectionName,
 			command: Utils.generateHttpRequest(newTab),
-		}),
+		},
 	});
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	setSelectedCollectionItemId(newTab.id);
@@ -327,9 +327,9 @@ async function handleDeleteSnippet(
 	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
 	if (itemData?.meta?.id) {
-		await client.request({
-			method: "DELETE",
-			url: `/ui_snippet/${itemData.meta.id}`,
+		await client.delete({
+			type: "ui_snippet",
+			id: itemData.meta.id,
 		});
 	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
@@ -341,6 +341,7 @@ async function handleDeleteCollection(
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
 ) {
+	// FIXME: client doesn't accept additional headers
 	await client.request({
 		method: "DELETE",
 		url: `/ui_snippet`,
@@ -705,10 +706,9 @@ async function handleRenameSnippet(
 ) {
 	if (item.isFolder()) {
 		const snippetIds = item.getChildren().map((child) => child.getId());
-		await client.request({
-			method: "POST",
-			url: `/`,
-			body: JSON.stringify({
+		await client.transaction({
+			format: "application/json",
+			bundle: {
 				resourceType: "Bundle",
 				type: "transaction",
 				entry: snippetIds.map((id) => ({
@@ -721,9 +721,10 @@ async function handleRenameSnippet(
 						collection: newTitle,
 					},
 				})),
-			}),
+			},
 		});
 	} else {
+		// FIXME: client.patch expects a JSON-patch object
 		await client.request({
 			method: "PATCH",
 			url: `/ui_snippet/${item.getItemData().meta?.id}`,

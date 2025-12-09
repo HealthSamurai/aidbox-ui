@@ -260,14 +260,6 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 	);
 };
 
-const formatSearchQuery = (q: string): [string, string][] => {
-	return q.split("&").flatMap((sub: string) => {
-		const [name, val] = sub.split("=");
-		if (name && val) return [[name, val]];
-		return [];
-	});
-};
-
 const ResourcesTabContent = ({
 	client,
 	resourceType,
@@ -288,7 +280,7 @@ const ResourcesTabContent = ({
 		queryFn: async () => {
 			const result = await client.searchType({
 				type: resourcesPageContext.resourceType,
-				query: formatSearchQuery(decodedSearchQuery),
+				query: Utils.formatSearchQuery(decodedSearchQuery),
 			});
 			if (result.isErr())
 				throw new Error("error obtaining resource list", {
