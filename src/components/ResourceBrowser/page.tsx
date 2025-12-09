@@ -1,4 +1,4 @@
-import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
@@ -260,6 +260,14 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 	);
 };
 
+const formatSearchQuery = (q: string): [string, string][] => {
+	return q.split("&").flatMap((sub: string) => {
+		const [name, val] = sub.split("=");
+		if (name && val) return [[name, val]];
+		return [];
+	});
+};
+
 const ResourcesTabContent = ({
 	client,
 	resourceType,
@@ -272,15 +280,15 @@ const ResourcesTabContent = ({
 	});
 
 	const decodedSearchQuery = search.searchQuery
-		? atob(search.searchQuery)
+		? search.searchQuery
 		: Constants.DEFAULT_SEARCH_QUERY;
 
 	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
-			const result = await client.request<Bundle>({
-				method: "GET",
-				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
+			const result = await client.searchType({
+				type: resourcesPageContext.resourceType,
+				query: formatSearchQuery(decodedSearchQuery),
 			});
 			if (result.isErr())
 				throw new Error("error obtaining resource list", {

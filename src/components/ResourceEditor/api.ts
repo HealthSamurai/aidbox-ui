@@ -7,13 +7,9 @@ export const fetchResource = async (
 	resourceType: string,
 	id: string,
 ): Promise<Resource> => {
-	const result = await client.request<Resource>({
-		method: "GET",
-		url: `/fhir/${resourceType}/${id}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
+	const result = await client.read<Resource>({
+		type: resourceType,
+		id: id,
 	});
 
 	if (result.isErr())
@@ -32,17 +28,9 @@ export const fetchResourceHistory = async (
 	resourceType: string,
 	id: string,
 ): Promise<Bundle> => {
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: `/fhir/${resourceType}/${id}/_history`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		params: [
-			["_page", "1"],
-			["_count", "100"],
-		],
+	const result = await client.historyInstance({
+		type: resourceType,
+		id: id,
 	});
 
 	if (result.isErr())
@@ -61,14 +49,9 @@ export const createResource = async (
 	resourceType: string,
 	resource: Resource,
 ) => {
-	const result = await client.request<Resource>({
-		method: "POST",
-		url: `/fhir/${resourceType}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		body: JSON.stringify(resource),
+	const result = await client.create<Resource>({
+		type: resourceType,
+		resource: resource,
 	});
 
 	if (result.isErr())
@@ -88,14 +71,10 @@ export const updateResource = async (
 	id: string,
 	resource: Resource,
 ) => {
-	const result = await client.request<Resource>({
-		method: "PUT",
-		url: `/fhir/${resourceType}/${id}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		body: JSON.stringify(resource),
+	const result = await client.update<Resource>({
+		type: resourceType,
+		id: id,
+		resource: resource,
 	});
 
 	if (result.isErr())
@@ -114,13 +93,9 @@ export const deleteResource = async (
 	resourceType: string,
 	id: string,
 ) => {
-	const result = await client.request<Resource>({
-		method: "DELETE",
-		url: `/fhir/${resourceType}/${id}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
+	const result = await client.delete<Resource>({
+		type: resourceType,
+		id: id,
 	});
 
 	if (result.isErr())
