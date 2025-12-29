@@ -198,7 +198,11 @@ export const EditorPanelContent = () => {
 			className="grow min-h-0"
 		>
 			<EditorHeaderMenu />
-			<HSComp.TabsContent value={"form"} className="py-1 px-2.5">
+			<HSComp.TabsContent
+				value={"form"}
+				className="py-1 px-2.5 data-[state=inactive]:hidden"
+				forceMount
+			>
 				<FormTabContent />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value={"code"}>

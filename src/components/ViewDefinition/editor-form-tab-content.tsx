@@ -30,7 +30,6 @@ import React, {
 	useCallback,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
@@ -254,8 +253,6 @@ export const FormTabContent = () => {
 		defaultValue: [],
 	});
 
-	// Track the previous tree structure to detect changes
-	const previousTreeKeysRef = useRef<string>("");
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
@@ -1745,20 +1742,12 @@ export const FormTabContent = () => {
 		}
 	};
 
-	// Initialize the tree keys on first render
-	useEffect(() => {
-		if (previousTreeKeysRef.current === "") {
-			previousTreeKeysRef.current = Object.keys(tree).sort().join(",");
-		}
-	}, [tree]);
-
 	if (!viewDefinition) {
 		return null;
 	}
 
 	return (
 		<TreeView
-			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
 			itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 				const metaType = item.getItemData()?.meta?.type;
 
