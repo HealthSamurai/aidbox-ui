@@ -97,6 +97,7 @@ export const EditorPanelActions = () => {
 			});
 		},
 		onSuccess: () => {
+			viewDefinitionContext.setIsDirty(false);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -114,6 +115,7 @@ export const EditorPanelActions = () => {
 			});
 		},
 		onSuccess: (resp) => {
+			viewDefinitionContext.setIsDirty(false);
 			const id = JSON.parse(resp.body).id;
 			navigate({
 				to: "/resource/$resourceType/edit/$id",

@@ -356,6 +356,7 @@ export const FormTabContent = () => {
 				}
 
 				viewDefinitionContext.setViewDefinition(updatedViewDef);
+				viewDefinitionContext.setIsDirty(true);
 			}
 		},
 		[

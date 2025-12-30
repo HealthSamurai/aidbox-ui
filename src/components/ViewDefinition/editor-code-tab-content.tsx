@@ -44,6 +44,7 @@ export const ViewDefinitionCodeEditor = ({
 				JSON.stringify(viewDefinitionContext.viewDefinition)
 			) {
 				viewDefinitionContext.setViewDefinition(viewDefinition);
+				viewDefinitionContext.setIsDirty(true);
 			}
 		},
 		500,
