@@ -19,6 +19,46 @@ import { ResourceTypeSelect } from "./resource-type-select";
 import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
 
+const cleanEmptyValues = <T,>(obj: T): T => {
+	if (Array.isArray(obj)) {
+		const cleanedArray = obj
+			.map((item) => cleanEmptyValues(item))
+			.filter((item) => {
+				if (item === null || item === undefined) return false;
+				if (typeof item === "string" && item === "") return false;
+				if (Array.isArray(item) && item.length === 0) return false;
+				if (
+					typeof item === "object" &&
+					!Array.isArray(item) &&
+					Object.keys(item).length === 0
+				)
+					return false;
+				return true;
+			});
+		return cleanedArray as T;
+	}
+
+	if (obj !== null && typeof obj === "object") {
+		const cleanedObj: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(obj)) {
+			const cleanedValue = cleanEmptyValues(value);
+			if (cleanedValue === null || cleanedValue === undefined) continue;
+			if (typeof cleanedValue === "string" && cleanedValue === "") continue;
+			if (Array.isArray(cleanedValue) && cleanedValue.length === 0) continue;
+			if (
+				typeof cleanedValue === "object" &&
+				!Array.isArray(cleanedValue) &&
+				Object.keys(cleanedValue).length === 0
+			)
+				continue;
+			cleanedObj[key] = cleanedValue;
+		}
+		return cleanedObj as T;
+	}
+
+	return obj;
+};
+
 export const EditorHeaderMenu = () => {
 	return (
 		<div className="flex items-center justify-between gap-4 bg-bg-secondary px-6 border-b h-10 flex-none">
@@ -46,6 +86,7 @@ export const EditorPanelActions = () => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
 	const viewDefinitionMutation = useMutation({
 		mutationFn: (viewDefinition: Types.ViewDefinition) => {
@@ -193,9 +234,30 @@ export const EditorPanelActions = () => {
 		onError: utils.onError(),
 	});
 
+	const viewDefinitionDeleteMutation = useMutation({
+		mutationFn: () => {
+			return AidboxCallWithMeta({
+				method: "DELETE",
+				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
+			});
+		},
+		onSuccess: () => {
+			HSComp.toast.success("ViewDefinition deleted successfully", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+			navigate({
+				to: "/resource/$resourceType",
+				params: { resourceType: "ViewDefinition" },
+			});
+		},
+		onError: utils.onError(),
+	});
+
 	const handleSave = () => {
 		if (viewDefinitionResource) {
-			viewDefinitionMutation.mutate(viewDefinitionResource);
+			const cleanedViewDefinition = cleanEmptyValues(viewDefinitionResource);
+			viewDefinitionMutation.mutate(cleanedViewDefinition);
 		}
 	};
 
@@ -207,7 +269,8 @@ export const EditorPanelActions = () => {
 
 	const handleCreate = () => {
 		if (viewDefinitionResource) {
-			viewDefinitionCreateMutation.mutate(viewDefinitionResource);
+			const cleanedViewDefinition = cleanEmptyValues(viewDefinitionResource);
+			viewDefinitionCreateMutation.mutate(cleanedViewDefinition);
 		}
 	};
 
@@ -222,8 +285,23 @@ export const EditorPanelActions = () => {
 		}
 	};
 
+	const handleDelete = () => {
+		viewDefinitionDeleteMutation.mutate();
+	};
+
 	return (
 		<div className="flex items-center justify-end gap-2 py-3 px-6 border-t">
+			{viewDefinitionContext.originalId && (
+				<HSComp.Button
+					variant="ghost"
+					danger
+					className="mr-auto"
+					onClick={() => setIsDeleteDialogOpen(true)}
+				>
+					<Lucide.Trash2Icon className="w-4 h-4" />
+					Delete
+				</HSComp.Button>
+			)}
 			<HSComp.Button onClick={handleRun}>
 				<Lucide.PlayIcon />
 				Run
@@ -261,6 +339,37 @@ export const EditorPanelActions = () => {
 					Create
 				</HSComp.Button>
 			)}
+
+			<HSComp.AlertDialog
+				open={isDeleteDialogOpen}
+				onOpenChange={setIsDeleteDialogOpen}
+			>
+				<HSComp.AlertDialogContent>
+					<HSComp.AlertDialogHeader>
+						<HSComp.AlertDialogTitle>
+							Delete ViewDefinition?
+						</HSComp.AlertDialogTitle>
+						<HSComp.AlertDialogDescription>
+							Are you sure you want to delete this ViewDefinition? This action
+							cannot be undone.
+						</HSComp.AlertDialogDescription>
+					</HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogFooter>
+						<HSComp.AlertDialogCancel>Cancel</HSComp.AlertDialogCancel>
+						<HSComp.AlertDialogAction
+							variant="primary"
+							danger
+							onClick={() => {
+								handleDelete();
+								setIsDeleteDialogOpen(false);
+							}}
+						>
+							<Lucide.Trash2Icon className="w-4 h-4" />
+							Delete
+						</HSComp.AlertDialogAction>
+					</HSComp.AlertDialogFooter>
+				</HSComp.AlertDialogContent>
+			</HSComp.AlertDialog>
 		</div>
 	);
 };
