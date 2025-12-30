@@ -1,4 +1,10 @@
 import * as HSComp from "@health-samurai/react-components";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
@@ -124,6 +130,69 @@ export const EditorPanelActions = () => {
 		onError: utils.onError(),
 	});
 
+	const viewDefinitionMaterializeMutation = useMutation({
+		mutationFn: ({
+			viewDefinition,
+			materializeType,
+		}: {
+			viewDefinition: Types.ViewDefinition;
+			materializeType: "view" | "materialized-view" | "table";
+		}) => {
+			const parametersPayload = {
+				resourceType: "Parameters",
+				parameter: [
+					{
+						name: "type",
+						valueCode: materializeType,
+					},
+					{
+						name: "viewResource",
+						resource: viewDefinition,
+					},
+				],
+			};
+			return AidboxCallWithMeta({
+				method: "POST",
+				url: "/fhir/ViewDefinition/$materialize",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/fhir+json",
+				},
+				body: JSON.stringify(parametersPayload),
+			});
+		},
+		onSuccess: (data) => {
+			const response = JSON.parse(data.body);
+			const viewName =
+				response.parameter?.find(
+					(p: { name: string }) => p.name === "viewName",
+				)?.valueString || "unknown";
+			HSComp.toast.success(
+				<div className="flex items-center gap-2">
+					<span>Materialized: {viewName}</span>
+					<button
+						type="button"
+						className="p-1 hover:bg-white/20 rounded"
+						onClick={() => {
+							navigator.clipboard.writeText(viewName);
+							HSComp.toast.success("Copied to clipboard", {
+								position: "bottom-right",
+								style: { margin: "1rem" },
+							});
+						}}
+					>
+						<Lucide.CopyIcon className="w-4 h-4" />
+					</button>
+				</div>,
+				{
+					position: "bottom-right",
+					style: { margin: "1rem" },
+				},
+			);
+		},
+		onError: utils.onError(),
+	});
+
 	const handleSave = () => {
 		if (viewDefinitionResource) {
 			viewDefinitionMutation.mutate(viewDefinitionResource);
@@ -142,8 +211,45 @@ export const EditorPanelActions = () => {
 		}
 	};
 
+	const handleMaterialize = (
+		materializeType: "view" | "materialized-view" | "table",
+	) => {
+		if (viewDefinitionResource) {
+			viewDefinitionMaterializeMutation.mutate({
+				viewDefinition: viewDefinitionResource,
+				materializeType,
+			});
+		}
+	};
+
 	return (
 		<div className="flex items-center justify-end gap-2 py-3 px-6 border-t">
+			<HSComp.Button onClick={handleRun}>
+				<Lucide.PlayIcon />
+				Run
+			</HSComp.Button>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<HSComp.Button variant="secondary">
+						<Lucide.DatabaseIcon className="w-4 h-4" />
+						Materialize
+						<Lucide.ChevronDownIcon className="w-4 h-4" />
+					</HSComp.Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onSelect={() => handleMaterialize("view")}>
+						View
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onSelect={() => handleMaterialize("materialized-view")}
+					>
+						Materialized View
+					</DropdownMenuItem>
+					<DropdownMenuItem onSelect={() => handleMaterialize("table")}>
+						Table
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 			{viewDefinitionContext.originalId ? (
 				<HSComp.Button variant="secondary" onClick={handleSave}>
 					<Lucide.SaveIcon className="w-4 h-4" />
@@ -155,10 +261,6 @@ export const EditorPanelActions = () => {
 					Create
 				</HSComp.Button>
 			)}
-			<HSComp.Button onClick={handleRun}>
-				<Lucide.PlayIcon />
-				Run
-			</HSComp.Button>
 		</div>
 	);
 };

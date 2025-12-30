@@ -71,6 +71,7 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			const viewDefinitionPlaceholder = {
 				resource: "Patient",
 				resourceType: "ViewDefinition",
+				status: "draft",
 				select: [],
 			};
 			let response: Types.ViewDefinition = viewDefinitionPlaceholder;
