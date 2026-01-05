@@ -82,7 +82,7 @@ export const updateResource = async (
 			parseOperationOutcome(result.value.resource)
 				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
 				.join("; "),
-			{ cause: result.value },
+			{ cause: result.value.resource },
 		);
 
 	return result.value.resource;
