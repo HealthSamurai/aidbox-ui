@@ -1,15 +1,11 @@
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { Snapshot } from "@aidbox-ui/humanize";
+import type { AidboxClientR5 } from "../../AidboxClient";
 
 export interface ResourcesPageProps {
+	client: AidboxClientR5;
 	resourceType: string;
 }
-
-export type Resource = {
-	id?: string;
-	meta?: {
-		lastUpdated: string;
-	};
-};
 
 export interface ResourcesTabTableProps {
 	data:

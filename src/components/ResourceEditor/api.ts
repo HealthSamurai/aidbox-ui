@@ -1,101 +1,110 @@
-import { AidboxCall } from "@aidbox-ui/api/auth";
+import { parseOperationOutcome } from "@aidbox-ui/api/utils";
+import type { Bundle, Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type { AidboxClientR5 } from "../../AidboxClient";
 
-export type Resource = {
-	resourceType: string;
-	id?: string;
-	[key: string]: unknown;
-};
-
-export const fetchResource = async (resourceType: string, id: string) => {
-	const raw = await AidboxCall<Resource>({
-		method: "GET",
-		url: `/fhir/${resourceType}/${id}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-	});
-	return raw;
-};
-
-export interface HistoryBundle {
-	resourceType: "Bundle";
-	type: "history";
-	total: number;
-	entry: HistoryEntry[];
-}
-
-export type HistoryEntryResource = {
-	meta: {
-		versionId: string;
-		lastUpdated: string;
-	};
-	resourceType: string;
-	id: string;
-};
-
-export interface HistoryEntry {
-	resource: HistoryEntryResource;
-	response: { status: string };
-}
-
-export const fetchResourceHistory = async (
+export const fetchResource = async (
+	client: AidboxClientR5,
 	resourceType: string,
 	id: string,
-) => {
-	const raw = await AidboxCall<HistoryBundle>({
-		method: "GET",
-		url: `/fhir/${resourceType}/${id}/_history`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		params: { _page: "1", _count: "100" },
+): Promise<Resource> => {
+	const result = await client.read<Resource>({
+		type: resourceType,
+		id: id,
 	});
-	return raw as HistoryBundle;
+
+	if (result.isErr())
+		throw new Error(
+			parseOperationOutcome(result.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: result.value.resource },
+		);
+
+	return result.value.resource;
+};
+
+export const fetchResourceHistory = async (
+	client: AidboxClientR5,
+	resourceType: string,
+	id: string,
+): Promise<Bundle> => {
+	const result = await client.historyInstance({
+		type: resourceType,
+		id: id,
+	});
+
+	if (result.isErr())
+		throw new Error(
+			parseOperationOutcome(result.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: result.value.resource },
+		);
+
+	return result.value.resource;
 };
 
 export const createResource = async (
+	client: AidboxClientR5,
 	resourceType: string,
 	resource: Resource,
 ) => {
-	const res = await AidboxCall<Resource>({
-		method: "POST",
-		url: `/fhir/${resourceType}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		body: resource,
+	const result = await client.create<Resource>({
+		type: resourceType,
+		resource: resource,
 	});
-	return res;
+
+	if (result.isErr())
+		throw new Error(
+			parseOperationOutcome(result.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: result.value.resource },
+		);
+
+	return result.value.resource;
 };
 
 export const updateResource = async (
+	client: AidboxClientR5,
 	resourceType: string,
 	id: string,
 	resource: Resource,
 ) => {
-	const res = await AidboxCall<Resource>({
-		method: "PUT",
-		url: `/fhir/${resourceType}/${id}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		body: resource,
+	const result = await client.update<Resource>({
+		type: resourceType,
+		id: id,
+		resource: resource,
 	});
-	return res;
+
+	if (result.isErr())
+		throw new Error(
+			parseOperationOutcome(result.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: result.value.resource },
+		);
+
+	return result.value.resource;
 };
 
-export const deleteResource = async (resourceType: string, id: string) => {
-	const res = await AidboxCall<Resource>({
-		method: "DELETE",
-		url: `/fhir/${resourceType}/${id}`,
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
+export const deleteResource = async (
+	client: AidboxClientR5,
+	resourceType: string,
+	id: string,
+) => {
+	const result = await client.delete<Resource>({
+		type: resourceType,
+		id: id,
 	});
-	return res;
+
+	if (result.isErr())
+		throw new Error(
+			parseOperationOutcome(result.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: result.value.resource },
+		);
+
+	return result.value.resource;
 };

@@ -1,10 +1,10 @@
-import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
 import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Pin } from "lucide-react";
 import { memo, useMemo, useState } from "react";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 
 type ResourceRow = {
 	resourceType: string;
@@ -182,23 +182,23 @@ type ResourceData = {
 	stats: Record<string, ResourceDataStats>;
 };
 
-function useResourceData() {
+function useResourceData(client: AidboxClientR5) {
 	return useQuery<ResourceData>({
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {
 			const [resourceTypes, stats] = await Promise.all([
-				AidboxCallWithMeta({
+				client.rawRequest({
 					method: "GET",
 					url: "/$resource-types",
 				}),
-				AidboxCallWithMeta({
+				client.rawRequest({
 					method: "GET",
 					url: "/$resource-types-pg-stats",
 				}),
 			]);
 			return {
-				resources: JSON.parse(resourceTypes.body),
-				stats: JSON.parse(stats.body),
+				resources: await resourceTypes.response.json(),
+				stats: await stats.response.json(),
 			};
 		},
 	});
@@ -261,6 +261,8 @@ function useProcessedData(
 }
 
 export function Browser() {
+	const client = useAidboxClient();
+
 	const [selectedTab, setSelectedTab] = useLocalStorage<string>({
 		key: "resource-browser-selected-tab",
 		defaultValue: "all",
@@ -280,7 +282,7 @@ export function Browser() {
 		[favoritesRef.current],
 	);
 
-	const { data, isLoading } = useResourceData();
+	const { data, isLoading } = useResourceData(client);
 	const { subsets } = useProcessedData(data, favorites);
 
 	const toggleFavorite = useMemo(

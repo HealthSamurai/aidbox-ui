@@ -1,3 +1,4 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import {
 	DropdownMenu,
@@ -9,9 +10,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
-import { AidboxCallWithMeta } from "../../api/auth";
-import * as utils from "../../api/utils";
-
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { ViewDefinitionContext } from "./page";
@@ -82,52 +82,70 @@ export const EditorHeaderMenu = () => {
 	);
 };
 
-export const EditorPanelActions = () => {
+type RunResult = {
+	contentType: string;
+	data: string;
+};
+
+export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
 	const viewDefinitionMutation = useMutation({
-		mutationFn: (viewDefinition: Types.ViewDefinition) => {
-			return AidboxCallWithMeta({
-				method: "PUT",
-				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
-				body: JSON.stringify(viewDefinition),
-			});
+		mutationFn: (viewDefinition: ViewDefinition) => {
+			if (viewDefinitionContext.originalId)
+				return client.update({
+					type: "ViewDefinition",
+					id: viewDefinitionContext.originalId,
+					resource: viewDefinition,
+				});
+			throw Error("missing originalId in the ViewDefinitionContext");
 		},
-		onSuccess: () => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			viewDefinitionContext.setIsDirty(false);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
 		},
-		onError: utils.onError(),
+		onError: Utils.onMutationError,
 	});
 
 	const viewDefinitionCreateMutation = useMutation({
-		mutationFn: (viewDefinition: Types.ViewDefinition) => {
-			return AidboxCallWithMeta({
-				method: "POST",
-				url: `/fhir/ViewDefinition/`,
-				body: JSON.stringify(viewDefinition),
+		mutationFn: (viewDefinition: ViewDefinition) => {
+			return client.create<ViewDefinition>({
+				type: "ViewDefinition",
+				resource: viewDefinition,
 			});
 		},
-		onSuccess: (resp) => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			viewDefinitionContext.setIsDirty(false);
-			const id = JSON.parse(resp.body).id;
+			const id = result.value.resource.id;
+			if (!id)
+				return Utils.toastError(
+					"Error saving ViewDefinition",
+					"Missing an ID field in response",
+				);
+
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
 				search: { tab: "code", mode: "json" },
 			});
 		},
-		onError: utils.onError(),
+		onError: Utils.onMutationError,
 	});
 
 	const viewDefinitionRunMutation = useMutation({
-		mutationFn: (viewDefinition: Types.ViewDefinition) => {
+		mutationFn: (viewDefinition: ViewDefinition) => {
 			viewDefinitionContext.setRunResultPage(1);
 			viewDefinitionContext.setRunViewDefinition(viewDefinition);
 
@@ -152,7 +170,7 @@ export const EditorPanelActions = () => {
 					},
 				],
 			};
-			return AidboxCallWithMeta({
+			return client.request<RunResult>({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$run",
 				headers: {
@@ -162,15 +180,20 @@ export const EditorPanelActions = () => {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: (data) => {
-			const decodedData = atob(JSON.parse(data.body).data);
-			viewDefinitionContext.setRunResult(decodedData);
-			HSComp.toast.success("ViewDefinition run successfully", {
-				position: "bottom-right",
-				style: { margin: "1rem" },
-			});
+		onSuccess: async (result) => {
+			if (result.isErr()) {
+				Utils.toastOperationOutcome(result.value.resource);
+			} else {
+				const { data } = result.value.resource;
+				const decodedData = atob(data);
+				viewDefinitionContext.setRunResult(decodedData);
+				HSComp.toast.success("ViewDefinition run successfully", {
+					position: "bottom-right",
+					style: { margin: "1rem" },
+				});
+			}
 		},
-		onError: utils.onError(),
+		onError: Utils.onMutationError,
 	});
 
 	const viewDefinitionMaterializeMutation = useMutation({
@@ -178,7 +201,7 @@ export const EditorPanelActions = () => {
 			viewDefinition,
 			materializeType,
 		}: {
-			viewDefinition: Types.ViewDefinition;
+			viewDefinition: ViewDefinition;
 			materializeType: "view" | "materialized-view" | "table";
 		}) => {
 			const parametersPayload = {
@@ -194,7 +217,7 @@ export const EditorPanelActions = () => {
 					},
 				],
 			};
-			return AidboxCallWithMeta({
+			return client.rawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$materialize",
 				headers: {
@@ -204,12 +227,11 @@ export const EditorPanelActions = () => {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: (data) => {
-			const response = JSON.parse(data.body);
+		onSuccess: async (data) => {
+			const response = await data.response.json();
 			const viewName =
-				response.parameter?.find(
-					(p: { name: string }) => p.name === "viewName",
-				)?.valueString || "unknown";
+				response.parameter?.find((p: { name: string }) => p.name === "viewName")
+					?.valueString || "unknown";
 			HSComp.toast.success(
 				<div className="flex items-center gap-2">
 					<span>Materialized: {viewName}</span>
@@ -233,14 +255,17 @@ export const EditorPanelActions = () => {
 				},
 			);
 		},
-		onError: utils.onError(),
+		onError: Utils.onError,
 	});
 
 	const viewDefinitionDeleteMutation = useMutation({
 		mutationFn: () => {
-			return AidboxCallWithMeta({
-				method: "DELETE",
-				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
+			if (!viewDefinitionContext.originalId)
+				throw Error("can't delete without ID");
+
+			return client.delete({
+				type: "ViewDefinition",
+				id: viewDefinitionContext.originalId,
 			});
 		},
 		onSuccess: () => {
@@ -253,7 +278,7 @@ export const EditorPanelActions = () => {
 				params: { resourceType: "ViewDefinition" },
 			});
 		},
-		onError: utils.onError(),
+		onError: Utils.onError,
 	});
 
 	const handleSave = () => {
@@ -377,6 +402,8 @@ export const EditorPanelActions = () => {
 };
 
 export const EditorPanelContent = () => {
+	const aidboxClient: AidboxClientR5 = useAidboxClient();
+
 	const navigate = useNavigate();
 
 	const createSearch = useSearch({
@@ -422,7 +449,7 @@ export const EditorPanelContent = () => {
 				<CodeTabContent />
 			</HSComp.TabsContent>
 			<SQLTab />
-			<EditorPanelActions />
+			<EditorPanelActions client={aidboxClient} />
 		</HSComp.Tabs>
 	);
 };

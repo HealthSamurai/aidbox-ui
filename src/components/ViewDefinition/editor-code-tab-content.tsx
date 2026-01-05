@@ -1,3 +1,4 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
@@ -7,7 +8,7 @@ import {
 	ViewDefinitionContext,
 	ViewDefinitionResourceTypeContext,
 } from "./page";
-import type { ViewDefinition, ViewDefinitionEditorMode } from "./types";
+import type { ViewDefinitionEditorMode } from "./types";
 
 export const ViewDefinitionCodeEditor = ({
 	codeMode,

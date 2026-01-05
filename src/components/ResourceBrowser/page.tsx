@@ -1,10 +1,10 @@
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
-import * as AidboxClient from "../../api/auth";
-import { AidboxCallWithMeta } from "../../api/auth";
+import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import type * as VDTypes from "../ViewDefinition/types";
@@ -131,9 +131,10 @@ export const ResourcesTabHeader = ({
 };
 
 const fetchSchemas = async (
+	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Record<string, Schema> | undefined> => {
-	const response = await AidboxCallWithMeta({
+	const response = await client.rawRequest({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
 		headers: {
@@ -145,7 +146,7 @@ const fetchSchemas = async (
 		}),
 	});
 
-	const data: SchemaData = JSON.parse(response.body);
+	const data: SchemaData = await response.response.json();
 
 	if (!data?.result) return undefined;
 
@@ -153,9 +154,10 @@ const fetchSchemas = async (
 };
 
 const fetchDefaultSchema = async (
+	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Schema | undefined> => {
-	const schemas = await fetchSchemas(resourceType);
+	const schemas = await fetchSchemas(client, resourceType);
 
 	if (!schemas) return undefined;
 
@@ -168,10 +170,10 @@ const fetchDefaultSchema = async (
 
 const resourcesWithKeys = (
 	profiles: Schema | undefined,
-	resources: Array<Record<string, unknown>>,
+	resources: Resource[],
 ) => {
 	const resourceKeys: Record<string, undefined> = resources.reduce(
-		(acc: Record<string, undefined>, resource: Record<string, unknown>) => {
+		(acc: Record<string, undefined>, resource: Resource) => {
 			Object.keys(resource).forEach((key) => {
 				acc[key] = undefined;
 			});
@@ -211,7 +213,7 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 
 	const { resources, resourceKeys, snapshot } = data;
 
-	const columns: HSComp.ColumnDef<Types.Resource, string>[] = [
+	const columns: HSComp.ColumnDef<Resource, string>[] = [
 		{
 			accessorKey: "id",
 			header: () => <span className="pl-5">ID</span>,
@@ -258,11 +260,10 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 	);
 };
 
-type FhirBundle<T> = {
-	entry: { resource: T }[];
-};
-
-const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
+const ResourcesTabContent = ({
+	client,
+	resourceType,
+}: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 
 	const navigate = Router.useNavigate();
@@ -274,23 +275,38 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 		? atob(search.searchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
 
-	const { data, isLoading } = ReactQuery.useQuery({
+	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
-			const response = await AidboxClient.AidboxCallWithMeta({
-				method: "GET",
-				url: `/fhir/${resourcesPageContext.resourceType}?${decodedSearchQuery}`,
+			const result = await client.searchType({
+				type: resourcesPageContext.resourceType,
+				query: Utils.formatSearchQuery(decodedSearchQuery),
 			});
-			const bundle: FhirBundle<Record<string, unknown>> = JSON.parse(
-				response.body,
-			);
+			if (result.isErr())
+				throw new Error("error obtaining resource list", {
+					cause: result.value.resource,
+				});
 
-			const data = bundle.entry.map((entry) => entry.resource);
-			const schema = await fetchDefaultSchema(resourceType);
+			const { resource: bundle } = result.value;
+
+			const data =
+				bundle?.entry?.flatMap(({ resource }) => (resource ? resource : [])) ??
+				[];
+			const schema = await fetchDefaultSchema(client, resourceType);
 			return resourcesWithKeys(schema, data);
 		},
 		retry: false,
 	});
+
+	if (error)
+		return (
+			<div className="flex items-center justify-center h-full text-red-500">
+				<div className="text-center">
+					<div className="text-lg mb-2">Failed to load resource</div>
+					<div className="text-sm">{error.message}</div>
+				</div>
+			</div>
+		);
 
 	const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -312,7 +328,10 @@ const ResourcesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	);
 };
 
-const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
+const ProfilesTabContent = ({
+	client,
+	resourceType,
+}: Types.ResourcesPageProps) => {
 	const [selectedProfile, setSelectedProfile] = React.useState<Schema | null>(
 		null,
 	);
@@ -321,7 +340,7 @@ const ProfilesTabContent = ({ resourceType }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-profiles-list"],
 		queryFn: async () => {
-			const schema = await fetchSchemas(resourceType);
+			const schema = await fetchSchemas(client, resourceType);
 			return schema;
 		},
 		retry: false,
@@ -519,12 +538,13 @@ type PartialFhirCapabilityStatement = {
 };
 
 const SearchParametersTabContent = ({
+	client,
 	resourceType,
 }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-search-parameters-list"],
 		queryFn: async () => {
-			const response = await AidboxCallWithMeta({
+			const response = await client.rawRequest({
 				method: "GET",
 				url: "/fhir/metadata?include-custom-resources=true",
 				headers: {
@@ -532,7 +552,7 @@ const SearchParametersTabContent = ({
 				},
 			});
 
-			const data = JSON.parse(response.body);
+			const data = await response.response.json();
 			// FIXME: validate
 			return data as PartialFhirCapabilityStatement;
 		},
@@ -606,19 +626,25 @@ const SearchParametersTabContent = ({
 	);
 };
 
-export const ResourcesPage = ({ resourceType }: Types.ResourcesPageProps) => {
+export const ResourcesPage = ({
+	client,
+	resourceType,
+}: Types.ResourcesPageProps) => {
 	return (
 		<ResourcesPageContext.Provider value={{ resourceType }}>
 			<HSComp.Tabs defaultValue="resources">
 				<ResourcePageTabList />
 				<HSComp.TabsContent value="resources" className="overflow-hidden">
-					<ResourcesTabContent resourceType={resourceType} />
+					<ResourcesTabContent client={client} resourceType={resourceType} />
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="profiles">
-					<ProfilesTabContent resourceType={resourceType} />
+					<ProfilesTabContent client={client} resourceType={resourceType} />
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="extensions">
-					<SearchParametersTabContent resourceType={resourceType} />
+					<SearchParametersTabContent
+						client={client}
+						resourceType={resourceType}
+					/>
 				</HSComp.TabsContent>
 			</HSComp.Tabs>
 		</ResourcesPageContext.Provider>

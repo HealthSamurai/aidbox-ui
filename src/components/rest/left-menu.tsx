@@ -1,3 +1,9 @@
+import type {
+	BundleEntry,
+	Extension,
+	Reference,
+	Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import {
 	Button,
 	Command,
@@ -19,13 +25,27 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
 import { useUIHistory } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
-import type { UIHistoryResource } from "../../shared/types";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
 import { type CollectionEntry, CollectionsView } from "./collections";
 
 // Utility function for combining classes
 function cn(...inputs: (string | undefined | boolean | null)[]) {
 	return inputs.filter(Boolean).join(" ");
+}
+
+// FIXME: sansara#6557 Generate from IG
+type UiHistoryEntry = Resource & {
+	_source: string;
+	command: string;
+	type: string;
+	user: Reference<"User">;
+};
+
+function isUiHistoryEntry(
+	resource: Resource | undefined,
+): resource is UiHistoryEntry {
+	if (resource === undefined) return false;
+	return resource.resourceType === "ui_history";
 }
 
 // =============================================================================
@@ -158,27 +178,57 @@ function getTimeGroup(dateString: string): string {
 	return `${day}.${month}.${year}`;
 }
 
+function getExtension(
+	extensions: Extension[],
+	url: string,
+): Extension | undefined {
+	return extensions.find((e: Extension) => e.url === url);
+}
+
+function getExtensions(resource: Resource): Extension[] {
+	const extension = resource?.meta?.extension;
+	if (!extension)
+		throw new Error("missing extension for resource", { cause: resource });
+	return extension;
+}
+
+function getExtensionFromResource(
+	resource: Resource,
+	url: string,
+): Extension | undefined {
+	return getExtension(getExtensions(resource), url);
+}
+
 // Helper function to group history items by time
-function groupHistoryByTime(items: UIHistoryResource[]) {
-	const groups: Record<string, UIHistoryResource[]> = {};
+function groupHistoryByTime(items: UiHistoryEntry[]) {
+	const groups: Record<string, (UiHistoryEntry & { createdAt: number })[]> = {};
 
 	items.forEach((item) => {
-		const group = getTimeGroup(item.meta.createdAt);
+		const createdAt = getExtensionFromResource(
+			item,
+			"ex:createdAt",
+		)?.valueInstant;
+		if (!createdAt)
+			throw new Error("missing ex:createdAt value for history item", {
+				cause: item,
+			});
+
+		const group = getTimeGroup(createdAt);
 		if (!groups[group]) {
 			groups[group] = [];
 		}
-		groups[group].push(item);
+
+		if (!item.id)
+			throw new Error("missing id for history item", { cause: item });
+
+		groups[group].push({ ...item, createdAt: new Date(createdAt).getTime() });
 	});
 
 	// Sort items within each group by creation time (newest first)
 	Object.keys(groups).forEach((key) => {
 		const groupItems = groups[key];
 		if (groupItems) {
-			groupItems.sort(
-				(a, b) =>
-					new Date(b.meta.createdAt).getTime() -
-					new Date(a.meta.createdAt).getTime(),
-			);
+			groupItems.sort((a, b) => b.createdAt - a.createdAt);
 		}
 	});
 
@@ -186,10 +236,7 @@ function groupHistoryByTime(items: UIHistoryResource[]) {
 }
 
 // Helper function to check if history item matches selected tab
-function isHistoryItemSelected(
-	item: UIHistoryResource,
-	selectedTab?: Tab,
-): boolean {
+function isHistoryItemSelected(item: Resource, selectedTab?: Tab): boolean {
 	if (!selectedTab || !selectedTab.historyId) return false;
 	return item.id === selectedTab.historyId;
 }
@@ -224,11 +271,11 @@ function HistoryCommand({
 	onItemClick,
 	onItemMiddleClick,
 }: {
-	groupedHistory: Record<string, UIHistoryResource[]>;
-	getSortedGroupKeys: (groups: Record<string, UIHistoryResource[]>) => string[];
+	groupedHistory: Record<string, UiHistoryEntry[]>;
+	getSortedGroupKeys: (groups: Record<string, UiHistoryEntry[]>) => string[];
 	selectedTab?: Tab;
-	onItemClick: (item: UIHistoryResource) => void;
-	onItemMiddleClick: (item: UIHistoryResource) => void;
+	onItemClick: (item: UiHistoryEntry) => void;
+	onItemMiddleClick: (item: UiHistoryEntry) => void;
 }) {
 	const getMethodColor = (method: string) => {
 		return (
@@ -239,7 +286,7 @@ function HistoryCommand({
 
 	const handleItemMouseDown = (
 		event: React.MouseEvent,
-		item: UIHistoryResource,
+		item: UiHistoryEntry,
 	) => {
 		// Middle mouse button (wheel click) - button 1
 		if (event.button === 1) {
@@ -249,7 +296,7 @@ function HistoryCommand({
 		}
 	};
 
-	const createSearchableText = (item: UIHistoryResource) => {
+	const createSearchableText = (item: UiHistoryEntry) => {
 		const { method, path, headers, body } = parseHttpCommand(item.command);
 		const headersText = headers.map((h) => `${h.key}:${h.value}`).join(" ");
 		return `${method} ${path} ${headersText} ${body}`.toLowerCase();
@@ -323,7 +370,7 @@ export function LeftMenu({
 	const leftMenuStatus = React.useContext(LeftMenuContext);
 	const { data: historyData, isLoading, error } = useUIHistory();
 
-	const handleHistoryItemClick = (item: UIHistoryResource) => {
+	const handleHistoryItemClick = (item: UiHistoryEntry) => {
 		const { method, path, headers, body } = parseHttpCommand(item.command);
 
 		// Extract params from path
@@ -359,6 +406,10 @@ export function LeftMenu({
 			});
 		}
 
+		const historyId = item.id;
+		if (!historyId)
+			throw new Error("ID is missing for history item", { cause: item });
+
 		// Create new tab with history data
 		addTabFromHistory(tabs, setTabs, {
 			method,
@@ -371,11 +422,11 @@ export function LeftMenu({
 			})),
 			body: body,
 			params,
-			historyId: item.id,
+			historyId,
 		});
 	};
 
-	const handleHistoryItemMiddleClick = (item: UIHistoryResource) => {
+	const handleHistoryItemMiddleClick = (item: Resource) => {
 		// Find tab with this historyId and close it
 		const existingTab = tabs.find((tab) => tab.historyId === item.id);
 		if (existingTab) {
@@ -386,12 +437,19 @@ export function LeftMenu({
 	// Group history items by time
 	const groupedHistory = React.useMemo(() => {
 		if (!historyData?.entry) return {};
-		return groupHistoryByTime(historyData.entry.map((entry) => entry.resource));
+		return groupHistoryByTime(
+			historyData.entry.flatMap((entry: BundleEntry) => {
+				if (isUiHistoryEntry(entry.resource)) return entry.resource;
+				throw new Error("incorrect resource in history response", {
+					cause: entry.resource,
+				});
+			}),
+		);
 	}, [historyData]);
 
 	// Helper function to sort group keys in chronological order
 	const getSortedGroupKeys = React.useCallback(
-		(groups: Record<string, UIHistoryResource[]>) => {
+		(groups: Record<string, Resource[]>) => {
 			return Object.keys(groups).sort((a, b) => {
 				// TODAY should be first
 				if (a === "TODAY") return -1;

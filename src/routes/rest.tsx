@@ -1,3 +1,4 @@
+import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
@@ -30,7 +31,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { AidboxRequest, type AidboxResponse } from "../api/auth";
+import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import {
 	ActiveTabs,
 	DEFAULT_TAB,
@@ -721,6 +722,7 @@ function handleSendRequest(
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
 	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
+	aidboxClient: AidboxClientR5,
 ) {
 	const headers =
 		selectedTab.headers
@@ -745,22 +747,24 @@ function handleSendRequest(
 		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
 
 	// Save to UI history (don't wait for it)
-	saveToUIHistory(selectedTab, queryClient);
+	saveToUIHistory(selectedTab, queryClient, aidboxClient);
 
 	setIsLoading(true);
 
-	AidboxRequest({
-		method: selectedTab.method,
-		url: selectedTab.path || "/",
-		headers,
-		body: selectedTab.body || "",
-		streamBody: false,
-	})
-		.then((response: AidboxResponse) => {
+	aidboxClient
+		.rawRequest({
+			method: selectedTab.method,
+			url: selectedTab.path || "/",
+			headers,
+			body: selectedTab.body || "",
+		})
+		.then(async (response: AidboxTypes.ResponseWithMeta) => {
 			const responseData = {
-				...response.response,
-				body: response.response.body as string,
-				duration: response.meta.duration,
+				status: response.response.status,
+				statusText: response.response.statusText,
+				headers: response.responseHeaders,
+				body: (await response.response.text()) as string,
+				duration: response.duration,
 				mode: responseMode,
 			};
 			// Store response in tab
@@ -770,23 +774,22 @@ function handleSendRequest(
 				),
 			);
 		})
-		.catch((error) => {
-			const cause: AidboxResponse = error.cause;
-			console.log("error", cause.response);
-
+		.catch(async (error: AidboxTypes.ErrorResponse) => {
+			const cause = error.responseWithMeta;
 			const errorMode =
-				cause.response.headers["content-type"]?.toLowerCase().trim() ===
+				cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
 				"text/yaml"
 					? "yaml"
 					: "json";
 
 			const errorResponse: ResponseData = {
-				...cause.response,
-				body: cause.response.body as string,
-				duration: cause.meta.duration,
+				status: cause.response.status,
+				statusText: cause.response.statusText,
+				headers: cause.responseHeaders,
+				body: (await cause.response.text()) as string,
+				duration: cause.duration,
 				mode: errorMode,
 			};
-
 			// Store error response in tab
 			setTabs((currentTabs) =>
 				currentTabs.map((tab) =>
@@ -842,6 +845,7 @@ function formatRequestAsHttpCommand(tab: Tab): string {
 async function saveToUIHistory(
 	tab: Tab,
 	queryClient: QueryClient,
+	aidboxClient: AidboxClientR5,
 ): Promise<void> {
 	try {
 		const historyId = crypto.randomUUID();
@@ -854,7 +858,7 @@ async function saveToUIHistory(
 			command: command,
 		};
 
-		await AidboxRequest({
+		await aidboxClient.rawRequest({
 			method: "PUT",
 			url: `/ui_history/${historyId}`,
 			headers: {
@@ -887,6 +891,8 @@ function SendButton(
 }
 
 function RouteComponent() {
+	const client = useAidboxClient();
+
 	const [tabs, setTabs] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
 		getInitialValueInEffect: false,
@@ -945,7 +951,13 @@ function RouteComponent() {
 				(event.ctrlKey && event.key === "Enter")
 			) {
 				event.preventDefault();
-				handleSendRequest(selectedTab, queryClient, setIsLoading, setTabs);
+				handleSendRequest(
+					selectedTab,
+					queryClient,
+					setIsLoading,
+					setTabs,
+					client,
+				);
 			}
 		};
 
@@ -953,7 +965,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, queryClient, setTabs]);
+	}, [selectedTab, queryClient, setTabs, client]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1185,7 +1197,7 @@ function RouteComponent() {
 
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
-		queryFn: RestCollections.getCollectionsEntries,
+		queryFn: () => RestCollections.getCollectionsEntries(client),
 		refetchOnWindowFocus: false,
 	});
 
@@ -1231,6 +1243,7 @@ function RouteComponent() {
 									queryClient,
 									setIsLoading,
 									setTabs,
+									client,
 								)
 							}
 						/>

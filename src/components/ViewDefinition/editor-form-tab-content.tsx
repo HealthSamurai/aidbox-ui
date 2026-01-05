@@ -1,3 +1,11 @@
+import type { CanonicalResource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type {
+	ViewDefinition,
+	ViewDefinitionConstant,
+	ViewDefinitionSelect,
+	ViewDefinitionSelectColumn,
+	ViewDefinitionWhere,
+} from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import {
 	Button,
 	Checkbox,
@@ -26,15 +34,9 @@ import {
 	TextQuote,
 	X,
 } from "lucide-react";
-import React, {
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
-import type * as Types from "./types";
 
 type ItemMeta = {
 	type:
@@ -77,112 +79,137 @@ type ItemMeta = {
 	whereData?: WhereItem;
 };
 
-interface ConstantItem {
-	id: string;
-	name: string;
-	valueString: string;
-}
+type ConstantItem = ViewDefinitionConstant & {
+	nodeId: string;
+};
 
-interface WhereItem {
-	id: string;
-	path: string;
-}
+type WhereItem = ViewDefinitionWhere & {
+	nodeId: string;
+};
 
-interface ColumnItem {
-	id: string;
-	name: string;
-	path: string;
-}
+type ColumnItem = ViewDefinitionSelectColumn & {
+	nodeId: string;
+};
 
-interface SelectItemInternal {
-	id: string;
+type SelectItemInternal = ViewDefinitionSelect & {
+	nodeId: string;
 	type: "column" | "forEach" | "forEachOrNull" | "unionAll";
-	columns?: ColumnItem[];
+	column?: ColumnItem[];
 	expression?: string;
 	children?: SelectItemInternal[];
-}
+};
 
 // Helper functions
+
+const parseColumn = (id: string, column: ViewDefinitionSelectColumn[]) => {
+	return {
+		nodeId: id,
+		type: "column" as const,
+		column: column.map((c, idx) => ({
+			nodeId: `${id}-col-${idx}-${crypto.randomUUID()}`,
+			name: c.name || "",
+			path: c.path || "",
+		})),
+	};
+};
+
+const parseForEach = (
+	id: string,
+	forEach: string,
+	select: ViewDefinitionSelect[] | undefined,
+) => {
+	return {
+		nodeId: id,
+		type: "forEach" as const,
+		expression: forEach,
+		children: select ? parseSelectItems(select, `${id}-`) : [],
+	};
+};
+
+const parseForEachOrNull = (
+	id: string,
+	forEachOrNull: string,
+	select: ViewDefinitionSelect[] | undefined,
+) => {
+	return {
+		nodeId: id,
+		type: "forEachOrNull" as const,
+		expression: forEachOrNull,
+		children: select ? parseSelectItems(select, `${id}-`) : [],
+	};
+};
+
+const parseUnionAll = (
+	id: string,
+	unionAll: ViewDefinitionSelect[] | undefined,
+) => {
+	return {
+		nodeId: id,
+		type: "unionAll" as const,
+		children: unionAll ? parseSelectItems(unionAll, `${id}-`) : [],
+	};
+};
+
 const parseSelectItems = (
-	items: Types.ViewDefinitionSelectItem[],
+	items: ViewDefinitionSelect[],
 	parentId = "",
 ): SelectItemInternal[] => {
-	return items
-		.map((item, index) => {
-			const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+	return items.flatMap((item, index) => {
+		const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+		if (item.column) return parseColumn(id, item.column);
+		else if (item.forEach) return parseForEach(id, item.forEach, item.select);
+		else if (item.forEachOrNull)
+			return parseForEachOrNull(id, item.forEachOrNull, item.select);
+		else if (item.unionAll) return parseUnionAll(id, item.unionAll);
+		else return [];
+	});
+};
 
-			if (item.column) {
-				return {
-					id,
-					type: "column" as const,
-					columns: item.column.map((c, idx) => ({
-						id: `${id}-col-${idx}-${crypto.randomUUID()}`,
-						name: c.name || "",
-						path: c.path || "",
-					})),
-				};
-			} else if (item.forEach !== undefined) {
-				return {
-					id,
-					type: "forEach" as const,
-					expression: item.forEach,
-					children: item.select ? parseSelectItems(item.select, `${id}-`) : [],
-				};
-			} else if (item.forEachOrNull !== undefined) {
-				return {
-					id,
-					type: "forEachOrNull" as const,
-					expression: item.forEachOrNull,
-					children: item.select ? parseSelectItems(item.select, `${id}-`) : [],
-				};
-			} else if (item.unionAll) {
-				return {
-					id,
-					type: "unionAll" as const,
-					children: parseSelectItems(item.unionAll, `${id}-`),
-				};
-			}
-			return null;
-		})
-		.filter(Boolean) as SelectItemInternal[];
+const buildColumn = (columns: ColumnItem[]) => {
+	return {
+		column: columns.map((col) => ({
+			name: col.name,
+			path: col.path,
+		})),
+	};
+};
+
+const buildForEach = ({ expression, children }: SelectItemInternal) => {
+	const result: ViewDefinitionSelect = {
+		forEach: expression || "",
+	};
+	if (children && children.length > 0) {
+		result.select = buildSelectArray(children);
+	}
+	return result;
+};
+
+const buildForEachOrNull = ({ expression, children }: SelectItemInternal) => {
+	const result: ViewDefinitionSelect = {
+		forEachOrNull: expression || "",
+	};
+	if (children && children.length > 0) {
+		result.select = buildSelectArray(children);
+	}
+	return result;
+};
+
+const buildUnionAll = ({ children }: SelectItemInternal) => {
+	return {
+		unionAll: children ? buildSelectArray(children) : [],
+	};
 };
 
 const buildSelectArray = (
 	items: SelectItemInternal[],
-): Types.ViewDefinitionSelectItem[] => {
-	return items
-		.map((item) => {
-			if (item.type === "column" && item.columns) {
-				return {
-					column: item.columns.map((col) => ({
-						name: col.name,
-						path: col.path,
-					})),
-				};
-			} else if (item.type === "forEach") {
-				const result: Types.ViewDefinitionSelectItem = {
-					forEach: item.expression || "",
-				};
-				if (item.children && item.children.length > 0) {
-					result.select = buildSelectArray(item.children);
-				}
-				return result;
-			} else if (item.type === "forEachOrNull") {
-				const result: Types.ViewDefinitionSelectItem = {
-					forEachOrNull: item.expression || "",
-				};
-				if (item.children && item.children.length > 0) {
-					result.select = buildSelectArray(item.children);
-				}
-				return result;
-			} else if (item.type === "unionAll") {
-				return {
-					unionAll: item.children ? buildSelectArray(item.children) : [],
-				};
-			}
-			return null;
-		})
-		.filter(Boolean) as Types.ViewDefinitionSelectItem[];
+): ViewDefinitionSelect[] => {
+	return items.flatMap((item) => {
+		if (item.type === "column" && item.column) return buildColumn(item.column);
+		else if (item.type === "forEach") return buildForEach(item);
+		else if (item.type === "forEachOrNull") return buildForEachOrNull(item);
+		else if (item.type === "unionAll") return buildUnionAll(item);
+		else return [];
+	});
 };
 
 const findPath = (
@@ -191,11 +218,11 @@ const findPath = (
 	path: string[] = [],
 ): string[] | null => {
 	for (const item of items) {
-		if (item.id === targetId) {
+		if (item.nodeId === targetId) {
 			return path;
 		}
 		if (item.children) {
-			const result = findPath(item.children, targetId, [...path, item.id]);
+			const result = findPath(item.children, targetId, [...path, item.nodeId]);
 			if (result) return result;
 		}
 	}
@@ -253,7 +280,6 @@ export const FormTabContent = () => {
 		defaultValue: ["_properties"],
 	});
 
-
 	// Initialize state from viewDefinition - only on initial load or when ID changes
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
 
@@ -267,7 +293,7 @@ export const FormTabContent = () => {
 			) {
 				const constantsWithIds = viewDefinition.constant.map(
 					(c, index: number) => ({
-						id: `constant-${index}-${crypto.randomUUID()}`,
+						nodeId: `constant-${index}-${crypto.randomUUID()}`,
 						name: c.name || "",
 						valueString: c.valueString || "",
 					}),
@@ -284,7 +310,7 @@ export const FormTabContent = () => {
 				viewDefinition.where.length > 0
 			) {
 				const whereWithIds = viewDefinition.where.map((w, index: number) => ({
-					id: `where-${index}-${crypto.randomUUID()}`,
+					nodeId: `where-${index}-${crypto.randomUUID()}`,
 					path: w.path || "",
 				}));
 				setWhereConditions(whereWithIds);
@@ -306,18 +332,7 @@ export const FormTabContent = () => {
 		(
 			updatedConstants?: ConstantItem[],
 			updatedWhere?: WhereItem[],
-			updatedFields?: {
-				name?: string;
-				title?: string;
-				description?: string;
-				status?: string;
-				url?: string;
-				publisher?: string;
-				copyright?: string;
-				experimental?: boolean;
-				fhirVersion?: string[] | undefined;
-				identifier?: { system?: string; value?: string }[];
-			},
+			updatedFields?: Partial<ViewDefinition>,
 			updatedSelectItems?: SelectItemInternal[],
 		) => {
 			if (viewDefinition) {
@@ -332,7 +347,7 @@ export const FormTabContent = () => {
 
 				const selectArray = buildSelectArray(updatedSelectItems || selectItems);
 
-				const updatedViewDef = {
+				const updatedViewDef: ViewDefinition = {
 					...viewDefinition,
 					...(updatedFields || {}),
 				};
@@ -349,11 +364,7 @@ export const FormTabContent = () => {
 					delete updatedViewDef.where;
 				}
 
-				if (selectArray.length > 0) {
-					updatedViewDef.select = selectArray;
-				} else {
-					delete updatedViewDef.select;
-				}
+				updatedViewDef.select = selectArray;
 
 				viewDefinitionContext.setViewDefinition(updatedViewDef);
 				viewDefinitionContext.setIsDirty(true);
@@ -371,7 +382,7 @@ export const FormTabContent = () => {
 	// Function to add a new constant
 	const addConstant = () => {
 		const newConstant = {
-			id: `constant-${constants.length}-${crypto.randomUUID()}`,
+			nodeId: `constant-${constants.length}-${crypto.randomUUID()}`,
 			name: "",
 			valueString: "",
 		};
@@ -379,7 +390,7 @@ export const FormTabContent = () => {
 		setConstants(updatedConstants);
 
 		const newCollapsedIds = collapsedItemIds.filter(
-			(id) => id !== newConstant.id && id !== "_constant",
+			(id) => id !== newConstant.nodeId && id !== "_constant",
 		);
 		setCollapsedItemIds(newCollapsedIds);
 
@@ -393,7 +404,7 @@ export const FormTabContent = () => {
 		value: string,
 	) => {
 		const updatedConstants = constants.map((c) =>
-			c.id === id ? { ...c, [field]: value } : c,
+			c.nodeId === id ? { ...c, [field]: value } : c,
 		);
 		setConstants(updatedConstants);
 		updateViewDefinition(updatedConstants);
@@ -401,7 +412,7 @@ export const FormTabContent = () => {
 
 	// Function to remove a constant
 	const removeConstant = (id: string) => {
-		const updatedConstants = constants.filter((c) => c.id !== id);
+		const updatedConstants = constants.filter((c) => c.nodeId !== id);
 		setConstants(updatedConstants);
 		updateViewDefinition(updatedConstants);
 	};
@@ -409,14 +420,14 @@ export const FormTabContent = () => {
 	// Function to add a new where condition
 	const addWhereCondition = () => {
 		const newWhere = {
-			id: `where-${whereConditions.length}-${crypto.randomUUID()}`,
+			nodeId: `where-${whereConditions.length}-${crypto.randomUUID()}`,
 			path: "",
 		};
 		const updatedWhere = [...whereConditions, newWhere];
 		setWhereConditions(updatedWhere);
 
 		const newCollapsedIds = collapsedItemIds.filter(
-			(id) => id !== newWhere.id && id !== "_where",
+			(id) => id !== newWhere.nodeId && id !== "_where",
 		);
 		setCollapsedItemIds(newCollapsedIds);
 
@@ -426,7 +437,7 @@ export const FormTabContent = () => {
 	// Function to update a specific where condition
 	const updateWhereCondition = (id: string, path: string) => {
 		const updatedWhere = whereConditions.map((w) =>
-			w.id === id ? { ...w, path } : w,
+			w.nodeId === id ? { ...w, path } : w,
 		);
 		setWhereConditions(updatedWhere);
 		updateViewDefinition(undefined, updatedWhere);
@@ -434,7 +445,7 @@ export const FormTabContent = () => {
 
 	// Function to remove a where condition
 	const removeWhereCondition = (id: string) => {
-		const updatedWhere = whereConditions.filter((w) => w.id !== id);
+		const updatedWhere = whereConditions.filter((w) => w.nodeId !== id);
 		setWhereConditions(updatedWhere);
 		updateViewDefinition(undefined, updatedWhere);
 	};
@@ -455,7 +466,7 @@ export const FormTabContent = () => {
 	};
 
 	// Function to update status field
-	const updateStatus = (status: string) => {
+	const updateStatus = (status: CanonicalResource["status"]) => {
 		updateViewDefinition(undefined, undefined, { status });
 	};
 
@@ -480,9 +491,10 @@ export const FormTabContent = () => {
 	};
 
 	// Function to update fhirVersion field
-	const updateFhirVersions = (fhirVersions: string[]) => {
+	const updateFhirVersions = (fhirVersions: ViewDefinition["fhirVersion"]) => {
 		updateViewDefinition(undefined, undefined, {
-			fhirVersion: fhirVersions.length > 0 ? fhirVersions : undefined,
+			fhirVersion:
+				fhirVersions && fhirVersions.length > 0 ? fhirVersions : undefined,
 		});
 	};
 
@@ -492,14 +504,14 @@ export const FormTabContent = () => {
 		parentPath?: string[],
 	) => {
 		const newItem: SelectItemInternal = {
-			id: `${type}-${Date.now()}-${crypto.randomUUID()}`,
+			nodeId: `${type}-${Date.now()}-${crypto.randomUUID()}`,
 			type,
 		};
 
 		if (type === "column") {
-			newItem.columns = [
+			newItem.column = [
 				{
-					id: `col-${Date.now()}-${crypto.randomUUID()}`,
+					nodeId: `col-${Date.now()}-${crypto.randomUUID()}`,
 					name: "",
 					path: "",
 				},
@@ -511,23 +523,23 @@ export const FormTabContent = () => {
 			newItem.children = [];
 		}
 
-		const idsToRemove = [newItem.id, "_select"];
+		const idsToRemove = [newItem.nodeId, "_select"];
 
 		if (parentPath) {
 			idsToRemove.push(...parentPath);
 		}
 
-		if (type === "column" && newItem.columns) {
-			newItem.columns.forEach((col) => {
-				idsToRemove.push(col.id);
+		if (type === "column" && newItem.column) {
+			newItem.column.forEach((col: ColumnItem) => {
+				idsToRemove.push(col.nodeId);
 			});
-			idsToRemove.push(`${newItem.id}_add_column`);
+			idsToRemove.push(`${newItem.nodeId}_add_column`);
 		} else if (
 			type === "forEach" ||
 			type === "forEachOrNull" ||
 			type === "unionAll"
 		) {
-			idsToRemove.push(`${newItem.id}_add_select`);
+			idsToRemove.push(`${newItem.nodeId}_add_select`);
 		}
 
 		const newCollapsedIds = collapsedItemIds.filter(
@@ -540,7 +552,7 @@ export const FormTabContent = () => {
 			const updatedItems = JSON.parse(JSON.stringify(selectItems));
 			let target = updatedItems;
 			for (const id of parentPath) {
-				const item = target.find((i: SelectItemInternal) => i.id === id);
+				const item = target.find((i: SelectItemInternal) => i.nodeId === id);
 				if (item?.children) {
 					target = item.children;
 				}
@@ -565,13 +577,13 @@ export const FormTabContent = () => {
 			items: SelectItemInternal[],
 		): SelectItemInternal[] => {
 			return items.map((item) => {
-				if (item.id === selectItemId && item.type === "column") {
+				if (item.nodeId === selectItemId && item.type === "column") {
 					return {
 						...item,
-						columns: [
-							...(item.columns || []),
+						column: [
+							...(item.column || []),
 							{
-								id: newColumnId,
+								nodeId: newColumnId,
 								name: "",
 								path: "",
 							},
@@ -615,11 +627,11 @@ export const FormTabContent = () => {
 			items: SelectItemInternal[],
 		): SelectItemInternal[] => {
 			return items.map((item) => {
-				if (item.id === selectItemId && item.columns) {
+				if (item.nodeId === selectItemId && item.column) {
 					return {
 						...item,
-						columns: item.columns.map((col) =>
-							col.id === columnId ? { ...col, [field]: value } : col,
+						column: item.column.map((col: ColumnItem) =>
+							col.nodeId === columnId ? { ...col, [field]: value } : col,
 						),
 					};
 				}
@@ -642,7 +654,7 @@ export const FormTabContent = () => {
 		): SelectItemInternal[] => {
 			return items.map((item) => {
 				if (
-					item.id === selectItemId &&
+					item.nodeId === selectItemId &&
 					(item.type === "forEach" || item.type === "forEachOrNull")
 				) {
 					return { ...item, expression };
@@ -665,10 +677,12 @@ export const FormTabContent = () => {
 			items: SelectItemInternal[],
 		): SelectItemInternal[] => {
 			return items.map((item) => {
-				if (item.id === selectItemId && item.columns) {
+				if (item.nodeId === selectItemId && item.column) {
 					return {
 						...item,
-						columns: item.columns.filter((col) => col.id !== columnId),
+						column: item.column.filter(
+							(col: ColumnItem) => col.nodeId !== columnId,
+						),
 					};
 				}
 				if (item.children) {
@@ -687,7 +701,7 @@ export const FormTabContent = () => {
 	const removeSelectItem = (itemId: string) => {
 		const removeItem = (items: SelectItemInternal[]): SelectItemInternal[] => {
 			return items
-				.filter((item) => item.id !== itemId)
+				.filter((item) => item.nodeId !== itemId)
 				.map((item) => {
 					if (item.children) {
 						return { ...item, children: removeItem(item.children) };
@@ -704,11 +718,11 @@ export const FormTabContent = () => {
 	// Dynamic tree generation based on current constants and where conditions
 	const tree: Record<string, TreeViewItem<ItemMeta>> = useMemo(() => {
 		const constantChildren =
-			constants.length > 0 ? constants.map((c) => c.id) : [];
+			constants.length > 0 ? constants.map((c) => c.nodeId) : [];
 		constantChildren.push("_constant_add");
 
 		const whereChildren =
-			whereConditions.length > 0 ? whereConditions.map((w) => w.id) : [];
+			whereConditions.length > 0 ? whereConditions.map((w) => w.nodeId) : [];
 		whereChildren.push("_where_add");
 
 		const treeStructure: Record<string, TreeViewItem<ItemMeta>> = {};
@@ -718,10 +732,10 @@ export const FormTabContent = () => {
 			const children: string[] = [];
 
 			items.forEach((item) => {
-				children.push(item.id);
+				children.push(item.nodeId);
 
 				const currentItem: TreeViewItem<ItemMeta> = {
-					name: item.id,
+					name: item.nodeId,
 					meta: {
 						type: `select-${item.type}`,
 						selectData: item,
@@ -729,27 +743,27 @@ export const FormTabContent = () => {
 					children: [],
 				};
 
-				treeStructure[item.id] = currentItem;
+				treeStructure[item.nodeId] = currentItem;
 
-				if (item.type === "column" && item.columns) {
+				if (item.type === "column" && item.column) {
 					const columnChildren: string[] = [];
-					item.columns.forEach((col) => {
-						columnChildren.push(col.id);
-						treeStructure[col.id] = {
-							name: col.id,
+					item.column.forEach((col: ColumnItem) => {
+						columnChildren.push(col.nodeId);
+						treeStructure[col.nodeId] = {
+							name: col.nodeId,
 							meta: {
 								type: "column-item",
 								columnData: col,
-								selectItemId: item.id,
+								selectItemId: item.nodeId,
 							},
 						};
 					});
-					columnChildren.push(`${item.id}_add_column`);
-					treeStructure[`${item.id}_add_column`] = {
-						name: `${item.id}_add_column`,
+					columnChildren.push(`${item.nodeId}_add_column`);
+					treeStructure[`${item.nodeId}_add_column`] = {
+						name: `${item.nodeId}_add_column`,
 						meta: {
 							type: "column-add",
-							selectItemId: item.id,
+							selectItemId: item.nodeId,
 						},
 					};
 					currentItem.children = columnChildren;
@@ -765,12 +779,12 @@ export const FormTabContent = () => {
 						nodeChildren.push(...nestedChildren);
 					}
 
-					nodeChildren.push(`${item.id}_add_select`);
-					treeStructure[`${item.id}_add_select`] = {
-						name: `${item.id}_add_select`,
+					nodeChildren.push(`${item.nodeId}_add_select`);
+					treeStructure[`${item.nodeId}_add_select`] = {
+						name: `${item.nodeId}_add_select`,
 						meta: {
 							type: "select-add-nested",
-							parentId: item.id,
+							parentId: item.nodeId,
 						},
 					};
 
@@ -921,8 +935,8 @@ export const FormTabContent = () => {
 		Object.assign(treeStructure, newTreeStructure);
 
 		constants.forEach((constant, index) => {
-			treeStructure[constant.id] = {
-				name: constant.id,
+			treeStructure[constant.nodeId] = {
+				name: constant.nodeId,
 				meta: {
 					type: "constant-value",
 					lastNode: index === constants.length - 1,
@@ -932,8 +946,8 @@ export const FormTabContent = () => {
 		});
 
 		whereConditions.forEach((whereCondition, index) => {
-			treeStructure[whereCondition.id] = {
-				name: whereCondition.id,
+			treeStructure[whereCondition.nodeId] = {
+				name: whereCondition.nodeId,
 				meta: {
 					type: "where-value",
 					lastNode: index === whereConditions.length - 1,
@@ -952,8 +966,7 @@ export const FormTabContent = () => {
 	const expandedItems = useMemo(() => {
 		const allItemIds = Object.keys(tree).filter((id) => id !== "root");
 		return allItemIds.filter(
-			(id) =>
-				alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
+			(id) => alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
 		);
 	}, [tree, collapsedItemIds]);
 
@@ -976,7 +989,6 @@ export const FormTabContent = () => {
 		item.getItemData().children = newChildren;
 
 		const itemId = item.getId();
-		const _itemMeta = item.getItemData()?.meta;
 
 		// Handle reordering of constants
 		if (itemId === "_constant") {
@@ -987,7 +999,7 @@ export const FormTabContent = () => {
 			const reorderedConstants: ConstantItem[] = [];
 
 			for (const id of reorderedConstantIds) {
-				const constant = constants.find((c) => c.id === id);
+				const constant = constants.find((c) => c.nodeId === id);
 				if (constant) {
 					reorderedConstants.push(constant);
 				}
@@ -1006,7 +1018,7 @@ export const FormTabContent = () => {
 			const reorderedWhere: WhereItem[] = [];
 
 			for (const id of reorderedWhereIds) {
-				const where = whereConditions.find((w) => w.id === id);
+				const where = whereConditions.find((w) => w.nodeId === id);
 				if (where) {
 					reorderedWhere.push(where);
 				}
@@ -1031,7 +1043,7 @@ export const FormTabContent = () => {
 			): SelectItemInternal[] => {
 				const reordered: SelectItemInternal[] = [];
 				for (const id of orderedIds) {
-					const item = items.find((i) => i.id === id);
+					const item = items.find((i) => i.nodeId === id);
 					if (item) {
 						reordered.push(item);
 					}
@@ -1058,8 +1070,8 @@ export const FormTabContent = () => {
 				let wasUpdated = false;
 				const updatedItems = items.map((item) => {
 					// Check if this item matches
-					if (item.id === itemId) {
-						if (item.type === "column" && item.columns) {
+					if (item.nodeId === itemId) {
+						if (item.type === "column" && item.column) {
 							// Reorder columns
 							const reorderedColumnIds = newChildren.filter(
 								(id) => !id.endsWith("_add_column"),
@@ -1067,15 +1079,17 @@ export const FormTabContent = () => {
 							const reorderedColumns: ColumnItem[] = [];
 
 							for (const id of reorderedColumnIds) {
-								const column = item.columns.find((c) => c.id === id);
+								const column = item.column.find(
+									(c: ColumnItem) => c.nodeId === id,
+								);
 								if (column) {
 									reorderedColumns.push(column);
 								}
 							}
 
-							if (reorderedColumns.length === item.columns.length) {
+							if (reorderedColumns.length === item.column.length) {
 								wasUpdated = true;
-								return { ...item, columns: reorderedColumns };
+								return { ...item, column: reorderedColumns };
 							}
 						} else if (
 							(item.type === "forEach" ||
@@ -1090,7 +1104,7 @@ export const FormTabContent = () => {
 							const reorderedChildren: SelectItemInternal[] = [];
 
 							for (const id of reorderedChildIds) {
-								const child = item.children.find((c) => c.id === id);
+								const child = item.children.find((c) => c.nodeId === id);
 								if (child) {
 									reorderedChildren.push(child);
 								}
@@ -1197,8 +1211,6 @@ export const FormTabContent = () => {
 
 	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
-		const _itemId = item.getId();
-		const _itemProps = item.getProps();
 
 		// Helper function to render drag handle for draggable items
 		const renderDragHandle = () => {
@@ -1275,7 +1287,9 @@ export const FormTabContent = () => {
 						<div className="w-[50%]">
 							<Select
 								value={viewDefinition?.status || ""}
-								onValueChange={(value) => updateStatus(value)}
+								onValueChange={(value: CanonicalResource["status"]) =>
+									updateStatus(value)
+								}
 							>
 								<SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
 									<SelectValue placeholder="Select status" />
@@ -1379,7 +1393,9 @@ export const FormTabContent = () => {
 							<MultiCombobox
 								options={fhirVersionOptions}
 								value={selectedVersions}
-								onValueChange={updateFhirVersions}
+								onValueChange={(props: string[]) =>
+									updateFhirVersions(props as ViewDefinition["fhirVersion"])
+								}
 								placeholder="Select FHIR versions"
 								searchPlaceholder="Search versions..."
 								className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary"
@@ -1553,7 +1569,7 @@ export const FormTabContent = () => {
 							variant="link"
 							size="small"
 							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity ml-auto"
-							onClick={() => removeSelectItem(selectData.id)}
+							onClick={() => removeSelectItem(selectData.nodeId)}
 							asChild
 						>
 							<span>
@@ -1574,14 +1590,16 @@ export const FormTabContent = () => {
 						<InputView
 							placeholder="Expression"
 							value={selectData.expression || ""}
-							onChange={(value) => updateSelectExpression(selectData.id, value)}
+							onChange={(value) =>
+								updateSelectExpression(selectData.nodeId, value)
+							}
 							className="flex-1"
 						/>
 						<Button
 							variant="link"
 							size="small"
 							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
-							onClick={() => removeSelectItem(selectData.id)}
+							onClick={() => removeSelectItem(selectData.nodeId)}
 							asChild
 						>
 							<span>
@@ -1602,7 +1620,7 @@ export const FormTabContent = () => {
 							variant="link"
 							size="small"
 							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity ml-auto"
-							onClick={() => removeSelectItem(selectData.id)}
+							onClick={() => removeSelectItem(selectData.nodeId)}
 							asChild
 						>
 							<span>
@@ -1626,21 +1644,33 @@ export const FormTabContent = () => {
 							placeholder="Column name"
 							value={columnData.name}
 							onChange={(value) =>
-								updateSelectColumn(selectItemId, columnData.id, "name", value)
+								updateSelectColumn(
+									selectItemId,
+									columnData.nodeId,
+									"name",
+									value,
+								)
 							}
 						/>
 						<InputView
 							placeholder="Path"
 							value={columnData.path}
 							onChange={(value) =>
-								updateSelectColumn(selectItemId, columnData.id, "path", value)
+								updateSelectColumn(
+									selectItemId,
+									columnData.nodeId,
+									"path",
+									value,
+								)
 							}
 						/>
 						<Button
 							variant="link"
 							size="small"
 							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
-							onClick={() => removeSelectColumn(selectItemId, columnData.id)}
+							onClick={() =>
+								removeSelectColumn(selectItemId, columnData.nodeId)
+							}
 							asChild
 						>
 							<span>
@@ -1697,13 +1727,15 @@ export const FormTabContent = () => {
 						<InputView
 							placeholder="Expression"
 							value={whereData.path}
-							onChange={(value) => updateWhereCondition(whereData.id, value)}
+							onChange={(value) =>
+								updateWhereCondition(whereData.nodeId, value)
+							}
 						/>
 						<Button
 							variant="link"
 							size="small"
 							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
-							onClick={() => removeWhereCondition(whereData.id)}
+							onClick={() => removeWhereCondition(whereData.nodeId)}
 							asChild
 						>
 							<span>
@@ -1742,14 +1774,14 @@ export const FormTabContent = () => {
 							placeholder="Name"
 							value={constantData.name}
 							onChange={(value) =>
-								updateConstant(constantData.id, "name", value)
+								updateConstant(constantData.nodeId, "name", value)
 							}
 						/>
 						<InputView
 							placeholder="Value"
 							value={constantData.valueString}
 							onChange={(value) =>
-								updateConstant(constantData.id, "valueString", value)
+								updateConstant(constantData.nodeId, "valueString", value)
 							}
 						/>
 
@@ -1757,7 +1789,7 @@ export const FormTabContent = () => {
 							variant="link"
 							size="small"
 							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
-							onClick={() => removeConstant(constantData.id)}
+							onClick={() => removeConstant(constantData.nodeId)}
 							asChild
 						>
 							<span>

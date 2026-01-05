@@ -1,18 +1,18 @@
-import { AidboxCallWithMeta } from "@aidbox-ui/api/auth";
+import type {
+	Bundle,
+	BundleEntry,
+	Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { DiffView } from "@git-diff-view/react";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as YAML from "js-yaml";
 import React from "react";
-import * as utils from "../../api/utils";
+import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import { diff } from "../../utils/diff";
 import { traverseTree } from "../../utils/tree-walker";
-import {
-	fetchResourceHistory,
-	type HistoryBundle,
-	type HistoryEntry,
-	type HistoryEntryResource,
-} from "./api";
+import { fetchResourceHistory } from "./api";
 import { type EditorMode, pageId } from "./types";
 import "@git-diff-view/react/styles/diff-view-pure.css";
 import { generateDiffFile } from "@git-diff-view/file";
@@ -26,8 +26,8 @@ type historyWithHistoryProps = {
 	versionId: string;
 	date: Date | string;
 	status: string;
-	resourceCurrent: HistoryEntryResource;
-	resourcePrevious: HistoryEntryResource | null;
+	resourceCurrent: Resource;
+	resourcePrevious: Resource | null;
 	affected: Set<(string | number)[]>;
 };
 
@@ -78,13 +78,15 @@ const VersionDiffDialog = ({
 	openState,
 	onOpenChange,
 }: {
-	previous: HistoryEntryResource | null;
-	current: HistoryEntryResource;
+	previous: Resource | null;
+	current: Resource;
 	resourceType: string;
 	resourceId: string;
 	openState: OpenState;
 	onOpenChange: (open: OpenState) => void;
 }) => {
+	const client = useAidboxClient();
+
 	const diff = generateDiffFile(
 		"prev.json",
 		JSON.stringify(previous, null, "  "),
@@ -100,18 +102,17 @@ const VersionDiffDialog = ({
 	const queryClient = useQueryClient();
 
 	const mutation = useMutation({
-		mutationFn: (resource: string) => {
-			return AidboxCallWithMeta({
-				method: "PUT",
-				url: `/fhir/${resourceType}/${resourceId}`,
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: resource,
+		mutationFn: (resource: object) => {
+			return client.update({
+				type: resourceType,
+				id: resourceId,
+				resource: resource,
 			});
 		},
-		onSuccess: () => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			queryClient.invalidateQueries({
 				queryKey: [pageId, resourceType, resourceId, "history"],
 			});
@@ -126,7 +127,7 @@ const VersionDiffDialog = ({
 			);
 			onOpenChange("hidden");
 		},
-		onError: utils.onError(),
+		onError: Utils.onMutationError,
 	});
 
 	return (
@@ -158,7 +159,7 @@ const VersionDiffDialog = ({
 							: "-"
 					}
 					versionId={version || ""}
-					onConfirm={() => mutation.mutate(JSON.stringify(previous))}
+					onConfirm={() => mutation.mutate(previous)}
 					onCancel={() => onOpenChange("shown")}
 				/>
 			)}
@@ -173,12 +174,14 @@ const VersionViewDialog = ({
 	openState,
 	onOpenStateChange,
 }: {
-	resource: HistoryEntryResource;
+	resource: Resource;
 	resourceType: string;
 	resourceId: string;
 	openState: OpenState;
 	onOpenStateChange: (open: OpenState) => void;
 }) => {
+	const client = useAidboxClient();
+
 	const queryClient = useQueryClient();
 	const [mode, setMode] = React.useState<EditorMode>("json");
 
@@ -186,17 +189,16 @@ const VersionViewDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			return AidboxCallWithMeta({
-				method: "PUT",
-				url: `/fhir/${resourceType}/${resourceId}`,
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: resource,
+			return client.update({
+				type: resourceType,
+				id: resourceId,
+				resource: resource,
 			});
 		},
-		onSuccess: () => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			queryClient.invalidateQueries({
 				queryKey: [pageId, resourceType, resourceId, "history"],
 			});
@@ -211,7 +213,7 @@ const VersionViewDialog = ({
 			);
 			onOpenStateChange("hidden");
 		},
-		onError: utils.onError(),
+		onError: Utils.onMutationError,
 	});
 
 	const indent = 2;
@@ -290,7 +292,7 @@ function VersionIdCell({
 	versionId,
 	id,
 }: {
-	resource: HistoryEntryResource;
+	resource: Resource;
 	resourceType: string;
 	versionId: string;
 	id: string;
@@ -327,8 +329,8 @@ function AffectedCell({
 	previousResource,
 	currentResource,
 }: {
-	previousResource: HistoryEntryResource | null;
-	currentResource: HistoryEntryResource;
+	previousResource: Resource | null;
+	currentResource: Resource;
 	resourceType: string;
 	id: string;
 	affected: Set<(string | number)[]>;
@@ -366,8 +368,8 @@ function AffectedCell({
 }
 
 const calculateAffectedAttributes = (
-	previous: HistoryEntryResource | null,
-	current: HistoryEntryResource,
+	previous: Resource | null,
+	current: Resource,
 ) => {
 	if (!previous) return new Set<(string | number)[]>();
 
@@ -422,7 +424,9 @@ const calculateAffectedAttributes = (
 };
 
 export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
-	const [history, setHistory] = React.useState<HistoryBundle>();
+	const client = useAidboxClient();
+
+	const [history, setHistory] = React.useState<Bundle>();
 
 	const {
 		data: historyData,
@@ -431,7 +435,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 	} = useQuery({
 		queryKey: [pageId, resourceType, id, "history"],
 		queryFn: async () => {
-			return await fetchResourceHistory(resourceType, id);
+			return await fetchResourceHistory(client, resourceType, id);
 		},
 	});
 
@@ -487,42 +491,67 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		},
 	];
 
-	const historyWithHistory = history.entry
-		.sort(
-			(a: HistoryEntry, b: HistoryEntry) =>
-				parseInt(a.resource.meta.versionId) -
-				parseInt(b.resource.meta.versionId),
-		)
-		.reduce(
-			(
-				acc: {
-					result: historyWithHistoryProps[];
-					prev: HistoryEntryResource | null;
-				},
-				entry,
-			) => {
-				const resource = entry.resource;
-				acc.result.push({
-					versionId: resource.meta.versionId,
-					date: resource.meta.lastUpdated
-						? new Date(resource.meta.lastUpdated).toLocaleString()
-						: "-",
-					status: prettyStatus(entry.response.status),
-					resourceCurrent: resource,
-					resourcePrevious: acc.prev,
-					affected: calculateAffectedAttributes(acc.prev, resource),
-				});
-				acc.prev = resource;
-				return acc;
-			},
-			{ result: [], prev: null },
-		);
+	try {
+		const historyWithHistory = history.entry
+			?.map((x: BundleEntry) => {
+				const versionId = x?.resource?.meta?.versionId;
+				if (versionId === undefined)
+					throw Error("No version ID in history item", { cause: x });
 
-	return (
-		<HSComp.DataTable
-			columns={columns}
-			data={historyWithHistory.result.reverse()}
-			stickyHeader
-		/>
-	);
+				return { ...x, versionId };
+			})
+			.sort(
+				(a, b) => parseInt(a.versionId || "0") - parseInt(b.versionId || "0"),
+			)
+			.reduce(
+				(
+					acc: {
+						result: historyWithHistoryProps[];
+						prev: Resource | null;
+					},
+					entry,
+				) => {
+					const resource = entry.resource;
+					if (resource === undefined)
+						throw Error("History item is missing the resource", {
+							cause: resource,
+						});
+					if (!entry?.response?.status)
+						throw Error("History item is missing a response status", {
+							cause: entry,
+						});
+
+					acc.result.push({
+						versionId: entry.versionId,
+						date: resource.meta?.lastUpdated
+							? new Date(resource.meta.lastUpdated).toLocaleString()
+							: "-",
+						status: prettyStatus(entry?.response?.status),
+						resourceCurrent: resource,
+						resourcePrevious: acc.prev,
+						affected: calculateAffectedAttributes(acc.prev, resource),
+					});
+					acc.prev = resource;
+					return acc;
+				},
+				{ result: [], prev: null },
+			);
+
+		return (
+			<HSComp.DataTable
+				columns={columns}
+				data={historyWithHistory?.result.reverse() || []}
+				stickyHeader
+			/>
+		);
+	} catch {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Error loading version list</div>
+					<div className="text-sm">ID: {id}</div>
+				</div>
+			</div>
+		);
+	}
 };

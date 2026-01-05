@@ -1,13 +1,16 @@
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import { CodeEditor, TabsContent } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { format as formatSQL } from "sql-formatter";
-import { AidboxCallWithMeta } from "../../api/auth";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
 import { ViewDefinitionContext } from "./page";
-import type { ViewDefinition } from "./types";
 
-const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
+const fetchSQL = async (
+	client: AidboxClientR5,
+	viewDefinition: ViewDefinition,
+): Promise<string> => {
 	const parametersPayload = {
 		resourceType: "Parameters",
 		parameter: [
@@ -18,7 +21,7 @@ const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
 		],
 	};
 
-	const response = await AidboxCallWithMeta({
+	const response = await client.rawRequest({
 		method: "POST",
 		url: "/fhir/ViewDefinition/$sql",
 		headers: {
@@ -28,7 +31,7 @@ const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
 		body: JSON.stringify(parametersPayload),
 	});
 
-	const json = JSON.parse(response.body);
+	const json = await response.response.json();
 	if (json.issue) {
 		throw Error(`${json.issue[0]?.diagnostics || "Unknown error"}`);
 	}
@@ -44,6 +47,8 @@ const fetchSQL = async (viewDefinition: ViewDefinition): Promise<string> => {
 };
 
 export function SQLTab() {
+	const client = useAidboxClient();
+
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 
 	const viewDefinition = viewDefinitionContext.viewDefinition;
@@ -52,7 +57,7 @@ export function SQLTab() {
 		queryKey: [viewDefinition, Constants.PageID, "sql-tab"],
 		queryFn: async () => {
 			if (!viewDefinition) return "";
-			return await fetchSQL(viewDefinition);
+			return await fetchSQL(client, viewDefinition);
 		},
 		retry: false,
 		refetchOnWindowFocus: false,
