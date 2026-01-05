@@ -272,7 +272,7 @@ const ResourcesTabContent = ({
 	});
 
 	const decodedSearchQuery = search.searchQuery
-		? search.searchQuery
+		? atob(search.searchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
 
 	const { data, isLoading, error } = ReactQuery.useQuery({
