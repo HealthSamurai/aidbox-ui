@@ -102,7 +102,7 @@ const VersionDiffDialog = ({
 	const queryClient = useQueryClient();
 
 	const mutation = useMutation({
-		mutationFn: (resource: string) => {
+		mutationFn: (resource: object) => {
 			return client.update({
 				type: resourceType,
 				id: resourceId,
@@ -156,7 +156,7 @@ const VersionDiffDialog = ({
 							: "-"
 					}
 					versionId={version || ""}
-					onConfirm={() => mutation.mutate(JSON.stringify(previous))}
+					onConfirm={() => mutation.mutate(previous)}
 					onCancel={() => onOpenChange("shown")}
 				/>
 			)}
