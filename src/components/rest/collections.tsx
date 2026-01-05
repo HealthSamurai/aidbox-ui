@@ -89,7 +89,12 @@ async function SaveRequest(
 			...(collection ? { collection } : {}),
 		},
 	});
+
 	setSelectedCollectionItemId(snippetId);
+
+	if (result.isErr())
+		throw Error("can't update ui_snippet", { cause: result.value.resource });
+
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	return result;
 }
@@ -306,7 +311,7 @@ async function handleAddNewCollectionEntry(
 	tabs: Tab[],
 ) {
 	const newTab = ActiveTabs.addTab(tabs, setTabs);
-	await client.update({
+	const result = await client.update({
 		type: "ui_snippet",
 		id: newTab.id,
 		resource: {
@@ -315,6 +320,10 @@ async function handleAddNewCollectionEntry(
 			command: Utils.generateHttpRequest(newTab),
 		},
 	});
+
+	if (result.isErr())
+		throw Error("can't update ui_snippet", { cause: result.value.resource });
+
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	setSelectedCollectionItemId(newTab.id);
 }
@@ -327,10 +336,13 @@ async function handleDeleteSnippet(
 	_setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void,
 ) {
 	if (itemData?.meta?.id) {
-		await client.delete({
+		const result = await client.delete({
 			type: "ui_snippet",
 			id: itemData.meta.id,
 		});
+
+		if (result.isErr())
+			throw Error("can't delete ui_snippet", { cause: result.value.resource });
 	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 	// ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
@@ -342,7 +354,7 @@ async function handleDeleteCollection(
 	queryClient: QueryClient,
 ) {
 	// FIXME: client doesn't accept additional headers
-	await client.request({
+	const result = await client.request({
 		method: "DELETE",
 		url: `/ui_snippet`,
 		headers: {
@@ -350,6 +362,10 @@ async function handleDeleteCollection(
 		},
 		params: [["id", itemData.children?.join(",") ?? ""]],
 	});
+
+	if (result.isErr())
+		throw Error("can't delete ui_snippet", { cause: result.value.resource });
+
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
 
@@ -706,7 +722,7 @@ async function handleRenameSnippet(
 ) {
 	if (item.isFolder()) {
 		const snippetIds = item.getChildren().map((child) => child.getId());
-		await client.transaction({
+		const result = await client.transaction({
 			format: "application/json",
 			bundle: {
 				resourceType: "Bundle",
@@ -723,15 +739,21 @@ async function handleRenameSnippet(
 				})),
 			},
 		});
+
+		if (result.isErr())
+			throw Error("can't rename folder", { cause: result.value.resource });
 	} else {
 		// FIXME: client.patch expects a JSON-patch object
-		await client.request({
+		const result = await client.request({
 			method: "PATCH",
 			url: `/ui_snippet/${item.getItemData().meta?.id}`,
 			body: JSON.stringify({
 				title: newTitle,
 			}),
 		});
+
+		if (result.isErr())
+			throw Error("can't rename snippet", { cause: result.value.resource });
 	}
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
