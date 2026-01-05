@@ -1,6 +1,7 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
+import { useBlocker } from "@tanstack/react-router";
 import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
@@ -30,6 +31,8 @@ export const ViewDefinitionContext =
 		setRunResultPage: () => {},
 		runViewDefinition: undefined,
 		setRunViewDefinition: () => {},
+		isDirty: false,
+		setIsDirty: () => {},
 	});
 
 export const ViewDefinitionResourceTypeContext =
@@ -67,6 +70,11 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const [runResult, setRunResult] = React.useState<string>();
 	const [runResultPage, setRunResultPage] = React.useState(1);
 	const [runResultPageSize, setRunResultPageSize] = React.useState(30);
+	const [isDirty, setIsDirty] = React.useState(false);
+
+	const { proceed, reset, status } = useBlocker({
+		condition: isDirty,
+	});
 
 	const viewDefinitionQuery = useQuery({
 		queryKey: [Constants.PageID, id],
@@ -123,6 +131,8 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 				setRunResultPageSize: setRunResultPageSize,
 				runViewDefinition: runViewDefinition,
 				setRunViewDefinition: setRunViewDefinition,
+				isDirty: isDirty,
+				setIsDirty: setIsDirty,
 			}}
 		>
 			<ViewDefinitionResourceTypeContext.Provider
@@ -155,6 +165,26 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 					</HSComp.ResizablePanel>
 				</HSComp.ResizablePanelGroup>
 			</ViewDefinitionResourceTypeContext.Provider>
+
+			<HSComp.AlertDialog open={status === "blocked"}>
+				<HSComp.AlertDialogContent>
+					<HSComp.AlertDialogHeader>
+						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>
+						<HSComp.AlertDialogDescription>
+							You have unsaved changes. Are you sure you want to leave this
+							page? Your changes will be lost.
+						</HSComp.AlertDialogDescription>
+					</HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogFooter>
+						<HSComp.AlertDialogCancel onClick={reset}>
+							Cancel
+						</HSComp.AlertDialogCancel>
+						<HSComp.AlertDialogAction variant="primary" danger onClick={proceed}>
+							Leave
+						</HSComp.AlertDialogAction>
+					</HSComp.AlertDialogFooter>
+				</HSComp.AlertDialogContent>
+			</HSComp.AlertDialog>
 		</ViewDefinitionContext.Provider>
 	);
 };

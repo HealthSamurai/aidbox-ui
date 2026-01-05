@@ -38,7 +38,6 @@ import React, {
 	useCallback,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
@@ -256,7 +255,7 @@ const InputView = ({
 		if (onChange && newValue !== value) {
 			onChange(newValue);
 		}
-	}, 350);
+	}, 500);
 
 	const handleChange = (newValue: string) => {
 		setLocalValue(newValue);
@@ -283,11 +282,9 @@ export const FormTabContent = () => {
 	const [selectItems, setSelectItems] = useState<SelectItemInternal[]>([]);
 	const [collapsedItemIds, setCollapsedItemIds] = useLocalStorage<string[]>({
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
-		defaultValue: [],
+		defaultValue: ["_properties"],
 	});
 
-	// Track the previous tree structure to detect changes
-	const previousTreeKeysRef = useRef<string>("");
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
@@ -376,6 +373,7 @@ export const FormTabContent = () => {
 				updatedViewDef.select = selectArray;
 
 				viewDefinitionContext.setViewDefinition(updatedViewDef);
+				viewDefinitionContext.setIsDirty(true);
 			}
 		},
 		[
@@ -967,6 +965,29 @@ export const FormTabContent = () => {
 		return treeStructure;
 	}, [constants, whereConditions, selectItems]);
 
+	// Items that should always be expanded (cannot be collapsed)
+	const alwaysExpandedIds = ["_constant", "_where", "_select"];
+
+	// Compute expanded items from collapsed items
+	const expandedItems = useMemo(() => {
+		const allItemIds = Object.keys(tree).filter((id) => id !== "root");
+		return allItemIds.filter(
+			(id) =>
+				alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
+		);
+	}, [tree, collapsedItemIds]);
+
+	const onExpandedItemsChange = useCallback(
+		(items: string[]) => {
+			const allItemIds = Object.keys(tree).filter((id) => id !== "root");
+			const newCollapsedIds = allItemIds.filter(
+				(id) => !alwaysExpandedIds.includes(id) && !items.includes(id),
+			);
+			setCollapsedItemIds(newCollapsedIds);
+		},
+		[tree, setCollapsedItemIds],
+	);
+
 	const onDropTreeItem = (
 		_tree: TreeInstance<TreeViewItem<ItemMeta>>,
 		item: ItemInstance<TreeViewItem<ItemMeta>>,
@@ -1171,7 +1192,12 @@ export const FormTabContent = () => {
 		)
 			additionalClass = "text-blue-500 bg-blue-100";
 
+		// Prevent collapsing constant, where, and select sections
+		const isAlwaysExpanded =
+			metaType === "constant" || metaType === "where" || metaType === "select";
+
 		const onLabelClickFn = () => {
+			if (isAlwaysExpanded) return;
 			if (item.isExpanded()) {
 				item.collapse();
 			} else {
@@ -1182,7 +1208,7 @@ export const FormTabContent = () => {
 		return (
 			<button
 				type="button"
-				className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
+				className={`uppercase px-1.5 py-0.5 ${isFolder && !isAlwaysExpanded ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
 				onClick={onLabelClickFn}
 			>
 				{label}
@@ -1784,20 +1810,12 @@ export const FormTabContent = () => {
 		}
 	};
 
-	// Initialize the tree keys on first render
-	useEffect(() => {
-		if (previousTreeKeysRef.current === "") {
-			previousTreeKeysRef.current = Object.keys(tree).sort().join(",");
-		}
-	}, [tree]);
-
 	if (!viewDefinition) {
 		return null;
 	}
 
 	return (
 		<TreeView
-			key={`tree-${selectItems.length}-${constants.length}-${whereConditions.length}`}
 			itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 				const metaType = item.getItemData()?.meta?.type;
 
@@ -1826,6 +1844,8 @@ export const FormTabContent = () => {
 			disableHover={true}
 			canReorder={true}
 			onDropFn={onDropTreeItem}
+			expandedItems={expandedItems}
+			onExpandedItemsChange={onExpandedItemsChange}
 		/>
 	);
 };

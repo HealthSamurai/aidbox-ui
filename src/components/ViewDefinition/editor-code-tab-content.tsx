@@ -45,6 +45,7 @@ export const ViewDefinitionCodeEditor = ({
 				JSON.stringify(viewDefinitionContext.viewDefinition)
 			) {
 				viewDefinitionContext.setViewDefinition(viewDefinition);
+				viewDefinitionContext.setIsDirty(true);
 			}
 		},
 		500,
@@ -126,6 +127,41 @@ export const CodeTabContent = () => {
 		isInitialized,
 		viewDefinitionContext.viewDefinition,
 		viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+		stringifyViewDefinition,
+	]);
+
+	// Track resource type changes from the dropdown after initialization
+	const prevResourceTypeRef = React.useRef<string | undefined>(
+		viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+	);
+
+	React.useEffect(() => {
+		const newResourceType =
+			viewDefinitionResourceTypeContext.viewDefinitionResourceType;
+		if (
+			isInitialized &&
+			newResourceType &&
+			prevResourceTypeRef.current !== newResourceType
+		) {
+			prevResourceTypeRef.current = newResourceType;
+			try {
+				const parsed =
+					codeMode === "json"
+						? JSON.parse(editorValue)
+						: (yaml.load(editorValue) as ViewDefinition);
+				if (parsed.resource !== newResourceType) {
+					parsed.resource = newResourceType;
+					setEditorValue(stringifyViewDefinition(parsed));
+				}
+			} catch {
+				// If parsing fails, we can't update
+			}
+		}
+	}, [
+		isInitialized,
+		viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+		codeMode,
+		editorValue,
 		stringifyViewDefinition,
 	]);
 

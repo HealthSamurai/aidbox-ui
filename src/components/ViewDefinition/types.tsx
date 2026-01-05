@@ -13,6 +13,8 @@ export interface ViewDefinitionContextProps {
 	setRunResultPage: (result: number) => void;
 	runViewDefinition: ViewDefinition | undefined;
 	setRunViewDefinition: (viewDefinition: ViewDefinition) => void;
+	isDirty: boolean;
+	setIsDirty: (isDirty: boolean) => void;
 }
 
 export interface ViewDefinitionResourceTypeContextProps {
