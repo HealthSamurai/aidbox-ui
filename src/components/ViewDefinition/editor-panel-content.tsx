@@ -103,7 +103,10 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				});
 			throw Error("missing originalId in the ViewDefinitionContext");
 		},
-		onSuccess: () => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			viewDefinitionContext.setIsDirty(false);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",

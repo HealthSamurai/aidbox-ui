@@ -109,7 +109,10 @@ const VersionDiffDialog = ({
 				resource: resource,
 			});
 		},
-		onSuccess: () => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			queryClient.invalidateQueries({
 				queryKey: [pageId, resourceType, resourceId, "history"],
 			});
@@ -186,13 +189,17 @@ const VersionViewDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
+			console.log(resource);
 			return client.update({
 				type: resourceType,
 				id: resourceId,
 				resource: resource,
 			});
 		},
-		onSuccess: () => {
+		onSuccess: (result) => {
+			if (result.isErr())
+				return Utils.toastOperationOutcome(result.value.resource);
+
 			queryClient.invalidateQueries({
 				queryKey: [pageId, resourceType, resourceId, "history"],
 			});
