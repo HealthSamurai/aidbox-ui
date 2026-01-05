@@ -189,7 +189,6 @@ const VersionViewDialog = ({
 
 	const mutation = useMutation({
 		mutationFn: (resource: string) => {
-			console.log(resource);
 			return client.update({
 				type: resourceType,
 				id: resourceId,
