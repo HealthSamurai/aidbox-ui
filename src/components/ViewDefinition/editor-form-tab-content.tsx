@@ -34,12 +34,7 @@ import {
 	TextQuote,
 	X,
 } from "lucide-react";
-import React, {
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
 import { ViewDefinitionContext } from "./page";
 
@@ -284,7 +279,6 @@ export const FormTabContent = () => {
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
 		defaultValue: ["_properties"],
 	});
-
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
 	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
@@ -972,8 +966,7 @@ export const FormTabContent = () => {
 	const expandedItems = useMemo(() => {
 		const allItemIds = Object.keys(tree).filter((id) => id !== "root");
 		return allItemIds.filter(
-			(id) =>
-				alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
+			(id) => alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
 		);
 	}, [tree, collapsedItemIds]);
 

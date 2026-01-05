@@ -179,7 +179,11 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 						<HSComp.AlertDialogCancel onClick={reset}>
 							Cancel
 						</HSComp.AlertDialogCancel>
-						<HSComp.AlertDialogAction variant="primary" danger onClick={proceed}>
+						<HSComp.AlertDialogAction
+							variant="primary"
+							danger
+							onClick={proceed}
+						>
 							Leave
 						</HSComp.AlertDialogAction>
 					</HSComp.AlertDialogFooter>

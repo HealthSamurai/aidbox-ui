@@ -198,7 +198,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 			viewDefinition,
 			materializeType,
 		}: {
-			viewDefinition: Types.ViewDefinition;
+			viewDefinition: ViewDefinition;
 			materializeType: "view" | "materialized-view" | "table";
 		}) => {
 			const parametersPayload = {
@@ -214,7 +214,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 					},
 				],
 			};
-			return AidboxCallWithMeta({
+			return client.rawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$materialize",
 				headers: {
@@ -224,12 +224,11 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: (data) => {
-			const response = JSON.parse(data.body);
+		onSuccess: async (data) => {
+			const response = await data.response.json();
 			const viewName =
-				response.parameter?.find(
-					(p: { name: string }) => p.name === "viewName",
-				)?.valueString || "unknown";
+				response.parameter?.find((p: { name: string }) => p.name === "viewName")
+					?.valueString || "unknown";
 			HSComp.toast.success(
 				<div className="flex items-center gap-2">
 					<span>Materialized: {viewName}</span>
@@ -253,14 +252,17 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				},
 			);
 		},
-		onError: utils.onError(),
+		onError: Utils.onError,
 	});
 
 	const viewDefinitionDeleteMutation = useMutation({
 		mutationFn: () => {
-			return AidboxCallWithMeta({
-				method: "DELETE",
-				url: `/fhir/ViewDefinition/${viewDefinitionContext.originalId}`,
+			if (!viewDefinitionContext.originalId)
+				throw Error("can't delete without ID");
+
+			return client.delete({
+				type: "ViewDefinition",
+				id: viewDefinitionContext.originalId,
 			});
 		},
 		onSuccess: () => {
@@ -273,7 +275,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 				params: { resourceType: "ViewDefinition" },
 			});
 		},
-		onError: utils.onError(),
+		onError: Utils.onError,
 	});
 
 	const handleSave = () => {
