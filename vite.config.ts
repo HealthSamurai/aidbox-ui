@@ -23,4 +23,11 @@ export default defineConfig({
 			"@aidbox-ui": "/src",
 		},
 	},
+	server: {
+		fs: {
+			// TODO: Remove.
+			// Allow serving files from linked packages in aidbox-ts-sdk
+			allow: [".", "../aidbox-ts-sdk"],
+		},
+	},
 });
