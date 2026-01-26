@@ -289,49 +289,59 @@ export const FormTabContent = () => {
 	});
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
-	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
+	// Use a special marker to distinguish "not initialized" from "initialized with no id"
+	const [lastViewDefId, setLastViewDefId] = useState<string | null | undefined>(
+		undefined,
+	);
 
 	useEffect(() => {
-		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
-			setLastViewDefId(viewDefinition.id || null);
-			if (
-				viewDefinition?.constant &&
-				Array.isArray(viewDefinition.constant) &&
-				viewDefinition.constant.length > 0
-			) {
-				const constantsWithIds = viewDefinition.constant.map(
-					(c, index: number) => ({
-						nodeId: `constant-${index}-${crypto.randomUUID()}`,
-						name: c.name || "",
-						valueString: c.valueString || "",
-					}),
-				);
-				setConstants(constantsWithIds);
-			} else {
-				setConstants([]);
-			}
+		// undefined means not yet initialized, null means initialized with no id
+		const currentId = viewDefinition?.id ?? null;
+		const shouldInitialize =
+			viewDefinition &&
+			(lastViewDefId === undefined || currentId !== lastViewDefId);
 
-			// Initialize where conditions from viewDefinition
-			if (
-				viewDefinition?.where &&
-				Array.isArray(viewDefinition.where) &&
-				viewDefinition.where.length > 0
-			) {
-				const whereWithIds = viewDefinition.where.map((w, index: number) => ({
-					nodeId: `where-${index}-${crypto.randomUUID()}`,
-					path: w.path || "",
-				}));
-				setWhereConditions(whereWithIds);
-			} else {
-				setWhereConditions([]);
-			}
+		if (!shouldInitialize) return;
 
-			// Initialize select items from viewDefinition
-			if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
-				setSelectItems(parseSelectItems(viewDefinition.select));
-			} else {
-				setSelectItems([]);
-			}
+		setLastViewDefId(currentId);
+
+		if (
+			viewDefinition?.constant &&
+			Array.isArray(viewDefinition.constant) &&
+			viewDefinition.constant.length > 0
+		) {
+			const constantsWithIds = viewDefinition.constant.map(
+				(c, index: number) => ({
+					nodeId: `constant-${index}-${crypto.randomUUID()}`,
+					name: c.name || "",
+					valueString: c.valueString || "",
+				}),
+			);
+			setConstants(constantsWithIds);
+		} else {
+			setConstants([]);
+		}
+
+		// Initialize where conditions from viewDefinition
+		if (
+			viewDefinition?.where &&
+			Array.isArray(viewDefinition.where) &&
+			viewDefinition.where.length > 0
+		) {
+			const whereWithIds = viewDefinition.where.map((w, index: number) => ({
+				nodeId: `where-${index}-${crypto.randomUUID()}`,
+				path: w.path || "",
+			}));
+			setWhereConditions(whereWithIds);
+		} else {
+			setWhereConditions([]);
+		}
+
+		// Initialize select items from viewDefinition
+		if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
+			setSelectItems(parseSelectItems(viewDefinition.select));
+		} else {
+			setSelectItems([]);
 		}
 	}, [viewDefinition, lastViewDefId]);
 
