@@ -1615,6 +1615,7 @@ export const FormTabContent = () => {
 						{labelView(item)}
 						<FhirPathInput
 							id={`fhirpath-${selectData.nodeId}`}
+							placeholder="Expression"
 							value={selectData.expression || ""}
 							onChange={(value) =>
 								updateSelectExpression(selectData.nodeId, value)

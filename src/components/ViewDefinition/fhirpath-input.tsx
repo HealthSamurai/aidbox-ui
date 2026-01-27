@@ -1,6 +1,11 @@
 import { closeCompletion, completionKeymap } from "@codemirror/autocomplete";
 import { type Extension, Prec } from "@codemirror/state";
-import { EditorView, keymap, tooltips } from "@codemirror/view";
+import {
+	EditorView,
+	keymap,
+	placeholder as cmPlaceholder,
+	tooltips,
+} from "@codemirror/view";
 import { EditorInput } from "@health-samurai/react-components";
 import React, {
 	useCallback,
@@ -117,6 +122,7 @@ type FhirPathInputProps = {
 	id: string;
 	className?: string;
 	value?: string;
+	placeholder?: string;
 	onChange?: (value: string) => void;
 	/** The FHIRPath context for this input (e.g., "Patient.name") */
 	contextPath: string;
@@ -126,6 +132,7 @@ export function FhirPathInput({
 	id,
 	className,
 	value,
+	placeholder,
 	onChange,
 	contextPath,
 }: FhirPathInputProps) {
@@ -188,10 +195,11 @@ export function FhirPathInput({
 			fhirPathInputTheme,
 			tooltipConfig,
 			closeOnBlurExtension,
+			...(placeholder ? [cmPlaceholder(placeholder)] : []),
 		];
 		additionalExtensionsRef.current = newExtensions;
 		return newExtensions;
-	}, [lspExtension]);
+	}, [lspExtension, placeholder]);
 
 	// Handle focus/blur via wrapper div events
 	useEffect(() => {
