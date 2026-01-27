@@ -1,6 +1,6 @@
-import { closeCompletion } from "@codemirror/autocomplete";
-import type { Extension } from "@codemirror/state";
-import { EditorView, tooltips } from "@codemirror/view";
+import { closeCompletion, completionKeymap } from "@codemirror/autocomplete";
+import { type Extension, Prec } from "@codemirror/state";
+import { EditorView, keymap, tooltips } from "@codemirror/view";
 import { EditorInput } from "@health-samurai/react-components";
 import React, {
 	useCallback,
@@ -13,14 +13,20 @@ import { useDebounce } from "../../hooks";
 import { useFhirPathLsp } from "./fhirpath-lsp-context";
 import { ViewDefinitionResourceTypeContext } from "./page";
 
-// Configure tooltips to render in document body to escape stacking context limitations
-// Using fixed positioning for proper placement when parent is document.body
 const tooltipConfig = tooltips({
 	parent: document.body,
 	position: "fixed",
 });
 
-// Extension to close completion on blur (EditorInput has closeOnBlur: false by default)
+const completionKeymapHighPrecedence = Prec.highest(
+	keymap.of(
+		completionKeymap.map((binding) => ({
+			...binding,
+			stopPropagation: true,
+		})),
+	),
+);
+
 const closeOnBlurExtension = EditorView.domEventHandlers({
 	blur: (_event, view) => {
 		closeCompletion(view);
@@ -28,9 +34,6 @@ const closeOnBlurExtension = EditorView.domEventHandlers({
 	},
 });
 
-// Custom theme to match InputView styling (h-7 py-1 px-2 bg-bg-primary border-none)
-// Must override EditorInput's default editorInputTheme which has height: 36px, border, padding: 8px 12px
-// h-7 = 28px, py-1 = 4px vertical padding, px-2 = 8px horizontal padding
 const fhirPathInputTheme = EditorView.theme({
 	"&": {
 		fontSize: "14px",
@@ -181,6 +184,7 @@ export function FhirPathInput({
 		// Only recreate the array if lspExtension actually changed
 		const newExtensions = [
 			lspExtension,
+			completionKeymapHighPrecedence,
 			fhirPathInputTheme,
 			tooltipConfig,
 			closeOnBlurExtension,
