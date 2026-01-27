@@ -22,5 +22,24 @@ export default defineConfig({
 		alias: {
 			"@aidbox-ui": "/src",
 		},
+		// TODO: Remove.
+		//       We need dedupe because we're using locally linked
+		//       dependencies
+		dedupe: [
+			"@codemirror/autocomplete",
+			"@codemirror/commands",
+			"@codemirror/language",
+			"@codemirror/lint",
+			"@codemirror/state",
+			"@codemirror/view",
+		],
+	},
+	server: {
+		fs: {
+			// TODO: Remove.
+			//       Allow serving files from linked packages in
+			//       aidbox-ts-sdk
+			allow: [".", "../aidbox-ts-sdk"],
+		},
 	},
 });
