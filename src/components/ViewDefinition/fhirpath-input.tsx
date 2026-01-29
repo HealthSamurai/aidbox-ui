@@ -39,6 +39,20 @@ const closeOnBlurExtension = EditorView.domEventHandlers({
 	},
 });
 
+const stopArrowKeyPropagation = EditorView.domEventHandlers({
+	keydown: (event) => {
+		if (
+			event.key === "ArrowLeft" ||
+			event.key === "ArrowRight" ||
+			event.key === "ArrowUp" ||
+			event.key === "ArrowDown"
+		) {
+			event.stopPropagation();
+		}
+		return false;
+	},
+});
+
 const fhirPathInputTheme = EditorView.theme({
 	"&": {
 		fontSize: "14px",
@@ -109,7 +123,6 @@ const fhirPathInputTheme = EditorView.theme({
 	".cm-cursorLayer": {
 		height: "20px",
 	},
-	// Ensure autocomplete tooltip appears above other UI elements (tree-view uses z-100)
 	".cm-tooltip": {
 		zIndex: "9999 !important",
 	},
@@ -141,26 +154,21 @@ export function FhirPathInput({
 	const wrapperRef = useRef<HTMLDivElement>(null);
 
 	// Cache the LSP extension in a ref to prevent recreation on every render
-	// Only create a new plugin if createPlugin becomes available (non-empty result)
+	// Only create a new plugin if createPlugin becomes available
 	const lspExtensionRef = useRef<Extension | null>(null);
 	const lspExtension = useMemo(() => {
 		const newExtension = createPlugin(`file:///${id}.fhirpath`);
-		// Only update if we get a valid extension (non-empty array means LSP is ready)
 		if (Array.isArray(newExtension) && newExtension.length === 0) {
-			// LSP not ready yet, return cached or empty
 			return lspExtensionRef.current ?? [];
 		}
-		// LSP is ready, cache and return
 		lspExtensionRef.current = newExtension;
 		return newExtension;
 	}, [createPlugin, id]);
 
-	// Sync local value with prop
 	useEffect(() => {
 		setLocalValue(value || "");
 	}, [value]);
 
-	// Debounced onChange callback
 	const debouncedOnChange = useDebounce((newValue: string) => {
 		if (onChange && newValue !== value) {
 			onChange(newValue);
@@ -175,40 +183,33 @@ export function FhirPathInput({
 		[debouncedOnChange],
 	);
 
-	// Update LSP context when this input is focused
 	const handleFocus = useCallback(() => {
 		setContextType(contextPath);
 	}, [contextPath, setContextType]);
 
-	const handleBlur = useCallback(() => {
-		// No-op for now, but keeping for potential future use
-	}, []);
+	const handleBlur = useCallback(() => {}, []);
 
-	// Combine extensions: LSP + custom theme + tooltip config + autocompletion override
-	// Note: We use a ref to keep a stable array reference and only update when lspExtension changes
 	const additionalExtensionsRef = useRef<Extension[]>([]);
 	const additionalExtensions = useMemo(() => {
-		// Only recreate the array if lspExtension actually changed
 		const newExtensions = [
 			lspExtension,
 			completionKeymapHighPrecedence,
 			fhirPathInputTheme,
 			tooltipConfig,
 			closeOnBlurExtension,
+			stopArrowKeyPropagation,
 			...(placeholder ? [cmPlaceholder(placeholder)] : []),
 		];
 		additionalExtensionsRef.current = newExtensions;
 		return newExtensions;
 	}, [lspExtension, placeholder]);
 
-	// Handle focus/blur via wrapper div events
 	useEffect(() => {
 		const wrapper = wrapperRef.current;
 		if (!wrapper) return;
 
 		const onFocusIn = () => handleFocus();
 		const onFocusOut = (e: FocusEvent) => {
-			// Only blur if focus is leaving the wrapper entirely
 			if (!wrapper.contains(e.relatedTarget as Node)) {
 				handleBlur();
 			}
@@ -223,13 +224,21 @@ export function FhirPathInput({
 		};
 	}, [handleFocus, handleBlur]);
 
-	// min-w-0 allows flex item to shrink below content size
-	// w-full makes it take available width
-	// overflow-hidden ensures content is clipped to wrapper height
 	const wrapperClassName = `h-7 min-w-0 w-full overflow-hidden ${className || ""}`;
 
+	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+		if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+			e.stopPropagation();
+		}
+	}, []);
+
 	return (
-		<div ref={wrapperRef} className={wrapperClassName}>
+		<div
+			ref={wrapperRef}
+			className={wrapperClassName}
+			onKeyDown={handleKeyDown}
+			onKeyDownCapture={handleKeyDown}
+		>
 			<EditorInput
 				id={id}
 				defaultValue={localValue}
@@ -241,7 +250,6 @@ export function FhirPathInput({
 	);
 }
 
-// Helper type for building context paths
 type SelectItemForContext = {
 	nodeId: string;
 	type: "column" | "forEach" | "forEachOrNull" | "unionAll";
@@ -270,11 +278,9 @@ export function computeFhirPathContext(
 ): string {
 	if (!resourceType) return "";
 
-	// Find the path of nodeIds from root to target
 	const pathToTarget = findPathToNode(selectItems, targetNodeId);
 	if (!pathToTarget) return resourceType;
 
-	// Build context by collecting forEach/forEachOrNull expressions along the path
 	const contextParts: string[] = [resourceType];
 
 	for (const nodeId of pathToTarget) {
@@ -286,7 +292,6 @@ export function computeFhirPathContext(
 		}
 	}
 
-	// If we should include the target's own expression (for column paths inside forEach)
 	if (includeTargetExpression) {
 		const targetNode = findNodeById(selectItems, targetNodeId);
 		if (
@@ -301,9 +306,6 @@ export function computeFhirPathContext(
 	return contextParts.join(".");
 }
 
-/**
- * Finds the path of nodeIds from root to a target node (excluding the target itself)
- */
 function findPathToNode(
 	items: SelectItemForContext[],
 	targetId: string,
@@ -324,9 +326,6 @@ function findPathToNode(
 	return null;
 }
 
-/**
- * Finds a node by its ID in the tree
- */
 function findNodeById(
 	items: SelectItemForContext[],
 	targetId: string,
@@ -343,9 +342,6 @@ function findNodeById(
 	return null;
 }
 
-/**
- * Hook to compute FHIRPath context for a node
- */
 export function useFhirPathContextForNode(
 	selectItems: SelectItemForContext[],
 	targetNodeId: string,
