@@ -1,9 +1,9 @@
 import { closeCompletion, completionKeymap } from "@codemirror/autocomplete";
 import { type Extension, Prec } from "@codemirror/state";
 import {
+	placeholder as cmPlaceholder,
 	EditorView,
 	keymap,
-	placeholder as cmPlaceholder,
 	tooltips,
 } from "@codemirror/view";
 import { EditorInput } from "@health-samurai/react-components";
