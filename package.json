@@ -38,13 +38,7 @@
 		"vite": "^7.1.2"
 	},
 	"dependencies": {
-		"@atomic-ehr/fhirpath-lsp": "^0.0.2",
 		"@codemirror/autocomplete": "^6.20.0",
-		"@codemirror/lang-json": "^6.0.2",
-		"@codemirror/lang-sql": "^6.10.0",
-		"@codemirror/lang-yaml": "^6.1.2",
-		"@codemirror/lsp-client": "^6.2.1",
-		"@codemirror/search": "^6.6.0",
 		"@codemirror/state": "^6.5.4",
 		"@codemirror/view": "^6.39.11",
 		"@git-diff-view/core": "^0.0.30",
