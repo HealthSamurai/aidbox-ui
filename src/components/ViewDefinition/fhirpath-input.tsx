@@ -39,6 +39,17 @@ const closeOnBlurExtension = EditorView.domEventHandlers({
 	},
 });
 
+// Handle Enter key - blur the editor instead of inserting a newline (single-line input)
+const singleLineKeymap = keymap.of([
+	{
+		key: "Enter",
+		run: (view) => {
+			view.contentDOM.blur();
+			return true;
+		},
+	},
+]);
+
 const stopArrowKeyPropagation = EditorView.domEventHandlers({
 	keydown: (event) => {
 		if (
@@ -54,14 +65,6 @@ const stopArrowKeyPropagation = EditorView.domEventHandlers({
 });
 
 const fhirPathInputTheme = EditorView.theme({
-	"&": {
-		fontSize: "14px",
-		height: "28px !important",
-		maxHeight: "28px !important",
-		paddingTop: "0 !important",
-		paddingBottom: "0 !important",
-		backgroundColor: "transparent !important",
-	},
 	"&.cm-editor": {
 		fontSize: "14px",
 		color: "var(--color-text-primary)",
@@ -69,13 +72,14 @@ const fhirPathInputTheme = EditorView.theme({
 		maxHeight: "28px !important",
 		paddingTop: "0 !important",
 		paddingBottom: "0 !important",
+		backgroundColor: "transparent !important",
 	},
-	".cm-scroller": {
+	"&.cm-editor .cm-scroller": {
 		overflow: "hidden !important",
 		fontFamily: "var(--font-family-sans)",
 		lineHeight: "20px",
 	},
-	".cm-content": {
+	"&.cm-editor .cm-content": {
 		backgroundColor: "var(--color-bg-primary)",
 		border: "none !important",
 		borderRadius: "var(--radius-md)",
@@ -112,15 +116,15 @@ const fhirPathInputTheme = EditorView.theme({
 	"&.cm-editor.cm-focused:hover .cm-content": {
 		backgroundColor: "var(--color-bg-primary)",
 	},
-	".cm-line": {
+	"&.cm-editor .cm-line": {
 		padding: "0",
 		lineHeight: "20px",
 	},
-	".cm-placeholder": {
+	"&.cm-editor .cm-placeholder": {
 		color: "var(--color-text-tertiary)",
 		lineHeight: "20px",
 	},
-	".cm-cursorLayer": {
+	"&.cm-editor .cm-cursorLayer": {
 		height: "20px",
 	},
 	".cm-tooltip": {
@@ -198,6 +202,7 @@ export function FhirPathInput({
 			tooltipConfig,
 			closeOnBlurExtension,
 			stopArrowKeyPropagation,
+			singleLineKeymap,
 			...(placeholder ? [cmPlaceholder(placeholder)] : []),
 		];
 		additionalExtensionsRef.current = newExtensions;
@@ -233,6 +238,7 @@ export function FhirPathInput({
 	}, []);
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: wrapper captures keyboard events to prevent TreeView navigation
 		<div
 			ref={wrapperRef}
 			className={wrapperClassName}

@@ -7,3 +7,13 @@
 tr:hover .pin-button {
 	opacity: 1 !important;
 }
+
+/* Fix CodeMirror tooltip containers inheriting padding from baseTheme in react-components.
+   The baseTheme uses "&" selector which applies padding to all elements with theme class prefix,
+   including tooltip containers appended to body. These containers are not editors but inherit
+   the .ͼ1 class styles. We reset them here. */
+body > div:not(.cm-editor)[class*="ͼ"] {
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+	height: auto !important;
+}
