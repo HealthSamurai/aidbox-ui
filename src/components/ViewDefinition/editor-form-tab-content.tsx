@@ -36,7 +36,12 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
-import { ViewDefinitionContext } from "./page";
+import { computeFhirPathContext, FhirPathInput } from "./fhirpath-input";
+import { FhirPathLspProvider } from "./fhirpath-lsp-context";
+import {
+	ViewDefinitionContext,
+	ViewDefinitionResourceTypeContext,
+} from "./page";
 
 type ItemMeta = {
 	type:
@@ -271,6 +276,9 @@ const InputView = ({
 export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
+	const { viewDefinitionResourceType } = React.useContext(
+		ViewDefinitionResourceTypeContext,
+	);
 
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
@@ -281,49 +289,59 @@ export const FormTabContent = () => {
 	});
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
-	const [lastViewDefId, setLastViewDefId] = useState<string | null>(null);
+	// Use a special marker to distinguish "not initialized" from "initialized with no id"
+	const [lastViewDefId, setLastViewDefId] = useState<string | null | undefined>(
+		undefined,
+	);
 
 	useEffect(() => {
-		if (viewDefinition && viewDefinition.id !== lastViewDefId) {
-			setLastViewDefId(viewDefinition.id || null);
-			if (
-				viewDefinition?.constant &&
-				Array.isArray(viewDefinition.constant) &&
-				viewDefinition.constant.length > 0
-			) {
-				const constantsWithIds = viewDefinition.constant.map(
-					(c, index: number) => ({
-						nodeId: `constant-${index}-${crypto.randomUUID()}`,
-						name: c.name || "",
-						valueString: c.valueString || "",
-					}),
-				);
-				setConstants(constantsWithIds);
-			} else {
-				setConstants([]);
-			}
+		// undefined means not yet initialized, null means initialized with no id
+		const currentId = viewDefinition?.id ?? null;
+		const shouldInitialize =
+			viewDefinition &&
+			(lastViewDefId === undefined || currentId !== lastViewDefId);
 
-			// Initialize where conditions from viewDefinition
-			if (
-				viewDefinition?.where &&
-				Array.isArray(viewDefinition.where) &&
-				viewDefinition.where.length > 0
-			) {
-				const whereWithIds = viewDefinition.where.map((w, index: number) => ({
-					nodeId: `where-${index}-${crypto.randomUUID()}`,
-					path: w.path || "",
-				}));
-				setWhereConditions(whereWithIds);
-			} else {
-				setWhereConditions([]);
-			}
+		if (!shouldInitialize) return;
 
-			// Initialize select items from viewDefinition
-			if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
-				setSelectItems(parseSelectItems(viewDefinition.select));
-			} else {
-				setSelectItems([]);
-			}
+		setLastViewDefId(currentId);
+
+		if (
+			viewDefinition?.constant &&
+			Array.isArray(viewDefinition.constant) &&
+			viewDefinition.constant.length > 0
+		) {
+			const constantsWithIds = viewDefinition.constant.map(
+				(c, index: number) => ({
+					nodeId: `constant-${index}-${crypto.randomUUID()}`,
+					name: c.name || "",
+					valueString: c.valueString || "",
+				}),
+			);
+			setConstants(constantsWithIds);
+		} else {
+			setConstants([]);
+		}
+
+		// Initialize where conditions from viewDefinition
+		if (
+			viewDefinition?.where &&
+			Array.isArray(viewDefinition.where) &&
+			viewDefinition.where.length > 0
+		) {
+			const whereWithIds = viewDefinition.where.map((w, index: number) => ({
+				nodeId: `where-${index}-${crypto.randomUUID()}`,
+				path: w.path || "",
+			}));
+			setWhereConditions(whereWithIds);
+		} else {
+			setWhereConditions([]);
+		}
+
+		// Initialize select items from viewDefinition
+		if (viewDefinition?.select && Array.isArray(viewDefinition.select)) {
+			setSelectItems(parseSelectItems(viewDefinition.select));
+		} else {
+			setSelectItems([]);
 		}
 	}, [viewDefinition, lastViewDefId]);
 
@@ -1584,15 +1602,25 @@ export const FormTabContent = () => {
 				const selectData = item.getItemData()?.meta?.selectData;
 				if (!selectData) return null;
 
+				// Context for forEach/forEachOrNull expression is the parent context (not including this node's expression)
+				const contextPath = computeFhirPathContext(
+					viewDefinitionResourceType,
+					selectItems,
+					selectData.nodeId,
+					false, // don't include target's own expression
+				);
+
 				return (
 					<div className="flex items-center w-full gap-2">
 						{labelView(item)}
-						<InputView
+						<FhirPathInput
+							id={`fhirpath-${selectData.nodeId}`}
 							placeholder="Expression"
 							value={selectData.expression || ""}
 							onChange={(value) =>
 								updateSelectExpression(selectData.nodeId, value)
 							}
+							contextPath={contextPath}
 							className="flex-1"
 						/>
 						<Button
@@ -1635,6 +1663,14 @@ export const FormTabContent = () => {
 				const selectItemId = item.getItemData()?.meta?.selectItemId;
 				if (!columnData || !selectItemId) return null;
 
+				// Context for column path includes the parent forEach/forEachOrNull expressions
+				const contextPath = computeFhirPathContext(
+					viewDefinitionResourceType,
+					selectItems,
+					selectItemId, // use the parent select item to get context
+					true, // include the parent's expression if it's a forEach/forEachOrNull
+				);
+
 				return (
 					<div className="flex items-center w-full gap-2">
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
@@ -1652,7 +1688,8 @@ export const FormTabContent = () => {
 								)
 							}
 						/>
-						<InputView
+						<FhirPathInput
+							id={`fhirpath-${columnData.nodeId}`}
 							placeholder="Path"
 							value={columnData.path}
 							onChange={(value) =>
@@ -1663,6 +1700,7 @@ export const FormTabContent = () => {
 									value,
 								)
 							}
+							contextPath={contextPath}
 						/>
 						<Button
 							variant="link"
@@ -1719,17 +1757,22 @@ export const FormTabContent = () => {
 				const whereData = item.getItemData()?.meta?.whereData;
 				if (!whereData) return null;
 
+				// Where conditions at top level use the resource type as context
+				const contextPath = viewDefinitionResourceType || "";
+
 				return (
 					<div className="flex items-center w-full gap-2">
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
 							<Funnel size={12} />
 						</span>
-						<InputView
+						<FhirPathInput
+							id={`fhirpath-${whereData.nodeId}`}
 							placeholder="Expression"
 							value={whereData.path}
 							onChange={(value) =>
 								updateWhereCondition(whereData.nodeId, value)
 							}
+							contextPath={contextPath}
 						/>
 						<Button
 							variant="link"
@@ -1808,37 +1851,39 @@ export const FormTabContent = () => {
 	}
 
 	return (
-		<TreeView
-			itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
-				const metaType = item.getItemData()?.meta?.type;
+		<FhirPathLspProvider>
+			<TreeView
+				itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
+					const metaType = item.getItemData()?.meta?.type;
 
-				if (
-					metaType === "constant" ||
-					metaType === "select" ||
-					metaType === "where" ||
-					metaType === "properties"
-				) {
-					return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
-				} else {
 					if (
-						metaType === "column-item" ||
-						metaType === "constant-value" ||
-						metaType === "where-value"
+						metaType === "constant" ||
+						metaType === "select" ||
+						metaType === "where" ||
+						metaType === "properties"
 					) {
-						return "pl-0! pr-0! ml-2.5 border-y border-t-transparent";
+						return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 					} else {
-						return "pr-0";
+						if (
+							metaType === "column-item" ||
+							metaType === "constant-value" ||
+							metaType === "where-value"
+						) {
+							return "pl-0! pr-0! ml-2.5 border-y border-t-transparent";
+						} else {
+							return "pr-0";
+						}
 					}
-				}
-			}}
-			items={tree}
-			rootItemId="root"
-			customItemView={customItemView}
-			disableHover={true}
-			canReorder={true}
-			onDropFn={onDropTreeItem}
-			expandedItems={expandedItems}
-			onExpandedItemsChange={onExpandedItemsChange}
-		/>
+				}}
+				items={tree}
+				rootItemId="root"
+				customItemView={customItemView}
+				disableHover={true}
+				canReorder={true}
+				onDropFn={onDropTreeItem}
+				expandedItems={expandedItems}
+				onExpandedItemsChange={onExpandedItemsChange}
+			/>
+		</FhirPathLspProvider>
 	);
 };

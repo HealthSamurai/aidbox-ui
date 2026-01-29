@@ -6,6 +6,9 @@ import { defineConfig } from "vite";
 const ReactCompilerConfig = {};
 
 export default defineConfig({
+	optimizeDeps: {
+		exclude: ["@health-samurai/aidbox-fhirpath-lsp"],
+	},
 	plugins: [
 		tailwindcss(),
 		tanstackRouter({
