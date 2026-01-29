@@ -6,6 +6,7 @@ import { routeTree } from "./routeTree.gen";
 import "./index.css";
 import { AidboxClientProvider } from "./AidboxClient";
 import { UI_BASE_PATH } from "./shared/const";
+import { getAidboxBaseURL } from "./utils";
 
 const router = createRouter({ basepath: UI_BASE_PATH, routeTree });
 
@@ -21,12 +22,13 @@ declare module "@tanstack/react-router" {
 	}
 }
 
+const baseurl = getAidboxBaseURL();
 const root = document.getElementById("root");
 if (root) {
 	createRoot(root).render(
 		<StrictMode>
 			<QueryClientProvider client={queryClient}>
-				<AidboxClientProvider baseurl={"/"}>
+				<AidboxClientProvider baseurl={baseurl}>
 					<RouterProvider router={router} />
 				</AidboxClientProvider>
 			</QueryClientProvider>
