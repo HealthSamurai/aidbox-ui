@@ -38,16 +38,17 @@ export function useUIHistory() {
 		queryFn: async () => {
 			const result = await client.request<Bundle>({
 				method: "GET",
-				url: "/ui_history",
-				params: {
-					".type": "http",
-					_sort: "-_lastUpdated",
-					_count: "100",
-				},
+				url: "/fhir/ui_history",
+				params: [
+					[".type", "http"],
+					["_sort", "-_lastUpdated"],
+					["_count", "100"],
+				],
 			});
 
 			if (result.isOk()) {
 				const { resource: history } = result.value;
+				console.log(history);
 				return history;
 			} else {
 				const { resource: oo } = result.value;

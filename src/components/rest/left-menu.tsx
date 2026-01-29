@@ -206,7 +206,7 @@ function groupHistoryByTime(items: UiHistoryEntry[]) {
 	items.forEach((item) => {
 		const createdAt = getExtensionFromResource(
 			item,
-			"ex:createdAt",
+			"https://aidbox.app/ex/createdAt",
 		)?.valueInstant;
 		if (!createdAt)
 			throw new Error("missing ex:createdAt value for history item", {
