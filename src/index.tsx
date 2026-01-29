@@ -26,7 +26,7 @@ if (root) {
 	createRoot(root).render(
 		<StrictMode>
 			<QueryClientProvider client={queryClient}>
-				<AidboxClientProvider baseurl={"http://localhost:8765"}>
+				<AidboxClientProvider baseurl={"/"}>
 					<RouterProvider router={router} />
 				</AidboxClientProvider>
 			</QueryClientProvider>
