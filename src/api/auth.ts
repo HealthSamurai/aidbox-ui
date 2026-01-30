@@ -48,7 +48,6 @@ export function useUIHistory() {
 
 			if (result.isOk()) {
 				const { resource: history } = result.value;
-				console.log(history);
 				return history;
 			} else {
 				const { resource: oo } = result.value;

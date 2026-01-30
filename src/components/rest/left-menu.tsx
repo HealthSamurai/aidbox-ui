@@ -1,6 +1,5 @@
 import type {
 	BundleEntry,
-	Extension,
 	Reference,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
@@ -178,57 +177,39 @@ function getTimeGroup(dateString: string): string {
 	return `${day}.${month}.${year}`;
 }
 
-function getExtension(
-	extensions: Extension[],
-	url: string,
-): Extension | undefined {
-	return extensions.find((e: Extension) => e.url === url);
+function getLastUpdated(resource: Resource): string | undefined {
+	return resource?.meta?.lastUpdated;
 }
 
-function getExtensions(resource: Resource): Extension[] {
-	const extension = resource?.meta?.extension;
-	if (!extension)
-		throw new Error("missing extension for resource", { cause: resource });
-	return extension;
-}
-
-function getExtensionFromResource(
-	resource: Resource,
-	url: string,
-): Extension | undefined {
-	return getExtension(getExtensions(resource), url);
-}
-
-// Helper function to group history items by time
+// Helper function to group history items by time.
+// NOTE: Uses meta.lastUpdated instead of createdAt due to ability of
+// changing createdAt extension URL.
 function groupHistoryByTime(items: UiHistoryEntry[]) {
 	const groups: Record<string, (UiHistoryEntry & { createdAt: number })[]> = {};
 
 	items.forEach((item) => {
-		const createdAt = getExtensionFromResource(
-			item,
-			"https://aidbox.app/ex/createdAt",
-		)?.valueInstant;
-		if (!createdAt)
-			throw new Error("missing ex:createdAt value for history item", {
-				cause: item,
+		const lastUpdated = getLastUpdated(item);
+		if (lastUpdated) {
+			const group = getTimeGroup(lastUpdated);
+			if (!groups[group]) {
+				groups[group] = [];
+			}
+
+			if (!item.id)
+				throw new Error("missing id for history item", { cause: item });
+
+			groups[group].push({
+				...item,
+				lastUpdated: new Date(lastUpdated).getTime(),
 			});
-
-		const group = getTimeGroup(createdAt);
-		if (!groups[group]) {
-			groups[group] = [];
 		}
-
-		if (!item.id)
-			throw new Error("missing id for history item", { cause: item });
-
-		groups[group].push({ ...item, createdAt: new Date(createdAt).getTime() });
 	});
 
 	// Sort items within each group by creation time (newest first)
 	Object.keys(groups).forEach((key) => {
 		const groupItems = groups[key];
 		if (groupItems) {
-			groupItems.sort((a, b) => b.createdAt - a.createdAt);
+			groupItems.sort((a, b) => b.lastUpdated - a.lastUpdated);
 		}
 	});
 
