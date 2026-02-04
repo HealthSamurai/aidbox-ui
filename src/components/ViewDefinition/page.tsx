@@ -73,7 +73,13 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const [isDirty, setIsDirty] = React.useState(false);
 
 	const { proceed, reset, status } = useBlocker({
-		condition: isDirty,
+		shouldBlockFn: ({ current, next }) => {
+			if (!isDirty) return false;
+			if (current.pathname === next.pathname) return false;
+			return true;
+		},
+		enableBeforeUnload: () => isDirty,
+		withResolver: true,
 	});
 
 	const viewDefinitionQuery = useQuery({
