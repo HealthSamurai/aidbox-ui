@@ -80,41 +80,20 @@ const fhirPathInputTheme = EditorView.theme({
 		lineHeight: "20px",
 	},
 	"&.cm-editor .cm-content": {
-		backgroundColor: "var(--color-bg-primary)",
+		backgroundColor: "transparent",
 		border: "none !important",
-		borderRadius: "var(--radius-md)",
 		fontFamily: "var(--font-family-sans)",
 		fontWeight: "var(--font-weight-normal)",
 		height: "28px !important",
 		minHeight: "28px !important",
 		maxHeight: "28px !important",
-		padding: "4px 8px !important",
+		padding: "0 !important",
 		fontSize: "14px",
 		lineHeight: "20px",
 		boxSizing: "border-box",
-		transition: "background-color 150ms",
-	},
-	".group\\/tree-item-label:hover &:not(.cm-focused) .cm-content": {
-		backgroundColor: "var(--color-bg-tertiary)",
-	},
-	"&.cm-editor:hover:not(.cm-focused) .cm-content": {
-		backgroundColor: "var(--color-bg-quaternary) !important",
 	},
 	"&.cm-editor.cm-focused": {
 		outline: "none",
-	},
-	"&.cm-editor.cm-focused .cm-content": {
-		backgroundColor: "var(--color-bg-primary)",
-		border: "none !important",
-		boxShadow: "inset 0 0 0 1px var(--color-border-link)",
-		borderRadius: "var(--radius-md)",
-		height: "28px !important",
-		minHeight: "28px !important",
-		maxHeight: "28px !important",
-		padding: "4px 8px !important",
-	},
-	"&.cm-editor.cm-focused:hover .cm-content": {
-		backgroundColor: "var(--color-bg-primary)",
 	},
 	"&.cm-editor .cm-line": {
 		padding: "0",
@@ -229,7 +208,7 @@ export function FhirPathInput({
 		};
 	}, [handleFocus, handleBlur]);
 
-	const wrapperClassName = `h-7 min-w-0 w-full overflow-hidden ${className || ""}`;
+	const wrapperClassName = `h-7 min-w-0 w-full overflow-hidden rounded-md py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus-within:bg-bg-primary focus-within:ring-1 focus-within:ring-border-link focus-within:hover:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary transition-colors ${className || ""}`;
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
 		if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
