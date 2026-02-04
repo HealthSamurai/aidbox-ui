@@ -46,7 +46,7 @@
 		"@git-diff-view/file": "^0.0.30",
 		"@git-diff-view/react": "^0.0.30",
 		"@health-samurai/aidbox-client": "0.0.0-alpha.3",
-		"@health-samurai/aidbox-fhirpath-lsp": "0.0.0-alpha.4",
+		"@health-samurai/aidbox-fhirpath-lsp": "0.0.0-alpha.5",
 		"@health-samurai/react-components": "0.0.0-alpha.11",
 		"@tanstack/react-query": "^5.85.3",
 		"@tanstack/react-query-devtools": "^5.85.3",
