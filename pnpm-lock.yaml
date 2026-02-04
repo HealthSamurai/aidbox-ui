@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@atomic-ehr/fhirpath-lsp':
+        specifier: ^0.0.3
+        version: 0.0.3(typescript@5.9.2)
       '@codemirror/autocomplete':
         specifier: ^6.20.0
         version: 6.20.0
@@ -30,8 +33,8 @@ importers:
         specifier: 0.0.0-alpha.3
         version: 0.0.0-alpha.3
       '@health-samurai/aidbox-fhirpath-lsp':
-        specifier: 0.0.0-alpha.3
-        version: 0.0.0-alpha.3(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)
+        specifier: 0.0.0-alpha.4
+        version: 0.0.0-alpha.4(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)
       '@health-samurai/react-components':
         specifier: 0.0.0-alpha.11
         version: 0.0.0-alpha.11(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)
@@ -133,11 +136,11 @@ packages:
     peerDependencies:
       typescript: ^5
 
-  '@atomic-ehr/fhirpath-lsp@0.0.2':
-    resolution: {integrity: sha512-Gemz36k8YLvWEGyFcNko6JkCU3UHL0CpQwSIkL/LC6HAdcetogfyNW20oX7Jf8Vcwr0DG1bqBzTPF6fDd6f/1w==}
+  '@atomic-ehr/fhirpath-lsp@0.0.3':
+    resolution: {integrity: sha512-FJSzSLEXpQbLQ9tWD02EN13T91PqVE8Y/J/KFDCCRFdct1AKPo+8hvlJaTbv0ImL9fv6w+YrrtgqZ62d6MnIQQ==}
 
-  '@atomic-ehr/fhirpath@0.0.5':
-    resolution: {integrity: sha512-H7px0lpuazIioXTiHspM3wcTxRE8Fobx92tEPexbaxOpo7qzLgPoQP9hQUqTZMXmfF4kUf0nMs48/eX+jDLcYQ==}
+  '@atomic-ehr/fhirpath@0.1.0':
+    resolution: {integrity: sha512-aIrO63BLae5jE7JNPLE7HRZgwl4pkHj+Rspe8a7JfC/s+xL1rh1/84R4wtLrFu16PlN9VjCjwRU40cEUBnRC5w==}
     peerDependencies:
       typescript: ^5
 
@@ -592,8 +595,11 @@ packages:
   '@health-samurai/aidbox-client@0.0.0-alpha.3':
     resolution: {integrity: sha512-5TjsrYZ/pObmkX6ILp7RV5SegFRJmfxyVJa1V+E2XiEZA3/hMl5p5/gPUQEZTk2eZvhl2ygZ4dpwK5GIsWPsGQ==}
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.3':
-    resolution: {integrity: sha512-JagTnEXf9MqQYEKTeMLbwpM7nBt51vVwohfrmXkeoBXRWmChQwYNdA1LOzIStC92RnU9MkgXBVuOBPjgMG16RA==}
+  '@health-samurai/aidbox-client@0.0.0-alpha.4':
+    resolution: {integrity: sha512-ZZ8asGiBhU8dFFXg2SIQzJSes1AS/TdQCBkbEwGCJjwAUdIOuNEyTL/iiWa2CB+fmbUtXMUMkLymx/SikYG0Ug==}
+
+  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.4':
+    resolution: {integrity: sha512-/O4VobZmt9h6y9+gMlVsATem1aNziekz3thB8sbn0xkzV6wuqGqc6mFzhDruvLDE8H7GUVOoORQ+K+RPpSm3OQ==}
     peerDependencies:
       '@codemirror/lsp-client': ^6.2.0
       '@codemirror/state': ^6.5.2
@@ -2555,6 +2561,9 @@ packages:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
 
+  oauth4webapi@3.8.3:
+    resolution: {integrity: sha512-pQ5BsX3QRTgnt5HxgHwgunIRaDXBdkT23tf8dfzmtTIL2LTpdmxgbpbBm0VgFWAIDlezQvQCTgnVIUmHupXHxw==}
+
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
@@ -3056,9 +3065,9 @@ snapshots:
     dependencies:
       typescript: 5.9.2
 
-  '@atomic-ehr/fhirpath-lsp@0.0.2(typescript@5.9.2)':
+  '@atomic-ehr/fhirpath-lsp@0.0.3(typescript@5.9.2)':
     dependencies:
-      '@atomic-ehr/fhirpath': 0.0.5(typescript@5.9.2)
+      '@atomic-ehr/fhirpath': 0.1.0(typescript@5.9.2)
       '@codemirror/autocomplete': 6.20.0
       '@codemirror/commands': 6.10.1
       '@codemirror/language': 6.12.1
@@ -3073,7 +3082,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@atomic-ehr/fhirpath@0.0.5(typescript@5.9.2)':
+  '@atomic-ehr/fhirpath@0.1.0(typescript@5.9.2)':
     dependencies:
       '@atomic-ehr/fhir-canonical-manager': 0.0.11(typescript@5.9.2)
       '@atomic-ehr/fhirschema': 0.0.2(typescript@5.9.2)
@@ -3557,13 +3566,19 @@ snapshots:
       '@types/json-patch': 0.0.33
       yaml: 2.8.2
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.3(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)':
+  '@health-samurai/aidbox-client@0.0.0-alpha.4':
     dependencies:
-      '@atomic-ehr/fhirpath': 0.0.5(typescript@5.9.2)
-      '@atomic-ehr/fhirpath-lsp': 0.0.2(typescript@5.9.2)
+      '@types/json-patch': 0.0.33
+      oauth4webapi: 3.8.3
+      yaml: 2.8.2
+
+  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.4(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)':
+    dependencies:
+      '@atomic-ehr/fhirpath': 0.1.0(typescript@5.9.2)
+      '@atomic-ehr/fhirpath-lsp': 0.0.3(typescript@5.9.2)
       '@codemirror/lsp-client': 6.2.1
       '@codemirror/state': 6.5.4
-      '@health-samurai/aidbox-client': 0.0.0-alpha.3
+      '@health-samurai/aidbox-client': 0.0.0-alpha.4
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
     transitivePeerDependencies:
@@ -5504,6 +5519,8 @@ snapshots:
   node-releases@2.0.21: {}
 
   normalize-path@3.0.0: {}
+
+  oauth4webapi@3.8.3: {}
 
   object-assign@4.1.1: {}
 
