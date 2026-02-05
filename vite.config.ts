@@ -25,5 +25,9 @@ export default defineConfig({
 		alias: {
 			"@aidbox-ui": "/src",
 		},
+		dedupe: [
+			"@codemirror/state",
+			"@codemirror/view",
+		],
 	},
 });

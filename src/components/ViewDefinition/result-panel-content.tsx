@@ -12,7 +12,7 @@ import {
 	PaginationPrevious,
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
@@ -95,21 +95,28 @@ const EmptyState = ({
 const ResultHeader = ({
 	isMaximized,
 	onToggleMaximize,
+	onToggleCollapse,
 }: {
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
+	onToggleCollapse: () => void;
 }) => (
-	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-2 pr-2 py-3 border-b h-10">
+	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
 		<div className="flex gap-1 items-center">
-			<span className="typo-label text-text-secondary">Result:</span>
+			<span className="typo-label text-text-secondary">Result</span>
 		</div>
-		<Button variant="ghost" size="small" onClick={onToggleMaximize}>
-			{isMaximized ? (
-				<Minimize2 className="w-4 h-4" />
-			) : (
-				<Maximize2 className="w-4 h-4" />
-			)}
-		</Button>
+		<div className="flex items-center gap-1">
+			<Button variant="ghost" size="small" onClick={onToggleCollapse}>
+				<PanelBottomClose className="w-4 h-4" />
+			</Button>
+			<Button variant="ghost" size="small" onClick={onToggleMaximize}>
+				{isMaximized ? (
+					<Minimize2 className="w-4 h-4" />
+				) : (
+					<Maximize2 className="w-4 h-4" />
+				)}
+			</Button>
+		</div>
 	</div>
 );
 
@@ -227,7 +234,11 @@ const ResultPagination = ({
 	);
 };
 
-export function ResultPanel() {
+export function ResultPanel({
+	onToggleCollapse,
+}: {
+	onToggleCollapse?: () => void;
+}) {
 	const client = useAidboxClient();
 
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
@@ -332,6 +343,7 @@ export function ResultPanel() {
 			<ResultHeader
 				isMaximized={isMaximized}
 				onToggleMaximize={toggleMaximize}
+				onToggleCollapse={onToggleCollapse || (() => {})}
 			/>
 			<ResultContent
 				rows={rows}

@@ -4,7 +4,14 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuIcon,
+	DropdownMenuSub,
+	DropdownMenuSubTrigger,
+	DropdownMenuSubContent,
 	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -12,10 +19,12 @@ import * as Lucide from "lucide-react";
 import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { useLocalStorage } from "../../hooks";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
+import { InfoPanel } from "./info-panel";
 import { ViewDefinitionContext } from "./page";
-import { ResourceTypeSelect } from "./resource-type-select";
+import { ResultPanel } from "./result-panel-content";
 import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
 
@@ -59,25 +68,165 @@ const cleanEmptyValues = <T,>(obj: T): T => {
 	return obj;
 };
 
-export const EditorHeaderMenu = () => {
+type ToolbarMode = "full" | "icons" | "collapsed";
+
+const useToolbarMode = (ref: React.RefObject<HTMLDivElement | null>): ToolbarMode => {
+	const [mode, setMode] = React.useState<ToolbarMode>("full");
+
+	React.useEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const observer = new ResizeObserver((entries) => {
+			const width = entries[0].contentRect.width;
+			if (width >= 670) setMode("full");
+			else if (width >= 420) setMode("icons");
+			else setMode("collapsed");
+		});
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [ref]);
+
+	return mode;
+};
+
+export const EditorHeaderMenu = ({
+	onSave,
+	onRun,
+	onMaterialize,
+	onTogglePreview,
+	isPreviewOpen,
+}: {
+	onSave: () => void;
+	onRun: () => void;
+	onMaterialize: (type: "view" | "materialized-view" | "table") => void;
+	onTogglePreview: () => void;
+	isPreviewOpen: boolean;
+}) => {
+	const containerRef = React.useRef<HTMLDivElement>(null);
+	const mode = useToolbarMode(containerRef);
+
 	return (
-		<div className="flex items-center justify-between gap-4 bg-bg-secondary px-6 border-b h-10 flex-none">
-			<div className="flex items-center gap-3">
-				<span className="typo-label text-text-secondary text-nowrap">
-					View Definition:
-				</span>
-				<HSComp.TabsList>
-					<HSComp.TabsTrigger value="form">Form</HSComp.TabsTrigger>
-					<HSComp.TabsTrigger value="code">Code</HSComp.TabsTrigger>
-					<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
-				</HSComp.TabsList>
-			</div>
-			<div className="flex items-center gap-2">
-				<span className="typo-label text-text-secondary text-nowrap">
-					Resource type:
-				</span>
-				<ResourceTypeSelect />
-			</div>
+		<div ref={containerRef} className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
+			<HSComp.TabsList className="py-0! border-b-0! pr-0!">
+				<HSComp.TabsTrigger value="form">Builder</HSComp.TabsTrigger>
+				<HSComp.TabsTrigger value="code">Code</HSComp.TabsTrigger>
+				<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
+			</HSComp.TabsList>
+
+			{mode === "collapsed" ? (
+				<div className="flex items-center gap-1 px-2">
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<HSComp.IconButton variant="ghost" aria-label="More actions" icon={<Lucide.EllipsisIcon className="w-4 h-4" />} />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onSelect={onRun} className="text-text-link!">
+								RUN
+								<DropdownMenuIcon>
+									<Lucide.PlayIcon className="fill-current text-text-link" />
+								</DropdownMenuIcon>
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={onSave}>
+								Save
+								<DropdownMenuIcon>
+									<Lucide.SaveIcon />
+								</DropdownMenuIcon>
+							</DropdownMenuItem>
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger>
+									Materialize
+								</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent>
+									<DropdownMenuItem onSelect={() => onMaterialize("view")}>
+										View
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => onMaterialize("materialized-view")}>
+										Materialized View
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => onMaterialize("table")}>
+										Table
+									</DropdownMenuItem>
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<HSComp.Toggle
+						variant="outline"
+						pressed={isPreviewOpen}
+						onPressedChange={onTogglePreview}
+					>
+						<Lucide.PanelRightIcon className="w-4 h-4" />
+					</HSComp.Toggle>
+				</div>
+			) : (
+				<div className="flex items-center gap-4 px-4">
+					<Tooltip disableHoverableContent={mode === "full"}>
+						<DropdownMenu>
+							<TooltipTrigger asChild>
+								<DropdownMenuTrigger asChild>
+									<HSComp.Button variant="link" size="small" className="px-0!">
+										<Lucide.DatabaseIcon className="w-4 h-4" />
+										{mode === "full" && "Materialize"}
+										<Lucide.ChevronDownIcon className="w-4 h-4" />
+									</HSComp.Button>
+								</DropdownMenuTrigger>
+							</TooltipTrigger>
+							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
+							<DropdownMenuContent align="end">
+								<DropdownMenuItem onSelect={() => onMaterialize("view")}>
+									View
+								</DropdownMenuItem>
+								<DropdownMenuItem onSelect={() => onMaterialize("materialized-view")}>
+									Materialized View
+								</DropdownMenuItem>
+								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
+									Table
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</Tooltip>
+					<HSComp.Separator orientation="vertical" className="h-6!" />
+					<Tooltip disableHoverableContent={mode === "full"}>
+						<TooltipTrigger asChild>
+							<HSComp.Button variant="ghost" size="small" className="px-0!" onClick={onSave}>
+								<Lucide.SaveIcon className="w-4 h-4" />
+								{mode === "full" && "Save"}
+							</HSComp.Button>
+						</TooltipTrigger>
+						{mode !== "full" && <TooltipContent>Save</TooltipContent>}
+					</Tooltip>
+					<HSComp.Separator orientation="vertical" className="h-6!" />
+					<Tooltip disableHoverableContent={mode === "full"}>
+						<TooltipTrigger asChild>
+							<HSComp.Button
+								variant="link"
+								size="small"
+								className="px-0! text-text-link! hover:text-text-link/80!"
+								onClick={onRun}
+							>
+								<Lucide.PlayIcon className="w-4 h-4 fill-current" />
+								{mode === "full" && "RUN"}
+							</HSComp.Button>
+						</TooltipTrigger>
+						{mode !== "full" && <TooltipContent>Run</TooltipContent>}
+					</Tooltip>
+					<HSComp.Separator orientation="vertical" className="h-6!" />
+					<Tooltip disableHoverableContent={mode === "full"}>
+						<TooltipTrigger asChild>
+							<HSComp.Toggle
+								variant="outline"
+								pressed={isPreviewOpen}
+								onPressedChange={onTogglePreview}
+							>
+								<Lucide.PanelRightIcon className="w-4 h-4" />
+								{mode === "full" && "Instances"}
+							</HSComp.Toggle>
+						</TooltipTrigger>
+						{mode !== "full" && <TooltipContent>Instances</TooltipContent>}
+					</Tooltip>
+				</div>
+			)}
+
 		</div>
 	);
 };
@@ -87,11 +236,10 @@ type RunResult = {
 	data: string;
 };
 
-export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
+export const useViewDefinitionActions = (client: AidboxClientR5) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
 	const viewDefinitionMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
@@ -235,9 +383,10 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 			HSComp.toast.success(
 				<div className="flex items-center gap-2">
 					<span>Materialized: {viewName}</span>
-					<button
-						type="button"
-						className="p-1 hover:bg-white/20 rounded"
+					<HSComp.IconButton
+						variant="ghost"
+						aria-label="Copy view name"
+						icon={<Lucide.CopyIcon className="w-4 h-4" />}
 						onClick={() => {
 							navigator.clipboard.writeText(viewName);
 							HSComp.toast.success("Copied to clipboard", {
@@ -245,9 +394,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 								style: { margin: "1rem" },
 							});
 						}}
-					>
-						<Lucide.CopyIcon className="w-4 h-4" />
-					</button>
+					/>
 				</div>,
 				{
 					position: "bottom-right",
@@ -269,6 +416,7 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 			});
 		},
 		onSuccess: () => {
+			viewDefinitionContext.setIsDirty(false);
 			HSComp.toast.success("ViewDefinition deleted successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -284,20 +432,17 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 	const handleSave = () => {
 		if (viewDefinitionResource) {
 			const cleanedViewDefinition = cleanEmptyValues(viewDefinitionResource);
-			viewDefinitionMutation.mutate(cleanedViewDefinition);
+			if (viewDefinitionContext.originalId) {
+				viewDefinitionMutation.mutate(cleanedViewDefinition);
+			} else {
+				viewDefinitionCreateMutation.mutate(cleanedViewDefinition);
+			}
 		}
 	};
 
 	const handleRun = () => {
 		if (viewDefinitionResource) {
 			viewDefinitionRunMutation.mutate(viewDefinitionResource);
-		}
-	};
-
-	const handleCreate = () => {
-		if (viewDefinitionResource) {
-			const cleanedViewDefinition = cleanEmptyValues(viewDefinitionResource);
-			viewDefinitionCreateMutation.mutate(cleanedViewDefinition);
 		}
 	};
 
@@ -316,93 +461,19 @@ export const EditorPanelActions = ({ client }: { client: AidboxClientR5 }) => {
 		viewDefinitionDeleteMutation.mutate();
 	};
 
-	return (
-		<div className="flex items-center justify-end gap-2 py-3 px-6 border-t">
-			{viewDefinitionContext.originalId && (
-				<HSComp.Button
-					variant="ghost"
-					danger
-					className="mr-auto"
-					onClick={() => setIsDeleteDialogOpen(true)}
-				>
-					<Lucide.Trash2Icon className="w-4 h-4" />
-					Delete
-				</HSComp.Button>
-			)}
-			<HSComp.Button onClick={handleRun}>
-				<Lucide.PlayIcon />
-				Run
-			</HSComp.Button>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<HSComp.Button variant="secondary">
-						<Lucide.DatabaseIcon className="w-4 h-4" />
-						Materialize
-						<Lucide.ChevronDownIcon className="w-4 h-4" />
-					</HSComp.Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end">
-					<DropdownMenuItem onSelect={() => handleMaterialize("view")}>
-						View
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onSelect={() => handleMaterialize("materialized-view")}
-					>
-						Materialized View
-					</DropdownMenuItem>
-					<DropdownMenuItem onSelect={() => handleMaterialize("table")}>
-						Table
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-			{viewDefinitionContext.originalId ? (
-				<HSComp.Button variant="secondary" onClick={handleSave}>
-					<Lucide.SaveIcon className="w-4 h-4" />
-					Save
-				</HSComp.Button>
-			) : (
-				<HSComp.Button variant="secondary" onClick={handleCreate}>
-					<Lucide.SaveIcon className="w-4 h-4" />
-					Create
-				</HSComp.Button>
-			)}
-
-			<HSComp.AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
-				<HSComp.AlertDialogContent>
-					<HSComp.AlertDialogHeader>
-						<HSComp.AlertDialogTitle>
-							Delete ViewDefinition?
-						</HSComp.AlertDialogTitle>
-						<HSComp.AlertDialogDescription>
-							Are you sure you want to delete this ViewDefinition? This action
-							cannot be undone.
-						</HSComp.AlertDialogDescription>
-					</HSComp.AlertDialogHeader>
-					<HSComp.AlertDialogFooter>
-						<HSComp.AlertDialogCancel>Cancel</HSComp.AlertDialogCancel>
-						<HSComp.AlertDialogAction
-							variant="primary"
-							danger
-							onClick={() => {
-								handleDelete();
-								setIsDeleteDialogOpen(false);
-							}}
-						>
-							<Lucide.Trash2Icon className="w-4 h-4" />
-							Delete
-						</HSComp.AlertDialogAction>
-					</HSComp.AlertDialogFooter>
-				</HSComp.AlertDialogContent>
-			</HSComp.AlertDialog>
-		</div>
-	);
+	return { handleSave, handleRun, handleMaterialize, handleDelete };
 };
 
-export const EditorPanelContent = () => {
+export const EditorPanelContent = ({
+	isPreviewOpen,
+	onTogglePreview,
+}: {
+	isPreviewOpen: boolean;
+	onTogglePreview: () => void;
+}) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
+	const { handleSave, handleRun, handleMaterialize, handleDelete } =
+		useViewDefinitionActions(aidboxClient);
 
 	const navigate = useNavigate();
 
@@ -427,29 +498,131 @@ export const EditorPanelContent = () => {
 				createSearch !== undefined
 					? "/resource/ViewDefinition/create"
 					: "/resource/ViewDefinition/edit/$id",
-			search: { tab: value },
+			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
 		});
 	};
 
 	return (
 		<HSComp.Tabs
+			variant="tertiary"
 			defaultValue={selectedTab}
 			onValueChange={handleOnTabSelect}
 			className="grow min-h-0"
 		>
-			<EditorHeaderMenu />
+			<EditorHeaderMenu
+				onSave={handleSave}
+				onRun={handleRun}
+				onMaterialize={handleMaterialize}
+				onTogglePreview={onTogglePreview}
+				isPreviewOpen={isPreviewOpen}
+			/>
 			<HSComp.TabsContent
 				value={"form"}
-				className="py-1 px-2.5 data-[state=inactive]:hidden"
+				className={`data-[state=inactive]:hidden ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
 				forceMount
 			>
-				<FormTabContent />
+				{isPreviewOpen ? (
+					<div className="px-2.5 py-1">
+						<FormTabContent />
+					</div>
+				) : (
+					<div className="mx-auto max-w-[687px] min-h-full bg-bg-primary border-x border-border-secondary px-2.5 py-3">
+						<FormTabContent />
+					</div>
+				)}
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value={"code"}>
+			<HSComp.TabsContent value={"code"} className="overflow-hidden!">
 				<CodeTabContent />
 			</HSComp.TabsContent>
-			<SQLTab />
-			<EditorPanelActions client={aidboxClient} />
+			<HSComp.TabsContent value={"sql"}>
+				<SQLTab />
+			</HSComp.TabsContent>
 		</HSComp.Tabs>
+	);
+};
+
+export const BuilderContent = () => {
+	const [isPreviewOpen, setIsPreviewOpen] = useLocalStorage<boolean>({
+		key: "viewDefinition-instancePreviewOpen",
+		defaultValue: true,
+		getInitialValueInEffect: false,
+	});
+	const [isResultCollapsed, setIsResultCollapsed] = React.useState(false);
+
+	const handleTogglePreview = () => {
+		setIsPreviewOpen((prev) => !prev);
+	};
+
+	const handleToggleResultCollapse = () => {
+		setIsResultCollapsed((prev) => !prev);
+	};
+
+	if (isResultCollapsed) {
+		return (
+			<div className="relative h-full flex flex-col">
+				<div className="flex-1 min-h-0 overflow-hidden">
+					<HSComp.ResizablePanelGroup
+						direction="horizontal"
+						autoSaveId="view-definition-horizontal-panel"
+					>
+						<HSComp.ResizablePanel minSize={20}>
+							<EditorPanelContent
+								isPreviewOpen={isPreviewOpen}
+								onTogglePreview={handleTogglePreview}
+							/>
+						</HSComp.ResizablePanel>
+						{isPreviewOpen && (
+							<>
+								<HSComp.ResizableHandle />
+								<HSComp.ResizablePanel minSize={20}>
+									<InfoPanel onClose={handleTogglePreview} />
+								</HSComp.ResizablePanel>
+							</>
+						)}
+					</HSComp.ResizablePanelGroup>
+				</div>
+				<div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-t h-10 flex-none">
+					<span className="typo-label text-text-secondary">Result</span>
+					<HSComp.Button variant="ghost" size="small" onClick={handleToggleResultCollapse}>
+						<Lucide.PanelBottomOpen className="w-4 h-4" />
+					</HSComp.Button>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="relative h-full">
+			<HSComp.ResizablePanelGroup
+				direction="vertical"
+				autoSaveId="view-definition-vertical-panel"
+			>
+				<HSComp.ResizablePanel minSize={10}>
+					<HSComp.ResizablePanelGroup
+						direction="horizontal"
+						autoSaveId="view-definition-horizontal-panel"
+					>
+						<HSComp.ResizablePanel minSize={20}>
+							<EditorPanelContent
+								isPreviewOpen={isPreviewOpen}
+								onTogglePreview={handleTogglePreview}
+							/>
+						</HSComp.ResizablePanel>
+						{isPreviewOpen && (
+							<>
+								<HSComp.ResizableHandle />
+								<HSComp.ResizablePanel minSize={20}>
+									<InfoPanel onClose={handleTogglePreview} />
+								</HSComp.ResizablePanel>
+							</>
+						)}
+					</HSComp.ResizablePanelGroup>
+				</HSComp.ResizablePanel>
+				<HSComp.ResizableHandle />
+				<HSComp.ResizablePanel minSize={10}>
+					<ResultPanel onToggleCollapse={handleToggleResultCollapse} />
+				</HSComp.ResizablePanel>
+			</HSComp.ResizablePanelGroup>
+		</div>
 	);
 };

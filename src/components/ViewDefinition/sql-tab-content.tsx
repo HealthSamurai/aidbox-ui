@@ -1,5 +1,5 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
-import { CodeEditor, TabsContent } from "@health-samurai/react-components";
+import { CodeEditor } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { format as formatSQL } from "sql-formatter";
@@ -64,7 +64,7 @@ export function SQLTab() {
 	});
 
 	return (
-		<TabsContent value="sql" className="grow min-h-0">
+		<>
 			{isLoading ? (
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
@@ -84,6 +84,6 @@ export function SQLTab() {
 			) : (
 				<CodeEditor readOnly currentValue={data ?? ""} mode="sql" />
 			)}
-		</TabsContent>
+		</>
 	);
 }

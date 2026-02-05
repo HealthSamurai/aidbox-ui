@@ -127,7 +127,7 @@ export const ResourceEditorPage = ({
 		{
 			trigger: <HSComp.TabsTrigger value="code">Edit</HSComp.TabsTrigger>,
 			content: (
-				<HSComp.TabsContent value={"code"} className="py-1 px-2.5">
+				<HSComp.TabsContent value={"code"}>
 					<EditorTab
 						mode={mode}
 						setMode={setMode}

@@ -7,7 +7,10 @@ import {
 	CodeEditor,
 	CopyIcon,
 	SegmentControl,
-	TabsContent,
+	Separator,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as yaml from "js-yaml";
@@ -64,7 +67,7 @@ const ExampleTabEditorMenu = ({
 	canGoToNext: boolean;
 }) => {
 	return (
-		<div className="flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary">
+		<div className="flex items-center gap-2 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
 			<SegmentControl
 				value={mode}
 				onValueChange={(value) =>
@@ -78,23 +81,35 @@ const ExampleTabEditorMenu = ({
 			<Button variant="ghost" size="small" asChild>
 				<CopyIcon text={textToCopy} />
 			</Button>
-			<div className="border-l h-6" />
-			<Button
-				variant="ghost"
-				size="small"
-				onClick={onPrevious}
-				disabled={!canGoToPrevious}
-			>
-				<ChevronLeft />
-			</Button>
-			<Button
-				variant="ghost"
-				size="small"
-				onClick={onNext}
-				disabled={!canGoToNext}
-			>
-				<ChevronRight />
-			</Button>
+			<Separator orientation="vertical" className="h-6!" />
+			<div className="flex items-center gap-0.5">
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="small"
+							onClick={onPrevious}
+							disabled={!canGoToPrevious}
+						>
+							<ChevronLeft />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>Previous instance</TooltipContent>
+				</Tooltip>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="small"
+							onClick={onNext}
+							disabled={!canGoToNext}
+						>
+							<ChevronRight />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>Next instance</TooltipContent>
+				</Tooltip>
+			</div>
 		</div>
 	);
 };
@@ -114,6 +129,7 @@ export function ExampleTabContent() {
 		useLocalStorage<ViewDefinitionEditorMode>({
 			key: `viewDefinition-infoPanel-exampleMode`,
 			defaultValue: "json",
+			getInitialValueInEffect: false,
 		});
 
 	const [query, setQuery] = useState("");
@@ -162,10 +178,7 @@ export function ExampleTabContent() {
 	};
 
 	return (
-		<TabsContent
-			value="examples"
-			className="flex flex-col h-full bg-bg-secondary"
-		>
+		<div className="flex flex-col h-full">
 			<SearchBar
 				handleSearch={(q?: string) => {
 					setQuery(q || "");
@@ -213,8 +226,7 @@ export function ExampleTabContent() {
 											: JSON.stringify(exampleResource, null, 2)
 									}
 									mode={exampleMode}
-									isReadOnlyTheme={true}
-								/>
+									/>
 							</div>
 						) : status === "error" ? (
 							<div>
@@ -237,8 +249,7 @@ export function ExampleTabContent() {
 											: JSON.stringify(error.cause, null, 2)
 									}
 									mode={exampleMode}
-									isReadOnlyTheme={true}
-								/>
+									/>
 							</div>
 						) : (
 							<div className="flex items-center justify-center h-full text-text-secondary">
@@ -250,6 +261,6 @@ export function ExampleTabContent() {
 					</div>
 				)}
 			</div>
-		</TabsContent>
+		</div>
 	);
 }
