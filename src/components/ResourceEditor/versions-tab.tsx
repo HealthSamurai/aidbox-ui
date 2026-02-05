@@ -233,17 +233,13 @@ const VersionViewDialog = ({
 					<div className="absolute top-3 right-3 z-10">
 						<div className="flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary">
 							<HSComp.SegmentControl
-								defaultValue={mode}
-								name="version-view-format"
+								value={mode}
 								onValueChange={(value) => setMode(value as EditorMode)}
-							>
-								<HSComp.SegmentControlItem value="json">
-									JSON
-								</HSComp.SegmentControlItem>
-								<HSComp.SegmentControlItem value="yaml">
-									YAML
-								</HSComp.SegmentControlItem>
-							</HSComp.SegmentControl>
+								items={[
+									{ value: "json", label: "JSON" },
+									{ value: "yaml", label: "YAML" },
+								]}
+							/>
 						</div>
 					</div>
 					<HSComp.CodeEditor

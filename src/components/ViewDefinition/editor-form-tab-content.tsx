@@ -977,23 +977,16 @@ export const FormTabContent = () => {
 		return treeStructure;
 	}, [constants, whereConditions, selectItems]);
 
-	// Items that should always be expanded (cannot be collapsed)
-	const alwaysExpandedIds = ["_constant", "_where", "_select"];
-
 	// Compute expanded items from collapsed items
 	const expandedItems = useMemo(() => {
 		const allItemIds = Object.keys(tree).filter((id) => id !== "root");
-		return allItemIds.filter(
-			(id) => alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
-		);
+		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
 	}, [tree, collapsedItemIds]);
 
 	const onExpandedItemsChange = useCallback(
 		(items: string[]) => {
 			const allItemIds = Object.keys(tree).filter((id) => id !== "root");
-			const newCollapsedIds = allItemIds.filter(
-				(id) => !alwaysExpandedIds.includes(id) && !items.includes(id),
-			);
+			const newCollapsedIds = allItemIds.filter((id) => !items.includes(id));
 			setCollapsedItemIds(newCollapsedIds);
 		},
 		[tree, setCollapsedItemIds],
@@ -1862,7 +1855,7 @@ export const FormTabContent = () => {
 						metaType === "where" ||
 						metaType === "properties"
 					) {
-						return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
+						return "relative my-1.5 rounded-md bg-blue-100 cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 					} else {
 						if (
 							metaType === "column-item" ||
@@ -1879,6 +1872,12 @@ export const FormTabContent = () => {
 				rootItemId="root"
 				customItemView={customItemView}
 				disableHover={true}
+				chevronClassName="self-center cursor-pointer"
+				onItemLabelClick={(item) => {
+					if (item.isFolder()) {
+						item.isExpanded() ? item.collapse() : item.expand();
+					}
+				}}
 				canReorder={true}
 				onDropFn={onDropTreeItem}
 				expandedItems={expandedItems}

@@ -26,7 +26,7 @@ export function SearchBar({
 	const [searchQuery, setSearchQuery] = useState("");
 
 	return (
-		<div className="p-3 border-b">
+		<div className="px-4 py-3 border-b bg-bg-tertiary">
 			<div className="flex gap-2">
 				<Input
 					type="text"
