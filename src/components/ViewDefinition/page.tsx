@@ -454,12 +454,14 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			<HSComp.AlertDialog open={status === "blocked"}>
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
-						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>
-						<HSComp.AlertDialogDescription>
-							You have unsaved changes. Are you sure you want to leave this
-							page? Your changes will be lost.
-						</HSComp.AlertDialogDescription>
+						<HSComp.AlertDialogTitle>
+							Unsaved changes
+						</HSComp.AlertDialogTitle>
 					</HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogDescription>
+						You have unsaved changes. Are you sure you want to leave this
+						page? Your changes will be lost.
+					</HSComp.AlertDialogDescription>
 					<HSComp.AlertDialogFooter>
 						<HSComp.AlertDialogCancel onClick={reset}>
 							Cancel
