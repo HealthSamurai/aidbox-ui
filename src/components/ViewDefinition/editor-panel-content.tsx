@@ -547,7 +547,11 @@ export const BuilderContent = () => {
 		defaultValue: true,
 		getInitialValueInEffect: false,
 	});
-	const [isResultCollapsed, setIsResultCollapsed] = React.useState(false);
+	const [isResultCollapsed, setIsResultCollapsed] = useLocalStorage<boolean>({
+		key: "viewDefinition-resultCollapsed",
+		defaultValue: false,
+		getInitialValueInEffect: false,
+	});
 
 	const handleTogglePreview = () => {
 		setIsPreviewOpen((prev) => !prev);
@@ -583,9 +587,14 @@ export const BuilderContent = () => {
 				</div>
 				<div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-t h-10 flex-none">
 					<span className="typo-label text-text-secondary">Result</span>
-					<HSComp.Button variant="ghost" size="small" onClick={handleToggleResultCollapse}>
-						<Lucide.PanelBottomOpen className="w-4 h-4" />
-					</HSComp.Button>
+					<HSComp.Tooltip>
+						<HSComp.TooltipTrigger asChild>
+							<HSComp.Button variant="ghost" size="small" onClick={handleToggleResultCollapse}>
+								<Lucide.PanelBottomOpen className="w-4 h-4" />
+							</HSComp.Button>
+						</HSComp.TooltipTrigger>
+						<HSComp.TooltipContent align="end">Restore</HSComp.TooltipContent>
+					</HSComp.Tooltip>
 				</div>
 			</div>
 		);
