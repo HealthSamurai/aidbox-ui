@@ -102,13 +102,13 @@ const PageTabsHeader = ({ id }: { id?: string }) => {
 			className="flex flex-col grow min-h-0"
 		>
 			<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
-				<HSComp.TabsList className="gap-6">
-					<HSComp.TabsTrigger value="builder" className="px-0!">
+				<HSComp.TabsList>
+					<HSComp.TabsTrigger value="builder">
 						ViewDefinition Builder
 					</HSComp.TabsTrigger>
-					<HSComp.TabsTrigger value="edit" className="px-0!">Edit</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>
 					{id && (
-						<HSComp.TabsTrigger value="versions" className="px-0!">
+						<HSComp.TabsTrigger value="versions">
 							Versions
 						</HSComp.TabsTrigger>
 					)}
