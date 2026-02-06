@@ -5,18 +5,17 @@ import {
 	Button,
 	CodeEditor,
 	DataTable,
-	Pagination,
-	PaginationContent,
-	PaginationNext,
-	PaginationPageSizeSelector,
-	PaginationPrevious,
+	Skeleton,
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { InfiniteScrollSentinel } from "../../utils/infinite-scroll";
 import { ViewDefinitionContext } from "./page";
+
+const SKELETON_MARKER = "__skeleton__";
 
 interface ProcessedTableData {
 	tableData: Record<string, unknown>[];
@@ -52,7 +51,10 @@ const extractColumns = (
 	return Array.from(allKeys).map((key) => ({
 		accessorKey: key,
 		header: key.charAt(0).toUpperCase() + key.slice(1),
-		cell: ({ getValue }) => {
+		cell: ({ getValue, row }) => {
+			if ((row.original as Record<string, unknown>)[SKELETON_MARKER]) {
+				return <Skeleton className="h-4 w-3/4" />;
+			}
 			const value = getValue();
 			if (value === null || value === undefined) {
 				return <span className="text-text-tertiary">null</span>;
@@ -123,13 +125,23 @@ const ResultHeader = ({
 const ResultContent = ({
 	rows,
 	isEmptyArray,
-	tableData,
+	accumulatedData,
 	columns,
+	hasMore,
+	isLoadingMore,
+	onLoadMore,
+	containerRef,
+	pageSize,
 }: {
 	rows: string | undefined;
 	isEmptyArray: boolean;
-	tableData: Record<string, unknown>[];
+	accumulatedData: Record<string, unknown>[];
 	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
+	hasMore: boolean;
+	isLoadingMore: boolean;
+	onLoadMore: () => void;
+	containerRef: RefObject<HTMLDivElement | null>;
+	pageSize: number;
 }) => {
 	if (!rows) {
 		return (
@@ -149,10 +161,23 @@ const ResultContent = ({
 		);
 	}
 
-	if (tableData.length > 0) {
+	if (accumulatedData.length > 0) {
+		const skeletonRows = isLoadingMore
+			? Array.from({ length: pageSize }, () => ({ [SKELETON_MARKER]: true }))
+			: [];
+		const displayData = isLoadingMore
+			? [...accumulatedData, ...skeletonRows]
+			: accumulatedData;
+
 		return (
-			<div className="flex-1 overflow-hidden min-h-0">
-				<DataTable columns={columns} data={tableData} stickyHeader />
+			<div ref={containerRef} className="flex-1 overflow-hidden min-h-0">
+				<DataTable columns={columns} data={displayData} stickyHeader />
+				<InfiniteScrollSentinel
+					root={containerRef}
+					onLoadMore={onLoadMore}
+					hasMore={hasMore}
+					isLoading={isLoadingMore}
+				/>
 			</div>
 		);
 	}
@@ -160,76 +185,6 @@ const ResultContent = ({
 	return (
 		<div className="flex-1 p-4">
 			<CodeEditor readOnly={true} currentValue={rows} mode="json" />
-		</div>
-	);
-};
-
-const ResultPagination = ({
-	onPageChange,
-	onPageSizeChange,
-	hasResults,
-	resultCount,
-}: {
-	onPageChange: (direction: "next" | "previous") => void;
-	onPageSizeChange: (pageSize: number) => void;
-	hasResults: boolean;
-	resultCount: number;
-}) => {
-	const viewDefinitionContext = useContext(ViewDefinitionContext);
-	const currentPage = viewDefinitionContext.runResultPage || 1;
-	const pageSize = viewDefinitionContext.runResultPageSize || 30;
-
-	const isLastPage = !hasResults || resultCount < pageSize;
-
-	return (
-		<div className="flex items-center justify-end bg-bg-secondary px-6 py-3 border-t h-12">
-			<div className="flex items-center gap-4">
-				<Pagination>
-					<PaginationPageSizeSelector
-						pageSize={pageSize}
-						onPageSizeChange={onPageSizeChange}
-						pageSizeOptions={[30, 50, 100]}
-					/>
-					<PaginationContent>
-						<PaginationPrevious
-							href="#"
-							onClick={(e) => {
-								e.preventDefault();
-								onPageChange("previous");
-							}}
-							aria-disabled={currentPage <= 1}
-							size="small"
-							style={
-								currentPage <= 1
-									? {
-											pointerEvents: "none",
-											opacity: 0.5,
-											cursor: "not-allowed",
-										}
-									: { cursor: "pointer" }
-							}
-						/>
-						<PaginationNext
-							href="#"
-							onClick={(e) => {
-								e.preventDefault();
-								onPageChange("next");
-							}}
-							aria-disabled={isLastPage}
-							size="small"
-							style={
-								isLastPage
-									? {
-											pointerEvents: "none",
-											opacity: 0.5,
-											cursor: "not-allowed",
-										}
-									: { cursor: "pointer" }
-							}
-						/>
-					</PaginationContent>
-				</Pagination>
-			</div>
 		</div>
 	);
 };
@@ -245,20 +200,37 @@ export function ResultPanel({
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
 
-	const { tableData, columns, isEmptyArray } = useMemo(() => {
-		const data = processTableData(rows);
-		return data;
-	}, [rows]);
+	const { tableData, columns: initialColumns, isEmptyArray } = useMemo(
+		() => processTableData(rows),
+		[rows],
+	);
 
-	const viewDefinitionRunMutation = useMutation({
+	const [accumulatedData, setAccumulatedData] = useState<Record<string, unknown>[]>([]);
+	const [columns, setColumns] = useState<AccessorKeyColumnDef<Record<string, unknown>, unknown>[]>([]);
+	const [hasMore, setHasMore] = useState(false);
+	const pageRef = useRef(1);
+	const runIdRef = useRef(0);
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		runIdRef.current += 1;
+		setAccumulatedData(tableData);
+		setColumns(initialColumns);
+		pageRef.current = 1;
+		const pageSize = viewDefinitionContext.runResultPageSize || 30;
+		setHasMore(tableData.length >= pageSize);
+	}, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	const loadMoreMutation = useMutation({
 		mutationFn: ({
 			viewDefinition,
 			page,
 			pageSize,
 		}: {
-			viewDefinition: ViewDefinition | undefined;
+			viewDefinition: ViewDefinition;
 			page: number;
 			pageSize: number;
+			runId: number;
 		}) => {
 			const parametersPayload = {
 				resourceType: "Parameters",
@@ -279,42 +251,34 @@ export function ResultPanel({
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: async (data: AidboxTypes.ResponseWithMeta) => {
+		onSuccess: async (data: AidboxTypes.ResponseWithMeta, variables) => {
+			if (variables.runId !== runIdRef.current) return;
 			const decodedData = atob((await data.response.json()).data);
-			viewDefinitionContext.setRunResult(decodedData);
+			const { tableData: newRows } = processTableData(decodedData);
+			setAccumulatedData((prev) => [...prev, ...newRows]);
+			const pageSize = viewDefinitionContext.runResultPageSize || 30;
+			setHasMore(newRows.length >= pageSize);
 		},
 		onError: Utils.onMutationError,
 	});
 
-	const handlePageChange = (direction: "next" | "previous") => {
-		const currentPage = viewDefinitionContext.runResultPage || 1;
-		const newPage = direction === "next" ? currentPage + 1 : currentPage - 1;
-
-		if (newPage < 1) return;
-
-		viewDefinitionContext.setRunResultPage(newPage);
-
-		if (viewDefinitionContext.runViewDefinition) {
-			viewDefinitionRunMutation.mutate({
-				viewDefinition: viewDefinitionContext.runViewDefinition,
-				page: newPage,
-				pageSize: viewDefinitionContext.runResultPageSize || 30,
-			});
-		}
-	};
-
-	const handlePageSizeChange = (pageSize: number) => {
-		viewDefinitionContext.setRunResultPageSize(pageSize);
-		viewDefinitionContext.setRunResultPage(1);
-
-		if (viewDefinitionContext.runViewDefinition) {
-			viewDefinitionRunMutation.mutate({
-				viewDefinition: viewDefinitionContext.runViewDefinition,
-				page: 1,
-				pageSize: pageSize,
-			});
-		}
-	};
+	const handleLoadMore = useCallback(() => {
+		if (loadMoreMutation.isPending || !hasMore) return;
+		if (!viewDefinitionContext.runViewDefinition) return;
+		const nextPage = pageRef.current + 1;
+		pageRef.current = nextPage;
+		loadMoreMutation.mutate({
+			viewDefinition: viewDefinitionContext.runViewDefinition,
+			page: nextPage,
+			pageSize: viewDefinitionContext.runResultPageSize || 30,
+			runId: runIdRef.current,
+		});
+	}, [
+		loadMoreMutation,
+		hasMore,
+		viewDefinitionContext.runViewDefinition,
+		viewDefinitionContext.runResultPageSize,
+	]);
 
 	const toggleMaximize = () => {
 		setIsMaximized((prev) => !prev);
@@ -348,17 +312,14 @@ export function ResultPanel({
 			<ResultContent
 				rows={rows}
 				isEmptyArray={isEmptyArray}
-				tableData={tableData}
+				accumulatedData={accumulatedData}
 				columns={columns}
+				hasMore={hasMore}
+				isLoadingMore={loadMoreMutation.isPending}
+				onLoadMore={handleLoadMore}
+				containerRef={containerRef}
+				pageSize={viewDefinitionContext.runResultPageSize || 30}
 			/>
-			{rows && (
-				<ResultPagination
-					onPageChange={handlePageChange}
-					onPageSizeChange={handlePageSizeChange}
-					hasResults={tableData.length > 0}
-					resultCount={tableData.length}
-				/>
-			)}
 		</div>
 	);
 }
