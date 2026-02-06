@@ -269,6 +269,8 @@ const InputView = ({
 			placeholder={placeholder}
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
+			onClick={(e) => e.stopPropagation()}
+			onMouseDown={(e) => e.stopPropagation()}
 		/>
 	);
 };

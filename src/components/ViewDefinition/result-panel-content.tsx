@@ -6,6 +6,9 @@ import {
 	CodeEditor,
 	DataTable,
 	Skeleton,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
@@ -108,16 +111,26 @@ const ResultHeader = ({
 			<span className="typo-label text-text-secondary">Result</span>
 		</div>
 		<div className="flex items-center gap-1">
-			<Button variant="ghost" size="small" onClick={onToggleCollapse}>
-				<PanelBottomClose className="w-4 h-4" />
-			</Button>
-			<Button variant="ghost" size="small" onClick={onToggleMaximize}>
-				{isMaximized ? (
-					<Minimize2 className="w-4 h-4" />
-				) : (
-					<Maximize2 className="w-4 h-4" />
-				)}
-			</Button>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button variant="ghost" size="small" onClick={onToggleCollapse}>
+						<PanelBottomClose className="w-4 h-4" />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent align="end">Collapse</TooltipContent>
+			</Tooltip>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button variant="ghost" size="small" onClick={onToggleMaximize}>
+						{isMaximized ? (
+							<Minimize2 className="w-4 h-4" />
+						) : (
+							<Maximize2 className="w-4 h-4" />
+						)}
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent align="end">{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
+			</Tooltip>
 		</div>
 	</div>
 );
