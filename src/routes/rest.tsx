@@ -30,6 +30,7 @@ import React, {
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import {
@@ -52,6 +53,7 @@ import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menu
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
+import { responseStorage } from "../utils/response-storage";
 
 const TITLE = "REST Console";
 
@@ -721,7 +723,7 @@ function handleSendRequest(
 	selectedTab: Tab,
 	queryClient: QueryClient,
 	setIsLoading: (loading: boolean) => void,
-	setTabs: (tabs: Tab[] | ((tabs: Tab[]) => Tab[])) => void,
+	setResponse: (tabId: string, response: ResponseData) => void,
 	aidboxClient: AidboxClientR5,
 ) {
 	const headers =
@@ -759,7 +761,7 @@ function handleSendRequest(
 			body: selectedTab.body || "",
 		})
 		.then(async (response: AidboxTypes.ResponseWithMeta) => {
-			const responseData = {
+			const responseData: ResponseData = {
 				status: response.response.status,
 				statusText: response.response.statusText,
 				headers: response.responseHeaders,
@@ -767,12 +769,8 @@ function handleSendRequest(
 				duration: response.duration,
 				mode: responseMode,
 			};
-			// Store response in tab
-			setTabs((currentTabs) =>
-				currentTabs.map((tab) =>
-					tab.selected ? { ...tab, response: responseData } : tab,
-				),
-			);
+			// Store response in IndexedDB
+			setResponse(selectedTab.id, responseData);
 		})
 		.catch(async (error: AidboxTypes.ErrorResponse) => {
 			const cause = error.responseWithMeta;
@@ -790,12 +788,8 @@ function handleSendRequest(
 				duration: cause.duration,
 				mode: errorMode,
 			};
-			// Store error response in tab
-			setTabs((currentTabs) =>
-				currentTabs.map((tab) =>
-					tab.selected ? { ...tab, response: errorResponse } : tab,
-				),
-			);
+			// Store error response in IndexedDB
+			setResponse(selectedTab.id, errorResponse);
 		})
 		.finally(() => {
 			setIsLoading(false);
@@ -890,14 +884,44 @@ function SendButton(
 	);
 }
 
+// Strip response data from tabs before saving to localStorage
+function stripResponsesFromTabs(tabs: Tab[]): Tab[] {
+	return tabs.map(({ response, ...rest }) => rest);
+}
+
 function RouteComponent() {
 	const client = useAidboxClient();
 
-	const [tabs, setTabs] = useLocalStorage<Tab[]>({
+	// Responses are stored in IndexedDB, subscribed via useSyncExternalStore
+	const responses = useSyncExternalStore(
+		responseStorage.subscribe,
+		responseStorage.getSnapshot,
+	);
+
+	const [tabsRaw, setTabsRaw] = useLocalStorage<Tab[]>({
 		key: REST_CONSOLE_TABS_KEY,
 		getInitialValueInEffect: false,
 		defaultValue: [DEFAULT_TAB],
 	});
+
+	// Wrap setTabs to strip responses before saving to localStorage
+	const setTabs = useCallback(
+		(value: Tab[] | ((prev: Tab[]) => Tab[])) => {
+			setTabsRaw((prev) => {
+				const newTabs = typeof value === "function" ? value(prev) : value;
+				return stripResponsesFromTabs(newTabs);
+			});
+		},
+		[setTabsRaw],
+	);
+
+	// Hydrate tabs with responses from IndexedDB
+	const tabs = useMemo(() => {
+		return tabsRaw.map((tab) => ({
+			...tab,
+			response: responses.get(tab.id),
+		}));
+	}, [tabsRaw, responses]);
 
 	const [leftMenuOpen, setLeftMenuOpen] = useLocalStorage<boolean>({
 		key: "rest-console-left-menu-open",
@@ -955,7 +979,7 @@ function RouteComponent() {
 					selectedTab,
 					queryClient,
 					setIsLoading,
-					setTabs,
+					responseStorage.set,
 					client,
 				);
 			}
@@ -965,7 +989,7 @@ function RouteComponent() {
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedTab, queryClient, setTabs, client]);
+	}, [selectedTab, queryClient, client]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1223,7 +1247,15 @@ function RouteComponent() {
 							}}
 						/>
 						<div className="grow min-w-0">
-							<ActiveTabs setTabs={setTabs} tabs={tabs} />
+							<ActiveTabs
+								setTabs={setTabs}
+								tabs={tabs}
+								onTabsRemoved={(tabIds) => {
+									for (const tabId of tabIds) {
+										responseStorage.delete(tabId);
+									}
+								}}
+							/>
 						</div>
 					</div>
 					<div className="px-4 py-3 flex items-center border-b gap-2">
@@ -1242,7 +1274,7 @@ function RouteComponent() {
 									selectedTab,
 									queryClient,
 									setIsLoading,
-									setTabs,
+									responseStorage.set,
 									client,
 								)
 							}
