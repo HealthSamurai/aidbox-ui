@@ -192,11 +192,13 @@ function TabContextMenuContent({
 	tabs,
 	setTabs,
 	handleCloseTab,
+	onTabsRemoved,
 }: {
 	tab: Tab;
 	tabs: Tab[];
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
 	handleCloseTab: (tabId: TabId) => void;
+	onTabsRemoved?: (tabIds: TabId[]) => void;
 }) {
 	const tabIndex = tabs.findIndex((t) => t.id === tab.id);
 
@@ -206,17 +208,27 @@ function TabContextMenuContent({
 	};
 
 	const handleCloseTabsToLeft = () => {
+		const removedTabIds = tabs
+			.filter((_, index) => index < tabIndex)
+			.map((t) => t.id);
 		const newTabs = tabs.filter((_, index) => index >= tabIndex);
 		setTabs(forceSelectedTab(newTabs, tabIndex));
+		onTabsRemoved?.(removedTabIds);
 	};
 
 	const handleCloseTabsToRight = () => {
+		const removedTabIds = tabs
+			.filter((_, index) => index > tabIndex)
+			.map((t) => t.id);
 		const newTabs = tabs.filter((_, index) => index <= tabIndex);
 		setTabs(forceSelectedTab(newTabs, tabIndex));
+		onTabsRemoved?.(removedTabIds);
 	};
 
 	const handleCloseOtherTabs = () => {
+		const removedTabIds = tabs.filter((t) => t.id !== tab.id).map((t) => t.id);
 		setTabs([{ ...tab, selected: true }]);
+		onTabsRemoved?.(removedTabIds);
 	};
 
 	return (
@@ -244,13 +256,16 @@ function TabContextMenuContent({
 export function ActiveTabs({
 	tabs,
 	setTabs,
+	onTabsRemoved,
 }: {
 	tabs: Tab[];
 	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
+	onTabsRemoved?: (tabIds: TabId[]) => void;
 }) {
 	const selectedTab = tabs.find((tab) => tab.selected)?.id || DEFAULT_TAB_ID;
 	const handleCloseTab = (tabId: TabId) => {
 		removeTab(tabs, tabId, setTabs);
+		onTabsRemoved?.([tabId]);
 	};
 	const handleTabSelect = (tabId: TabId) => {
 		onTabSelect(tabId, tabs, setTabs);
@@ -288,6 +303,7 @@ export function ActiveTabs({
 								tabs={tabs}
 								setTabs={setTabs}
 								handleCloseTab={handleCloseTab}
+								onTabsRemoved={onTabsRemoved}
 							/>
 						</ContextMenu>
 					);
