@@ -24,7 +24,8 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
 import { Fullscreen, Minimize2, Timer } from "lucide-react";
-import React, {
+import type React from "react";
+import {
 	useCallback,
 	useEffect,
 	useMemo,
@@ -65,16 +66,34 @@ export const Route = createFileRoute("/rest")({
 	loader: () => ({ breadCrumb: TITLE }),
 });
 
-const RequestLineEditorWrapper = React.forwardRef<
-	HTMLDivElement,
-	{
-		selectedTab: Tab;
-		handleTabPathChange: (path: string) => void;
-		handleTabMethodChange: (method: string) => void;
-	}
->(({ selectedTab, handleTabPathChange, handleTabMethodChange }, ref) => {
+function RequestLineEditorWrapper({
+	selectedTab,
+	handleTabPathChange,
+	handleTabMethodChange,
+	onSubmit,
+}: {
+	selectedTab: Tab;
+	handleTabPathChange: (path: string) => void;
+	handleTabMethodChange: (method: string) => void;
+	onSubmit: () => void;
+}) {
 	return (
-		<div ref={ref} className="w-full">
+		// biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut handler on layout container
+		<div
+			className="w-full"
+			onKeyDown={(event) => {
+				if (
+					event.key === "Enter" &&
+					!event.ctrlKey &&
+					!event.shiftKey &&
+					!event.metaKey &&
+					!event.altKey
+				) {
+					event.preventDefault();
+					onSubmit();
+				}
+			}}
+		>
 			<RequestLineEditor
 				key={`request-line-editor-${selectedTab.id}`}
 				placeholder="/fhir/Patient"
@@ -87,7 +106,7 @@ const RequestLineEditorWrapper = React.forwardRef<
 			/>
 		</div>
 	);
-});
+}
 
 function RawEditor({
 	selectedTab,
@@ -958,39 +977,6 @@ function RouteComponent() {
 		string | undefined
 	>(selectedTab.id);
 
-	const requestLineRef = React.useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			const target = event.target as HTMLElement;
-			const isInRequestLine = requestLineRef.current?.contains(target);
-
-			// Send request on Enter in request line, or Ctrl+Enter anywhere
-			if (
-				(event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.metaKey &&
-					!event.altKey &&
-					isInRequestLine) ||
-				(event.ctrlKey && event.key === "Enter")
-			) {
-				event.preventDefault();
-				handleSendRequest(
-					selectedTab,
-					queryClient,
-					setIsLoading,
-					responseStorage.set,
-					client,
-				);
-			}
-		};
-
-		document.addEventListener("keydown", handleKeyDown);
-		return () => {
-			document.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [selectedTab, queryClient, client]);
-
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
 		setTabs((currentTabs) =>
@@ -1227,7 +1213,22 @@ function RouteComponent() {
 
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
-			<div className="flex w-full h-full">
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut handler on layout container */}
+			<div
+				className="flex w-full h-full"
+				onKeyDown={(event) => {
+					if (event.ctrlKey && event.key === "Enter") {
+						event.preventDefault();
+						handleSendRequest(
+							selectedTab,
+							queryClient,
+							setIsLoading,
+							responseStorage.set,
+							client,
+						);
+					}
+				}}
+			>
 				<LeftMenu
 					tabs={tabs}
 					setTabs={setTabs}
@@ -1260,13 +1261,21 @@ function RouteComponent() {
 					</div>
 					<div className="px-4 py-3 flex items-center border-b gap-2">
 						<RequestLineEditorWrapper
-							ref={requestLineRef}
 							selectedTab={selectedTab}
 							handleTabPathChange={(path) => {
 								setRequestLineVersion(crypto.randomUUID());
 								handleTabRequestPathChange(path, tabs, setTabs);
 							}}
 							handleTabMethodChange={handleTabMethodChange}
+							onSubmit={() =>
+								handleSendRequest(
+									selectedTab,
+									queryClient,
+									setIsLoading,
+									responseStorage.set,
+									client,
+								)
+							}
 						/>
 						<SendButton
 							onClick={() =>
