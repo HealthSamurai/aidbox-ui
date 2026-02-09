@@ -12,13 +12,13 @@ const FormatSelector = ({
 }) => {
 	return (
 		<HSComp.SegmentControl
-			defaultValue={mode}
-			name="code-editor-menu"
+			value={mode}
 			onValueChange={(value) => setMode(value as "json" | "yaml")}
-		>
-			<HSComp.SegmentControlItem value="json">JSON</HSComp.SegmentControlItem>
-			<HSComp.SegmentControlItem value="yaml">YAML</HSComp.SegmentControlItem>
-		</HSComp.SegmentControl>
+			items={[
+				{ value: "json", label: "JSON" },
+				{ value: "yaml", label: "YAML" },
+			]}
+		/>
 	);
 };
 

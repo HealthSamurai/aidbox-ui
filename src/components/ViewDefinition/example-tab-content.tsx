@@ -7,7 +7,6 @@ import {
 	CodeEditor,
 	CopyIcon,
 	SegmentControl,
-	SegmentControlItem,
 	TabsContent,
 } from "@health-samurai/react-components";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -67,15 +66,15 @@ const ExampleTabEditorMenu = ({
 	return (
 		<div className="flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary">
 			<SegmentControl
-				defaultValue={mode}
-				name="example-editor-menu"
+				value={mode}
 				onValueChange={(value) =>
 					onModeChange(value as ViewDefinitionEditorMode)
 				}
-			>
-				<SegmentControlItem value="json">JSON</SegmentControlItem>
-				<SegmentControlItem value="yaml">YAML</SegmentControlItem>
-			</SegmentControl>
+				items={[
+					{ value: "json", label: "JSON" },
+					{ value: "yaml", label: "YAML" },
+				]}
+			/>
 			<Button variant="ghost" size="small" asChild>
 				<CopyIcon text={textToCopy} />
 			</Button>
