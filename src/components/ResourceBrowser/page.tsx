@@ -41,8 +41,8 @@ const ResourcesTabContentContext =
 export const ResourcePageTabList = () => {
 	return (
 		<div className="border-b w-full h-10">
-			<HSComp.TabsList className="px-4">
-				<HSComp.TabsTrigger value="resources">Resources</HSComp.TabsTrigger>
+			<HSComp.TabsList className="px-1">
+				<HSComp.TabsTrigger value="resources">Instances</HSComp.TabsTrigger>
 				<HSComp.TabsTrigger value="profiles">Profiles</HSComp.TabsTrigger>
 				<HSComp.TabsTrigger value="extensions">
 					Search parameters
@@ -197,7 +197,11 @@ const resourcesWithKeys = (
 	};
 };
 
-export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
+export const ResourcesTabTable = ({
+	data,
+	selectedIds,
+	setSelectedIds,
+}: Types.ResourcesTabTableProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const resourcesTabContentContext = React.useContext(
 		ResourcesTabContentContext,
@@ -213,51 +217,240 @@ export const ResourcesTabTable = ({ data }: Types.ResourcesTabTableProps) => {
 
 	const { resources, resourceKeys, snapshot } = data;
 
-	const columns: HSComp.ColumnDef<Resource, string>[] = [
-		{
-			accessorKey: "id",
-			header: () => <span className="pl-5">ID</span>,
-			cell: (info) => (
-				<Router.Link
-					className="text-text-link hover:underline pl-5"
-					to="/resource/$resourceType/edit/$id"
-					search={{ tab: "code", mode: "json" }}
-					params={{
-						resourceType: resourcesPageContext.resourceType,
-						id: info.getValue(),
-					}}
-				>
-					{info.getValue()}
-				</Router.Link>
-			),
-		},
-		{
-			accessorKey: "lastUpdated",
-			header: () => <span className="pl-5">lastUpdated</span>,
-			cell: (info) =>
-				Humanize.humanizeValue(
-					"lastUpdated",
-					info.row.original.meta?.lastUpdated,
-					{},
-				),
-		},
-	];
+	const allIds = resources.map((r) => r.id).filter(Boolean) as string[];
+	const allSelected =
+		allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+	const someSelected = !allSelected && allIds.some((id) => selectedIds.has(id));
 
-	resourceKeys.forEach((k: string) => {
-		if (k !== "id" && k !== "meta")
-			columns.push({
-				accessorKey: k,
-				header: () => <span className="pl-5">{k}</span>,
-				cell: (info) =>
-					Humanize.humanizeValue(k, info.getValue(), snapshot ?? {}),
-			});
-	});
+	const toggleAll = () => {
+		if (allSelected) {
+			setSelectedIds(new Set());
+		} else {
+			setSelectedIds(new Set(allIds));
+		}
+	};
+
+	const toggleOne = (id: string) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) {
+				next.delete(id);
+			} else {
+				next.add(id);
+			}
+			return next;
+		});
+	};
+
+	const dynamicKeys = resourceKeys.filter((k) => k !== "id" && k !== "meta");
 
 	return (
-		<div className="h-full overflow-hidden">
-			<HSComp.DataTable columns={columns} data={resources} stickyHeader />
+		<HSComp.Table zebra stickyHeader>
+			<HSComp.TableHeader>
+				<HSComp.TableRow>
+					<HSComp.TableHead className="w-8">
+						<HSComp.Checkbox
+							size="small"
+							checked={
+								allSelected ? true : someSelected ? "indeterminate" : false
+							}
+							onCheckedChange={toggleAll}
+							aria-label="Select all"
+						/>
+					</HSComp.TableHead>
+					<HSComp.TableHead className="w-[300px]">Id</HSComp.TableHead>
+					<HSComp.TableHead className="w-[220px]">LastUpdated</HSComp.TableHead>
+					{dynamicKeys.map((k) => (
+						<HSComp.TableHead key={k}>{k}</HSComp.TableHead>
+					))}
+				</HSComp.TableRow>
+			</HSComp.TableHeader>
+			<HSComp.TableBody>
+				{resources.map((resource, index) => {
+					const id = resource.id ?? "";
+					const isSelected = selectedIds.has(id);
+					return (
+						<HSComp.TableRow
+							key={id || index}
+							zebra
+							index={index}
+							selected={isSelected}
+						>
+							<HSComp.TableCell className="w-8">
+								<HSComp.Checkbox
+									size="small"
+									checked={isSelected}
+									onCheckedChange={() => toggleOne(id)}
+									aria-label={`Select ${id}`}
+								/>
+							</HSComp.TableCell>
+							<HSComp.TableCell type="link">
+								<Router.Link
+									className="text-text-link hover:underline"
+									to="/resource/$resourceType/edit/$id"
+									search={{ tab: "code", mode: "json" }}
+									params={{
+										resourceType: resourcesPageContext.resourceType,
+										id,
+									}}
+								>
+									{id}
+								</Router.Link>
+							</HSComp.TableCell>
+							<HSComp.TableCell>
+								{Humanize.humanizeValue(
+									"lastUpdated",
+									resource.meta?.lastUpdated,
+									{},
+								)}
+							</HSComp.TableCell>
+							{dynamicKeys.map((k) => (
+								<HSComp.TableCell key={k}>
+									{Humanize.humanizeValue(
+										k,
+										(resource as Record<string, unknown>)[k],
+										snapshot ?? {},
+									)}
+								</HSComp.TableCell>
+							))}
+						</HSComp.TableRow>
+					);
+				})}
+			</HSComp.TableBody>
+		</HSComp.Table>
+	);
+};
+
+const PaginationPages = ({
+	currentPage,
+	totalPages,
+	onPageChange,
+}: {
+	currentPage: number;
+	totalPages: number;
+	onPageChange: (page: number) => void;
+}) => {
+	const pages: (number | string)[] = [];
+
+	if (totalPages <= 7) {
+		for (let i = 1; i <= totalPages; i++) pages.push(i);
+	} else {
+		pages.push(1);
+		if (currentPage > 3) pages.push("ellipsis-start");
+		const start = Math.max(2, currentPage - 1);
+		const end = Math.min(totalPages - 1, currentPage + 1);
+		for (let i = start; i <= end; i++) pages.push(i);
+		if (currentPage < totalPages - 2) pages.push("ellipsis-end");
+		pages.push(totalPages);
+	}
+
+	return (
+		<div className="flex items-center gap-1">
+			<HSComp.Button
+				variant="ghost"
+				size="small"
+				disabled={currentPage <= 1}
+				onClick={() => onPageChange(currentPage - 1)}
+			>
+				<Lucide.ChevronLeftIcon size={16} />
+			</HSComp.Button>
+			{pages.map((page) =>
+				typeof page === "string" ? (
+					<span key={page} className="px-1 text-elements-assistive">
+						...
+					</span>
+				) : (
+					<HSComp.Button
+						key={page}
+						variant={page === currentPage ? "secondary" : "ghost"}
+						size="small"
+						onClick={() => onPageChange(page)}
+					>
+						{page}
+					</HSComp.Button>
+				),
+			)}
+			<HSComp.Button
+				variant="ghost"
+				size="small"
+				disabled={currentPage >= totalPages}
+				onClick={() => onPageChange(currentPage + 1)}
+			>
+				<Lucide.ChevronRightIcon size={16} />
+			</HSComp.Button>
 		</div>
 	);
+};
+
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 100];
+
+const ResourcesTabFooter = ({
+	total,
+	currentPage,
+	pageSize,
+	selectedIds,
+	onPageChange,
+	onPageSizeChange,
+}: Types.ResourcesTabFooterProps) => {
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	const selectionCount = selectedIds.size;
+
+	return (
+		<div className="flex items-center justify-between border-t px-4 py-2">
+			<div className="flex items-center gap-2">
+				{selectionCount > 0 && (
+					<>
+						<span className="text-sm text-elements-assistive">
+							{selectionCount} selected:
+						</span>
+						<HSComp.Button variant="ghost" size="small">
+							<Lucide.DownloadIcon size={16} />
+							Export
+						</HSComp.Button>
+						<HSComp.Button variant="ghost" size="small">
+							<Lucide.Trash2Icon size={16} />
+							Delete
+						</HSComp.Button>
+					</>
+				)}
+			</div>
+			<div className="flex items-center gap-3">
+				<HSComp.DropdownMenu>
+					<HSComp.DropdownMenuTrigger asChild>
+						<HSComp.Button variant="ghost" size="small">
+							{pageSize}/page
+							<Lucide.ChevronDownIcon size={14} />
+						</HSComp.Button>
+					</HSComp.DropdownMenuTrigger>
+					<HSComp.DropdownMenuContent align="end">
+						{PAGE_SIZE_OPTIONS.map((size) => (
+							<HSComp.DropdownMenuItem
+								key={size}
+								onClick={() => onPageSizeChange(size)}
+							>
+								{size}/page
+							</HSComp.DropdownMenuItem>
+						))}
+					</HSComp.DropdownMenuContent>
+				</HSComp.DropdownMenu>
+				<PaginationPages
+					currentPage={currentPage}
+					totalPages={totalPages}
+					onPageChange={onPageChange}
+				/>
+			</div>
+		</div>
+	);
+};
+
+const parseSearchParam = (
+	query: string,
+	key: string,
+	fallback: number,
+): number => {
+	const params = new URLSearchParams(query);
+	const val = params.get(key);
+	return val ? Number.parseInt(val, 10) || fallback : fallback;
 };
 
 const ResourcesTabContent = ({
@@ -265,6 +458,7 @@ const ResourcesTabContent = ({
 	resourceType,
 }: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
+	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
 	const navigate = Router.useNavigate();
 	const search = Router.useSearch({
@@ -274,6 +468,9 @@ const ResourcesTabContent = ({
 	const decodedSearchQuery = search.searchQuery
 		? atob(search.searchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
+
+	const currentPage = parseSearchParam(decodedSearchQuery, "_page", 1);
+	const pageSize = parseSearchParam(decodedSearchQuery, "_count", 30);
 
 	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
@@ -289,14 +486,20 @@ const ResourcesTabContent = ({
 
 			const { resource: bundle } = result.value;
 
-			const data =
+			const total = bundle?.total ?? 0;
+			const resources =
 				bundle?.entry?.flatMap(({ resource }) => (resource ? resource : [])) ??
 				[];
 			const schema = await fetchDefaultSchema(client, resourceType);
-			return resourcesWithKeys(schema, data);
+			return { ...resourcesWithKeys(schema, resources), total };
 		},
 		retry: false,
 	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset selection when search query changes
+	React.useEffect(() => {
+		setSelectedIds(new Set());
+	}, [decodedSearchQuery]);
 
 	if (error)
 		return (
@@ -308,6 +511,8 @@ const ResourcesTabContent = ({
 			</div>
 		);
 
+	const total = data?.total ?? 0;
+
 	const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		navigate({
@@ -318,12 +523,52 @@ const ResourcesTabContent = ({
 		});
 	};
 
+	const handlePageChange = (page: number) => {
+		const params = new URLSearchParams(decodedSearchQuery);
+		params.set("_page", String(page));
+		navigate({
+			to: ".",
+			search: {
+				searchQuery: btoa(params.toString()),
+			},
+		});
+	};
+
+	const handlePageSizeChange = (size: number) => {
+		const params = new URLSearchParams(decodedSearchQuery);
+		params.set("_count", String(size));
+		params.set("_page", "1");
+		navigate({
+			to: ".",
+			search: {
+				searchQuery: btoa(params.toString()),
+			},
+		});
+	};
+
 	return (
 		<ResourcesTabContentContext.Provider
 			value={{ resourcesLoading: isLoading }}
 		>
-			<ResourcesTabHeader handleSearch={handleSearch} />
-			<ResourcesTabTable data={data} />
+			<div className="flex flex-col h-full">
+				<ResourcesTabHeader handleSearch={handleSearch} />
+				<div className="flex-1 overflow-auto">
+					<ResourcesTabTable
+						data={data}
+						total={total}
+						selectedIds={selectedIds}
+						setSelectedIds={setSelectedIds}
+					/>
+				</div>
+				<ResourcesTabFooter
+					total={total}
+					currentPage={currentPage}
+					pageSize={pageSize}
+					selectedIds={selectedIds}
+					onPageChange={handlePageChange}
+					onPageSizeChange={handlePageSizeChange}
+				/>
+			</div>
 		</ResourcesTabContentContext.Provider>
 	);
 };
@@ -354,77 +599,53 @@ const ProfilesTabContent = ({
 		return <div>No profiles found</div>;
 	}
 
-	const makeClickableCell = <T,>(
-		renderer: (info: {
-			row: { original: Schema };
-			getValue: () => T;
-		}) => React.ReactNode,
-	) => {
-		return (info: { row: { original: Schema }; getValue: () => T }) => (
-			<button
-				type="button"
-				className="cursor-pointer"
-				onClick={() => setSelectedProfile(info.row.original)}
-			>
-				{renderer(info)}
-			</button>
-		);
-	};
+	const schemas = Object.values(data);
 
-	const columns: HSComp.ColumnDef<Schema, string>[] = [
-		{
-			accessorKey: "default?",
-			size: 16,
-			header: () => <span className="pl-5"></span>,
-			cell: makeClickableCell((info) =>
-				info.getValue() ? (
-					<span title="default profile">
-						<Lucide.Diamond size="17px" />
-					</span>
-				) : (
-					<Lucide.Minus size="17px" />
-				),
-			),
-		},
-		{
-			accessorKey: "url",
-			header: () => <span className="pl-5">URL</span>,
-			cell: makeClickableCell((info) => info.row.original.entity?.url || ""),
-		},
-		{
-			accessorKey: "name",
-			header: () => <span className="pl-5">Name</span>,
-			cell: makeClickableCell((info) => info.row.original.entity?.name || ""),
-		},
-		{
-			accessorKey: "version",
-			header: () => <span className="pl-5">Version</span>,
-			cell: makeClickableCell(
-				(info) => info.row.original.entity?.version || "",
-			),
-		},
-		{
-			accessorKey: "ig",
-			header: () => <span className="pl-5">IG</span>,
-			cell: makeClickableCell((info) => {
-				const { name, version } = info.row.original.entity;
-				const ig = `${name}#${version}`;
-				// <Router.Link to="/ig/$ig" params={{ ig: ig }} > {ig} </Router.Link> // FIXME when FAR in new UI
-				return ig;
-			}),
-		},
-	];
+	const profilesTable = (
+		<HSComp.Table zebra stickyHeader>
+			<HSComp.TableHeader>
+				<HSComp.TableRow>
+					<HSComp.TableHead>URL</HSComp.TableHead>
+					<HSComp.TableHead className="w-[100px]">Name</HSComp.TableHead>
+					<HSComp.TableHead className="w-[80px]">Version</HSComp.TableHead>
+					<HSComp.TableHead className="w-[80px]">IG</HSComp.TableHead>
+					<HSComp.TableHead className="w-[80px]">Default</HSComp.TableHead>
+				</HSComp.TableRow>
+			</HSComp.TableHeader>
+			<HSComp.TableBody>
+				{schemas.map((schema, index) => {
+					const entity = schema.entity;
+					const ig = entity ? `${entity.name}#${entity.version}` : "-";
+					return (
+						<HSComp.TableRow
+							key={entity?.url ?? index}
+							zebra
+							index={index}
+							className="cursor-pointer"
+							onClick={() => setSelectedProfile(schema)}
+						>
+							<HSComp.TableCell type="link">
+								{entity?.url || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell className="w-[100px]">
+								{entity?.name || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell className="w-[80px]">
+								{entity?.version || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell className="w-[80px]">{ig}</HSComp.TableCell>
+							<HSComp.TableCell className="w-[80px]">
+								{schema["default?"] ? "Default" : "-"}
+							</HSComp.TableCell>
+						</HSComp.TableRow>
+					);
+				})}
+			</HSComp.TableBody>
+		</HSComp.Table>
+	);
 
 	if (!selectedProfile) {
-		return (
-			<div className="h-full overflow-hidden">
-				<HSComp.DataTable
-					columns={columns}
-					data={Object.values(data)}
-					stickyHeader
-				/>
-			</div>
-		);
+		return <div className="h-full overflow-auto">{profilesTable}</div>;
 	}
 
 	return (
@@ -434,11 +655,7 @@ const ProfilesTabContent = ({
 				autoSaveId="profiles-tab-horizontal-panel"
 			>
 				<HSComp.ResizablePanel minSize={30}>
-					<HSComp.DataTable
-						columns={columns}
-						data={Object.values(data)}
-						stickyHeader
-					/>
+					<div className="h-full overflow-auto">{profilesTable}</div>
 				</HSComp.ResizablePanel>
 				<HSComp.ResizableHandle />
 				<HSComp.ResizablePanel minSize={30}>
@@ -591,37 +808,42 @@ const SearchParametersTabContent = ({
 		return param satisfies SearchParameterTableData;
 	});
 
-	const columns: HSComp.ColumnDef<SearchParameterTableData, string>[] = [
-		{
-			accessorKey: "code",
-			header: () => <span className="pl-5">Code</span>,
-			cell: (row) => row.getValue() || "-",
-		},
-		{
-			accessorKey: "name",
-			header: () => <span className="pl-5">Name</span>,
-			cell: (row) => row.getValue() || "-",
-		},
-		{
-			accessorKey: "type",
-			header: () => <span className="pl-5">Type</span>,
-			cell: (row) => row.getValue() || "-",
-		},
-		{
-			accessorKey: "definition",
-			header: () => <span className="pl-5">Definition</span>,
-			cell: (row) => row.getValue() || "-",
-		},
-		{
-			accessorKey: "documentation",
-			header: () => <span className="pl-5">Description</span>,
-			cell: (row) => row.getValue() || "-",
-		},
-	];
-
 	return (
-		<div className="h-full overflow-hidden">
-			<HSComp.DataTable columns={columns} data={paramsWithCode} stickyHeader />
+		<div className="h-full overflow-auto">
+			<HSComp.Table zebra stickyHeader>
+				<HSComp.TableHeader>
+					<HSComp.TableRow>
+						<HSComp.TableHead>Definition</HSComp.TableHead>
+						<HSComp.TableHead className="w-[120px]">Code</HSComp.TableHead>
+						<HSComp.TableHead className="w-[120px]">Name</HSComp.TableHead>
+						<HSComp.TableHead className="w-[100px]">Type</HSComp.TableHead>
+						<HSComp.TableHead>Description</HSComp.TableHead>
+					</HSComp.TableRow>
+				</HSComp.TableHeader>
+				<HSComp.TableBody>
+					{paramsWithCode.map((param, index) => (
+						<HSComp.TableRow
+							key={`${param.definition}-${param.name}`}
+							zebra
+							index={index}
+						>
+							<HSComp.TableCell type="link">
+								{param.definition || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell className="w-[120px]">
+								{param.code || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell className="w-[120px]">
+								{param.name || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell className="w-[100px]">
+								{param.type || "-"}
+							</HSComp.TableCell>
+							<HSComp.TableCell>{param.documentation || "-"}</HSComp.TableCell>
+						</HSComp.TableRow>
+					))}
+				</HSComp.TableBody>
+			</HSComp.Table>
 		</div>
 	);
 };
