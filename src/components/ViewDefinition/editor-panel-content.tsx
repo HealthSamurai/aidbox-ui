@@ -567,6 +567,15 @@ export const BuilderContent = () => {
 		setIsPreviewOpen((prev) => !prev);
 	};
 
+	React.useEffect(() => {
+		if (!isPreviewOpen) return;
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === "Escape") setIsPreviewOpen(false);
+		};
+		document.addEventListener("keydown", handleEscape);
+		return () => document.removeEventListener("keydown", handleEscape);
+	}, [isPreviewOpen, setIsPreviewOpen]);
+
 	const handleToggleResultCollapse = () => {
 		setIsResultCollapsed((prev) => !prev);
 	};
