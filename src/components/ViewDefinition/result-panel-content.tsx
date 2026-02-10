@@ -1,11 +1,15 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
-	type AccessorKeyColumnDef,
 	Button,
 	CodeEditor,
-	DataTable,
 	Skeleton,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -22,7 +26,7 @@ const SKELETON_MARKER = "__skeleton__";
 
 interface ProcessedTableData {
 	tableData: Record<string, unknown>[];
-	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
+	columns: string[];
 	isEmptyArray: boolean;
 }
 
@@ -41,30 +45,14 @@ const parseResponse = (
 	}
 };
 
-const extractColumns = (
-	data: unknown[],
-): AccessorKeyColumnDef<Record<string, unknown>, unknown>[] => {
+const extractColumns = (data: unknown[]): string[] => {
 	const allKeys = new Set<string>();
-	data.forEach((row) => {
+	for (const row of data) {
 		if (typeof row === "object" && row !== null) {
-			Object.keys(row).forEach((key) => allKeys.add(key));
+			for (const key of Object.keys(row)) allKeys.add(key);
 		}
-	});
-
-	return Array.from(allKeys).map((key) => ({
-		accessorKey: key,
-		header: key.charAt(0).toUpperCase() + key.slice(1),
-		cell: ({ getValue, row }) => {
-			if ((row.original as Record<string, unknown>)[SKELETON_MARKER]) {
-				return <Skeleton className="h-4 w-3/4" />;
-			}
-			const value = getValue();
-			if (value === null || value === undefined) {
-				return <span className="text-text-tertiary">null</span>;
-			}
-			return String(value);
-		},
-	}));
+	}
+	return Array.from(allKeys);
 };
 
 const processTableData = (response: string | undefined): ProcessedTableData => {
@@ -135,6 +123,13 @@ const ResultHeader = ({
 	</div>
 );
 
+const CellValue = ({ value }: { value: unknown }) => {
+	if (value === null || value === undefined) {
+		return <span className="text-text-tertiary">null</span>;
+	}
+	return <>{String(value)}</>;
+};
+
 const ResultContent = ({
 	rows,
 	isEmptyArray,
@@ -149,7 +144,7 @@ const ResultContent = ({
 	rows: string | undefined;
 	isEmptyArray: boolean;
 	accumulatedData: Record<string, unknown>[];
-	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
+	columns: string[];
 	hasMore: boolean;
 	isLoadingMore: boolean;
 	onLoadMore: () => void;
@@ -183,8 +178,33 @@ const ResultContent = ({
 			: accumulatedData;
 
 		return (
-			<div ref={containerRef} className="flex-1 overflow-hidden min-h-0">
-				<DataTable columns={columns} data={displayData} stickyHeader />
+			<div ref={containerRef} className="flex-1 overflow-auto min-h-0">
+				<Table zebra stickyHeader>
+					<TableHeader>
+						<TableRow>
+							{columns.map((key) => (
+								<TableHead key={key} className="px-6 hover:bg-transparent">
+									{key.charAt(0).toUpperCase() + key.slice(1)}
+								</TableHead>
+							))}
+						</TableRow>
+					</TableHeader>
+					<TableBody className="[&_tr]:hover:bg-transparent">
+						{displayData.map((row, index) => (
+							<TableRow key={index} zebra index={index}>
+								{columns.map((key) => (
+									<TableCell key={key} className="px-6">
+										{row[SKELETON_MARKER] ? (
+											<Skeleton className="h-4 w-3/4" />
+										) : (
+											<CellValue value={row[key]} />
+										)}
+									</TableCell>
+								))}
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
 				<InfiniteScrollSentinel
 					root={containerRef}
 					onLoadMore={onLoadMore}
@@ -219,7 +239,7 @@ export function ResultPanel({
 	);
 
 	const [accumulatedData, setAccumulatedData] = useState<Record<string, unknown>[]>([]);
-	const [columns, setColumns] = useState<AccessorKeyColumnDef<Record<string, unknown>, unknown>[]>([]);
+	const [columns, setColumns] = useState<string[]>([]);
 	const [hasMore, setHasMore] = useState(false);
 	const pageRef = useRef(1);
 	const runIdRef = useRef(0);

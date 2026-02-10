@@ -89,5 +89,10 @@ export function InfiniteScrollSentinel({
 	}, [hasMore, isLoading, root, threshold]);
 
 	if (!hasMore) return null;
+	// When root is provided, don't render the sentinel div — it's not needed
+	// for scroll detection and would make the root container barely scrollable,
+	// causing findScrollableDescendant to pick the root instead of a deeper
+	// scroll container (e.g. Table with stickyHeader).
+	if (root) return null;
 	return <div ref={sentinelRef} className="h-px" />;
 }
