@@ -7,9 +7,9 @@ import * as Lucide from "lucide-react";
 import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { useLocalStorage } from "../../hooks";
 import { EditorTab } from "../ResourceEditor/editor-tab";
 import { VersionsTab } from "../ResourceEditor/versions-tab";
-import { useLocalStorage } from "../../hooks";
 import * as Constants from "./constants";
 import {
 	BuilderContent,
@@ -108,9 +108,7 @@ const PageTabsHeader = ({ id }: { id?: string }) => {
 					</HSComp.TabsTrigger>
 					<HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>
 					{id && (
-						<HSComp.TabsTrigger value="versions">
-							Versions
-						</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="versions">Versions</HSComp.TabsTrigger>
 					)}
 				</HSComp.TabsList>
 			</div>
@@ -169,8 +167,7 @@ const EditTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
-	const { handleSave, handleDelete } =
-		useViewDefinitionActions(aidboxClient);
+	const { handleSave, handleDelete } = useViewDefinitionActions(aidboxClient);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 	const indent = 2;
 
@@ -196,9 +193,7 @@ const EditTabContent = () => {
 			prevViewDefinitionRef.current = viewDefinition;
 			try {
 				const currentParsed =
-					mode === "json"
-						? JSON.parse(resourceText)
-						: YAML.load(resourceText);
+					mode === "json" ? JSON.parse(resourceText) : YAML.load(resourceText);
 				if (
 					currentParsed &&
 					JSON.stringify(currentParsed) === JSON.stringify(viewDefinition)
@@ -219,9 +214,7 @@ const EditTabContent = () => {
 	const triggerFormat = () => {
 		try {
 			const parsed =
-				mode === "json"
-					? JSON.parse(resourceText)
-					: YAML.load(resourceText);
+				mode === "json" ? JSON.parse(resourceText) : YAML.load(resourceText);
 			const text =
 				mode === "yaml"
 					? YAML.dump(parsed, { indent })
@@ -235,9 +228,7 @@ const EditTabContent = () => {
 	const handleSetMode = (newMode: Types.ViewDefinitionEditorMode) => {
 		try {
 			const parsed =
-				mode === "json"
-					? JSON.parse(resourceText)
-					: YAML.load(resourceText);
+				mode === "json" ? JSON.parse(resourceText) : YAML.load(resourceText);
 			const newText =
 				newMode === "yaml"
 					? YAML.dump(parsed, { indent })
@@ -252,8 +243,7 @@ const EditTabContent = () => {
 	const handleSetResourceText = (text: string) => {
 		setResourceText(text);
 		try {
-			const parsed =
-				mode === "json" ? JSON.parse(text) : YAML.load(text);
+			const parsed = mode === "json" ? JSON.parse(text) : YAML.load(text);
 			viewDefinitionContext.setViewDefinition(parsed as ViewDefinition);
 			viewDefinitionContext.setIsDirty(true);
 		} catch {
@@ -365,13 +355,16 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const [runResultPageSize, setRunResultPageSize] = React.useState(30);
 	const [isDirty, _setIsDirty] = React.useState(false);
 	const isDirtyRef = React.useRef(false);
-	const setIsDirty = React.useCallback((value: boolean | ((prev: boolean) => boolean)) => {
-		_setIsDirty((prev) => {
-			const next = typeof value === "function" ? value(prev) : value;
-			isDirtyRef.current = next;
-			return next;
-		});
-	}, []);
+	const setIsDirty = React.useCallback(
+		(value: boolean | ((prev: boolean) => boolean)) => {
+			_setIsDirty((prev) => {
+				const next = typeof value === "function" ? value(prev) : value;
+				isDirtyRef.current = next;
+				return next;
+			});
+		},
+		[],
+	);
 
 	const { proceed, reset, status } = useBlocker({
 		shouldBlockFn: ({ current, next }) => {
@@ -454,13 +447,11 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 			<HSComp.AlertDialog open={status === "blocked"}>
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
-						<HSComp.AlertDialogTitle>
-							Unsaved changes
-						</HSComp.AlertDialogTitle>
+						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>
 					</HSComp.AlertDialogHeader>
 					<HSComp.AlertDialogDescription>
-						You have unsaved changes. Are you sure you want to leave this
-						page? Your changes will be lost.
+						You have unsaved changes. Are you sure you want to leave this page?
+						Your changes will be lost.
 					</HSComp.AlertDialogDescription>
 					<HSComp.AlertDialogFooter>
 						<HSComp.AlertDialogCancel onClick={reset}>

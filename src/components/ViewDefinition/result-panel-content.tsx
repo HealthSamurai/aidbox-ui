@@ -16,7 +16,15 @@ import {
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { InfiniteScrollSentinel } from "../../utils/infinite-scroll";
@@ -117,7 +125,9 @@ const ResultHeader = ({
 						)}
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent align="end">{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
+				<TooltipContent align="end">
+					{isMaximized ? "Minimize" : "Maximize"}
+				</TooltipContent>
 			</Tooltip>
 		</div>
 	</div>
@@ -233,12 +243,15 @@ export function ResultPanel({
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
 
-	const { tableData, columns: initialColumns, isEmptyArray } = useMemo(
-		() => processTableData(rows),
-		[rows],
-	);
+	const {
+		tableData,
+		columns: initialColumns,
+		isEmptyArray,
+	} = useMemo(() => processTableData(rows), [rows]);
 
-	const [accumulatedData, setAccumulatedData] = useState<Record<string, unknown>[]>([]);
+	const [accumulatedData, setAccumulatedData] = useState<
+		Record<string, unknown>[]
+	>([]);
 	const [columns, setColumns] = useState<string[]>([]);
 	const [hasMore, setHasMore] = useState(false);
 	const pageRef = useRef(1);

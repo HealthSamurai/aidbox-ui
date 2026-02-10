@@ -1,10 +1,10 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
+import * as HSComp from "@health-samurai/react-components";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import * as HSComp from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
 import type { EditorMode } from "./types";
 

@@ -44,9 +44,15 @@ function Breadcrumbs() {
 				{breadcrumbs.map((crumb, index) => (
 					<React.Fragment key={`${crumb.path}-${index}`}>
 						{index > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
-						<BreadcrumbItem className={index === breadcrumbs.length - 1 ? "min-w-0" : "shrink-0"}>
+						<BreadcrumbItem
+							className={
+								index === breadcrumbs.length - 1 ? "min-w-0" : "shrink-0"
+							}
+						>
 							{index === breadcrumbs.length - 1 ? (
-								<BreadcrumbPage className="truncate">{crumb.title}</BreadcrumbPage>
+								<BreadcrumbPage className="truncate">
+									{crumb.title}
+								</BreadcrumbPage>
 							) : (
 								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>

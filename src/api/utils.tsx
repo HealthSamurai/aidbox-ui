@@ -45,7 +45,9 @@ export function parseOperationOutcome(
 
 		const expression =
 			hasProperty(issue, "expression") && Array.isArray(issue.expression)
-				? issue.expression.filter((e): e is string => typeof e === "string").join(", ")
+				? issue.expression
+						.filter((e): e is string => typeof e === "string")
+						.join(", ")
 				: null;
 
 		const diagnostics =

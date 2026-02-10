@@ -1,3 +1,4 @@
+import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
@@ -5,6 +6,7 @@ import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
+import * as ApiUtils from "../../api/utils";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import type * as VDTypes from "../ViewDefinition/types";
@@ -391,9 +393,12 @@ const ResourcesTabFooter = ({
 	selectedIds,
 	onPageChange,
 	onPageSizeChange,
+	onDelete,
+	isDeleting,
 }: Types.ResourcesTabFooterProps) => {
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 	const selectionCount = selectedIds.size;
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
 	return (
 		<div className="flex items-center justify-between border-t px-4 py-2">
@@ -407,10 +412,47 @@ const ResourcesTabFooter = ({
 							<Lucide.DownloadIcon size={16} />
 							Export
 						</HSComp.Button>
-						<HSComp.Button variant="ghost" size="small">
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							disabled={isDeleting}
+							onClick={() => setIsDeleteDialogOpen(true)}
+						>
 							<Lucide.Trash2Icon size={16} />
 							Delete
 						</HSComp.Button>
+						<HSComp.AlertDialog
+							open={isDeleteDialogOpen}
+							onOpenChange={setIsDeleteDialogOpen}
+						>
+							<HSComp.AlertDialogContent>
+								<HSComp.AlertDialogHeader>
+									<HSComp.AlertDialogTitle>
+										Delete {selectionCount}{" "}
+										{selectionCount === 1 ? "resource" : "resources"}?
+									</HSComp.AlertDialogTitle>
+								</HSComp.AlertDialogHeader>
+								<HSComp.AlertDialogDescription>
+									Are you sure you want to delete the selected{" "}
+									{selectionCount === 1 ? "resource" : "resources"}? This action
+									cannot be undone.
+								</HSComp.AlertDialogDescription>
+								<HSComp.AlertDialogFooter>
+									<HSComp.AlertDialogCancel>Cancel</HSComp.AlertDialogCancel>
+									<HSComp.AlertDialogAction
+										variant="primary"
+										danger
+										onClick={() => {
+											onDelete();
+											setIsDeleteDialogOpen(false);
+										}}
+									>
+										<Lucide.Trash2Icon className="w-4 h-4" />
+										Delete
+									</HSComp.AlertDialogAction>
+								</HSComp.AlertDialogFooter>
+							</HSComp.AlertDialogContent>
+						</HSComp.AlertDialog>
 					</>
 				)}
 			</div>
@@ -459,6 +501,7 @@ const ResourcesTabContent = ({
 }: Types.ResourcesPageProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+	const queryClient = ReactQuery.useQueryClient();
 
 	const navigate = Router.useNavigate();
 	const search = Router.useSearch({
@@ -500,6 +543,39 @@ const ResourcesTabContent = ({
 	React.useEffect(() => {
 		setSelectedIds(new Set());
 	}, [decodedSearchQuery]);
+
+	const deleteMutation = ReactQuery.useMutation({
+		mutationFn: async () => {
+			const ids = Array.from(selectedIds);
+			const result = await client.transaction({
+				format: "application/json",
+				bundle: {
+					resourceType: "Bundle",
+					type: "transaction",
+					entry: ids.map((id) => ({
+						request: {
+							method: "DELETE" as const,
+							url: `${resourcesPageContext.resourceType}/${id}`,
+						},
+					})),
+				},
+			});
+			if (result.isErr()) {
+				throw new Error("Failed to delete resources", {
+					cause: result.value.resource,
+				});
+			}
+			return result.value.resource;
+		},
+		onError: ApiUtils.onMutationError,
+		onSuccess: () => {
+			setSelectedIds(new Set());
+			queryClient.invalidateQueries({
+				queryKey: [Constants.PageID, "resource-list"],
+			});
+			HSComp.toast.success("Resources deleted", defaultToastPlacement);
+		},
+	});
 
 	if (error)
 		return (
@@ -567,6 +643,8 @@ const ResourcesTabContent = ({
 					selectedIds={selectedIds}
 					onPageChange={handlePageChange}
 					onPageSizeChange={handlePageSizeChange}
+					onDelete={() => deleteMutation.mutate()}
+					isDeleting={deleteMutation.isPending}
 				/>
 			</div>
 		</ResourcesTabContentContext.Provider>

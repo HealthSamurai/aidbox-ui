@@ -226,7 +226,7 @@ export function ExampleTabContent() {
 											: JSON.stringify(exampleResource, null, 2)
 									}
 									mode={exampleMode}
-									/>
+								/>
 							</div>
 						) : status === "error" ? (
 							<div>
@@ -249,7 +249,7 @@ export function ExampleTabContent() {
 											: JSON.stringify(error.cause, null, 2)
 									}
 									mode={exampleMode}
-									/>
+								/>
 							</div>
 						) : (
 							<div className="flex items-center justify-center h-full text-text-secondary">

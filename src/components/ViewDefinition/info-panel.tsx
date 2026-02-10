@@ -6,9 +6,7 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
 	return (
 		<div className="flex flex-col h-full">
 			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10! min-h-10 shrink-0">
-				<span className="typo-label text-text-secondary">
-					Instances
-				</span>
+				<span className="typo-label text-text-secondary">Instances</span>
 				<IconButton
 					variant="ghost"
 					aria-label="Close instance preview"

@@ -3,11 +3,11 @@ import * as HSComp from "@health-samurai/react-components";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuItem,
 	DropdownMenuIcon,
+	DropdownMenuItem,
 	DropdownMenuSub,
-	DropdownMenuSubTrigger,
 	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 	Tooltip,
 	TooltipContent,
@@ -70,7 +70,9 @@ const cleanEmptyValues = <T,>(obj: T): T => {
 
 type ToolbarMode = "full" | "icons" | "collapsed";
 
-const useToolbarMode = (ref: React.RefObject<HTMLDivElement | null>): ToolbarMode => {
+const useToolbarMode = (
+	ref: React.RefObject<HTMLDivElement | null>,
+): ToolbarMode => {
 	const [mode, setMode] = React.useState<ToolbarMode>("full");
 
 	React.useEffect(() => {
@@ -106,7 +108,10 @@ export const EditorHeaderMenu = ({
 	const mode = useToolbarMode(containerRef);
 
 	return (
-		<div ref={containerRef} className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
+		<div
+			ref={containerRef}
+			className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b"
+		>
 			<HSComp.TabsList className="py-0! border-b-0! pr-0!">
 				<HSComp.TabsTrigger value="form">Builder</HSComp.TabsTrigger>
 				<HSComp.TabsTrigger value="code">Code</HSComp.TabsTrigger>
@@ -117,7 +122,11 @@ export const EditorHeaderMenu = ({
 				<div className="flex items-center gap-1 px-2">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<HSComp.IconButton variant="ghost" aria-label="More actions" icon={<Lucide.EllipsisIcon className="w-4 h-4" />} />
+							<HSComp.IconButton
+								variant="ghost"
+								aria-label="More actions"
+								icon={<Lucide.EllipsisIcon className="w-4 h-4" />}
+							/>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onSelect={onRun} className="text-text-link!">
@@ -133,14 +142,14 @@ export const EditorHeaderMenu = ({
 								</DropdownMenuIcon>
 							</DropdownMenuItem>
 							<DropdownMenuSub>
-								<DropdownMenuSubTrigger>
-									Materialize
-								</DropdownMenuSubTrigger>
+								<DropdownMenuSubTrigger>Materialize</DropdownMenuSubTrigger>
 								<DropdownMenuSubContent>
 									<DropdownMenuItem onSelect={() => onMaterialize("view")}>
 										View
 									</DropdownMenuItem>
-									<DropdownMenuItem onSelect={() => onMaterialize("materialized-view")}>
+									<DropdownMenuItem
+										onSelect={() => onMaterialize("materialized-view")}
+									>
 										Materialized View
 									</DropdownMenuItem>
 									<DropdownMenuItem onSelect={() => onMaterialize("table")}>
@@ -176,7 +185,9 @@ export const EditorHeaderMenu = ({
 								<DropdownMenuItem onSelect={() => onMaterialize("view")}>
 									View
 								</DropdownMenuItem>
-								<DropdownMenuItem onSelect={() => onMaterialize("materialized-view")}>
+								<DropdownMenuItem
+									onSelect={() => onMaterialize("materialized-view")}
+								>
 									Materialized View
 								</DropdownMenuItem>
 								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
@@ -188,7 +199,12 @@ export const EditorHeaderMenu = ({
 					<HSComp.Separator orientation="vertical" className="h-6!" />
 					<Tooltip disableHoverableContent={mode === "full"}>
 						<TooltipTrigger asChild>
-							<HSComp.Button variant="ghost" size="small" className="px-0!" onClick={onSave}>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								className="px-0!"
+								onClick={onSave}
+							>
 								<Lucide.SaveIcon className="w-4 h-4" />
 								{mode === "full" && "Save"}
 							</HSComp.Button>
@@ -226,7 +242,6 @@ export const EditorHeaderMenu = ({
 					</Tooltip>
 				</div>
 			)}
-
 		</div>
 	);
 };
@@ -336,7 +351,10 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 				} else {
 					for (const issue of issues) {
 						Utils.toastError(
-							issue.expression.replace(/^Parameters\.parameter\[\d+\]\.resource\./, "ViewDefinition."),
+							issue.expression.replace(
+								/^Parameters\.parameter\[\d+\]\.resource\./,
+								"ViewDefinition.",
+							),
 							issue.diagnostics,
 						);
 					}
@@ -452,7 +470,9 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 
 	const handleRun = () => {
 		if (viewDefinitionResource) {
-			viewDefinitionRunMutation.mutate(cleanEmptyValues(viewDefinitionResource));
+			viewDefinitionRunMutation.mutate(
+				cleanEmptyValues(viewDefinitionResource),
+			);
 		}
 	};
 
@@ -608,7 +628,11 @@ export const BuilderContent = () => {
 					<span className="typo-label text-text-secondary">Result</span>
 					<HSComp.Tooltip>
 						<HSComp.TooltipTrigger asChild>
-							<HSComp.Button variant="ghost" size="small" onClick={handleToggleResultCollapse}>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								onClick={handleToggleResultCollapse}
+							>
 								<Lucide.PanelBottomOpen className="w-4 h-4" />
 							</HSComp.Button>
 						</HSComp.TooltipTrigger>
