@@ -7,7 +7,7 @@ import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { DeleteButton, SaveButton } from "./action";
 import { fetchResource } from "./api";
-import { EditorTab } from "./editor-tab";
+import { EditTabContent } from "./edit-tab-content";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
 
@@ -128,7 +128,7 @@ export const ResourceEditorPage = ({
 			trigger: <HSComp.TabsTrigger value="code">Edit</HSComp.TabsTrigger>,
 			content: (
 				<HSComp.TabsContent value={"code"}>
-					<EditorTab
+					<EditTabContent
 						mode={mode}
 						setMode={setMode}
 						triggerFormat={triggerFormat}
@@ -144,6 +144,9 @@ export const ResourceEditorPage = ({
 								// again, keeps text as-is if parsing failed
 							}
 						}}
+						resourceType={resourceType}
+						storageKey="resourceEditor-profileOpen"
+						autoSaveId="resource-editor-horizontal-panel"
 					/>
 				</HSComp.TabsContent>
 			),

@@ -1,21 +1,27 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import { EditorSelection } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import * as HSComp from "@health-samurai/react-components";
+import type {
+	CodeEditorView,
+	OperationOutcome,
+	OperationOutcomeIssue,
+} from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate, useSearch } from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
+import { findJsonPathOffset } from "../../utils/json-path-offset";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
-import { useLocalStorage } from "../../hooks";
-import { EditorTab } from "../ResourceEditor/editor-tab";
+import { EditTabContent } from "../ResourceEditor/edit-tab-content";
 import { VersionsTab } from "../ResourceEditor/versions-tab";
 import * as Constants from "./constants";
 import {
 	BuilderContent,
 	useViewDefinitionActions,
 } from "./editor-panel-content";
-import { InfoPanel } from "./info-panel";
 import type * as Types from "./types";
 
 const fetchViewDefinition = (
@@ -43,6 +49,9 @@ export const ViewDefinitionContext =
 		setRunViewDefinition: () => {},
 		isDirty: false,
 		setIsDirty: () => {},
+		runError: undefined,
+		setRunError: () => {},
+		issueClickRef: { current: undefined },
 	});
 
 export const ViewDefinitionResourceTypeContext =
@@ -116,7 +125,7 @@ const PageTabsHeader = ({ id }: { id?: string }) => {
 				<BuilderContent />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="edit" className="grow min-h-0">
-				<EditTabContent />
+				<VDEditTab />
 			</HSComp.TabsContent>
 			{id && (
 				<HSComp.TabsContent value="versions" className="grow min-h-0">
@@ -163,7 +172,7 @@ const EditTabActions = ({
 	);
 };
 
-const EditTabContent = () => {
+const VDEditTab = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
@@ -177,15 +186,33 @@ const EditTabContent = () => {
 		if (!viewDefinition) return "";
 		return JSON.stringify(viewDefinition, undefined, indent);
 	});
-	const [isProfileOpen, setIsProfileOpen] = useLocalStorage<boolean>({
-		key: "viewDefinition-editProfileOpen",
-		defaultValue: false,
-		getInitialValueInEffect: false,
-	});
 
-	const handleToggleProfile = () => {
-		setIsProfileOpen((prev) => !prev);
-	};
+	const editorViewRef = React.useRef<CodeEditorView | null>(null);
+	const handleViewCallback = React.useCallback(
+		(view: CodeEditorView) => {
+			editorViewRef.current = view;
+		},
+		[],
+	);
+
+	const handleIssueClick = React.useCallback(
+		(issue: OperationOutcomeIssue) => {
+			const view = editorViewRef.current;
+			if (!view || mode !== "json" || !issue.expression?.length) return;
+			const offset = findJsonPathOffset(
+				view.state.doc.toString(),
+				issue.expression[0],
+			);
+			if (offset == null) return;
+			view.dispatch({
+				selection: EditorSelection.cursor(offset),
+				effects: EditorView.scrollIntoView(offset, { y: "center" }),
+			});
+			view.focus();
+		},
+		[mode],
+	);
+	viewDefinitionContext.issueClickRef.current = handleIssueClick;
 
 	const prevViewDefinitionRef = React.useRef(viewDefinition);
 	React.useEffect(() => {
@@ -263,44 +290,36 @@ const EditTabContent = () => {
 
 	return (
 		<>
-			<HSComp.ResizablePanelGroup
-				direction="horizontal"
-				autoSaveId="view-definition-edit-horizontal-panel"
-			>
+			<HSComp.ResizablePanelGroup direction="vertical" className="h-full">
 				<HSComp.ResizablePanel minSize={20}>
-					<EditorTab
+					<EditTabContent
 						mode={mode}
 						setMode={handleSetMode}
 						triggerFormat={triggerFormat}
 						resourceText={resourceText}
 						defaultResourceText={resourceText}
 						setResourceText={handleSetResourceText}
+						viewCallback={handleViewCallback}
 						actions={
 							<EditTabActions
 								onSave={handleSave}
 								onDelete={() => setIsDeleteDialogOpen(true)}
 							/>
 						}
-						trailingActions={
-							<>
-								<HSComp.Separator orientation="vertical" className="h-6!" />
-								<HSComp.Toggle
-									variant="outline"
-									pressed={isProfileOpen}
-									onPressedChange={handleToggleProfile}
-								>
-									<Lucide.PanelRightIcon className="w-4 h-4" />
-									Profile
-								</HSComp.Toggle>
-							</>
-						}
+						resourceType="ViewDefinition"
+						storageKey="viewDefinition-editProfileOpen"
+						autoSaveId="view-definition-edit-horizontal-panel"
 					/>
 				</HSComp.ResizablePanel>
-				{isProfileOpen && (
+				{viewDefinitionContext.runError && (
 					<>
 						<HSComp.ResizableHandle />
-						<HSComp.ResizablePanel minSize={20}>
-							<InfoPanel onClose={handleToggleProfile} />
+						<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+							<HSComp.OperationOutcomeView
+								resource={viewDefinitionContext.runError}
+								onIssueClick={handleIssueClick}
+								className="h-full overflow-auto"
+							/>
 						</HSComp.ResizablePanel>
 					</>
 				)}
@@ -353,6 +372,10 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 	const [runResult, setRunResult] = React.useState<string>();
 	const [runResultPage, setRunResultPage] = React.useState(1);
 	const [runResultPageSize, setRunResultPageSize] = React.useState(30);
+	const [runError, setRunError] = React.useState<OperationOutcome>();
+	const issueClickRef = React.useRef<
+		((issue: OperationOutcomeIssue) => void) | undefined
+	>(undefined);
 	const [isDirty, _setIsDirty] = React.useState(false);
 	const isDirtyRef = React.useRef(false);
 	const setIsDirty = React.useCallback(
@@ -433,6 +456,9 @@ const ViewDefinitionPage = ({ id }: { id?: string }) => {
 				setRunViewDefinition: setRunViewDefinition,
 				isDirty: isDirty,
 				setIsDirty: setIsDirty,
+				runError: runError,
+				setRunError: setRunError,
+				issueClickRef: issueClickRef,
 			}}
 		>
 			<ViewDefinitionResourceTypeContext.Provider
