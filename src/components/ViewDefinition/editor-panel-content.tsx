@@ -330,7 +330,17 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 		},
 		onSuccess: async (result) => {
 			if (result.isErr()) {
-				Utils.toastOperationOutcome(result.value.resource);
+				const issues = Utils.parseOperationOutcome(result.value.resource);
+				if (issues.length === 0) {
+					Utils.toastError("Error", JSON.stringify(result.value.resource));
+				} else {
+					for (const issue of issues) {
+						Utils.toastError(
+							issue.expression.replace(/^Parameters\.parameter\[\d+\]\.resource\./, "ViewDefinition."),
+							issue.diagnostics,
+						);
+					}
+				}
 			} else {
 				const { data } = result.value.resource;
 				const decodedData = atob(data);
@@ -442,7 +452,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 
 	const handleRun = () => {
 		if (viewDefinitionResource) {
-			viewDefinitionRunMutation.mutate(viewDefinitionResource);
+			viewDefinitionRunMutation.mutate(cleanEmptyValues(viewDefinitionResource));
 		}
 	};
 
