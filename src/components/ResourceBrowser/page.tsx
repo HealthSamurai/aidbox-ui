@@ -838,36 +838,17 @@ const ProfilesTabContent = ({
 	);
 };
 
-type SearchParameterTableData = {
-	// Not in FHIR?
+type SearchParameterResource = {
+	id: string;
+	url?: string;
 	code?: string;
-	name: string;
+	name?: string;
 	type?: string;
-	definition?: string;
-	documentation?: string;
+	description?: string;
 };
 
-type SearchParamExtension = {
-	url: string;
-	valueCode?: string;
-};
-
-type CapabilityStatementSearchParam = {
-	name: string;
-	type?: string;
-	definition?: string;
-	documentation?: string;
-	extension?: SearchParamExtension[];
-};
-
-type PartialFhirCapabilityStatement = {
-	rest?: {
-		searchParam?: CapabilityStatementSearchParam[];
-		resource?: {
-			type: string;
-			searchParam?: CapabilityStatementSearchParam[];
-		}[];
-	}[];
+type SearchParameterBundle = {
+	entry?: { resource: SearchParameterResource }[];
 };
 
 const SearchParametersTabContent = ({
@@ -875,19 +856,22 @@ const SearchParametersTabContent = ({
 	resourceType,
 }: Types.ResourcesPageProps) => {
 	const { data, isLoading } = ReactQuery.useQuery({
-		queryKey: [Constants.PageID, "resource-search-parameters-list"],
+		queryKey: [
+			Constants.PageID,
+			"resource-search-parameters-list",
+			resourceType,
+		],
 		queryFn: async () => {
 			const response = await client.rawRequest({
 				method: "GET",
-				url: "/fhir/metadata?include-custom-resources=true",
+				url: `/fhir/SearchParameter?base=${resourceType}`,
 				headers: {
 					"Content-Type": "application/json",
 				},
 			});
 
-			const data = await response.response.json();
-			// FIXME: validate
-			return data as PartialFhirCapabilityStatement;
+			const data: SearchParameterBundle = await response.response.json();
+			return data.entry?.map((e) => e.resource) ?? [];
 		},
 		retry: false,
 	});
@@ -896,33 +880,9 @@ const SearchParametersTabContent = ({
 		return <div>Loading...</div>;
 	}
 
-	if (!data || !data.rest) {
+	if (!data || data.length === 0) {
 		return <div>No search parameters found</div>;
 	}
-
-	const rest = data.rest.at(0) || {};
-
-	const resourceTypeParams =
-		rest.resource?.find((item) => item.type === resourceType)?.searchParam ??
-		[];
-	const commonParams = rest.searchParam ?? [];
-	const allParams = [...resourceTypeParams, ...commonParams];
-
-	const paramsWithCode: SearchParameterTableData[] = allParams.map((param) => {
-		if (param.extension) {
-			const code = param.extension.find(
-				(e) =>
-					e.url ===
-					"https://fhir.aidbox.app/fhir/StructureDefinition/search-parameter-code",
-			);
-			const valueCode = code?.valueCode;
-			return {
-				...param,
-				...(valueCode ? { code: valueCode } : {}),
-			} satisfies SearchParameterTableData;
-		}
-		return param satisfies SearchParameterTableData;
-	});
 
 	return (
 		<div className="h-full overflow-auto">
@@ -930,32 +890,32 @@ const SearchParametersTabContent = ({
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
 						<HSComp.TableHead>Definition</HSComp.TableHead>
-						<HSComp.TableHead className="w-[120px]">Code</HSComp.TableHead>
-						<HSComp.TableHead className="w-[120px]">Name</HSComp.TableHead>
-						<HSComp.TableHead className="w-[100px]">Type</HSComp.TableHead>
+						<HSComp.TableHead className="w-0">Code</HSComp.TableHead>
+						<HSComp.TableHead className="w-0">Name</HSComp.TableHead>
+						<HSComp.TableHead className="w-0">Type</HSComp.TableHead>
 						<HSComp.TableHead>Description</HSComp.TableHead>
 					</HSComp.TableRow>
 				</HSComp.TableHeader>
 				<HSComp.TableBody>
-					{paramsWithCode.map((param, index) => (
-						<HSComp.TableRow
-							key={`${param.definition}-${param.name}`}
-							zebra
-							index={index}
-						>
+					{data.map((param, index) => (
+						<HSComp.TableRow key={param.id} zebra index={index}>
 							<HSComp.TableCell type="link">
-								{param.definition || "-"}
+								<Router.Link
+									className="text-text-link hover:underline"
+									to="/resource/$resourceType/edit/$id"
+									search={{ tab: "code", mode: "json" }}
+									params={{
+										resourceType: "SearchParameter",
+										id: param.id,
+									}}
+								>
+									{param.url || "-"}
+								</Router.Link>
 							</HSComp.TableCell>
-							<HSComp.TableCell className="w-[120px]">
-								{param.code || "-"}
-							</HSComp.TableCell>
-							<HSComp.TableCell className="w-[120px]">
-								{param.name || "-"}
-							</HSComp.TableCell>
-							<HSComp.TableCell className="w-[100px]">
-								{param.type || "-"}
-							</HSComp.TableCell>
-							<HSComp.TableCell>{param.documentation || "-"}</HSComp.TableCell>
+							<HSComp.TableCell>{param.code || "-"}</HSComp.TableCell>
+							<HSComp.TableCell>{param.name || "-"}</HSComp.TableCell>
+							<HSComp.TableCell>{param.type || "-"}</HSComp.TableCell>
+							<HSComp.TableCell>{param.description || "-"}</HSComp.TableCell>
 						</HSComp.TableRow>
 					))}
 				</HSComp.TableBody>
