@@ -7,14 +7,7 @@ import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 
 type ResourceRow = {
 	resourceType: string;
-	tableSize: number;
-	historySize: number;
-	indexSize: number;
 	defaultProfile: string;
-	system: boolean;
-	fhir: boolean;
-	custom: boolean;
-	populated: boolean;
 };
 
 function FavoriteCell({
@@ -114,79 +107,42 @@ function ResourceList({
 	);
 }
 
-type ResourceTypeInfo = {
-	"system?": boolean;
-	"fhir?": boolean;
-	"custom?": boolean;
-	"default-profile": string;
+type StructureDefinitionEntry = {
+	resource: {
+		type?: string;
+		name?: string;
+		url?: string;
+	};
 };
 
-type ResourceDataStats = {
-	total_size?: number;
-	index_size?: number;
-	num_rows?: number;
-};
-
-type ResourceData = {
-	resources: Record<string, ResourceTypeInfo>;
-	stats: Record<string, ResourceDataStats>;
+type StructureDefinitionBundle = {
+	entry?: StructureDefinitionEntry[];
 };
 
 function useResourceData(client: AidboxClientR5) {
-	return useQuery<ResourceData>({
+	return useQuery<ResourceRow[]>({
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {
-			const [resourceTypes, stats] = await Promise.all([
-				client.rawRequest({
-					method: "GET",
-					url: "/$resource-types",
-				}),
-				client.rawRequest({
-					method: "GET",
-					url: "/$resource-types-pg-stats",
-				}),
-			]);
-			return {
-				resources: await resourceTypes.response.json(),
-				stats: await stats.response.json(),
-			};
+			const response = await client.rawRequest({
+				method: "GET",
+				url: "/fhir/StructureDefinition?kind=resource&derivation=specialization&_count=1000",
+			});
+			const bundle: StructureDefinitionBundle = await response.response.json();
+			return (bundle.entry ?? []).map((entry) => ({
+				resourceType: entry.resource.type ?? entry.resource.name ?? "",
+				defaultProfile: entry.resource.url ?? "",
+			}));
 		},
 	});
 }
 
-function profileName(url: string): string {
-	if (!url) return "";
-	const lastSlash = url.lastIndexOf("/");
-	return lastSlash >= 0 ? url.slice(lastSlash + 1) : url;
-}
-
-function useProcessedData(
-	data: ResourceData | undefined,
+function useSortedData(
+	data: ResourceRow[] | undefined,
 	favorites: Set<string>,
 ): ResourceRow[] {
 	return useMemo(() => {
 		if (!data) return [];
-		const { resources, stats } = data;
-
-		const rows = Object.entries(resources || {}).map(([key, value]) => {
-			const keyLower = key.toLowerCase();
-			const resourceStats = stats[keyLower] || {};
-			const historyStats = stats[`${keyLower}_history`] || {};
-
-			return {
-				resourceType: key,
-				tableSize: resourceStats.total_size || 0,
-				historySize: historyStats.total_size || 0,
-				indexSize: resourceStats.index_size || 0,
-				defaultProfile: profileName(value["default-profile"]),
-				system: value["system?"],
-				fhir: value["fhir?"],
-				custom: value["custom?"],
-				populated: (resourceStats.num_rows ?? 0) > 0,
-			};
-		});
-
-		return rows.sort((a, b) => {
+		return [...data].sort((a, b) => {
 			const aFav = favorites.has(a.resourceType);
 			const bFav = favorites.has(b.resourceType);
 			if (aFav !== bFav) return aFav ? -1 : 1;
@@ -207,7 +163,7 @@ export function Browser() {
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
 
 	const { data, isLoading } = useResourceData(client);
-	const allTableData = useProcessedData(data, favorites);
+	const allTableData = useSortedData(data, favorites);
 
 	const toggleFavorite = useMemo(
 		() => (resourceType: string) => {
@@ -235,6 +191,7 @@ export function Browser() {
 		<div className="overflow-hidden h-full flex flex-col">
 			<div className="flex gap-3 items-center px-4 py-2 border-b border-border-primary">
 				<HSComp.Input
+					autoFocus
 					type="text"
 					className="flex-1 bg-bg-primary"
 					placeholder="Search resources"
