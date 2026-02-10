@@ -1,20 +1,20 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import * as HSComp from "@health-samurai/react-components";
 import type {
 	CodeEditorView,
 	OperationOutcome,
 	OperationOutcomeIssue,
 } from "@health-samurai/react-components";
+import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate, useSearch } from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
-import { findJsonPathOffset } from "../../utils/json-path-offset";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { findJsonPathOffset } from "../../utils/json-path-offset";
 import { EditTabContent } from "../ResourceEditor/edit-tab-content";
 import { VersionsTab } from "../ResourceEditor/versions-tab";
 import * as Constants from "./constants";
@@ -117,7 +117,7 @@ const PageTabsHeader = ({ id }: { id?: string }) => {
 					</HSComp.TabsTrigger>
 					<HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>
 					{id && (
-						<HSComp.TabsTrigger value="versions">Versions</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="versions">History</HSComp.TabsTrigger>
 					)}
 				</HSComp.TabsList>
 			</div>
@@ -188,12 +188,9 @@ const VDEditTab = () => {
 	});
 
 	const editorViewRef = React.useRef<CodeEditorView | null>(null);
-	const handleViewCallback = React.useCallback(
-		(view: CodeEditorView) => {
-			editorViewRef.current = view;
-		},
-		[],
-	);
+	const handleViewCallback = React.useCallback((view: CodeEditorView) => {
+		editorViewRef.current = view;
+	}, []);
 
 	const handleIssueClick = React.useCallback(
 		(issue: OperationOutcomeIssue) => {

@@ -1,12 +1,12 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import * as HSComp from "@health-samurai/react-components";
 import type { CodeEditorView } from "@health-samurai/react-components";
+import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
-import { findJsonPathOffset } from "../../utils/json-path-offset";
 import { useDebounce, useLocalStorage } from "../../hooks";
+import { findJsonPathOffset } from "../../utils/json-path-offset";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import {
 	ViewDefinitionContext,
@@ -84,12 +84,9 @@ export const CodeTabContent = () => {
 	);
 
 	const editorViewRef = React.useRef<CodeEditorView | null>(null);
-	const handleViewCallback = React.useCallback(
-		(view: CodeEditorView) => {
-			editorViewRef.current = view;
-		},
-		[],
-	);
+	const handleViewCallback = React.useCallback((view: CodeEditorView) => {
+		editorViewRef.current = view;
+	}, []);
 
 	const [codeMode, setCodeMode] = useLocalStorage<ViewDefinitionEditorMode>({
 		key: "viewDefinition.codeMode",

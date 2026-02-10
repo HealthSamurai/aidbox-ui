@@ -1,5 +1,5 @@
-import * as HSComp from "@health-samurai/react-components";
 import type { CodeEditorView } from "@health-samurai/react-components";
+import * as HSComp from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
 import { useLocalStorage } from "../../hooks";
 import { EditorTab } from "./editor-tab";
@@ -43,10 +43,7 @@ export function EditTabContent({
 	};
 
 	return (
-		<HSComp.ResizablePanelGroup
-			direction="horizontal"
-			autoSaveId={autoSaveId}
-		>
+		<HSComp.ResizablePanelGroup direction="horizontal" autoSaveId={autoSaveId}>
 			<HSComp.ResizablePanel minSize={20}>
 				<EditorTab
 					mode={mode}

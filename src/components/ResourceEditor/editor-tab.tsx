@@ -1,4 +1,5 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
+import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import {
 	Tooltip,
@@ -41,6 +42,7 @@ type EditorTabProps = {
 	setResourceText: (text: string) => void;
 	actions?: React.ReactNode;
 	trailingActions?: React.ReactNode;
+	viewCallback?: (view: CodeEditorView) => void;
 };
 
 export const EditorTab = ({
@@ -52,6 +54,7 @@ export const EditorTab = ({
 	setResourceText,
 	actions,
 	trailingActions,
+	viewCallback,
 }: EditorTabProps) => {
 	return (
 		<HSComp.Tabs
@@ -77,6 +80,7 @@ export const EditorTab = ({
 					defaultValue={defaultResourceText}
 					currentValue={resourceText}
 					onChange={setResourceText}
+					viewCallback={viewCallback}
 				/>
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="yaml" className="relative grow min-h-0">
@@ -85,6 +89,7 @@ export const EditorTab = ({
 					defaultValue={defaultResourceText}
 					currentValue={resourceText}
 					onChange={setResourceText}
+					viewCallback={viewCallback}
 				/>
 			</HSComp.TabsContent>
 		</HSComp.Tabs>

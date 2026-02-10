@@ -41,7 +41,9 @@ export function ProfilePanel({ resourceType, onClose }: ProfilePanelProps) {
 		}
 	}, [profileEntries, selectedProfileKey]);
 
-	const selectedProfile = selectedProfileKey ? data?.[selectedProfileKey] : undefined;
+	const selectedProfile = selectedProfileKey
+		? data?.[selectedProfileKey]
+		: undefined;
 
 	const dropdownOptions = React.useMemo(
 		() =>

@@ -169,9 +169,7 @@ export const ResourceEditorPage = ({
 
 	if (id) {
 		tabs.push({
-			trigger: (
-				<HSComp.TabsTrigger value="version">Versions</HSComp.TabsTrigger>
-			),
+			trigger: <HSComp.TabsTrigger value="version">History</HSComp.TabsTrigger>,
 			content: (
 				<HSComp.TabsContent value={"version"}>
 					<VersionsTab id={id} resourceType={resourceType} />

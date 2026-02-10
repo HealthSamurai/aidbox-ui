@@ -267,9 +267,12 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 			throw Error("missing originalId in the ViewDefinitionContext");
 		},
 		onSuccess: (result) => {
-			if (result.isErr())
-				return Utils.toastOperationOutcome(result.value.resource);
+			if (result.isErr()) {
+				viewDefinitionContext.setRunError(result.value.resource);
+				return;
+			}
 
+			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
@@ -287,9 +290,12 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 			});
 		},
 		onSuccess: (result) => {
-			if (result.isErr())
-				return Utils.toastOperationOutcome(result.value.resource);
+			if (result.isErr()) {
+				viewDefinitionContext.setRunError(result.value.resource);
+				return;
+			}
 
+			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			const id = result.value.resource.id;
 			if (!id)
@@ -309,6 +315,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 
 	const viewDefinitionRunMutation = useMutation({
 		mutationFn: (viewDefinition: ViewDefinition) => {
+			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setRunResultPage(1);
 			viewDefinitionContext.setRunViewDefinition(viewDefinition);
 
@@ -345,9 +352,27 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 		},
 		onSuccess: async (result) => {
 			if (result.isErr()) {
-				const issues = Utils.parseOperationOutcome(result.value.resource);
-				if (issues.length === 0) {
-					Utils.toastError("Error", JSON.stringify(result.value.resource));
+				const resource = result.value.resource;
+				if (resource.issue?.length) {
+					viewDefinitionContext.setRunError({
+						resourceType: "OperationOutcome",
+						issue: resource.issue.map((issue) => ({
+							code: issue.code,
+							severity: issue.severity as
+								| "fatal"
+								| "error"
+								| "warning"
+								| "information",
+							diagnostics: issue.diagnostics,
+							details: issue.details,
+							expression: issue.expression?.map((e) =>
+								e.replace(
+									/^Parameters\.parameter\[\d+\]\.resource\./,
+									"ViewDefinition.",
+								),
+							),
+						})),
+					});
 				} else {
 					for (const issue of issues) {
 						Utils.toastError(
@@ -360,6 +385,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 					}
 				}
 			} else {
+				viewDefinitionContext.setRunError(undefined);
 				const { data } = result.value.resource;
 				const decodedData = atob(data);
 				viewDefinitionContext.setRunResult(decodedData);
@@ -502,6 +528,7 @@ export const EditorPanelContent = ({
 	onTogglePreview: () => void;
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
+	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const { handleSave, handleRun, handleMaterialize, handleDelete } =
 		useViewDefinitionActions(aidboxClient);
 
@@ -533,41 +560,59 @@ export const EditorPanelContent = ({
 	};
 
 	return (
-		<HSComp.Tabs
-			variant="tertiary"
-			defaultValue={selectedTab}
-			onValueChange={handleOnTabSelect}
-			className="grow min-h-0"
-		>
-			<EditorHeaderMenu
-				onSave={handleSave}
-				onRun={handleRun}
-				onMaterialize={handleMaterialize}
-				onTogglePreview={onTogglePreview}
-				isPreviewOpen={isPreviewOpen}
-			/>
-			<HSComp.TabsContent
-				value={"form"}
-				className={`data-[state=inactive]:hidden ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
-				forceMount
-			>
-				{isPreviewOpen ? (
-					<div className="px-2.5 py-1">
-						<FormTabContent />
-					</div>
-				) : (
-					<div className="mx-auto max-w-[687px] min-h-full bg-bg-primary border-x border-border-secondary px-2.5 py-3">
-						<FormTabContent />
-					</div>
-				)}
-			</HSComp.TabsContent>
-			<HSComp.TabsContent value={"code"} className="overflow-hidden!">
-				<CodeTabContent />
-			</HSComp.TabsContent>
-			<HSComp.TabsContent value={"sql"}>
-				<SQLTab />
-			</HSComp.TabsContent>
-		</HSComp.Tabs>
+		<HSComp.ResizablePanelGroup direction="vertical" className="grow min-h-0">
+			<HSComp.ResizablePanel minSize={20}>
+				<HSComp.Tabs
+					variant="tertiary"
+					defaultValue={selectedTab}
+					onValueChange={handleOnTabSelect}
+					className="h-full"
+				>
+					<EditorHeaderMenu
+						onSave={handleSave}
+						onRun={handleRun}
+						onMaterialize={handleMaterialize}
+						onTogglePreview={onTogglePreview}
+						isPreviewOpen={isPreviewOpen}
+					/>
+					<HSComp.TabsContent
+						value={"form"}
+						className={`data-[state=inactive]:hidden ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
+						forceMount
+					>
+						{isPreviewOpen ? (
+							<div className="px-2.5 py-1">
+								<FormTabContent />
+							</div>
+						) : (
+							<div className="mx-auto max-w-[687px] min-h-full bg-bg-primary border-x border-border-secondary px-2.5 py-3">
+								<FormTabContent />
+							</div>
+						)}
+					</HSComp.TabsContent>
+					<HSComp.TabsContent value={"code"} className="overflow-hidden!">
+						<CodeTabContent />
+					</HSComp.TabsContent>
+					<HSComp.TabsContent value={"sql"}>
+						<SQLTab />
+					</HSComp.TabsContent>
+				</HSComp.Tabs>
+			</HSComp.ResizablePanel>
+			{viewDefinitionContext.runError && (
+				<>
+					<HSComp.ResizableHandle />
+					<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+						<HSComp.OperationOutcomeView
+							resource={viewDefinitionContext.runError}
+							onIssueClick={(issue) =>
+								viewDefinitionContext.issueClickRef.current?.(issue)
+							}
+							className="h-full overflow-auto"
+						/>
+					</HSComp.ResizablePanel>
+				</>
+			)}
+		</HSComp.ResizablePanelGroup>
 	);
 };
 

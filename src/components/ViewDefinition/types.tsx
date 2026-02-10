@@ -1,4 +1,8 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import type {
+	OperationOutcome,
+	OperationOutcomeIssue,
+} from "@health-samurai/react-components";
 
 export interface ViewDefinitionContextProps {
 	originalId?: string | undefined;
@@ -15,6 +19,11 @@ export interface ViewDefinitionContextProps {
 	setRunViewDefinition: (viewDefinition: ViewDefinition) => void;
 	isDirty: boolean;
 	setIsDirty: (isDirty: boolean) => void;
+	runError: OperationOutcome | undefined;
+	setRunError: (error: OperationOutcome | undefined) => void;
+	issueClickRef: React.MutableRefObject<
+		((issue: OperationOutcomeIssue) => void) | undefined
+	>;
 }
 
 export interface ViewDefinitionResourceTypeContextProps {
