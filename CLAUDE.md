@@ -16,3 +16,11 @@ import { Button, Tabs, TabsList, TabsTrigger, TabsContent } from "@health-samura
 Use semantic design token classes (`text-text-primary`, `bg-bg-secondary`, `border-border-primary`) instead of raw Tailwind color values.
 
 Icons: use `lucide-react` for standard icons. Use icons from `@health-samurai/react-components` only for domain-specific FHIR icons (PlayIcon, ResourceIcon, etc.).
+
+## Figma
+
+When a Figma link is provided, invoke the `/figma-use` skill to inspect the design before implementing UI.
+
+## Linting
+
+Always run `pnpm lint:fix` after making code changes.
