@@ -250,7 +250,7 @@ export const ResourcesTabTable = ({
 		<HSComp.Table zebra stickyHeader>
 			<HSComp.TableHeader>
 				<HSComp.TableRow>
-					<HSComp.TableHead className="w-8">
+					<HSComp.TableHead className="w-[52px] min-w-[52px]">
 						<HSComp.Checkbox
 							size="small"
 							checked={
@@ -260,10 +260,19 @@ export const ResourcesTabTable = ({
 							aria-label="Select all"
 						/>
 					</HSComp.TableHead>
-					<HSComp.TableHead className="w-[300px]">Id</HSComp.TableHead>
-					<HSComp.TableHead className="w-[220px]">LastUpdated</HSComp.TableHead>
-					{dynamicKeys.map((k) => (
-						<HSComp.TableHead key={k}>{k}</HSComp.TableHead>
+					<HSComp.TableHead className="w-0">Id</HSComp.TableHead>
+					<HSComp.TableHead
+						className={dynamicKeys.length > 0 ? "w-0" : undefined}
+					>
+						LastUpdated
+					</HSComp.TableHead>
+					{dynamicKeys.map((k, i) => (
+						<HSComp.TableHead
+							key={k}
+							className={i < dynamicKeys.length - 1 ? "w-0" : undefined}
+						>
+							{k}
+						</HSComp.TableHead>
 					))}
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
@@ -278,7 +287,7 @@ export const ResourcesTabTable = ({
 							index={index}
 							selected={isSelected}
 						>
-							<HSComp.TableCell className="w-8">
+							<HSComp.TableCell>
 								<HSComp.Checkbox
 									size="small"
 									checked={isSelected}
@@ -402,20 +411,27 @@ const ResourcesTabFooter = ({
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
 	return (
-		<div className="flex items-center justify-between border-t px-4 py-2">
-			<div className="flex items-center gap-2">
+		<div className="flex items-center justify-between border-t bg-bg-secondary px-4 h-10">
+			<div className="flex items-center gap-4">
 				{selectionCount > 0 && (
 					<>
-						<span className="text-sm text-elements-assistive">
+						<span className="typo-default text-text-primary">
 							{selectionCount} selected:
 						</span>
-						<HSComp.Button variant="ghost" size="small" onClick={onExport}>
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							className="text-text-secondary!"
+							onClick={onExport}
+						>
 							<Lucide.DownloadIcon size={16} />
 							Export
+							<Lucide.ChevronDownIcon size={16} />
 						</HSComp.Button>
 						<HSComp.Button
 							variant="ghost"
 							size="small"
+							className="text-text-secondary!"
 							disabled={isDeleting}
 							onClick={() => setIsDeleteDialogOpen(true)}
 						>
@@ -457,7 +473,7 @@ const ResourcesTabFooter = ({
 					</>
 				)}
 			</div>
-			<div className="flex items-center gap-3">
+			<div className="flex items-center gap-4">
 				<HSComp.DropdownMenu>
 					<HSComp.DropdownMenuTrigger asChild>
 						<HSComp.Button variant="ghost" size="small">
