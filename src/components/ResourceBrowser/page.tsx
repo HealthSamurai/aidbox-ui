@@ -393,6 +393,7 @@ const ResourcesTabFooter = ({
 	selectedIds,
 	onPageChange,
 	onPageSizeChange,
+	onExport,
 	onDelete,
 	isDeleting,
 }: Types.ResourcesTabFooterProps) => {
@@ -408,7 +409,7 @@ const ResourcesTabFooter = ({
 						<span className="text-sm text-elements-assistive">
 							{selectionCount} selected:
 						</span>
-						<HSComp.Button variant="ghost" size="small">
+						<HSComp.Button variant="ghost" size="small" onClick={onExport}>
 							<Lucide.DownloadIcon size={16} />
 							Export
 						</HSComp.Button>
@@ -610,6 +611,26 @@ const ResourcesTabContent = ({
 		});
 	};
 
+	const handleExport = () => {
+		const selected = (data?.resources ?? []).filter(
+			(r) => r.id && selectedIds.has(r.id),
+		);
+		const bundle = {
+			resourceType: "Bundle",
+			type: "collection",
+			entry: selected.map((resource) => ({ resource })),
+		};
+		const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+			type: "application/json",
+		});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${resourcesPageContext.resourceType}-export.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
 	const handlePageSizeChange = (size: number) => {
 		const params = new URLSearchParams(decodedSearchQuery);
 		params.set("_count", String(size));
@@ -643,6 +664,7 @@ const ResourcesTabContent = ({
 					selectedIds={selectedIds}
 					onPageChange={handlePageChange}
 					onPageSizeChange={handlePageSizeChange}
+					onExport={handleExport}
 					onDelete={() => deleteMutation.mutate()}
 					isDeleting={deleteMutation.isPending}
 				/>

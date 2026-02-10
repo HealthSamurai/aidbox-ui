@@ -27,6 +27,7 @@ export interface ResourcesTabFooterProps {
 	selectedIds: Set<string>;
 	onPageChange: (page: number) => void;
 	onPageSizeChange: (size: number) => void;
+	onExport: () => void;
 	onDelete: () => void;
 	isDeleting: boolean;
 }
