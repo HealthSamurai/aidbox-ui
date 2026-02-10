@@ -17,3 +17,8 @@ body > div:not(.cm-editor)[class*="ͼ"] {
 	padding-bottom: 0 !important;
 	height: auto !important;
 }
+
+.cm-editor {
+	padding-top: 4px !important;
+	padding-bottom: 0 !important;
+}

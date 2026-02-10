@@ -5,6 +5,8 @@ import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { BuilderContent } from "../ViewDefinition/editor-panel-content";
+import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton } from "./action";
 import { fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
@@ -120,38 +122,60 @@ export const ResourceEditorPage = ({
 		} catch {
 			// If parsing fails, we keep the current value
 		}
-		navigate({ search: { mode: newMode } });
+		navigate({
+			search: (prev: Record<string, unknown>) => ({
+				...prev,
+				mode: newMode,
+			}),
+		});
 	};
 
-	const tabs = [
-		{
-			trigger: <HSComp.TabsTrigger value="code">Edit</HSComp.TabsTrigger>,
+	const isViewDefinition = resourceType === "ViewDefinition";
+
+	const tabs = [];
+
+	if (isViewDefinition) {
+		tabs.push({
+			trigger: (
+				<HSComp.TabsTrigger value="builder">
+					ViewDefinition Builder
+				</HSComp.TabsTrigger>
+			),
 			content: (
-				<HSComp.TabsContent value={"code"}>
-					<EditTabContent
-						mode={mode}
-						setMode={setMode}
-						triggerFormat={triggerFormat}
-						resourceText={resourceText}
-						defaultResourceText={resourceText}
-						setResourceText={(text: string) => {
-							setResourceText(text);
-							try {
-								const parsed =
-									mode === "yaml" ? YAML.load(text) : JSON.parse(text);
-								setResource(parsed);
-							} catch {
-								// again, keeps text as-is if parsing failed
-							}
-						}}
-						resourceType={resourceType}
-						storageKey="resourceEditor-profileOpen"
-						autoSaveId="resource-editor-horizontal-panel"
-					/>
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<BuilderContent />
 				</HSComp.TabsContent>
 			),
-		},
-	];
+		});
+	}
+
+	tabs.push({
+		trigger: <HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>,
+		content: (
+			<HSComp.TabsContent value={"edit"}>
+				<EditTabContent
+					mode={mode}
+					setMode={setMode}
+					triggerFormat={triggerFormat}
+					resourceText={resourceText}
+					defaultResourceText={resourceText}
+					setResourceText={(text: string) => {
+						setResourceText(text);
+						try {
+							const parsed =
+								mode === "yaml" ? YAML.load(text) : JSON.parse(text);
+							setResource(parsed);
+						} catch {
+							// again, keeps text as-is if parsing failed
+						}
+					}}
+					resourceType={resourceType}
+					storageKey="resourceEditor-profileOpen"
+					autoSaveId="resource-editor-horizontal-panel"
+				/>
+			</HSComp.TabsContent>
+		),
+	});
 
 	const actions = [
 		{
@@ -169,9 +193,9 @@ export const ResourceEditorPage = ({
 
 	if (id) {
 		tabs.push({
-			trigger: <HSComp.TabsTrigger value="version">History</HSComp.TabsTrigger>,
+			trigger: <HSComp.TabsTrigger value="history">History</HSComp.TabsTrigger>,
 			content: (
-				<HSComp.TabsContent value={"version"}>
+				<HSComp.TabsContent value={"history"}>
 					<VersionsTab id={id} resourceType={resourceType} />
 				</HSComp.TabsContent>
 			),
@@ -184,18 +208,18 @@ export const ResourceEditorPage = ({
 	}
 
 	const handleOnTabSelect = (value: ResourceEditorTab) =>
-		navigate({ search: { tab: value } });
+		navigate({
+			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
+		});
 
-	return (
+	const content = (
 		<HSComp.Tabs
 			defaultValue={tab}
 			onValueChange={handleOnTabSelect}
 			className="grow min-h-0"
 		>
-			<div className="flex items-center justify-between gap-4 bg-bg-secondary px-6 border-b h-10 flex-none">
-				<div className="flex items-center gap-3">
-					<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-				</div>
+			<div className="flex items-center justify-between bg-bg-primary px-4 border-b h-10 flex-none">
+				<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
 				<div className="flex items-center gap-3">
 					{actions.map((a) => a.content)}
 				</div>
@@ -203,4 +227,14 @@ export const ResourceEditorPage = ({
 			{tabs.map((t) => t.content)}
 		</HSComp.Tabs>
 	);
+
+	if (isViewDefinition) {
+		return (
+			<ViewDefinitionProvider id={id} initialResource={initialResource}>
+				{content}
+			</ViewDefinitionProvider>
+		);
+	}
+
+	return content;
 };

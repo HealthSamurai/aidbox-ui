@@ -307,7 +307,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
-				search: { tab: "code", mode: "json" },
+				search: { tab: "edit", mode: "json" },
 			});
 		},
 		onError: Utils.onMutationError,
@@ -529,17 +529,17 @@ export const EditorPanelContent = ({
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const { handleSave, handleRun, handleMaterialize, handleDelete } =
+	const { handleSave, handleRun, handleMaterialize } =
 		useViewDefinitionActions(aidboxClient);
 
 	const navigate = useNavigate();
 
 	const createSearch = useSearch({
-		from: "/resource/ViewDefinition/create",
+		from: "/resource/$resourceType/create",
 		shouldThrow: false,
 	});
 	const editSearch = useSearch({
-		from: "/resource/ViewDefinition/edit/$id",
+		from: "/resource/$resourceType/edit/$id",
 		shouldThrow: false,
 	});
 	const search = createSearch || editSearch;
@@ -547,15 +547,18 @@ export const EditorPanelContent = ({
 		console.error("createSearch and editSearch are undefined");
 		return <div>FAILED DUE TO UNDEFINED SEARCH</div>;
 	}
-	const { tab: selectedTab } = search;
+	const { builderTab: selectedTab } = search;
 
 	const handleOnTabSelect = (value: Types.ViewDefinitionEditorTab) => {
 		navigate({
 			from:
 				createSearch !== undefined
-					? "/resource/ViewDefinition/create"
-					: "/resource/ViewDefinition/edit/$id",
-			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
+					? "/resource/$resourceType/create"
+					: "/resource/$resourceType/edit/$id",
+			search: (prev: Record<string, unknown>) => ({
+				...prev,
+				builderTab: value,
+			}),
 		});
 	};
 

@@ -31,7 +31,6 @@ export interface ViewDefinitionResourceTypeContextProps {
 	setViewDefinitionResourceType: (viewDefinitionResourceType: string) => void;
 }
 
-export type ViewDefinitionPageTab = "builder" | "edit" | "versions";
 export type ViewDefinitionEditorTab = "form" | "code" | "sql";
 export type ViewDefinitionEditorMode = "json" | "yaml";
 

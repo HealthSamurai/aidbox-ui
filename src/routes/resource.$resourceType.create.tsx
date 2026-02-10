@@ -1,6 +1,8 @@
 import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
+	type BuilderTab,
 	type EditorMode,
+	isBuilderTab,
 	isEditorMode,
 	isResourceEditorTab,
 	type ResourceEditorTab,
@@ -12,22 +14,23 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 
-export type ViewDefinitionSearch = {
+export type ResourceEditorSearch = {
 	tab: ResourceEditorTab;
 	mode: EditorMode;
+	builderTab: BuilderTab;
 };
 
 export function validateSearch(
 	rawSearch: Record<string, unknown>,
-): ViewDefinitionSearch {
+): ResourceEditorSearch {
 	let tab: ResourceEditorTab;
 	if (isResourceEditorTab(rawSearch.tab)) {
 		tab = rawSearch.tab;
 	} else if (rawSearch.tab === undefined) {
-		tab = "code";
+		tab = "edit";
 	} else {
-		console.error("Invalid tab", rawSearch.tab, "force to 'code'");
-		tab = "code";
+		console.error("Invalid tab", rawSearch.tab, "force to 'edit'");
+		tab = "edit";
 	}
 
 	let mode: EditorMode;
@@ -36,10 +39,18 @@ export function validateSearch(
 	} else if (rawSearch.mode === undefined) {
 		mode = "json";
 	} else {
-		console.error("Invalid mode", rawSearch.mode, "force to 'code'");
+		console.error("Invalid mode", rawSearch.mode, "force to 'json'");
 		mode = "json";
 	}
-	return { tab, mode };
+
+	let builderTab: BuilderTab;
+	if (isBuilderTab(rawSearch.builderTab)) {
+		builderTab = rawSearch.builderTab;
+	} else {
+		builderTab = "code";
+	}
+
+	return { tab, mode, builderTab };
 }
 
 const PageComponent = () => {
@@ -48,9 +59,20 @@ const PageComponent = () => {
 		from: "/resource/$resourceType/create",
 	}).params;
 	const navigate = useNavigate();
+
+	const initialResource =
+		resourceType === "ViewDefinition"
+			? {
+					resource: "Patient",
+					resourceType: "ViewDefinition",
+					status: "draft",
+					select: [],
+				}
+			: { resourceType: resourceType };
+
 	return (
 		<ResourceEditorPage
-			initialResource={{ resourceType: resourceType }}
+			initialResource={initialResource}
 			resourceType={resourceType}
 			tab={tab}
 			mode={mode}
