@@ -87,9 +87,9 @@ export function validateSearch(
 }
 
 const PageComponent = () => {
-	const { tab, mode } = useSearch({ from: "/_resource/$resourceType/create" });
+	const { tab, mode } = useSearch({ from: "/resource/$resourceType/create" });
 	const { resourceType } = useMatch({
-		from: "/_resource/$resourceType/create",
+		from: "/resource/$resourceType/create",
 	}).params;
 	const navigate = useNavigate();
 
@@ -114,12 +114,12 @@ const PageComponent = () => {
 			mode={mode}
 			navigate={navigate}
 		/>
-	);
+	)
 };
 
 const TITLE = "Create";
 
-export const Route = createFileRoute("/_resource/$resourceType/create")({
+export const Route = createFileRoute("/resource/$resourceType/create")({
 	component: PageComponent,
 	validateSearch,
 	staticData: {

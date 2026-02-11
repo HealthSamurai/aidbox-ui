@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAidboxClient } from "../AidboxClient";
 import { ResourcesPage } from "../components/ResourceBrowser/page";
 
-export const Route = createFileRoute("/_resource/$resourceType/")({
+export const Route = createFileRoute("/resource/$resourceType/")({
 	component: RouteComponent,
 	staticData: {
 		title: "View Definition",

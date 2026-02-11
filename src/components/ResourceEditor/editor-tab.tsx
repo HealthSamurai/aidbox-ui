@@ -79,7 +79,7 @@ export const EditorTab = ({
 					{trailingActions}
 				</div>
 			</div>
-			<HSComp.TabsContent value="json" className="relative grow min-h-0">
+			<HSComp.TabsContent value="json" className="relative grow min-h-0 pt-3">
 				<HSComp.CodeEditor
 					mode="json"
 					defaultValue={defaultResourceText}
@@ -89,7 +89,7 @@ export const EditorTab = ({
 					issueLineNumbers={issueLineNumbers}
 				/>
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value="yaml" className="relative grow min-h-0">
+			<HSComp.TabsContent value="yaml" className="relative grow min-h-0 pt-3">
 				<HSComp.CodeEditor
 					mode="yaml"
 					defaultValue={defaultResourceText}

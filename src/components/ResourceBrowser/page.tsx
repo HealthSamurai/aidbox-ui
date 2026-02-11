@@ -56,6 +56,7 @@ export const ResourcePageTabList = () => {
 
 export const ResourcesTabSarchInput = () => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
+	const inputRef = React.useRef<HTMLInputElement>(null);
 
 	const search = Router.useSearch({
 		strict: false,
@@ -65,19 +66,50 @@ export const ResourcesTabSarchInput = () => {
 		? atob(search.searchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
 
+	const handleClear = () => {
+		if (inputRef.current) {
+			inputRef.current.value = Constants.DEFAULT_SEARCH_QUERY;
+			inputRef.current.focus();
+		}
+	};
+
+	const handleCopy = () => {
+		if (inputRef.current) {
+			navigator.clipboard.writeText(inputRef.current.value);
+		}
+	};
+
 	return (
-		<HSComp.Input
-			autoFocus
-			type="text"
-			name="searchQuery"
-			defaultValue={decodedSearchQuery}
-			prefixValue={
-				<span className="flex gap-1 text-nowrap text-elements-assistive">
-					<span className="font-bold">GET</span>
-					<span>/fhir/{resourcesPageContext.resourceType}?</span>
-				</span>
-			}
-		/>
+		<div className="relative flex-1 min-w-0">
+			<HSComp.Input
+				ref={inputRef}
+				autoFocus
+				type="text"
+				name="searchQuery"
+				className="pr-14!"
+				defaultValue={decodedSearchQuery}
+				prefixValue={
+					<span className="flex gap-1 text-nowrap text-elements-assistive">
+						<span className="font-bold">GET</span>
+						<span>/fhir/{resourcesPageContext.resourceType}?</span>
+					</span>
+				}
+			/>
+			<div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 items-center">
+				<HSComp.IconButton
+					variant="link"
+					icon={<Lucide.CircleXIcon size={16} />}
+					aria-label="Clear search"
+					onClick={handleClear}
+				/>
+				<HSComp.IconButton
+					variant="link"
+					icon={<Lucide.CopyIcon size={16} />}
+					aria-label="Copy search query"
+					onClick={handleCopy}
+				/>
+			</div>
+		</div>
 	);
 };
 
@@ -86,12 +118,12 @@ export const ResourcesTabCreateButton = () => {
 
 	return (
 		<Router.Link
-			to="/$resourceType/create"
+			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
 			search={{ tab: "code", mode: "json" }}
 		>
 			<HSComp.Button variant="secondary">
-				<Lucide.PlusIcon className="text-fg-brand-primary" />
+				<Lucide.PlusIcon className="text-fg-link" />
 				Create
 			</HSComp.Button>
 		</Router.Link>
@@ -109,6 +141,7 @@ export const ResourcesTabSearchButton = () => {
 			type="submit"
 			disabled={resourcesTabContentContext.resourcesLoading}
 		>
+			<Lucide.SearchIcon size={16} />
 			Search
 		</HSComp.Button>
 	);
@@ -120,12 +153,8 @@ export const ResourcesTabHeader = ({
 	return (
 		<form className="px-4 py-3 border-b flex gap-2" onSubmit={handleSearch}>
 			<ResourcesTabSarchInput />
-			<div className="flex gap-4 items-center">
+			<div className="flex gap-2 items-center">
 				<ResourcesTabSearchButton />
-				<HSComp.Separator
-					orientation="vertical"
-					className="data-[orientation=vertical]:h-6"
-				/>
 				<ResourcesTabCreateButton />
 			</div>
 		</form>
@@ -316,7 +345,7 @@ export const ResourcesTabTable = ({
 							<HSComp.TableCell type="link">
 								<Router.Link
 									className="text-text-link hover:underline"
-									to="/$resourceType/edit/$id"
+									to="/resource/$resourceType/edit/$id"
 									search={{ tab: "code", mode: "json" }}
 									params={{
 										resourceType: resourcesPageContext.resourceType,
@@ -938,7 +967,7 @@ const SearchParametersTabContent = ({
 							<HSComp.TableCell type="link">
 								<Router.Link
 									className="text-text-link hover:underline"
-									to="/$resourceType/edit/$id"
+									to="/resource/$resourceType/edit/$id"
 									search={{ tab: "code", mode: "json" }}
 									params={{
 										resourceType: "SearchParameter",

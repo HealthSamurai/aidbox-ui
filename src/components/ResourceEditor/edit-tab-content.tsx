@@ -5,6 +5,7 @@ import type {
 import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
+import * as React from "react";
 import { useLocalStorage } from "../../hooks";
 import { EditorTab } from "./editor-tab";
 import { ProfilePanel } from "./profile-panel";
@@ -51,6 +52,15 @@ export function EditTabContent({
 	const handleToggleProfile = () => {
 		setIsProfileOpen((prev) => !prev);
 	};
+
+	React.useEffect(() => {
+		if (!isProfileOpen) return;
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape") setIsProfileOpen(false);
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [isProfileOpen, setIsProfileOpen]);
 
 	return (
 		<HSComp.ResizablePanelGroup direction="horizontal" autoSaveId={autoSaveId}>

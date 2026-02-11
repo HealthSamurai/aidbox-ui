@@ -57,7 +57,7 @@ function ResourceList({
 
 	const goToResource = (resourceType: string) =>
 		navigate({
-			to: "/$resourceType",
+			to: "/resource/$resourceType",
 			params: { resourceType },
 		});
 
@@ -113,7 +113,7 @@ function ResourceList({
 								<HSComp.TableCell className="w-52 min-w-52 max-w-52">
 									<a
 										ref={index === 0 ? firstLinkRef : undefined}
-										href={`/resource/${row.resourceType}`}
+										href={`/u/resource/${row.resourceType}`}
 										onClick={(e) => {
 											e.preventDefault();
 											goToResource(row.resourceType);

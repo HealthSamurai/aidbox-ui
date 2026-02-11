@@ -290,9 +290,11 @@ export const ResourceEditorPage = ({
 			onValueChange={handleOnTabSelect}
 			className="grow min-h-0"
 		>
-			<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
-				<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-			</div>
+			{tabs.length > 1 && (
+				<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
+					<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
+				</div>
+			)}
 			{tabs.map((t) => t.content)}
 		</HSComp.Tabs>
 	);

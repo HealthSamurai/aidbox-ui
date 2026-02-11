@@ -25,7 +25,7 @@ const mainMenuItems = [
 		<SquareTerminal />
 		REST Console
 	</Link>,
-	<Link key="/" to="/">
+	<Link key="/resource" to="/resource">
 		<Columns3Cog />
 		Resource browser
 	</Link>,
