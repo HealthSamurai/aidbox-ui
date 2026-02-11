@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@health-samurai/react-components': link:../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
+  '@health-samurai/aidbox-fhirpath-lsp': link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-fhirpath-lsp
 
 importers:
 
@@ -36,8 +37,8 @@ importers:
         specifier: 0.0.0-alpha.3
         version: 0.0.0-alpha.3
       '@health-samurai/aidbox-fhirpath-lsp':
-        specifier: 0.0.0-alpha.5
-        version: 0.0.0-alpha.5(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)
+        specifier: link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-fhirpath-lsp
+        version: link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-fhirpath-lsp
       '@health-samurai/react-components':
         specifier: link:../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
         version: link:../../Library/pnpm/global/5/node_modules/@health-samurai/react-components
@@ -368,9 +369,6 @@ packages:
   '@codemirror/lint@6.9.3':
     resolution: {integrity: sha512-y3YkYhdnhjDBAe0VIA0c4wVoFOvnp8CnAvfLqi0TqotIv92wIlAAP7HELOpLBsKwjAX6W92rSflA6an/2zBvXw==}
 
-  '@codemirror/lsp-client@6.2.1':
-    resolution: {integrity: sha512-fjEkEc+H0kG60thaybj5+UpSnt49yAaTzOLSYZC2wlhwNAtDsWO2uZnE2AXiRGQxBVDQBvVj01MsX3F/0Vivjg==}
-
   '@codemirror/search@6.6.0':
     resolution: {integrity: sha512-koFuNXcDvyyotWcgOnZGmY7LZqEOXZaaxD/j6n18TCLx2/9HieZJ5H6hs1g8FiRxBD0DNfs0nXn17g872RmYdw==}
 
@@ -556,17 +554,6 @@ packages:
 
   '@health-samurai/aidbox-client@0.0.0-alpha.3':
     resolution: {integrity: sha512-5TjsrYZ/pObmkX6ILp7RV5SegFRJmfxyVJa1V+E2XiEZA3/hMl5p5/gPUQEZTk2eZvhl2ygZ4dpwK5GIsWPsGQ==}
-
-  '@health-samurai/aidbox-client@0.0.0-alpha.4':
-    resolution: {integrity: sha512-ZZ8asGiBhU8dFFXg2SIQzJSes1AS/TdQCBkbEwGCJjwAUdIOuNEyTL/iiWa2CB+fmbUtXMUMkLymx/SikYG0Ug==}
-
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.5':
-    resolution: {integrity: sha512-qPkaO5zc3aj/u4v+MM2f0QxMUWHmrXxQdhHNYnx4CEs5aNftiglKIAm4p4QVfeowuM1+Mf/Un5Jd+y3dcwBGZQ==}
-    peerDependencies:
-      '@codemirror/lsp-client': ^6.2.0
-      '@codemirror/state': ^6.5.2
-      react: ^19.1.0
-      react-dom: ^19.1.0
 
   '@inquirer/ansi@1.0.2':
     resolution: {integrity: sha512-S8qNSZiYzFd0wAcyG5AXCvUHC5Sr7xpZ9wZ2py9XR88jUz8wooStVx5M6dRzczbBWjic9NP7+rY0Xi7qqK/aMQ==}
@@ -1506,11 +1493,6 @@ packages:
   magic-string@0.30.19:
     resolution: {integrity: sha512-2N21sPY9Ws53PZvsEpVtNuSW+ScYbQdp4b9qUaL+9QkHUrGFKo56Lg9Emg5s9V/qrtNBmiR01sYhUOwu3H+VOw==}
 
-  marked@15.0.12:
-    resolution: {integrity: sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==}
-    engines: {node: '>= 18'}
-    hasBin: true
-
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
@@ -1562,9 +1544,6 @@ packages:
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
-
-  oauth4webapi@3.8.3:
-    resolution: {integrity: sha512-pQ5BsX3QRTgnt5HxgHwgunIRaDXBdkT23tf8dfzmtTIL2LTpdmxgbpbBm0VgFWAIDlezQvQCTgnVIUmHupXHxw==}
 
   onetime@7.0.0:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
@@ -2227,17 +2206,6 @@ snapshots:
       '@codemirror/view': 6.39.11
       crelt: 1.0.6
 
-  '@codemirror/lsp-client@6.2.1':
-    dependencies:
-      '@codemirror/autocomplete': 6.20.0
-      '@codemirror/language': 6.12.1
-      '@codemirror/lint': 6.9.3
-      '@codemirror/state': 6.5.4
-      '@codemirror/view': 6.39.11
-      '@lezer/highlight': 1.2.3
-      marked: 15.0.12
-      vscode-languageserver-protocol: 3.17.5
-
   '@codemirror/search@6.6.0':
     dependencies:
       '@codemirror/state': 6.5.4
@@ -2377,24 +2345,6 @@ snapshots:
     dependencies:
       '@types/json-patch': 0.0.33
       yaml: 2.8.2
-
-  '@health-samurai/aidbox-client@0.0.0-alpha.4':
-    dependencies:
-      '@types/json-patch': 0.0.33
-      oauth4webapi: 3.8.3
-      yaml: 2.8.2
-
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.5(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)':
-    dependencies:
-      '@atomic-ehr/fhirpath': 0.1.0(typescript@5.9.2)
-      '@atomic-ehr/fhirpath-lsp': 0.0.3(typescript@5.9.2)
-      '@codemirror/lsp-client': 6.2.1
-      '@codemirror/state': 6.5.4
-      '@health-samurai/aidbox-client': 0.0.0-alpha.4
-      react: 19.1.1
-      react-dom: 19.1.1(react@19.1.1)
-    transitivePeerDependencies:
-      - typescript
 
   '@inquirer/ansi@1.0.2': {}
 
@@ -3247,8 +3197,6 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  marked@15.0.12: {}
-
   merge2@1.4.1: {}
 
   micromatch@4.0.8:
@@ -3286,8 +3234,6 @@ snapshots:
   node-releases@2.0.21: {}
 
   normalize-path@3.0.0: {}
-
-  oauth4webapi@3.8.3: {}
 
   onetime@7.0.0:
     dependencies:

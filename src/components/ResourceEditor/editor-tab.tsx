@@ -43,6 +43,7 @@ type EditorTabProps = {
 	actions?: React.ReactNode;
 	trailingActions?: React.ReactNode;
 	viewCallback?: (view: CodeEditorView) => void;
+	issueLineNumbers?: number[];
 };
 
 export const EditorTab = ({
@@ -55,6 +56,7 @@ export const EditorTab = ({
 	actions,
 	trailingActions,
 	viewCallback,
+	issueLineNumbers,
 }: EditorTabProps) => {
 	return (
 		<HSComp.Tabs
@@ -70,6 +72,9 @@ export const EditorTab = ({
 				</HSComp.TabsList>
 				<div className="flex items-center gap-4 px-4">
 					{actions}
+					{actions && (
+						<HSComp.Separator orientation="vertical" className="h-6!" />
+					)}
 					<FormatButton triggerFormat={triggerFormat} />
 					{trailingActions}
 				</div>
@@ -81,6 +86,7 @@ export const EditorTab = ({
 					currentValue={resourceText}
 					onChange={setResourceText}
 					viewCallback={viewCallback}
+					issueLineNumbers={issueLineNumbers}
 				/>
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="yaml" className="relative grow min-h-0">
@@ -90,6 +96,7 @@ export const EditorTab = ({
 					currentValue={resourceText}
 					onChange={setResourceText}
 					viewCallback={viewCallback}
+					issueLineNumbers={issueLineNumbers}
 				/>
 			</HSComp.TabsContent>
 		</HSComp.Tabs>

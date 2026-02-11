@@ -6,7 +6,11 @@ import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
-import { findJsonPathOffset } from "../../utils/json-path-offset";
+import {
+	findJsonPathOffset,
+	findYamlPathOffset,
+	getIssueLineNumbers,
+} from "../../utils/json-path-offset";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import {
 	ViewDefinitionContext,
@@ -19,11 +23,13 @@ export const ViewDefinitionCodeEditor = ({
 	editorValue,
 	setEditorValue,
 	viewCallback,
+	issueLineNumbers,
 }: {
 	codeMode: ViewDefinitionEditorMode;
 	editorValue: string;
 	setEditorValue: (value: string) => void;
 	viewCallback?: (view: CodeEditorView) => void;
+	issueLineNumbers?: number[];
 }) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResourceTypeContext = React.useContext(
@@ -73,6 +79,7 @@ export const ViewDefinitionCodeEditor = ({
 			mode={codeMode}
 			onChange={handleEditorValueChange}
 			viewCallback={viewCallback}
+			issueLineNumbers={issueLineNumbers}
 		/>
 	);
 };
@@ -215,13 +222,24 @@ export const CodeTabContent = () => {
 		setCodeMode(newMode);
 	};
 
+	const issueLineNumbers = React.useMemo(() => {
+		const runError = viewDefinitionContext.runError;
+		if (!runError?.issue) return undefined;
+		const expressions = runError.issue
+			.flatMap((i) => i.expression ?? [])
+			.filter(Boolean);
+		if (expressions.length === 0) return undefined;
+		return getIssueLineNumbers(editorValue, expressions, codeMode);
+	}, [viewDefinitionContext.runError, editorValue, codeMode]);
+
 	viewDefinitionContext.issueClickRef.current = (issue) => {
 		const view = editorViewRef.current;
-		if (!view || codeMode !== "json" || !issue.expression?.length) return;
-		const offset = findJsonPathOffset(
-			view.state.doc.toString(),
-			issue.expression[0],
-		);
+		if (!view || !issue.expression?.length) return;
+		const text = view.state.doc.toString();
+		const offset =
+			codeMode === "yaml"
+				? findYamlPathOffset(text, issue.expression[0])
+				: findJsonPathOffset(text, issue.expression[0]);
 		if (offset == null) return;
 		view.dispatch({
 			selection: EditorSelection.cursor(offset),
@@ -261,6 +279,7 @@ export const CodeTabContent = () => {
 				editorValue={editorValue}
 				setEditorValue={setEditorValue}
 				viewCallback={handleViewCallback}
+				issueLineNumbers={issueLineNumbers}
 			/>
 		</div>
 	);

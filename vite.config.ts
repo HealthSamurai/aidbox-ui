@@ -9,6 +9,14 @@ export default defineConfig({
 	optimizeDeps: {
 		exclude: ["@health-samurai/aidbox-fhirpath-lsp"],
 	},
+	server: {
+		fs: {
+			allow: [
+				".",
+				"/Users/panthevm/work/aidbox-ts-sdk/packages/aidbox-fhirpath-lsp",
+			],
+		},
+	},
 	plugins: [
 		tailwindcss(),
 		tanstackRouter({
@@ -25,6 +33,10 @@ export default defineConfig({
 		alias: {
 			"@aidbox-ui": "/src",
 		},
-		dedupe: ["@codemirror/state", "@codemirror/view"],
+		dedupe: [
+			"@codemirror/autocomplete",
+			"@codemirror/state",
+			"@codemirror/view",
+		],
 	},
 });

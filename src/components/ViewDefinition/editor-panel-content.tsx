@@ -20,6 +20,7 @@ import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
+import { storeSelectedBuilderTab } from "../../routes/resource.$resourceType.create";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
@@ -550,6 +551,7 @@ export const EditorPanelContent = ({
 	const { builderTab: selectedTab } = search;
 
 	const handleOnTabSelect = (value: Types.ViewDefinitionEditorTab) => {
+		storeSelectedBuilderTab(value);
 		navigate({
 			from:
 				createSearch !== undefined

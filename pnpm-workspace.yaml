@@ -1,2 +1,3 @@
 overrides:
+  '@health-samurai/aidbox-fhirpath-lsp': link:../../Library/pnpm/global/5/node_modules/@health-samurai/aidbox-fhirpath-lsp
   '@health-samurai/react-components': link:../../Library/pnpm/global/5/node_modules/@health-samurai/react-components

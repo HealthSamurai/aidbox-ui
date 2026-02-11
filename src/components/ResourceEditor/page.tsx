@@ -1,10 +1,24 @@
-import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type {
+	OperationOutcome,
+	OperationOutcomeIssue,
+	Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import { EditorSelection } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
+import {
+	findJsonPathOffset,
+	findYamlPathOffset,
+	getIssueLineNumbers,
+} from "../../utils/json-path-offset";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton } from "./action";
@@ -130,6 +144,57 @@ export const ResourceEditorPage = ({
 		});
 	};
 
+	const editorViewRef = React.useRef<CodeEditorView | null>(null);
+
+	const [saveError, setSaveError] = React.useState<OperationOutcome | null>(
+		null,
+	);
+
+	const handleSaveError = React.useCallback((error: Error) => {
+		if (isOperationOutcome(error.cause)) {
+			setSaveError(error.cause);
+		} else {
+			setSaveError({
+				resourceType: "OperationOutcome",
+				issue: [
+					{
+						severity: "error",
+						code: "exception",
+						diagnostics: error.message,
+					},
+				],
+			});
+		}
+	}, []);
+
+	const handleIssueClick = React.useCallback(
+		(issue: OperationOutcomeIssue) => {
+			const view = editorViewRef.current;
+			if (!view || !issue.expression?.length) return;
+			const text = view.state.doc.toString();
+			const offset =
+				mode === "yaml"
+					? findYamlPathOffset(text, issue.expression[0])
+					: findJsonPathOffset(text, issue.expression[0]);
+			if (offset == null) return;
+			view.dispatch({
+				selection: EditorSelection.cursor(offset),
+				effects: EditorView.scrollIntoView(offset, { y: "center" }),
+			});
+			view.focus();
+		},
+		[mode],
+	);
+
+	const issueLineNumbers = React.useMemo(() => {
+		if (!saveError?.issue) return undefined;
+		const expressions = saveError.issue
+			.flatMap((i) => i.expression ?? [])
+			.filter(Boolean);
+		if (expressions.length === 0) return undefined;
+		return getIssueLineNumbers(resourceText, expressions, mode);
+	}, [saveError, resourceText, mode]);
+
 	const isViewDefinition = resourceType === "ViewDefinition";
 
 	const tabs = [];
@@ -149,6 +214,22 @@ export const ResourceEditorPage = ({
 		});
 	}
 
+	const editActions = (
+		<>
+			{id && (
+				<DeleteButton client={client} resourceType={resourceType} id={id} />
+			)}
+			<SaveButton
+				resourceType={resourceType}
+				id={id}
+				resource={resourceText}
+				mode={mode}
+				client={client}
+				onError={handleSaveError}
+			/>
+		</>
+	);
+
 	tabs.push({
 		trigger: <HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>,
 		content: (
@@ -161,6 +242,7 @@ export const ResourceEditorPage = ({
 					defaultResourceText={resourceText}
 					setResourceText={(text: string) => {
 						setResourceText(text);
+						setSaveError(null);
 						try {
 							const parsed =
 								mode === "yaml" ? YAML.load(text) : JSON.parse(text);
@@ -169,6 +251,13 @@ export const ResourceEditorPage = ({
 							// again, keeps text as-is if parsing failed
 						}
 					}}
+					viewCallback={(view) => {
+						editorViewRef.current = view;
+					}}
+					actions={editActions}
+					saveError={saveError}
+					onIssueClick={handleIssueClick}
+					issueLineNumbers={issueLineNumbers}
 					resourceType={resourceType}
 					storageKey="resourceEditor-profileOpen"
 					autoSaveId="resource-editor-horizontal-panel"
@@ -176,20 +265,6 @@ export const ResourceEditorPage = ({
 			</HSComp.TabsContent>
 		),
 	});
-
-	const actions = [
-		{
-			content: (
-				<SaveButton
-					resourceType={resourceType}
-					id={id}
-					resource={resourceText}
-					mode={mode}
-					client={client}
-				/>
-			),
-		},
-	];
 
 	if (id) {
 		tabs.push({
@@ -200,17 +275,14 @@ export const ResourceEditorPage = ({
 				</HSComp.TabsContent>
 			),
 		});
-		actions.push({
-			content: (
-				<DeleteButton client={client} resourceType={resourceType} id={id} />
-			),
-		});
 	}
 
-	const handleOnTabSelect = (value: ResourceEditorTab) =>
+	const handleOnTabSelect = (value: ResourceEditorTab) => {
+		storeSelectedTab(value);
 		navigate({
 			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
 		});
+	};
 
 	const content = (
 		<HSComp.Tabs
@@ -218,11 +290,8 @@ export const ResourceEditorPage = ({
 			onValueChange={handleOnTabSelect}
 			className="grow min-h-0"
 		>
-			<div className="flex items-center justify-between bg-bg-primary px-4 border-b h-10 flex-none">
+			<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
 				<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-				<div className="flex items-center gap-3">
-					{actions.map((a) => a.content)}
-				</div>
 			</div>
 			{tabs.map((t) => t.content)}
 		</HSComp.Tabs>
