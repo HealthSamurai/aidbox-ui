@@ -1,7 +1,7 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import { CodeEditor } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
@@ -51,7 +51,9 @@ export function SQLTab() {
 
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 
-	const viewDefinition = viewDefinitionContext.viewDefinition;
+	// Snapshot at mount time — the component remounts on each tab switch
+	// (no forceMount), so this always reflects the latest state on entry.
+	const [viewDefinition] = useState(() => viewDefinitionContext.viewDefinition);
 
 	const { isLoading, data, status, error } = useQuery({
 		queryKey: [viewDefinition, Constants.PageID, "sql-tab"],
