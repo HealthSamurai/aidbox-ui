@@ -43,7 +43,7 @@ const ResourcesTabContentContext =
 export const ResourcePageTabList = () => {
 	return (
 		<div className="border-b w-full h-10">
-			<HSComp.TabsList className="px-1">
+			<HSComp.TabsList className="px-4">
 				<HSComp.TabsTrigger value="resources">Instances</HSComp.TabsTrigger>
 				<HSComp.TabsTrigger value="profiles">Profiles</HSComp.TabsTrigger>
 				<HSComp.TabsTrigger value="extensions">
@@ -86,7 +86,7 @@ export const ResourcesTabCreateButton = () => {
 
 	return (
 		<Router.Link
-			to="/resource/$resourceType/create"
+			to="/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
 			search={{ tab: "code", mode: "json" }}
 		>
@@ -221,9 +221,15 @@ export const ResourcesTabTable = ({
 
 	if (!data || !data.resources || data.resources.length === 0) {
 		return (
-			<div className="flex items-center justify-center h-full text-text-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">No resources found</div>
+			<div className="flex items-center justify-center h-full">
+				<div className="flex flex-col items-center gap-4">
+					<div className="flex flex-col items-center gap-2">
+						<img src="/no-resources.svg" alt="" />
+						<span className="text-lg font-semibold">No resources found</span>
+					</div>
+					<span className="text-text-secondary">
+						If you feel lonely create a new resource
+					</span>
 				</div>
 			</div>
 		);
@@ -310,7 +316,7 @@ export const ResourcesTabTable = ({
 							<HSComp.TableCell type="link">
 								<Router.Link
 									className="text-text-link hover:underline"
-									to="/resource/$resourceType/edit/$id"
+									to="/$resourceType/edit/$id"
 									search={{ tab: "code", mode: "json" }}
 									params={{
 										resourceType: resourcesPageContext.resourceType,
@@ -932,7 +938,7 @@ const SearchParametersTabContent = ({
 							<HSComp.TableCell type="link">
 								<Router.Link
 									className="text-text-link hover:underline"
-									to="/resource/$resourceType/edit/$id"
+									to="/$resourceType/edit/$id"
 									search={{ tab: "code", mode: "json" }}
 									params={{
 										resourceType: "SearchParameter",

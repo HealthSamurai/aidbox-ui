@@ -5,7 +5,7 @@
 
 /* Show pin button on table row hover */
 tr:hover .pin-button {
-	opacity: 1 !important;
+	opacity: 0.5 !important;
 }
 
 /* Fix CodeMirror tooltip containers inheriting padding from baseTheme in react-components.

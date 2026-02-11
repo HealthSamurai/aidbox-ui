@@ -253,7 +253,7 @@ type RunResult = {
 };
 
 export const useViewDefinitionActions = (client: AidboxClientR5) => {
-	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
+	const navigate = useNavigate({ from: "/_resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -306,7 +306,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 				);
 
 			navigate({
-				to: "/resource/$resourceType/edit/$id",
+				to: "/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
 				search: { tab: "edit", mode: "json" },
 			});
@@ -477,7 +477,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 				style: { margin: "1rem" },
 			});
 			navigate({
-				to: "/resource/$resourceType",
+				to: "/$resourceType",
 				params: { resourceType: "ViewDefinition" },
 			});
 		},
@@ -536,11 +536,11 @@ export const EditorPanelContent = ({
 	const navigate = useNavigate();
 
 	const createSearch = useSearch({
-		from: "/resource/$resourceType/create",
+		from: "/_resource/$resourceType/create",
 		shouldThrow: false,
 	});
 	const editSearch = useSearch({
-		from: "/resource/$resourceType/edit/$id",
+		from: "/_resource/$resourceType/edit/$id",
 		shouldThrow: false,
 	});
 	const search = createSearch || editSearch;
@@ -555,8 +555,8 @@ export const EditorPanelContent = ({
 		navigate({
 			from:
 				createSearch !== undefined
-					? "/resource/$resourceType/create"
-					: "/resource/$resourceType/edit/$id",
+					? "/_resource/$resourceType/create"
+					: "/_resource/$resourceType/edit/$id",
 			search: (prev: Record<string, unknown>) => ({
 				...prev,
 				builderTab: value,

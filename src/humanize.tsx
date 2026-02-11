@@ -593,7 +593,7 @@ function humanizeValue_(
 				return (
 					<HumanizedValue tooltip={JSON.stringify(humanizedValue, null, " ")}>
 						<Link
-							to={`/resource/$resourceType`}
+							to={`/$resourceType`}
 							params={{ resourceType: rt }}
 							search={{ identifier: identifierParam }}
 							onClick={(e) => {
