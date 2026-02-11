@@ -210,11 +210,23 @@ export const ResourcesTabTable = ({
 	);
 
 	if (resourcesTabContentContext.resourcesLoading) {
-		return <div>Loading...</div>;
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Loading...</div>
+				</div>
+			</div>
+		);
 	}
 
 	if (!data || !data.resources || data.resources.length === 0) {
-		return <div>No resources found</div>;
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No resources found</div>
+				</div>
+			</div>
+		);
 	}
 
 	const { resources, resourceKeys, snapshot } = data;
@@ -708,11 +720,23 @@ const ProfilesTabContent = ({
 	});
 
 	if (isLoading) {
-		return <div>Loading...</div>;
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Loading...</div>
+				</div>
+			</div>
+		);
 	}
 
 	if (!data || Object.keys(data).length === 0) {
-		return <div>No profiles found</div>;
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No profiles found</div>
+				</div>
+			</div>
+		);
 	}
 
 	const schemas = Object.values(data);
@@ -881,7 +905,13 @@ const SearchParametersTabContent = ({
 	}
 
 	if (!data || data.length === 0) {
-		return <div>No search parameters found</div>;
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No search parameters found</div>
+				</div>
+			</div>
+		);
 	}
 
 	return (
