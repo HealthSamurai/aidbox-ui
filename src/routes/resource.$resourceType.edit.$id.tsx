@@ -12,7 +12,7 @@ const PageComponent = () => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/edit/$id" });
 	const { tab, mode } = useSearch({
 		from: "/resource/$resourceType/edit/$id",
-	})
+	});
 	const { resourceType } = useMatch({
 		from: "/resource/$resourceType/edit/$id",
 	}).params;
@@ -24,7 +24,7 @@ const PageComponent = () => {
 			mode={mode}
 			navigate={navigate}
 		/>
-	)
+	);
 };
 
 export const Route = createFileRoute("/resource/$resourceType/edit/$id")({

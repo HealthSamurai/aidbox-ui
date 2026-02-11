@@ -114,7 +114,7 @@ const PageComponent = () => {
 			mode={mode}
 			navigate={navigate}
 		/>
-	)
+	);
 };
 
 const TITLE = "Create";

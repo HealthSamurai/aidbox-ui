@@ -178,7 +178,7 @@ export function ExampleTabContent() {
 	};
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex flex-col flex-1 min-h-0">
 			<SearchBar
 				handleSearch={(q?: string) => {
 					setQuery(q || "");
@@ -188,7 +188,7 @@ export function ExampleTabContent() {
 				}}
 				isLoadingExample={isLoading}
 			/>
-			<div className="flex-1 overflow-auto">
+			<div className="flex-1 overflow-auto min-h-0">
 				{isLoadingViewDef ? (
 					<div className="flex items-center justify-center h-full text-text-secondary">
 						<div className="text-center">
@@ -206,7 +206,7 @@ export function ExampleTabContent() {
 				) : (
 					<div className="relative h-full w-full">
 						{exampleResource ? (
-							<div>
+							<>
 								<div className="absolute top-2 right-3 z-10">
 									<ExampleTabEditorMenu
 										mode={exampleMode}
@@ -227,9 +227,9 @@ export function ExampleTabContent() {
 									}
 									mode={exampleMode}
 								/>
-							</div>
+							</>
 						) : status === "error" ? (
-							<div>
+							<>
 								<div className="absolute top-2 right-3 z-10">
 									<ExampleTabEditorMenu
 										mode={exampleMode}
@@ -250,7 +250,7 @@ export function ExampleTabContent() {
 									}
 									mode={exampleMode}
 								/>
-							</div>
+							</>
 						) : (
 							<div className="flex items-center justify-center h-full text-text-secondary">
 								<div className="text-center">
