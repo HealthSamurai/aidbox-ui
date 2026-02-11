@@ -192,8 +192,11 @@ const ResultContent = ({
 				<Table zebra stickyHeader>
 					<TableHeader>
 						<TableRow>
-							{columns.map((key) => (
-								<TableHead key={key} className="px-6 hover:bg-transparent">
+							{columns.map((key, i) => (
+								<TableHead
+									key={key}
+									className={`px-6 hover:bg-transparent ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
+								>
 									{key.charAt(0).toUpperCase() + key.slice(1)}
 								</TableHead>
 							))}
@@ -202,8 +205,11 @@ const ResultContent = ({
 					<TableBody className="[&_tr]:hover:bg-transparent">
 						{displayData.map((row, index) => (
 							<TableRow key={index} zebra index={index}>
-								{columns.map((key) => (
-									<TableCell key={key} className="px-6">
+								{columns.map((key, i) => (
+									<TableCell
+										key={key}
+										className={`px-6 ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
+									>
 										{row[SKELETON_MARKER] ? (
 											<Skeleton className="h-4 w-3/4" />
 										) : (
