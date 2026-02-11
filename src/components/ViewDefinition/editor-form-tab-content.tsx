@@ -8,14 +8,12 @@ import type {
 } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import {
 	Button,
-	Checkbox,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 	Input,
 	type ItemInstance,
-	MultiCombobox,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -57,17 +55,8 @@ type ItemMeta = {
 		| "where-value"
 		| "properties"
 		| "name"
-		| "title"
-		| "description"
 		| "status"
-		| "url"
-		| "publisher"
-		| "copyright"
-		| "experimental"
-		| "fhir version"
-		| "identifier"
-		| "system"
-		| "value"
+		| "resource"
 		| "constant"
 		| "constant-add"
 		| "where"
@@ -481,47 +470,9 @@ export const FormTabContent = () => {
 		updateViewDefinition(undefined, undefined, { name });
 	};
 
-	// Function to update title field
-	const updateTitle = (title: string) => {
-		updateViewDefinition(undefined, undefined, { title });
-	};
-
-	// Function to update description field
-	const updateDescription = (description: string) => {
-		updateViewDefinition(undefined, undefined, { description });
-	};
-
 	// Function to update status field
 	const updateStatus = (status: CanonicalResource["status"]) => {
 		updateViewDefinition(undefined, undefined, { status });
-	};
-
-	// Function to update url field
-	const updateUrl = (url: string) => {
-		updateViewDefinition(undefined, undefined, { url });
-	};
-
-	// Function to update publisher field
-	const updatePublisher = (publisher: string) => {
-		updateViewDefinition(undefined, undefined, { publisher });
-	};
-
-	// Function to update copyright field
-	const updateCopyright = (copyright: string) => {
-		updateViewDefinition(undefined, undefined, { copyright });
-	};
-
-	// Function to update experimental field
-	const updateExperimental = (experimental: boolean) => {
-		updateViewDefinition(undefined, undefined, { experimental });
-	};
-
-	// Function to update fhirVersion field
-	const updateFhirVersions = (fhirVersions: ViewDefinition["fhirVersion"]) => {
-		updateViewDefinition(undefined, undefined, {
-			fhirVersion:
-				fhirVersions && fhirVersions.length > 0 ? fhirVersions : undefined,
-		});
 	};
 
 	// Function to add a new select item
@@ -831,19 +782,7 @@ export const FormTabContent = () => {
 				meta: {
 					type: "properties",
 				},
-				children: [
-					"_resource",
-					"_name",
-					"_title",
-					"_description",
-					"_status",
-					"_url",
-					"_publisher",
-					"_copyright",
-					"_experimental",
-					"_fhirVersion",
-					"_identifier",
-				],
+				children: ["_resource", "_status", "_name"],
 			},
 			_resource: {
 				name: "_resource",
@@ -857,71 +796,10 @@ export const FormTabContent = () => {
 					type: "name",
 				},
 			},
-			_title: {
-				name: "_title",
-				meta: {
-					type: "title",
-				},
-			},
-			_description: {
-				name: "_description",
-				meta: {
-					type: "description",
-				},
-			},
 			_status: {
 				name: "_status",
 				meta: {
 					type: "status",
-				},
-			},
-			_url: {
-				name: "_url",
-				meta: {
-					type: "url",
-				},
-			},
-			_publisher: {
-				name: "_publisher",
-				meta: {
-					type: "publisher",
-				},
-			},
-			_copyright: {
-				name: "_copyright",
-				meta: {
-					type: "copyright",
-				},
-			},
-			_experimental: {
-				name: "_experimental",
-				meta: {
-					type: "experimental",
-				},
-			},
-			_fhirVersion: {
-				name: "_fhirVersion",
-				meta: {
-					type: "fhir version",
-				},
-			},
-			_identifier: {
-				name: "_identifier",
-				children: ["_identifier_system", "_identifier_value"],
-				meta: {
-					type: "identifier",
-				},
-			},
-			_identifier_system: {
-				name: "_identifier_system",
-				meta: {
-					type: "system",
-				},
-			},
-			_identifier_value: {
-				name: "_identifier_value",
-				meta: {
-					type: "value",
 				},
 			},
 			_constant: {
@@ -1197,17 +1075,7 @@ export const FormTabContent = () => {
 		} else if (
 			metaType === "resource" ||
 			metaType === "name" ||
-			metaType === "title" ||
-			metaType === "description" ||
-			metaType === "status" ||
-			metaType === "url" ||
-			metaType === "publisher" ||
-			metaType === "copyright" ||
-			metaType === "experimental" ||
-			metaType === "fhir version" ||
-			metaType === "system" ||
-			metaType === "value" ||
-			metaType === "identifier"
+			metaType === "status"
 		)
 			additionalClass = "text-blue-500 bg-blue-100";
 
@@ -1289,32 +1157,6 @@ export const FormTabContent = () => {
 						</div>
 					</div>
 				);
-			case "title":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Title"
-								value={viewDefinition?.title || ""}
-								onChange={(value) => updateTitle(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "description":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Description"
-								value={viewDefinition?.description || ""}
-								onChange={(value) => updateDescription(value)}
-							/>
-						</div>
-					</div>
-				);
 			case "status":
 				return (
 					<div className="flex w-full items-center justify-between">
@@ -1336,146 +1178,6 @@ export const FormTabContent = () => {
 									<SelectItem value="unknown">unknown</SelectItem>
 								</SelectContent>
 							</Select>
-						</div>
-					</div>
-				);
-			case "url":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="URL"
-								value={viewDefinition?.url || ""}
-								onChange={(value) => updateUrl(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "publisher":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Publisher"
-								value={viewDefinition?.publisher || ""}
-								onChange={(value) => updatePublisher(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "copyright":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Copyright"
-								value={viewDefinition?.copyright || ""}
-								onChange={(value) => updateCopyright(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "experimental":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%] flex items-center pl-2">
-							<Checkbox
-								checked={viewDefinition?.experimental || false}
-								onCheckedChange={(checked) =>
-									updateExperimental(checked === true)
-								}
-							/>
-						</div>
-					</div>
-				);
-			case "fhir version": {
-				const fhirVersionOptions = [
-					{ value: "6.0.0-ballot3", label: "6.0.0-ballot3" },
-					{ value: "6.0.0-ballot2", label: "6.0.0-ballot2" },
-					{ value: "6.0.0-ballot1", label: "6.0.0-ballot1" },
-					{ value: "5.0.0", label: "5.0.0" },
-					{ value: "5.0.0-draft-final", label: "5.0.0-draft-final" },
-					{ value: "5.0.0-snapshot3", label: "5.0.0-snapshot3" },
-					{ value: "5.0.0-ballot", label: "5.0.0-ballot" },
-					{ value: "5.0.0-snapshot1", label: "5.0.0-snapshot1" },
-					{ value: "4.6.0", label: "4.6.0" },
-					{ value: "4.5.0", label: "4.5.0" },
-					{ value: "4.4.0", label: "4.4.0" },
-					{ value: "4.3.0", label: "4.3.0" },
-					{ value: "4.3.0-snapshot1", label: "4.3.0-snapshot1" },
-					{ value: "4.2.0", label: "4.2.0" },
-					{ value: "4.1.0", label: "4.1.0" },
-					{ value: "4.0.1", label: "4.0.1" },
-					{ value: "4.0.0", label: "4.0.0" },
-					{ value: "3.5a.0", label: "3.5a.0" },
-					{ value: "3.5.0", label: "3.5.0" },
-					{ value: "3.3.0", label: "3.3.0" },
-					{ value: "3.2.0", label: "3.2.0" },
-					{ value: "3.0.2", label: "3.0.2" },
-					{ value: "3.0.1", label: "3.0.1" },
-					{ value: "3.0.0", label: "3.0.0" },
-				];
-				const selectedVersions = viewDefinition?.fhirVersion || [];
-
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<MultiCombobox
-								options={fhirVersionOptions}
-								value={selectedVersions}
-								onValueChange={(props: string[]) =>
-									updateFhirVersions(props as ViewDefinition["fhirVersion"])
-								}
-								placeholder="Select FHIR versions"
-								searchPlaceholder="Search versions..."
-								className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary"
-							/>
-						</div>
-					</div>
-				);
-			}
-			case "identifier":
-				return <div>{labelView(item)}</div>;
-			case "system":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Identifier system"
-								value={viewDefinition?.identifier?.[0]?.system || ""}
-								onChange={(value) => {
-									const currentIdentifier =
-										viewDefinition?.identifier?.[0] || {};
-									updateViewDefinition(undefined, undefined, {
-										identifier: [{ ...currentIdentifier, system: value }],
-									});
-								}}
-							/>
-						</div>
-					</div>
-				);
-			case "value":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Identifier value"
-								value={viewDefinition?.identifier?.[0]?.value || ""}
-								onChange={(value) => {
-									const currentIdentifier =
-										viewDefinition?.identifier?.[0] || {};
-									updateViewDefinition(undefined, undefined, {
-										identifier: [{ ...currentIdentifier, value }],
-									});
-								}}
-							/>
 						</div>
 					</div>
 				);
