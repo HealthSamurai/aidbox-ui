@@ -42,6 +42,7 @@ import {
 	ViewDefinitionContext,
 	ViewDefinitionResourceTypeContext,
 } from "./page";
+import { ResourceTypeSelect } from "./resource-type-select";
 
 type ItemMeta = {
 	type:
@@ -278,9 +279,8 @@ const InputView = ({
 export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
-	const { viewDefinitionResourceType } = React.useContext(
-		ViewDefinitionResourceTypeContext,
-	);
+	const { viewDefinitionResourceType, setViewDefinitionResourceType } =
+		React.useContext(ViewDefinitionResourceTypeContext);
 
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
@@ -468,6 +468,12 @@ export const FormTabContent = () => {
 		const updatedWhere = whereConditions.filter((w) => w.nodeId !== id);
 		setWhereConditions(updatedWhere);
 		updateViewDefinition(undefined, updatedWhere);
+	};
+
+	// Function to update resource type
+	const updateResource = (resource: string) => {
+		setViewDefinitionResourceType(resource);
+		updateViewDefinition(undefined, undefined, { resource });
 	};
 
 	// Function to update name field
@@ -826,6 +832,7 @@ export const FormTabContent = () => {
 					type: "properties",
 				},
 				children: [
+					"_resource",
 					"_name",
 					"_title",
 					"_description",
@@ -837,6 +844,12 @@ export const FormTabContent = () => {
 					"_fhirVersion",
 					"_identifier",
 				],
+			},
+			_resource: {
+				name: "_resource",
+				meta: {
+					type: "resource",
+				},
 			},
 			_name: {
 				name: "_name",
@@ -1175,7 +1188,6 @@ export const FormTabContent = () => {
 				additionalClass = "text-[#E07B39] bg-[#FFF4EC]";
 			}
 		} else if (
-			metaType === "resource" ||
 			metaType === "constant" ||
 			metaType === "select" ||
 			metaType === "where" ||
@@ -1183,6 +1195,7 @@ export const FormTabContent = () => {
 		) {
 			additionalClass = "text-blue-500 px-1!";
 		} else if (
+			metaType === "resource" ||
 			metaType === "name" ||
 			metaType === "title" ||
 			metaType === "description" ||
@@ -1254,6 +1267,15 @@ export const FormTabContent = () => {
 		};
 
 		switch (metaType) {
+			case "resource":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<ResourceTypeSelect onChange={updateResource} />
+						</div>
+					</div>
+				);
 			case "name":
 				return (
 					<div className="flex w-full items-center justify-between">

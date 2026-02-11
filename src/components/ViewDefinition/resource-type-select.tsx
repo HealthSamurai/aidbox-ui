@@ -22,7 +22,11 @@ const fetchResourceTypes = async (client: AidboxClientR5) => {
 	return await result.value.response.json();
 };
 
-export const ResourceTypeSelect = () => {
+export const ResourceTypeSelect = ({
+	onChange,
+}: {
+	onChange?: (value: string) => void;
+}) => {
 	const client = useAidboxClient();
 
 	const viewDefinitionResourceTypeContext = React.useContext(
@@ -49,11 +53,14 @@ export const ResourceTypeSelect = () => {
 
 	const handleOnSelect = React.useCallback(
 		(value: string) => {
-			if (currentResourceType) {
+			if (onChange) {
+				onChange(value);
+			} else if (currentResourceType) {
 				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(value);
 			}
 		},
 		[
+			onChange,
 			currentResourceType,
 			viewDefinitionResourceTypeContext.setViewDefinitionResourceType,
 		],
@@ -63,10 +70,14 @@ export const ResourceTypeSelect = () => {
 		return <HSComp.Skeleton className="rounded-full min-w-21 h-6" />;
 
 	return (
-		<HSComp.ButtonDropdown
+		<HSComp.Combobox
 			options={comboboxOptions}
-			onSelectItem={handleOnSelect}
-			{...(currentResourceType ? { selectedValue: currentResourceType } : {})}
+			value={currentResourceType}
+			onValueChange={handleOnSelect}
+			placeholder="Select resource type..."
+			searchPlaceholder="Search resource types..."
+			emptyText="No resource types found."
+			className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary"
 		/>
 	);
 };
