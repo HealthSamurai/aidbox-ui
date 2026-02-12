@@ -82,6 +82,7 @@ export const ResourcesTabSarchInput = () => {
 	return (
 		<div className="relative flex-1 min-w-0">
 			<HSComp.Input
+				key={decodedSearchQuery}
 				ref={inputRef}
 				autoFocus
 				type="text"
@@ -333,7 +334,11 @@ export const ResourcesTabTable = ({
 							</HSComp.TableHead>
 						</HSComp.TooltipTrigger>
 						{hasIndex === false && (
-							<HSComp.TooltipContent className="bg-bg-warning-primary_inverse text-text-warning-primary">
+							<HSComp.TooltipContent
+								side="bottom"
+								align="start"
+								className="bg-bg-warning-primary_inverse text-text-warning-primary"
+							>
 								Sort might be slow — no index for &apos;_lastUpdated&apos;
 							</HSComp.TooltipContent>
 						)}
@@ -654,6 +659,11 @@ const ResourcesTabContent = ({
 		navigate({ to: ".", search: { searchQuery: btoa(params.toString()) } });
 	};
 
+	const { data: schema } = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "default-schema", resourceType],
+		queryFn: () => fetchDefaultSchema(client, resourceType),
+	});
+
 	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
 		queryFn: async () => {
@@ -672,7 +682,6 @@ const ResourcesTabContent = ({
 			const resources =
 				bundle?.entry?.flatMap(({ resource }) => (resource ? resource : [])) ??
 				[];
-			const schema = await fetchDefaultSchema(client, resourceType);
 			return { ...resourcesWithKeys(schema, resources), total };
 		},
 		retry: false,
