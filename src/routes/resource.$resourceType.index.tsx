@@ -8,7 +8,7 @@ export const Route = createFileRoute("/resource/$resourceType/")({
 		title: "View Definition",
 	},
 	validateSearch: (search) => {
-		const res: { searchQuery?: string; identifier?: string } = {};
+		const res: { searchQuery?: string; identifier?: string; tab?: string } = {};
 
 		if (typeof search.searchQuery === "string") {
 			res.searchQuery = search.searchQuery;
@@ -16,6 +16,10 @@ export const Route = createFileRoute("/resource/$resourceType/")({
 
 		if (typeof search.identifier === "string") {
 			res.identifier = search.identifier;
+		}
+
+		if (typeof search.tab === "string") {
+			res.tab = search.tab;
 		}
 
 		return res;

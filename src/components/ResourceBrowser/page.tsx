@@ -785,14 +785,12 @@ const ProfilesTabContent = ({
 					<HSComp.TableHead>URL</HSComp.TableHead>
 					<HSComp.TableHead className="w-[100px]">Name</HSComp.TableHead>
 					<HSComp.TableHead className="w-[80px]">Version</HSComp.TableHead>
-					<HSComp.TableHead className="w-[80px]">IG</HSComp.TableHead>
 					<HSComp.TableHead className="w-[80px]">Default</HSComp.TableHead>
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
 			<HSComp.TableBody>
 				{schemas.map((schema, index) => {
 					const entity = schema.entity;
-					const ig = entity ? `${entity.name}#${entity.version}` : "-";
 					return (
 						<HSComp.TableRow
 							key={entity?.url ?? index}
@@ -810,7 +808,6 @@ const ProfilesTabContent = ({
 							<HSComp.TableCell className="w-[80px]">
 								{entity?.version || "-"}
 							</HSComp.TableCell>
-							<HSComp.TableCell className="w-[80px]">{ig}</HSComp.TableCell>
 							<HSComp.TableCell className="w-[80px]">
 								{schema["default?"] ? "Default" : "-"}
 							</HSComp.TableCell>
@@ -995,9 +992,19 @@ export const ResourcesPage = ({
 	client,
 	resourceType,
 }: Types.ResourcesPageProps) => {
+	const navigate = Router.useNavigate();
+	const search = Router.useSearch({ strict: false });
+	const currentTab = (search as { tab?: string }).tab || "resources";
+
+	const handleTabChange = (value: string) => {
+		navigate({
+			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
+		});
+	};
+
 	return (
 		<ResourcesPageContext.Provider value={{ resourceType }}>
-			<HSComp.Tabs defaultValue="resources">
+			<HSComp.Tabs value={currentTab} onValueChange={handleTabChange}>
 				<ResourcePageTabList />
 				<HSComp.TabsContent value="resources" className="overflow-hidden">
 					<ResourcesTabContent client={client} resourceType={resourceType} />

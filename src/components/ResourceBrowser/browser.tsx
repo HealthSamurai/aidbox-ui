@@ -36,16 +36,22 @@ function ResourceList({
 	favorites,
 	onToggleFavorite,
 	isLoading,
-	firstLinkRef,
+	focusedIndex,
 }: {
 	tableData: ResourceRow[];
 	filterQuery: string;
 	favorites: Set<string>;
 	onToggleFavorite: (resourceType: string) => void;
 	isLoading: boolean;
-	firstLinkRef: React.RefObject<HTMLAnchorElement | null>;
+	focusedIndex: number;
 }) {
 	const navigate = useNavigate();
+	const focusedRowRef = React.useRef<HTMLTableRowElement | null>(null);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: focusedIndex triggers scroll
+	React.useEffect(() => {
+		focusedRowRef.current?.scrollIntoView({ block: "nearest" });
+	}, [focusedIndex]);
 
 	const filteredData = useMemo(() => {
 		if (!filterQuery) return tableData;
@@ -88,14 +94,14 @@ function ResourceList({
 								!favorites.has(filteredData[index + 1].resourceType));
 						return (
 							<HSComp.TableRow
+								ref={index === focusedIndex ? focusedRowRef : undefined}
 								key={row.resourceType}
 								zebra
 								index={index}
-								className={
-									isLastFavorite
-										? "border-b border-border-secondary"
-										: undefined
-								}
+								className={HSComp.cn(
+									isLastFavorite && "border-b border-border-secondary",
+									index === focusedIndex && "bg-bg-hover",
+								)}
 							>
 								<HSComp.TableCell
 									className="w-8 align-middle text-center cursor-pointer"
@@ -112,7 +118,6 @@ function ResourceList({
 								</HSComp.TableCell>
 								<HSComp.TableCell className="w-52 min-w-52 max-w-52">
 									<a
-										ref={index === 0 ? firstLinkRef : undefined}
 										href={`/u/resource/${row.resourceType}`}
 										onClick={(e) => {
 											e.preventDefault();
@@ -204,7 +209,13 @@ export function Browser() {
 		);
 	}, [allTableData, filterQuery]);
 
-	const firstLinkRef = React.useRef<HTMLAnchorElement | null>(null);
+	const [focusedIndex, setFocusedIndex] = useState(-1);
+	const navigate = useNavigate();
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset focus on filter change
+	React.useEffect(() => {
+		setFocusedIndex(-1);
+	}, [filterQuery]);
 
 	const toggleFavorite = useMemo(
 		() => (resourceType: string) => {
@@ -219,9 +230,22 @@ export function Browser() {
 	);
 
 	const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === "Tab" && !e.shiftKey && firstLinkRef.current) {
+		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
 			e.preventDefault();
-			firstLinkRef.current.focus();
+			setFocusedIndex((prev) => Math.min(prev + 1, filteredData.length - 1));
+		} else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((prev) => Math.max(prev - 1, -1));
+		} else if (
+			e.key === "Enter" &&
+			focusedIndex >= 0 &&
+			focusedIndex < filteredData.length
+		) {
+			e.preventDefault();
+			navigate({
+				to: "/resource/$resourceType",
+				params: { resourceType: filteredData[focusedIndex].resourceType },
+			});
 		}
 	};
 
@@ -271,7 +295,7 @@ export function Browser() {
 						favorites={favorites}
 						onToggleFavorite={toggleFavorite}
 						isLoading={isLoading}
-						firstLinkRef={firstLinkRef}
+						focusedIndex={focusedIndex}
 					/>
 				)}
 			</div>
