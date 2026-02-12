@@ -60,6 +60,29 @@ function processHistory(history: Bundle): VersionEntry[] {
 	return entries?.result.reverse() || [];
 }
 
+function deepSortObject(value: unknown): unknown {
+	const root = structuredClone(value);
+	const stack: unknown[] = [root];
+	while (stack.length > 0) {
+		const current = stack.pop();
+		if (Array.isArray(current)) {
+			current.forEach((item) => stack.push(item));
+		} else if (current !== null && typeof current === "object") {
+			const obj = current as Record<string, unknown>;
+			const sorted = Object.keys(obj)
+				.sort()
+				.reduce<Record<string, unknown>>((acc, k) => {
+					acc[k] = obj[k];
+					stack.push(obj[k]);
+					return acc;
+				}, {});
+			Object.keys(obj).forEach((k) => delete obj[k]);
+			Object.assign(obj, sorted);
+		}
+	}
+	return root;
+}
+
 export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -105,9 +128,17 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		if (!selectedVersion?.resourcePrevious) return null;
 		const file = generateDiffFile(
 			"prev.json",
-			JSON.stringify(selectedVersion.resourcePrevious, null, "  "),
+			JSON.stringify(
+				deepSortObject(selectedVersion.resourcePrevious),
+				null,
+				"  ",
+			),
 			"current.json",
-			JSON.stringify(selectedVersion.resourceCurrent, null, "  "),
+			JSON.stringify(
+				deepSortObject(selectedVersion.resourceCurrent),
+				null,
+				"  ",
+			),
 			"json",
 			"json",
 		);
