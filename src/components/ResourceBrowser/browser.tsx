@@ -37,6 +37,8 @@ function ResourceList({
 	onToggleFavorite,
 	isLoading,
 	focusedIndex,
+	sort,
+	onSort,
 }: {
 	tableData: ResourceRow[];
 	filterQuery: string;
@@ -44,6 +46,8 @@ function ResourceList({
 	onToggleFavorite: (resourceType: string) => void;
 	isLoading: boolean;
 	focusedIndex: number;
+	sort: SortState;
+	onSort: (column: SortColumn) => void;
 }) {
 	const navigate = useNavigate();
 	const focusedRowRef = React.useRef<HTMLTableRowElement | null>(null);
@@ -76,10 +80,21 @@ function ResourceList({
 							<HSComp.PinIcon />
 						</span>
 					</HSComp.TableHead>
-					<HSComp.TableHead className="w-52 min-w-52 max-w-52">
+					<HSComp.TableHead
+						className="w-52 min-w-52 max-w-52"
+						sortable
+						sorted={sort.column === "resourceType" && sort.direction}
+						onClick={() => onSort("resourceType")}
+					>
 						Resource type
 					</HSComp.TableHead>
-					<HSComp.TableHead>Default profile</HSComp.TableHead>
+					<HSComp.TableHead
+						sortable
+						sorted={sort.column === "defaultProfile" && sort.direction}
+						onClick={() => onSort("defaultProfile")}
+					>
+						Default profile
+					</HSComp.TableHead>
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
 			<HSComp.TableBody>
@@ -172,9 +187,14 @@ function useResourceData(client: AidboxClientR5) {
 	});
 }
 
+type SortColumn = "resourceType" | "defaultProfile";
+type SortDirection = "asc" | "desc";
+type SortState = { column: SortColumn; direction: SortDirection };
+
 function useSortedData(
 	data: ResourceRow[] | undefined,
 	favorites: Set<string>,
+	sort: SortState,
 ): ResourceRow[] {
 	return useMemo(() => {
 		if (!data) return [];
@@ -182,9 +202,10 @@ function useSortedData(
 			const aFav = favorites.has(a.resourceType);
 			const bFav = favorites.has(b.resourceType);
 			if (aFav !== bFav) return aFav ? -1 : 1;
-			return a.resourceType.localeCompare(b.resourceType);
+			const cmp = a[sort.column].localeCompare(b[sort.column]);
+			return sort.direction === "asc" ? cmp : -cmp;
 		});
-	}, [data, favorites]);
+	}, [data, favorites, sort]);
 }
 
 export function Browser() {
@@ -198,8 +219,21 @@ export function Browser() {
 
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
 
+	const [sort, setSort] = useState<SortState>({
+		column: "resourceType",
+		direction: "asc",
+	});
+
+	const handleSort = (column: SortColumn) => {
+		setSort((prev) =>
+			prev.column === column
+				? { column, direction: prev.direction === "asc" ? "desc" : "asc" }
+				: { column, direction: "asc" },
+		);
+	};
+
 	const { data, isLoading } = useResourceData(client);
-	const allTableData = useSortedData(data, favorites);
+	const allTableData = useSortedData(data, favorites, sort);
 
 	const filteredData = useMemo(() => {
 		if (!filterQuery) return allTableData;
@@ -296,6 +330,8 @@ export function Browser() {
 						onToggleFavorite={toggleFavorite}
 						isLoading={isLoading}
 						focusedIndex={focusedIndex}
+						sort={sort}
+						onSort={handleSort}
 					/>
 				)}
 			</div>
