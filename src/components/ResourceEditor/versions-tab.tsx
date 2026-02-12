@@ -264,7 +264,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 					className="flex-1 overflow-auto bg-bg-secondary m-0!"
 				>
 					{selectedVersion && (
-						<div className="relative h-full w-full">
+						<div className="relative h-full w-full pt-3 bg-bg-primary">
 							<div className="absolute top-2 right-3 z-10">
 								<div className="flex items-center gap-2 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
 									<HSComp.SegmentControl
