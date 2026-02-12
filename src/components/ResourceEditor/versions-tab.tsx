@@ -8,6 +8,7 @@ import { DiffView } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view-pure.css";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as yaml from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
@@ -24,6 +25,7 @@ type VersionEntry = {
 };
 
 type ViewMode = "raw" | "diff";
+type EditorMode = "json" | "yaml";
 
 function processHistory(history: Bundle): VersionEntry[] {
 	const entries = history.entry
@@ -66,6 +68,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		string | null
 	>(null);
 	const [viewMode, setViewMode] = React.useState<ViewMode>("raw");
+	const [editorMode, setEditorMode] = React.useState<EditorMode>("json");
 	const [confirmRestore, setConfirmRestore] = React.useState(false);
 
 	const {
@@ -230,15 +233,48 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 					className="flex-1 overflow-auto bg-bg-secondary m-0!"
 				>
 					{selectedVersion && (
-						<HSComp.CodeEditor
-							readOnly
-							currentValue={JSON.stringify(
-								selectedVersion.resourceCurrent,
-								null,
-								2,
-							)}
-							mode="json"
-						/>
+						<div className="relative h-full w-full">
+							<div className="absolute top-2 right-3 z-10">
+								<div className="flex items-center gap-2 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
+									<HSComp.SegmentControl
+										value={editorMode}
+										onValueChange={(value) =>
+											setEditorMode(value as EditorMode)
+										}
+										items={[
+											{ value: "json", label: "JSON" },
+											{ value: "yaml", label: "YAML" },
+										]}
+									/>
+									<HSComp.Button variant="ghost" size="small" asChild>
+										<HSComp.CopyIcon
+											text={
+												editorMode === "yaml"
+													? yaml.dump(selectedVersion.resourceCurrent, {
+															indent: 2,
+														})
+													: JSON.stringify(
+															selectedVersion.resourceCurrent,
+															null,
+															2,
+														)
+											}
+										/>
+									</HSComp.Button>
+								</div>
+							</div>
+							<HSComp.CodeEditor
+								readOnly
+								currentValue={
+									editorMode === "yaml"
+										? yaml.dump(selectedVersion.resourceCurrent, {
+												indent: 2,
+											})
+										: JSON.stringify(selectedVersion.resourceCurrent, null, 2)
+								}
+								mode={editorMode}
+							/>
+						</div>
 					)}
 				</HSComp.TabsContent>
 				<HSComp.TabsContent
