@@ -74,9 +74,10 @@ export function InfiniteScrollSentinel({
 		}
 
 		if (!scrollEl) return;
+		const el = scrollEl;
 
 		const handleScroll = () => {
-			const { scrollTop, scrollHeight, clientHeight } = scrollEl!;
+			const { scrollTop, scrollHeight, clientHeight } = el;
 			if (scrollHeight - scrollTop - clientHeight < threshold) {
 				onLoadMoreRef.current();
 			}
@@ -84,8 +85,8 @@ export function InfiniteScrollSentinel({
 
 		handleScroll();
 
-		scrollEl.addEventListener("scroll", handleScroll, { passive: true });
-		return () => scrollEl!.removeEventListener("scroll", handleScroll);
+		el.addEventListener("scroll", handleScroll, { passive: true });
+		return () => el.removeEventListener("scroll", handleScroll);
 	}, [hasMore, isLoading, root, threshold]);
 
 	if (!hasMore) return null;

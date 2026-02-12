@@ -204,6 +204,7 @@ const ResultContent = ({
 					</TableHeader>
 					<TableBody className="[&_tr]:hover:bg-transparent">
 						{displayData.map((row, index) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
 							<TableRow key={index} zebra index={index}>
 								{columns.map((key, i) => (
 									<TableCell
@@ -271,7 +272,7 @@ export function ResultPanel({
 		pageRef.current = 1;
 		const pageSize = viewDefinitionContext.runResultPageSize || 30;
 		setHasMore(tableData.length >= pageSize);
-	}, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [tableData, initialColumns, viewDefinitionContext.runResultPageSize]);
 
 	const loadMoreMutation = useMutation({
 		mutationFn: ({

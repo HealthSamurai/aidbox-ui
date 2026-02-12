@@ -8,8 +8,7 @@ export function parseExpression(expression: string): Segment[] | null {
 
 	const segments: Segment[] = [];
 	const re = /([^.[]+)|\[(\d+)\]/g;
-	let match: RegExpExecArray | null;
-	while ((match = re.exec(rest)) !== null) {
+	for (let match = re.exec(rest); match !== null; match = re.exec(rest)) {
 		if (match[1] !== undefined) {
 			segments.push(match[1]);
 		} else if (match[2] !== undefined) {
