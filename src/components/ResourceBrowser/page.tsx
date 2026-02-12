@@ -300,6 +300,7 @@ export const ResourcesTabTable = ({
 					<HSComp.TableHead className="w-[52px] min-w-[52px]">
 						<HSComp.Checkbox
 							size="small"
+							className="border-border-primary"
 							checked={
 								allSelected ? true : someSelected ? "indeterminate" : false
 							}
@@ -337,6 +338,7 @@ export const ResourcesTabTable = ({
 							<HSComp.TableCell>
 								<HSComp.Checkbox
 									size="small"
+									className="border-border-primary"
 									checked={isSelected}
 									onCheckedChange={() => toggleOne(id)}
 									aria-label={`Select ${id}`}
