@@ -13,11 +13,19 @@ export interface ResourcesTabTableData {
 	snapshot?: Snapshot;
 }
 
+export type SortState = {
+	column: string;
+	direction: "asc" | "desc";
+} | null;
+
 export interface ResourcesTabTableProps {
 	data: ResourcesTabTableData | undefined;
 	total: number;
 	selectedIds: Set<string>;
 	setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+	sort: SortState;
+	onSortToggle: (column: string) => void;
+	hasIndex: boolean | undefined;
 }
 
 export interface ResourcesTabFooterProps {

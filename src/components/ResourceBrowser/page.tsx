@@ -228,10 +228,22 @@ const resourcesWithKeys = (
 	};
 };
 
+const sortedColumn = (
+	sort: Types.SortState,
+	column: string,
+): "asc" | "desc" | false => {
+	const sortKey = columnToSortKey(column);
+	if (sort?.column === sortKey) return sort.direction;
+	return false;
+};
+
 export const ResourcesTabTable = ({
 	data,
 	selectedIds,
 	setSelectedIds,
+	sort,
+	onSortToggle,
+	hasIndex,
 }: Types.ResourcesTabTableProps) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const resourcesTabContentContext = React.useContext(
@@ -309,11 +321,23 @@ export const ResourcesTabTable = ({
 						/>
 					</HSComp.TableHead>
 					<HSComp.TableHead className="w-0">Id</HSComp.TableHead>
-					<HSComp.TableHead
-						className={dynamicKeys.length > 0 ? "w-0" : undefined}
-					>
-						LastUpdated
-					</HSComp.TableHead>
+					<HSComp.Tooltip>
+						<HSComp.TooltipTrigger asChild>
+							<HSComp.TableHead
+								className={dynamicKeys.length > 0 ? "w-0" : undefined}
+								sortable
+								sorted={sortedColumn(sort, "lastUpdated")}
+								onClick={() => onSortToggle("lastUpdated")}
+							>
+								LastUpdated
+							</HSComp.TableHead>
+						</HSComp.TooltipTrigger>
+						{hasIndex === false && (
+							<HSComp.TooltipContent className="bg-bg-warning-primary_inverse text-text-warning-primary">
+								Sort might be slow — no index for &apos;_lastUpdated&apos;
+							</HSComp.TooltipContent>
+						)}
+					</HSComp.Tooltip>
 					{dynamicKeys.map((k, i) => (
 						<HSComp.TableHead
 							key={k}
@@ -561,6 +585,22 @@ const parseSearchParam = (
 	return val ? Number.parseInt(val, 10) || fallback : fallback;
 };
 
+const parseSortParam = (query: string): Types.SortState => {
+	const params = new URLSearchParams(query);
+	const sort = params.get("_sort");
+	if (!sort) return null;
+	if (sort.startsWith("-")) {
+		return { column: sort.slice(1), direction: "desc" };
+	}
+	return { column: sort, direction: "asc" };
+};
+
+const columnToSortKey = (column: string): string => {
+	if (column === "id") return "_id";
+	if (column === "lastUpdated") return "_lastUpdated";
+	return column;
+};
+
 const ResourcesTabContent = ({
 	client,
 	resourceType,
@@ -580,6 +620,39 @@ const ResourcesTabContent = ({
 
 	const currentPage = parseSearchParam(decodedSearchQuery, "_page", 1);
 	const pageSize = parseSearchParam(decodedSearchQuery, "_count", 30);
+	const sort = parseSortParam(decodedSearchQuery);
+
+	const { data: indexData } = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "index-for-sorting", resourceType],
+		queryFn: async () => {
+			const response = await client.rawRequest({
+				method: "POST",
+				url: "/$index-for-sorting",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					"resource-type": resourceType,
+					"sort-value": "_lastUpdated",
+				}),
+			});
+			const json = await response.response.json();
+			return json["has-index"] as boolean;
+		},
+		retry: false,
+	});
+
+	const handleSortToggle = (column: string) => {
+		const params = new URLSearchParams(decodedSearchQuery);
+		const sortKey = columnToSortKey(column);
+		if (sort?.column !== sortKey) {
+			params.set("_sort", `-${sortKey}`);
+		} else if (sort.direction === "desc") {
+			params.set("_sort", sortKey);
+		} else {
+			params.delete("_sort");
+		}
+		params.set("_page", "1");
+		navigate({ to: ".", search: { searchQuery: btoa(params.toString()) } });
+	};
 
 	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
@@ -720,6 +793,9 @@ const ResourcesTabContent = ({
 						total={total}
 						selectedIds={selectedIds}
 						setSelectedIds={setSelectedIds}
+						sort={sort}
+						onSortToggle={handleSortToggle}
+						hasIndex={indexData}
 					/>
 				</div>
 				<ResourcesTabFooter
