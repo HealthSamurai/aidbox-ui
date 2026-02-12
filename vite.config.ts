@@ -25,5 +25,11 @@ export default defineConfig({
 		alias: {
 			"@aidbox-ui": "/src",
 		},
+		// NOTE: uncomment for local development of fhirpath-lsp
+		// dedupe: [
+		// 	"@codemirror/autocomplete",
+		// 	"@codemirror/state",
+		// 	"@codemirror/view",
+		// ],
 	},
 });

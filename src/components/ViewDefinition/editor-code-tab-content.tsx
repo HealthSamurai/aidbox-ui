@@ -1,8 +1,16 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import { EditorSelection } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
+import {
+	findJsonPathOffset,
+	findYamlPathOffset,
+	getIssueLineNumbers,
+} from "../../utils/json-path-offset";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import {
 	ViewDefinitionContext,
@@ -14,10 +22,14 @@ export const ViewDefinitionCodeEditor = ({
 	codeMode,
 	editorValue,
 	setEditorValue,
+	viewCallback,
+	issueLineNumbers,
 }: {
 	codeMode: ViewDefinitionEditorMode;
 	editorValue: string;
 	setEditorValue: (value: string) => void;
+	viewCallback?: (view: CodeEditorView) => void;
+	issueLineNumbers?: number[];
 }) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResourceTypeContext = React.useContext(
@@ -66,6 +78,8 @@ export const ViewDefinitionCodeEditor = ({
 			currentValue={editorValue}
 			mode={codeMode}
 			onChange={handleEditorValueChange}
+			viewCallback={viewCallback}
+			issueLineNumbers={issueLineNumbers}
 		/>
 	);
 };
@@ -75,6 +89,11 @@ export const CodeTabContent = () => {
 	const viewDefinitionResourceTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);
+
+	const editorViewRef = React.useRef<CodeEditorView | null>(null);
+	const handleViewCallback = React.useCallback((view: CodeEditorView) => {
+		editorViewRef.current = view;
+	}, []);
 
 	const [codeMode, setCodeMode] = useLocalStorage<ViewDefinitionEditorMode>({
 		key: "viewDefinition.codeMode",
@@ -203,6 +222,32 @@ export const CodeTabContent = () => {
 		setCodeMode(newMode);
 	};
 
+	const issueLineNumbers = React.useMemo(() => {
+		const runError = viewDefinitionContext.runError;
+		if (!runError?.issue) return undefined;
+		const expressions = runError.issue
+			.flatMap((i) => i.expression ?? [])
+			.filter(Boolean);
+		if (expressions.length === 0) return undefined;
+		return getIssueLineNumbers(editorValue, expressions, codeMode);
+	}, [viewDefinitionContext.runError, editorValue, codeMode]);
+
+	viewDefinitionContext.issueClickRef.current = (issue) => {
+		const view = editorViewRef.current;
+		if (!view || !issue.expression?.length) return;
+		const text = view.state.doc.toString();
+		const offset =
+			codeMode === "yaml"
+				? findYamlPathOffset(text, issue.expression[0])
+				: findJsonPathOffset(text, issue.expression[0]);
+		if (offset == null) return;
+		view.dispatch({
+			selection: EditorSelection.cursor(offset),
+			effects: EditorView.scrollIntoView(offset, { y: "center" }),
+		});
+		view.focus();
+	};
+
 	if (
 		viewDefinitionContext.isLoadingViewDef ||
 		!viewDefinitionContext.viewDefinition ||
@@ -219,7 +264,7 @@ export const CodeTabContent = () => {
 
 	return (
 		<div className="relative h-full">
-			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
+			<div className="sticky min-h-0 h-0 flex justify-end pr-3 top-0 right-0 z-10">
 				<CodeEditorMenubar
 					mode={codeMode}
 					onModeChange={handleModeChange}
@@ -233,6 +278,8 @@ export const CodeTabContent = () => {
 				codeMode={codeMode}
 				editorValue={editorValue}
 				setEditorValue={setEditorValue}
+				viewCallback={handleViewCallback}
+				issueLineNumbers={issueLineNumbers}
 			/>
 		</div>
 	);

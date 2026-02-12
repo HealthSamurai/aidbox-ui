@@ -1,26 +1,40 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
-	type AccessorKeyColumnDef,
 	Button,
 	CodeEditor,
-	DataTable,
-	Pagination,
-	PaginationContent,
-	PaginationNext,
-	PaginationPageSizeSelector,
-	PaginationPrevious,
+	Skeleton,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
-import { Maximize2, Minimize2 } from "lucide-react";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
+import {
+	type RefObject,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { InfiniteScrollSentinel } from "../../utils/infinite-scroll";
 import { ViewDefinitionContext } from "./page";
+
+const SKELETON_MARKER = "__skeleton__";
 
 interface ProcessedTableData {
 	tableData: Record<string, unknown>[];
-	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
+	columns: string[];
 	isEmptyArray: boolean;
 }
 
@@ -39,27 +53,14 @@ const parseResponse = (
 	}
 };
 
-const extractColumns = (
-	data: unknown[],
-): AccessorKeyColumnDef<Record<string, unknown>, unknown>[] => {
+const extractColumns = (data: unknown[]): string[] => {
 	const allKeys = new Set<string>();
-	data.forEach((row) => {
+	for (const row of data) {
 		if (typeof row === "object" && row !== null) {
-			Object.keys(row).forEach((key) => allKeys.add(key));
+			for (const key of Object.keys(row)) allKeys.add(key);
 		}
-	});
-
-	return Array.from(allKeys).map((key) => ({
-		accessorKey: key,
-		header: key.charAt(0).toUpperCase() + key.slice(1),
-		cell: ({ getValue }) => {
-			const value = getValue();
-			if (value === null || value === undefined) {
-				return <span className="text-text-tertiary">null</span>;
-			}
-			return String(value);
-		},
-	}));
+	}
+	return Array.from(allKeys);
 };
 
 const processTableData = (response: string | undefined): ProcessedTableData => {
@@ -95,34 +96,70 @@ const EmptyState = ({
 const ResultHeader = ({
 	isMaximized,
 	onToggleMaximize,
+	onToggleCollapse,
 }: {
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
+	onToggleCollapse: () => void;
 }) => (
-	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-2 pr-2 py-3 border-b h-10">
+	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
 		<div className="flex gap-1 items-center">
-			<span className="typo-label text-text-secondary">Result:</span>
+			<span className="typo-label text-text-secondary">Result</span>
 		</div>
-		<Button variant="ghost" size="small" onClick={onToggleMaximize}>
-			{isMaximized ? (
-				<Minimize2 className="w-4 h-4" />
-			) : (
-				<Maximize2 className="w-4 h-4" />
-			)}
-		</Button>
+		<div className="flex items-center gap-1">
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button variant="ghost" size="small" onClick={onToggleCollapse}>
+						<PanelBottomClose className="w-4 h-4" />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent align="end">Collapse</TooltipContent>
+			</Tooltip>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button variant="ghost" size="small" onClick={onToggleMaximize}>
+						{isMaximized ? (
+							<Minimize2 className="w-4 h-4" />
+						) : (
+							<Maximize2 className="w-4 h-4" />
+						)}
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent align="end">
+					{isMaximized ? "Minimize" : "Maximize"}
+				</TooltipContent>
+			</Tooltip>
+		</div>
 	</div>
 );
+
+const CellValue = ({ value }: { value: unknown }) => {
+	if (value === null || value === undefined) {
+		return <span className="text-text-tertiary">null</span>;
+	}
+	return <>{String(value)}</>;
+};
 
 const ResultContent = ({
 	rows,
 	isEmptyArray,
-	tableData,
+	accumulatedData,
 	columns,
+	hasMore,
+	isLoadingMore,
+	onLoadMore,
+	containerRef,
+	pageSize,
 }: {
 	rows: string | undefined;
 	isEmptyArray: boolean;
-	tableData: Record<string, unknown>[];
-	columns: AccessorKeyColumnDef<Record<string, unknown>, unknown>[];
+	accumulatedData: Record<string, unknown>[];
+	columns: string[];
+	hasMore: boolean;
+	isLoadingMore: boolean;
+	onLoadMore: () => void;
+	containerRef: RefObject<HTMLDivElement | null>;
+	pageSize: number;
 }) => {
 	if (!rows) {
 		return (
@@ -142,10 +179,55 @@ const ResultContent = ({
 		);
 	}
 
-	if (tableData.length > 0) {
+	if (accumulatedData.length > 0) {
+		const skeletonRows = isLoadingMore
+			? Array.from({ length: pageSize }, () => ({ [SKELETON_MARKER]: true }))
+			: [];
+		const displayData = isLoadingMore
+			? [...accumulatedData, ...skeletonRows]
+			: accumulatedData;
+
 		return (
-			<div className="flex-1 overflow-hidden min-h-0">
-				<DataTable columns={columns} data={tableData} stickyHeader />
+			<div ref={containerRef} className="flex-1 overflow-auto min-h-0">
+				<Table zebra stickyHeader>
+					<TableHeader>
+						<TableRow>
+							{columns.map((key, i) => (
+								<TableHead
+									key={key}
+									className={`px-6 hover:bg-transparent ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
+								>
+									{key.charAt(0).toUpperCase() + key.slice(1)}
+								</TableHead>
+							))}
+						</TableRow>
+					</TableHeader>
+					<TableBody className="[&_tr]:hover:bg-transparent">
+						{displayData.map((row, index) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
+							<TableRow key={index} zebra index={index}>
+								{columns.map((key, i) => (
+									<TableCell
+										key={key}
+										className={`px-6 ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
+									>
+										{row[SKELETON_MARKER] ? (
+											<Skeleton className="h-4 w-3/4" />
+										) : (
+											<CellValue value={row[key]} />
+										)}
+									</TableCell>
+								))}
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+				<InfiniteScrollSentinel
+					root={containerRef}
+					onLoadMore={onLoadMore}
+					hasMore={hasMore}
+					isLoading={isLoadingMore}
+				/>
 			</div>
 		);
 	}
@@ -157,97 +239,51 @@ const ResultContent = ({
 	);
 };
 
-const ResultPagination = ({
-	onPageChange,
-	onPageSizeChange,
-	hasResults,
-	resultCount,
+export function ResultPanel({
+	onToggleCollapse,
 }: {
-	onPageChange: (direction: "next" | "previous") => void;
-	onPageSizeChange: (pageSize: number) => void;
-	hasResults: boolean;
-	resultCount: number;
-}) => {
-	const viewDefinitionContext = useContext(ViewDefinitionContext);
-	const currentPage = viewDefinitionContext.runResultPage || 1;
-	const pageSize = viewDefinitionContext.runResultPageSize || 30;
-
-	const isLastPage = !hasResults || resultCount < pageSize;
-
-	return (
-		<div className="flex items-center justify-end bg-bg-secondary px-6 py-3 border-t h-12">
-			<div className="flex items-center gap-4">
-				<Pagination>
-					<PaginationPageSizeSelector
-						pageSize={pageSize}
-						onPageSizeChange={onPageSizeChange}
-						pageSizeOptions={[30, 50, 100]}
-					/>
-					<PaginationContent>
-						<PaginationPrevious
-							href="#"
-							onClick={(e) => {
-								e.preventDefault();
-								onPageChange("previous");
-							}}
-							aria-disabled={currentPage <= 1}
-							size="small"
-							style={
-								currentPage <= 1
-									? {
-											pointerEvents: "none",
-											opacity: 0.5,
-											cursor: "not-allowed",
-										}
-									: { cursor: "pointer" }
-							}
-						/>
-						<PaginationNext
-							href="#"
-							onClick={(e) => {
-								e.preventDefault();
-								onPageChange("next");
-							}}
-							aria-disabled={isLastPage}
-							size="small"
-							style={
-								isLastPage
-									? {
-											pointerEvents: "none",
-											opacity: 0.5,
-											cursor: "not-allowed",
-										}
-									: { cursor: "pointer" }
-							}
-						/>
-					</PaginationContent>
-				</Pagination>
-			</div>
-		</div>
-	);
-};
-
-export function ResultPanel() {
+	onToggleCollapse?: () => void;
+}) {
 	const client = useAidboxClient();
 
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
 
-	const { tableData, columns, isEmptyArray } = useMemo(() => {
-		const data = processTableData(rows);
-		return data;
-	}, [rows]);
+	const {
+		tableData,
+		columns: initialColumns,
+		isEmptyArray,
+	} = useMemo(() => processTableData(rows), [rows]);
 
-	const viewDefinitionRunMutation = useMutation({
+	const [accumulatedData, setAccumulatedData] = useState<
+		Record<string, unknown>[]
+	>([]);
+	const [columns, setColumns] = useState<string[]>([]);
+	const [hasMore, setHasMore] = useState(false);
+	const pageRef = useRef(1);
+	const runIdRef = useRef(0);
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		runIdRef.current += 1;
+		setAccumulatedData(tableData);
+		setColumns(initialColumns);
+		pageRef.current = 1;
+		const pageSize = viewDefinitionContext.runResultPageSize || 30;
+		setHasMore(tableData.length >= pageSize);
+	}, [tableData, initialColumns, viewDefinitionContext.runResultPageSize]);
+
+	const loadMoreMutation = useMutation({
 		mutationFn: ({
 			viewDefinition,
 			page,
 			pageSize,
 		}: {
-			viewDefinition: ViewDefinition | undefined;
+			viewDefinition: ViewDefinition;
 			page: number;
 			pageSize: number;
+			runId: number;
 		}) => {
 			const parametersPayload = {
 				resourceType: "Parameters",
@@ -268,42 +304,34 @@ export function ResultPanel() {
 				body: JSON.stringify(parametersPayload),
 			});
 		},
-		onSuccess: async (data: AidboxTypes.ResponseWithMeta) => {
+		onSuccess: async (data: AidboxTypes.ResponseWithMeta, variables) => {
+			if (variables.runId !== runIdRef.current) return;
 			const decodedData = atob((await data.response.json()).data);
-			viewDefinitionContext.setRunResult(decodedData);
+			const { tableData: newRows } = processTableData(decodedData);
+			setAccumulatedData((prev) => [...prev, ...newRows]);
+			const pageSize = viewDefinitionContext.runResultPageSize || 30;
+			setHasMore(newRows.length >= pageSize);
 		},
 		onError: Utils.onMutationError,
 	});
 
-	const handlePageChange = (direction: "next" | "previous") => {
-		const currentPage = viewDefinitionContext.runResultPage || 1;
-		const newPage = direction === "next" ? currentPage + 1 : currentPage - 1;
-
-		if (newPage < 1) return;
-
-		viewDefinitionContext.setRunResultPage(newPage);
-
-		if (viewDefinitionContext.runViewDefinition) {
-			viewDefinitionRunMutation.mutate({
-				viewDefinition: viewDefinitionContext.runViewDefinition,
-				page: newPage,
-				pageSize: viewDefinitionContext.runResultPageSize || 30,
-			});
-		}
-	};
-
-	const handlePageSizeChange = (pageSize: number) => {
-		viewDefinitionContext.setRunResultPageSize(pageSize);
-		viewDefinitionContext.setRunResultPage(1);
-
-		if (viewDefinitionContext.runViewDefinition) {
-			viewDefinitionRunMutation.mutate({
-				viewDefinition: viewDefinitionContext.runViewDefinition,
-				page: 1,
-				pageSize: pageSize,
-			});
-		}
-	};
+	const handleLoadMore = useCallback(() => {
+		if (loadMoreMutation.isPending || !hasMore) return;
+		if (!viewDefinitionContext.runViewDefinition) return;
+		const nextPage = pageRef.current + 1;
+		pageRef.current = nextPage;
+		loadMoreMutation.mutate({
+			viewDefinition: viewDefinitionContext.runViewDefinition,
+			page: nextPage,
+			pageSize: viewDefinitionContext.runResultPageSize || 30,
+			runId: runIdRef.current,
+		});
+	}, [
+		loadMoreMutation,
+		hasMore,
+		viewDefinitionContext.runViewDefinition,
+		viewDefinitionContext.runResultPageSize,
+	]);
 
 	const toggleMaximize = () => {
 		setIsMaximized((prev) => !prev);
@@ -332,21 +360,19 @@ export function ResultPanel() {
 			<ResultHeader
 				isMaximized={isMaximized}
 				onToggleMaximize={toggleMaximize}
+				onToggleCollapse={onToggleCollapse || (() => {})}
 			/>
 			<ResultContent
 				rows={rows}
 				isEmptyArray={isEmptyArray}
-				tableData={tableData}
+				accumulatedData={accumulatedData}
 				columns={columns}
+				hasMore={hasMore}
+				isLoadingMore={loadMoreMutation.isPending}
+				onLoadMore={handleLoadMore}
+				containerRef={containerRef}
+				pageSize={viewDefinitionContext.runResultPageSize || 30}
 			/>
-			{rows && (
-				<ResultPagination
-					onPageChange={handlePageChange}
-					onPageSizeChange={handlePageSizeChange}
-					hasResults={tableData.length > 0}
-					resultCount={tableData.length}
-				/>
-			)}
 		</div>
 	);
 }

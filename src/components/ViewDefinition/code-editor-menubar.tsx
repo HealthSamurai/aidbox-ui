@@ -11,15 +11,15 @@ export const CodeEditorFormatSelect = ({
 }) => {
 	return (
 		<HSComp.SegmentControl
-			defaultValue={mode}
-			name="code-editor-menu"
+			value={mode}
 			onValueChange={(value) =>
 				onModeChange(value as Types.ViewDefinitionEditorMode)
 			}
-		>
-			<HSComp.SegmentControlItem value="json">JSON</HSComp.SegmentControlItem>
-			<HSComp.SegmentControlItem value="yaml">YAML</HSComp.SegmentControlItem>
-		</HSComp.SegmentControl>
+			items={[
+				{ value: "json", label: "JSON" },
+				{ value: "yaml", label: "YAML" },
+			]}
+		/>
 	);
 };
 
@@ -71,7 +71,7 @@ export const CodeEditorMenubar = ({
 	onFormat: () => void;
 }) => {
 	return (
-		<div className="flex items-center gap-2 h-fit border rounded-full p-2 border-border-secondary bg-bg-primary">
+		<div className="flex items-center gap-2 h-fit border rounded-full p-2 mt-2 border-border-secondary bg-bg-primary">
 			<CodeEditorFormatSelect mode={mode} onModeChange={onModeChange} />
 			<CodeEditorFormatButton onFormat={onFormat} />
 			<CodeEditorCopyButton textToCopy={textToCopy} />

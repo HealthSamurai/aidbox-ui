@@ -2,271 +2,215 @@ import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Pin } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import * as Lucide from "lucide-react";
+import React, { useMemo, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 
 type ResourceRow = {
 	resourceType: string;
-	tableSize: number;
-	historySize: number;
-	indexSize: number;
 	defaultProfile: string;
-	system: boolean;
-	fhir: boolean;
-	custom: boolean;
-	populated: boolean;
 };
 
-type Subsets = {
-	all: ResourceRow[];
-	populated: ResourceRow[];
-	fhir: ResourceRow[];
-	custom: ResourceRow[];
-	system: ResourceRow[];
-	favorites: ResourceRow[];
-};
-
-function formatBytes(bytes: number): string {
-	if (bytes === 0) return "0 B";
-
-	const units = ["bytes", "KB", "MB", "GB", "TB"];
-	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	const value = bytes / 1024 ** i;
-
-	return `${value % 1 === 0 ? value : value.toFixed(2)} ${units[i]}`;
+function SkeletonRows() {
+	return (
+		<>
+			{Array.from({ length: 160 }, (_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
+				<HSComp.TableRow key={i} zebra index={i}>
+					<HSComp.TableCell className="w-8" />
+					<HSComp.TableCell className="w-52 min-w-52 max-w-52">
+						<HSComp.Skeleton className="h-5 w-full" />
+					</HSComp.TableCell>
+					<HSComp.TableCell>
+						<HSComp.Skeleton className="h-5 w-full" />
+					</HSComp.TableCell>
+				</HSComp.TableRow>
+			))}
+		</>
+	);
 }
 
-const FavoriteCell = memo(
-	({
-		resourceType,
-		getFavorites,
-		onToggle,
-	}: {
-		resourceType: string;
-		getFavorites: () => Set<string>;
-		onToggle: (resourceType: string) => void;
-	}) => {
-		const [, forceUpdate] = useState({});
-		const isFavorite = getFavorites().has(resourceType);
-		return (
-			<button
-				type="button"
-				onClick={() => {
-					onToggle(resourceType);
-					forceUpdate({});
-				}}
-				className="cursor-pointer transition-opacity pin-button"
-				style={{ opacity: isFavorite ? 1 : 0 }}
-			>
-				<Pin size={16} />
-			</button>
+function ResourceList({
+	tableData,
+	filterQuery,
+	favorites,
+	onToggleFavorite,
+	isLoading,
+	focusedIndex,
+	sort,
+	onSort,
+}: {
+	tableData: ResourceRow[];
+	filterQuery: string;
+	favorites: Set<string>;
+	onToggleFavorite: (resourceType: string) => void;
+	isLoading: boolean;
+	focusedIndex: number;
+	sort: SortState;
+	onSort: (column: SortColumn) => void;
+}) {
+	const navigate = useNavigate();
+	const focusedRowRef = React.useRef<HTMLTableRowElement | null>(null);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: focusedIndex triggers scroll
+	React.useEffect(() => {
+		focusedRowRef.current?.scrollIntoView({ block: "nearest" });
+	}, [focusedIndex]);
+
+	const filteredData = useMemo(() => {
+		if (!filterQuery) return tableData;
+		const lowerQuery = filterQuery.toLowerCase();
+		return tableData.filter((row) =>
+			row.resourceType.toLowerCase().includes(lowerQuery),
 		);
-	},
-	(prev, next) => prev.resourceType === next.resourceType,
-);
+	}, [tableData, filterQuery]);
 
-const ResourceList = memo(
-	function ResourceList({
-		tableData,
-		filterQuery,
-		getFavorites,
-		onToggleFavorite,
-	}: {
-		tableData: ResourceRow[];
-		filterQuery: string;
-		getFavorites: () => Set<string>;
-		onToggleFavorite: (resourceType: string) => void;
-	}) {
-		const navigate = useNavigate();
+	const goToResource = (resourceType: string) =>
+		navigate({
+			to: "/resource/$resourceType",
+			params: { resourceType },
+		});
 
-		const filteredData = useMemo(() => {
-			if (!filterQuery) return tableData;
-			const lowerQuery = filterQuery.toLowerCase();
-			return tableData.filter((row) =>
-				row.resourceType.toLowerCase().includes(lowerQuery),
-			);
-		}, [tableData, filterQuery]);
+	return (
+		<HSComp.Table zebra stickyHeader>
+			<HSComp.TableHeader>
+				<HSComp.TableRow>
+					<HSComp.TableHead className="w-8 text-text-secondary">
+						<span className="opacity-50">
+							<HSComp.PinIcon />
+						</span>
+					</HSComp.TableHead>
+					<HSComp.TableHead
+						className="w-52 min-w-52 max-w-52"
+						sortable
+						sorted={sort.column === "resourceType" && sort.direction}
+						onClick={() => onSort("resourceType")}
+					>
+						Resource type
+					</HSComp.TableHead>
+					<HSComp.TableHead
+						sortable
+						sorted={sort.column === "defaultProfile" && sort.direction}
+						onClick={() => onSort("defaultProfile")}
+					>
+						Default profile
+					</HSComp.TableHead>
+				</HSComp.TableRow>
+			</HSComp.TableHeader>
+			<HSComp.TableBody>
+				{isLoading ? (
+					<SkeletonRows />
+				) : filteredData.length ? (
+					filteredData.map((row, index) => {
+						const isFavorite = favorites.has(row.resourceType);
+						const isLastFavorite =
+							isFavorite &&
+							(index + 1 >= filteredData.length ||
+								!favorites.has(filteredData[index + 1].resourceType));
+						return (
+							<HSComp.TableRow
+								ref={index === focusedIndex ? focusedRowRef : undefined}
+								key={row.resourceType}
+								zebra
+								index={index}
+								className={HSComp.cn(
+									isLastFavorite && "border-b border-border-secondary",
+									index === focusedIndex && "bg-bg-hover",
+								)}
+							>
+								<HSComp.TableCell
+									className="w-8 align-middle text-center cursor-pointer"
+									onClick={() => onToggleFavorite(row.resourceType)}
+								>
+									<span
+										className="pin-button flex items-center justify-center transition-opacity"
+										style={{
+											opacity: favorites.has(row.resourceType) ? 0.5 : 0,
+										}}
+									>
+										<HSComp.PinIcon />
+									</span>
+								</HSComp.TableCell>
+								<HSComp.TableCell className="w-52 min-w-52 max-w-52">
+									<a
+										href={`/u/resource/${row.resourceType}`}
+										onClick={(e) => {
+											e.preventDefault();
+											goToResource(row.resourceType);
+										}}
+										className="text-text-link hover:underline"
+									>
+										{row.resourceType}
+									</a>
+								</HSComp.TableCell>
+								<HSComp.TableCell
+									onClick={() => goToResource(row.resourceType)}
+									className="cursor-pointer"
+								>
+									{row.defaultProfile}
+								</HSComp.TableCell>
+							</HSComp.TableRow>
+						);
+					})
+				) : null}
+			</HSComp.TableBody>
+		</HSComp.Table>
+	);
+}
 
-		const makeClickableCell = <T,>(renderer: (value: T) => React.ReactNode) => {
-			return (info: { row: { original: ResourceRow }; getValue: () => T }) => (
-				<button
-					type="button"
-					className="cursor-pointer"
-					onClick={() =>
-						navigate({
-							to: "/resource/$resourceType",
-							params: { resourceType: info.row.original.resourceType },
-						})
-					}
-				>
-					{renderer(info.getValue())}
-				</button>
-			);
-		};
-
-		const columns: {
-			[K in keyof ResourceRow]: HSComp.ColumnDef<ResourceRow, ResourceRow[K]>;
-		}[keyof ResourceRow][] = [
-			{
-				accessorKey: "favorite",
-				header: () => <Pin size={14} />,
-				size: 20,
-				cell: (info) => {
-					const resourceType = info.row.original.resourceType;
-					return (
-						<FavoriteCell
-							resourceType={resourceType}
-							getFavorites={getFavorites}
-							onToggle={onToggleFavorite}
-						/>
-					);
-				},
-			},
-			{
-				accessorKey: "resourceType",
-				header: "Resource type",
-				cell: makeClickableCell<string>((value) => value),
-			},
-			{
-				accessorKey: "tableSize",
-				header: "Table size",
-				cell: makeClickableCell(formatBytes),
-			},
-			{
-				accessorKey: "historySize",
-				header: "History size",
-				cell: makeClickableCell(formatBytes),
-			},
-			{
-				accessorKey: "indexSize",
-				header: "Index size",
-				cell: makeClickableCell(formatBytes),
-			},
-			{
-				accessorKey: "defaultProfile",
-				header: "Default profile",
-				cell: makeClickableCell<string>((value) => value),
-			},
-		];
-
-		return (
-			<div className="h-full">
-				<HSComp.DataTable columns={columns} data={filteredData} stickyHeader />
-			</div>
-		);
-	},
-	(prevProps, nextProps) => {
-		return (
-			prevProps.tableData === nextProps.tableData &&
-			prevProps.filterQuery === nextProps.filterQuery
-		);
-	},
-);
-
-type ResourceTypeInfo = {
-	"system?": boolean;
-	"fhir?": boolean;
-	"custom?": boolean;
-	"default-profile": string;
+type StructureDefinitionEntry = {
+	resource: {
+		type?: string;
+		name?: string;
+		url?: string;
+	};
 };
 
-type ResourceDataStats = {
-	total_size?: number;
-	index_size?: number;
-	num_rows?: number;
-};
-
-type ResourceData = {
-	resources: Record<string, ResourceTypeInfo>;
-	stats: Record<string, ResourceDataStats>;
+type StructureDefinitionBundle = {
+	entry?: StructureDefinitionEntry[];
 };
 
 function useResourceData(client: AidboxClientR5) {
-	return useQuery<ResourceData>({
+	return useQuery<ResourceRow[]>({
 		queryKey: ["resource-browser-resources"],
 		queryFn: async () => {
-			const [resourceTypes, stats] = await Promise.all([
-				client.rawRequest({
-					method: "GET",
-					url: "/$resource-types",
-				}),
-				client.rawRequest({
-					method: "GET",
-					url: "/$resource-types-pg-stats",
-				}),
-			]);
-			return {
-				resources: await resourceTypes.response.json(),
-				stats: await stats.response.json(),
-			};
+			const response = await client.rawRequest({
+				method: "GET",
+				url: "/fhir/StructureDefinition?kind=resource&derivation=specialization&_count=1000",
+			});
+			const bundle: StructureDefinitionBundle = await response.response.json();
+			return (bundle.entry ?? []).map((entry) => ({
+				resourceType: entry.resource.type ?? entry.resource.name ?? "",
+				defaultProfile: entry.resource.url ?? "",
+			}));
 		},
 	});
 }
 
-function useProcessedData(
-	data: ResourceData | undefined,
+type SortColumn = "resourceType" | "defaultProfile";
+type SortDirection = "asc" | "desc";
+type SortState = { column: SortColumn; direction: SortDirection };
+
+function useSortedData(
+	data: ResourceRow[] | undefined,
 	favorites: Set<string>,
-): { allTableData: ResourceRow[]; subsets: Subsets } {
-	const allTableData = useMemo(() => {
+	sort: SortState,
+): ResourceRow[] {
+	return useMemo(() => {
 		if (!data) return [];
-		const { resources, stats } = data;
-
-		return Object.entries(resources || {}).map(([key, value]) => {
-			const keyLower = key.toLowerCase();
-			const resourceStats = stats[keyLower] || {};
-			const historyStats = stats[`${keyLower}_history`] || {};
-
-			return {
-				resourceType: key,
-				tableSize: resourceStats.total_size || 0,
-				historySize: historyStats.total_size || 0,
-				indexSize: resourceStats.index_size || 0,
-				defaultProfile: value["default-profile"],
-				system: value["system?"],
-				fhir: value["fhir?"],
-				custom: value["custom?"],
-				populated: (resourceStats.num_rows ?? 0) > 0,
-			};
+		return [...data].sort((a, b) => {
+			const aFav = favorites.has(a.resourceType);
+			const bFav = favorites.has(b.resourceType);
+			if (aFav !== bFav) return aFav ? -1 : 1;
+			const cmp = a[sort.column].localeCompare(b[sort.column]);
+			return sort.direction === "asc" ? cmp : -cmp;
 		});
-	}, [data]).sort((a, b) => a.resourceType.localeCompare(b.resourceType));
-
-	// Memoize static subsets separately (don't depend on favorites)
-	const staticSubsets = useMemo(
-		() => ({
-			all: allTableData,
-			populated: allTableData.filter((row) => row.populated),
-			fhir: allTableData.filter((row) => row.fhir),
-			custom: allTableData.filter((row) => row.custom),
-			system: allTableData.filter((row) => row.system),
-		}),
-		[allTableData],
-	);
-
-	// Only recompute favorites subset when favorites change
-	const favoritesSubset = useMemo(
-		() => allTableData.filter((row) => favorites.has(row.resourceType)),
-		[allTableData, favorites],
-	);
-
-	const subsets = useMemo(
-		() => ({
-			...staticSubsets,
-			favorites: favoritesSubset,
-		}),
-		[staticSubsets, favoritesSubset],
-	);
-
-	return { allTableData, subsets };
+	}, [data, favorites, sort]);
 }
 
 export function Browser() {
 	const client = useAidboxClient();
 
-	const [selectedTab, setSelectedTab] = useLocalStorage<string>({
-		key: "resource-browser-selected-tab",
-		defaultValue: "all",
-	});
 	const [filterQuery, setFilterQuery] = useState("");
 	const [favoritesArray, setFavoritesArray] = useLocalStorage<string[]>({
 		key: "resource-browser-favorites",
@@ -274,16 +218,38 @@ export function Browser() {
 	});
 
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
-	const favoritesRef = useMemo(() => ({ current: favorites }), [favorites]);
-	favoritesRef.current = favorites;
 
-	const getFavorites = useMemo(
-		() => () => favoritesRef.current,
-		[favoritesRef.current],
-	);
+	const [sort, setSort] = useState<SortState>({
+		column: "resourceType",
+		direction: "asc",
+	});
+
+	const handleSort = (column: SortColumn) => {
+		setSort((prev) =>
+			prev.column === column
+				? { column, direction: prev.direction === "asc" ? "desc" : "asc" }
+				: { column, direction: "asc" },
+		);
+	};
 
 	const { data, isLoading } = useResourceData(client);
-	const { subsets } = useProcessedData(data, favorites);
+	const allTableData = useSortedData(data, favorites, sort);
+
+	const filteredData = useMemo(() => {
+		if (!filterQuery) return allTableData;
+		const lowerQuery = filterQuery.toLowerCase();
+		return allTableData.filter((row) =>
+			row.resourceType.toLowerCase().includes(lowerQuery),
+		);
+	}, [allTableData, filterQuery]);
+
+	const [focusedIndex, setFocusedIndex] = useState(-1);
+	const navigate = useNavigate();
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset focus on filter change
+	React.useEffect(() => {
+		setFocusedIndex(-1);
+	}, [filterQuery]);
 
 	const toggleFavorite = useMemo(
 		() => (resourceType: string) => {
@@ -297,65 +263,78 @@ export function Browser() {
 		[setFavoritesArray],
 	);
 
-	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center h-full text-text-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">Fetching resource types...</div>
-				</div>
-			</div>
-		);
-	}
-
-	const tabs = [
-		{ value: "all", label: "All", count: subsets.all.length },
-		{ value: "populated", label: "Populated", count: subsets.populated.length },
-		{ value: "fhir", label: "FHIR", count: subsets.fhir.length },
-		{ value: "custom", label: "Custom", count: subsets.custom.length },
-		{ value: "system", label: "System", count: subsets.system.length },
-		{ value: "favorites", label: "Favorites", count: favorites.size },
-	];
+	const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((prev) => Math.min(prev + 1, filteredData.length - 1));
+		} else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((prev) => Math.max(prev - 1, -1));
+		} else if (
+			e.key === "Enter" &&
+			focusedIndex >= 0 &&
+			focusedIndex < filteredData.length
+		) {
+			e.preventDefault();
+			navigate({
+				to: "/resource/$resourceType",
+				params: { resourceType: filteredData[focusedIndex].resourceType },
+			});
+		}
+	};
 
 	return (
 		<div className="overflow-hidden h-full flex flex-col">
-			<div className="flex gap-1 items-center p-1">
+			<div className="flex gap-4 items-center px-4 py-3 border-b border-border-secondary">
 				<HSComp.Input
+					autoFocus
 					type="text"
 					className="flex-1 bg-bg-primary"
-					placeholder="Search resource types"
+					placeholder="Search resources"
 					value={filterQuery}
 					onChange={(e) => setFilterQuery(e.target.value)}
+					onKeyDown={handleSearchKeyDown}
 				/>
+				<HSComp.Button variant="primary" className="min-w-24">
+					Search
+				</HSComp.Button>
+				<div className="w-px h-6 bg-border-secondary" />
+				<HSComp.Button variant="secondary">
+					<Lucide.PlusIcon
+						className="size-4 text-text-error-primary"
+						strokeWidth={1.25}
+					/>
+					Create
+				</HSComp.Button>
 			</div>
-			<HSComp.Tabs
-				value={selectedTab}
-				onValueChange={setSelectedTab}
-				className="grow min-h-0 flex flex-col"
-			>
-				<div className="flex items-center gap-4 bg-bg-secondary px-4 border-b h-10 flex-none">
-					<HSComp.TabsList>
-						{tabs.map((tab) => (
-							<HSComp.TabsTrigger key={tab.value} value={tab.value}>
-								{tab.label} ({tab.count})
-							</HSComp.TabsTrigger>
-						))}
-					</HSComp.TabsList>
-				</div>
-				{tabs.map((tab) => (
-					<HSComp.TabsContent
-						key={tab.value}
-						value={tab.value}
-						className="min-h-0"
-					>
-						<ResourceList
-							tableData={subsets[tab.value as keyof Subsets]}
-							filterQuery={filterQuery}
-							getFavorites={getFavorites}
-							onToggleFavorite={toggleFavorite}
-						/>
-					</HSComp.TabsContent>
-				))}
-			</HSComp.Tabs>
+			<div className="grow min-h-0">
+				{!isLoading && filteredData.length === 0 ? (
+					<div className="flex items-center justify-center h-full">
+						<div className="flex flex-col items-center gap-4">
+							<div className="flex flex-col items-center gap-2">
+								<img src="/no-resources.svg" alt="" />
+								<span className="text-lg font-semibold">
+									No resource types found
+								</span>
+							</div>
+							<span className="text-text-secondary">
+								Try a different search query
+							</span>
+						</div>
+					</div>
+				) : (
+					<ResourceList
+						tableData={allTableData}
+						filterQuery={filterQuery}
+						favorites={favorites}
+						onToggleFavorite={toggleFavorite}
+						isLoading={isLoading}
+						focusedIndex={focusedIndex}
+						sort={sort}
+						onSort={handleSort}
+					/>
+				)}
+			</div>
 		</div>
 	);
 }

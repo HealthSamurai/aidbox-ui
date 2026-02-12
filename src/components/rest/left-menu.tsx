@@ -479,9 +479,11 @@ export function LeftMenu({
 							<div className={errorText}>Failed to load history</div>
 						</div>
 					)}
-					{historyData?.entry?.length === 0 && (
-						<div className={loadingContainer}>
-							<div className={loadingText}>No history found</div>
+					{historyData && !historyData.entry?.length && (
+						<div className="bg-bg-tertiary h-full flex items-center justify-center">
+							<span className="text-text-disabled text-xl font-medium">
+								No history
+							</span>
 						</div>
 					)}
 					{historyData?.entry && historyData.entry.length > 0 && (

@@ -1,6 +1,8 @@
 import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
+	type BuilderTab,
 	type EditorMode,
+	isBuilderTab,
 	isEditorMode,
 	isResourceEditorTab,
 	type ResourceEditorTab,
@@ -12,22 +14,56 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 
-export type ViewDefinitionSearch = {
+export type ResourceEditorSearch = {
 	tab: ResourceEditorTab;
 	mode: EditorMode;
+	builderTab: BuilderTab;
 };
+
+const STORAGE_KEY_TAB = "resourceEditor-selectedTab";
+const STORAGE_KEY_BUILDER_TAB = "resourceEditor-selectedBuilderTab";
+
+function getStoredTab(): ResourceEditorTab | null {
+	try {
+		const val = localStorage.getItem(STORAGE_KEY_TAB);
+		return isResourceEditorTab(val) ? val : null;
+	} catch {
+		return null;
+	}
+}
+
+function getStoredBuilderTab(): BuilderTab | null {
+	try {
+		const val = localStorage.getItem(STORAGE_KEY_BUILDER_TAB);
+		return isBuilderTab(val) ? val : null;
+	} catch {
+		return null;
+	}
+}
+
+export function storeSelectedTab(tab: ResourceEditorTab) {
+	try {
+		localStorage.setItem(STORAGE_KEY_TAB, tab);
+	} catch {}
+}
+
+export function storeSelectedBuilderTab(builderTab: BuilderTab) {
+	try {
+		localStorage.setItem(STORAGE_KEY_BUILDER_TAB, builderTab);
+	} catch {}
+}
 
 export function validateSearch(
 	rawSearch: Record<string, unknown>,
-): ViewDefinitionSearch {
+): ResourceEditorSearch {
 	let tab: ResourceEditorTab;
 	if (isResourceEditorTab(rawSearch.tab)) {
 		tab = rawSearch.tab;
 	} else if (rawSearch.tab === undefined) {
-		tab = "code";
+		tab = getStoredTab() ?? "edit";
 	} else {
-		console.error("Invalid tab", rawSearch.tab, "force to 'code'");
-		tab = "code";
+		console.error("Invalid tab", rawSearch.tab, "force to 'edit'");
+		tab = "edit";
 	}
 
 	let mode: EditorMode;
@@ -36,10 +72,18 @@ export function validateSearch(
 	} else if (rawSearch.mode === undefined) {
 		mode = "json";
 	} else {
-		console.error("Invalid mode", rawSearch.mode, "force to 'code'");
+		console.error("Invalid mode", rawSearch.mode, "force to 'json'");
 		mode = "json";
 	}
-	return { tab, mode };
+
+	let builderTab: BuilderTab;
+	if (isBuilderTab(rawSearch.builderTab)) {
+		builderTab = rawSearch.builderTab;
+	} else {
+		builderTab = getStoredBuilderTab() ?? "form";
+	}
+
+	return { tab, mode, builderTab };
 }
 
 const PageComponent = () => {
@@ -48,11 +92,25 @@ const PageComponent = () => {
 		from: "/resource/$resourceType/create",
 	}).params;
 	const navigate = useNavigate();
+
+	const isViewDefinition = resourceType === "ViewDefinition";
+
+	const initialResource = isViewDefinition
+		? {
+				resource: "Patient",
+				resourceType: "ViewDefinition",
+				status: "draft",
+				select: [],
+			}
+		: { resourceType: resourceType };
+
+	const effectiveTab = isViewDefinition && tab === "edit" ? "builder" : tab;
+
 	return (
 		<ResourceEditorPage
-			initialResource={{ resourceType: resourceType }}
+			initialResource={initialResource}
 			resourceType={resourceType}
-			tab={tab}
+			tab={effectiveTab}
 			mode={mode}
 			navigate={navigate}
 		/>

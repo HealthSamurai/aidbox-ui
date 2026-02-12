@@ -1,34 +1,22 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
+import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
 import type { EditorMode } from "./types";
 
-const FormatSelector = ({
-	mode,
-	setMode,
-}: {
-	mode: EditorMode;
-	setMode: (mode: EditorMode) => void;
-}) => {
-	return (
-		<HSComp.SegmentControl
-			defaultValue={mode}
-			name="code-editor-menu"
-			onValueChange={(value) => setMode(value as "json" | "yaml")}
-		>
-			<HSComp.SegmentControlItem value="json">JSON</HSComp.SegmentControlItem>
-			<HSComp.SegmentControlItem value="yaml">YAML</HSComp.SegmentControlItem>
-		</HSComp.SegmentControl>
-	);
-};
-
 const FormatButton = ({ triggerFormat }: { triggerFormat: () => void }) => {
 	return (
-		<HSComp.Tooltip>
-			<HSComp.TooltipTrigger asChild>
+		<Tooltip>
+			<TooltipTrigger asChild>
 				<HSComp.Button
 					variant="ghost"
 					size="small"
+					className="px-0!"
 					onClick={() => {
 						triggerFormat();
 						HSComp.toast.success("Formatted", defaultToastPlacement);
@@ -37,11 +25,11 @@ const FormatButton = ({ triggerFormat }: { triggerFormat: () => void }) => {
 				>
 					<Lucide.TextQuote className="w-4 h-4" />
 				</HSComp.Button>
-			</HSComp.TooltipTrigger>
-			<HSComp.TooltipContent>
+			</TooltipTrigger>
+			<TooltipContent>
 				<p>Format code</p>
-			</HSComp.TooltipContent>
-		</HSComp.Tooltip>
+			</TooltipContent>
+		</Tooltip>
 	);
 };
 
@@ -52,6 +40,10 @@ type EditorTabProps = {
 	defaultResourceText: string;
 	resourceText: string;
 	setResourceText: (text: string) => void;
+	actions?: React.ReactNode;
+	trailingActions?: React.ReactNode;
+	viewCallback?: (view: CodeEditorView) => void;
+	issueLineNumbers?: number[];
 };
 
 export const EditorTab = ({
@@ -61,21 +53,52 @@ export const EditorTab = ({
 	resourceText,
 	defaultResourceText,
 	setResourceText,
+	actions,
+	trailingActions,
+	viewCallback,
+	issueLineNumbers,
 }: EditorTabProps) => {
 	return (
-		<div>
-			<div className="flex items-center gap-2 h-fit border rounded-full p-2 border-border-secondary bg-bg-primary">
-				<FormatSelector mode={mode} setMode={setMode} />
-				<FormatButton triggerFormat={triggerFormat} />
+		<HSComp.Tabs
+			variant="tertiary"
+			value={mode}
+			onValueChange={(value) => setMode(value as EditorMode)}
+			className="flex flex-col h-full"
+		>
+			<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
+				<HSComp.TabsList className="py-0! border-b-0!">
+					<HSComp.TabsTrigger value="json">JSON</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="yaml">YAML</HSComp.TabsTrigger>
+				</HSComp.TabsList>
+				<div className="flex items-center gap-4 px-4">
+					{actions}
+					{actions && (
+						<HSComp.Separator orientation="vertical" className="h-6!" />
+					)}
+					<FormatButton triggerFormat={triggerFormat} />
+					{trailingActions}
+				</div>
 			</div>
-			<div className="relative h-full">
+			<HSComp.TabsContent value="json" className="relative grow min-h-0 pt-3">
 				<HSComp.CodeEditor
-					mode={mode}
+					mode="json"
 					defaultValue={defaultResourceText}
 					currentValue={resourceText}
 					onChange={setResourceText}
+					viewCallback={viewCallback}
+					issueLineNumbers={issueLineNumbers}
 				/>
-			</div>
-		</div>
+			</HSComp.TabsContent>
+			<HSComp.TabsContent value="yaml" className="relative grow min-h-0 pt-3">
+				<HSComp.CodeEditor
+					mode="yaml"
+					defaultValue={defaultResourceText}
+					currentValue={resourceText}
+					onChange={setResourceText}
+					viewCallback={viewCallback}
+					issueLineNumbers={issueLineNumbers}
+				/>
+			</HSComp.TabsContent>
+		</HSComp.Tabs>
 	);
 };

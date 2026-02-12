@@ -12,7 +12,6 @@ import {
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Columns3Cog,
-	House,
 	PanelLeftClose,
 	PanelLeftOpen,
 	SquareTerminal,
@@ -22,10 +21,6 @@ import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 
 const mainMenuItems = [
-	<Link key="/" to="/">
-		<House />
-		Home
-	</Link>,
 	<Link key="/rest" to="/rest">
 		<SquareTerminal />
 		REST Console

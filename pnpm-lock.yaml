@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@atomic-ehr/fhirpath-lsp':
-        specifier: ^0.0.3
-        version: 0.0.3(typescript@5.9.2)
+        specifier: ^0.0.5
+        version: 0.0.5(typescript@5.9.2)
       '@codemirror/autocomplete':
         specifier: ^6.20.0
         version: 6.20.0
@@ -33,11 +33,11 @@ importers:
         specifier: 0.0.0-alpha.3
         version: 0.0.0-alpha.3
       '@health-samurai/aidbox-fhirpath-lsp':
-        specifier: 0.0.0-alpha.5
-        version: 0.0.0-alpha.5(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)
+        specifier: 0.0.0-alpha.6
+        version: 0.0.0-alpha.6(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)
       '@health-samurai/react-components':
-        specifier: 0.0.0-alpha.11
-        version: 0.0.0-alpha.11(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)
+        specifier: 0.0.0-alpha.12
+        version: 0.0.0-alpha.12(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)
       '@tanstack/react-query':
         specifier: ^5.85.3
         version: 5.90.2(react@19.1.1)
@@ -136,11 +136,11 @@ packages:
     peerDependencies:
       typescript: ^5
 
-  '@atomic-ehr/fhirpath-lsp@0.0.3':
-    resolution: {integrity: sha512-FJSzSLEXpQbLQ9tWD02EN13T91PqVE8Y/J/KFDCCRFdct1AKPo+8hvlJaTbv0ImL9fv6w+YrrtgqZ62d6MnIQQ==}
+  '@atomic-ehr/fhirpath-lsp@0.0.5':
+    resolution: {integrity: sha512-qi1aP/sWcavxUuz3YCcFp+qu8/rBFu3Kd/qGmg9tBid0dGFMKCFE/9myrKe4jYHMPPWruNEEcKCQf1RkOaYWyQ==}
 
-  '@atomic-ehr/fhirpath@0.1.0':
-    resolution: {integrity: sha512-aIrO63BLae5jE7JNPLE7HRZgwl4pkHj+Rspe8a7JfC/s+xL1rh1/84R4wtLrFu16PlN9VjCjwRU40cEUBnRC5w==}
+  '@atomic-ehr/fhirpath@0.1.2':
+    resolution: {integrity: sha512-bqf0ah7aE3ZjuA49CQZMxuhC1d1XInMwR7dTocSiAKLGkx2wYcdn6OGbisFHpD7NJCTzXD+psxNcWXLS0K6qIw==}
     peerDependencies:
       typescript: ^5
 
@@ -326,24 +326,28 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@biomejs/cli-linux-arm64@2.1.3':
     resolution: {integrity: sha512-2hS6LgylRqMFmAZCOFwYrf77QMdUwJp49oe8PX/O8+P2yKZMSpyQTf3Eo5ewnsMFUEmYbPOskafdV1ds1MZMJA==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@biomejs/cli-linux-x64-musl@2.1.3':
     resolution: {integrity: sha512-KaLAxnROouzIWtl6a0Y88r/4hW5oDUJTIqQorOTVQITaKQsKjZX4XCUmHIhdEk8zMnaiLZzRTAwk1yIAl+mIew==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@biomejs/cli-linux-x64@2.1.3':
     resolution: {integrity: sha512-NxlSCBhLvQtWGagEztfAZ4WcE1AkMTntZV65ZvR+J9jp06+EtOYEBPQndA70ZGhHbEDG57bR6uNvqkd1WrEYVA==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@biomejs/cli-win32-arm64@2.1.3':
     resolution: {integrity: sha512-V9CUZCtWH4u0YwyCYbQ3W5F4ZGPWp2C2TYcsiWFNNyRfmOW1j/TY/jAurl33SaRjgZPO5UUhGyr9m6BN9t84NQ==}
@@ -598,16 +602,16 @@ packages:
   '@health-samurai/aidbox-client@0.0.0-alpha.4':
     resolution: {integrity: sha512-ZZ8asGiBhU8dFFXg2SIQzJSes1AS/TdQCBkbEwGCJjwAUdIOuNEyTL/iiWa2CB+fmbUtXMUMkLymx/SikYG0Ug==}
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.5':
-    resolution: {integrity: sha512-qPkaO5zc3aj/u4v+MM2f0QxMUWHmrXxQdhHNYnx4CEs5aNftiglKIAm4p4QVfeowuM1+Mf/Un5Jd+y3dcwBGZQ==}
+  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.6':
+    resolution: {integrity: sha512-VqCiPCbd1aAaZ1Bohowi2/9xdRLoK7YNQxwGpIhjZ08YKEfyDg7ZA+5HpD17U4SAi6WLZsXx0BK7ICwb+FAIDg==}
     peerDependencies:
       '@codemirror/lsp-client': ^6.2.0
       '@codemirror/state': ^6.5.2
       react: ^19.1.0
       react-dom: ^19.1.0
 
-  '@health-samurai/react-components@0.0.0-alpha.11':
-    resolution: {integrity: sha512-QY6Jgs0hGnoB3pSUz1KtncNdSfgTLG6/dAYBDg+0EWE1ua8XzT9evAMRUMTUsdwK3auDAIPZwiXvFe3UErfiAw==}
+  '@health-samurai/react-components@0.0.0-alpha.12':
+    resolution: {integrity: sha512-k+dyjvYqq2reIWfLWng6NRSFiYvN73BQPAi0bjJimK8uhSb++JoBUZXAhU86r89YfmWMBeZsYv1eiYpAc2o0KQ==}
 
   '@hookform/resolvers@5.2.2':
     resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
@@ -780,8 +784,8 @@ packages:
   '@lezer/lr@1.4.8':
     resolution: {integrity: sha512-bPWa0Pgx69ylNlMlPvBPryqeLYQjyJjqPx+Aupm5zydLIF3NE+6MMLT8Yi23Bd9cif9VS00aUebn+6fDIGBcDA==}
 
-  '@lezer/yaml@1.0.3':
-    resolution: {integrity: sha512-GuBLekbw9jDBDhGur82nuwkxKQ+a3W5H0GfaAthDXcAu+XdpS43VlnxA9E9hllkpSP5ellRDKjLLj7Lu9Wr6xA==}
+  '@lezer/yaml@1.0.4':
+    resolution: {integrity: sha512-2lrrHqxalACEbxIbsjhqGpSW8kWpUKuY6RHgnSAFZa6qK62wvnPxA8hGOwOoDbwHcOFs5M4o27mjGu+P7TvBmw==}
 
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
@@ -1621,56 +1625,67 @@ packages:
     resolution: {integrity: sha512-IoerZJ4l1wRMopEHRKOO16e04iXRDyZFZnNZKrWeNquh5d6bucjezgd+OxG03mOMTnS1x7hilzb3uURPkJ0OfA==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.52.3':
     resolution: {integrity: sha512-ZYdtqgHTDfvrJHSh3W22TvjWxwOgc3ThK/XjgcNGP2DIwFIPeAPNsQxrJO5XqleSlgDux2VAoWQ5iJrtaC1TbA==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.52.3':
     resolution: {integrity: sha512-NcViG7A0YtuFDA6xWSgmFb6iPFzHlf5vcqb2p0lGEbT+gjrEEz8nC/EeDHvx6mnGXnGCC1SeVV+8u+smj0CeGQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.52.3':
     resolution: {integrity: sha512-d3pY7LWno6SYNXRm6Ebsq0DJGoiLXTb83AIPCXl9fmtIQs/rXoS8SJxxUNtFbJ5MiOvs+7y34np77+9l4nfFMw==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.52.3':
     resolution: {integrity: sha512-3y5GA0JkBuirLqmjwAKwB0keDlI6JfGYduMlJD/Rl7fvb4Ni8iKdQs1eiunMZJhwDWdCvrcqXRY++VEBbvk6Eg==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-gnu@4.52.3':
     resolution: {integrity: sha512-AUUH65a0p3Q0Yfm5oD2KVgzTKgwPyp9DSXc3UA7DtxhEb/WSPfbG4wqXeSN62OG5gSo18em4xv6dbfcUGXcagw==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-gnu@4.52.3':
     resolution: {integrity: sha512-1makPhFFVBqZE+XFg3Dkq+IkQ7JvmUrwwqaYBL2CE+ZpxPaqkGaiWFEWVGyvTwZace6WLJHwjVh/+CXbKDGPmg==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.52.3':
     resolution: {integrity: sha512-OOFJa28dxfl8kLOPMUOQBCO6z3X2SAfzIE276fwT52uXDWUS178KWq0pL7d6p1kz7pkzA0yQwtqL0dEPoVcRWg==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.52.3':
     resolution: {integrity: sha512-jMdsML2VI5l+V7cKfZx3ak+SLlJ8fKvLJ0Eoa4b9/vCUrzXKgoKxvHqvJ/mkWhFiyp88nCkM5S2v6nIwRtPcgg==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.52.3':
     resolution: {integrity: sha512-tPgGd6bY2M2LJTA1uGq8fkSPK8ZLYjDjY+ZLK9WHncCnfIz29LIXIqUgzCR0hIefzy6Hpbe8Th5WOSwTM8E7LA==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.52.3':
     resolution: {integrity: sha512-BCFkJjgk+WFzP+tcSMXq77ymAPIxsX9lFJWs+2JzuZTLtksJ2o5hvgTdIcZ5+oKzUDMwI0PfWzRBYAydAHF2Mw==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-openharmony-arm64@4.52.3':
     resolution: {integrity: sha512-KTD/EqjZF3yvRaWUJdD1cW+IQBk4fbQaHYJUmP8N4XoKFZilVL8cobFSTDnjTtxWJQ3JYaMgF4nObY/+nYkumA==}
@@ -1738,24 +1753,28 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.1.13':
     resolution: {integrity: sha512-hZQrmtLdhyqzXHB7mkXfq0IYbxegaqTmfa1p9MBj72WPoDD3oNOh1Lnxf6xZLY9C3OV6qiCYkO1i/LrzEdW2mg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.1.13':
     resolution: {integrity: sha512-uaZTYWxSXyMWDJZNY1Ul7XkJTCBRFZ5Fo6wtjrgBKzZLoJNrG+WderJwAjPzuNZOnmdrVg260DKwXCFtJ/hWRQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.1.13':
     resolution: {integrity: sha512-oXiPj5mi4Hdn50v5RdnuuIms0PVPI/EG4fxAfFiIKQh5TgQgX7oSuDWntHW7WNIi/yVLAiS+CRGW4RkoGSSgVQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.1.13':
     resolution: {integrity: sha512-+LC2nNtPovtrDwBc/nqnIKYh/W2+R69FA0hgoeOn64BdCX522u19ryLh3Vf3F8W49XBcMIxSe665kwy21FkhvA==}
@@ -2438,24 +2457,28 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.30.1:
     resolution: {integrity: sha512-jmUQVx4331m6LIX+0wUhBbmMX7TCfjF5FoOH6SD1CttzuYlGNVpA7QnrmLxrsub43ClTINfGSYyHe2HWeLl5CQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.30.1:
     resolution: {integrity: sha512-piWx3z4wN8J8z3+O5kO74+yr6ze/dKmPnI7vLqfSqI8bccaTGY5xiSGVIJBDd5K5BHlvVLpUB3S2YCfelyJ1bw==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.30.1:
     resolution: {integrity: sha512-rRomAK7eIkL+tHY0YPxbc5Dra2gXlI63HL+v1Pdi1a3sC+tJTcFrHX+E86sulgAXeI7rSzDYhPSeHHjqFhqfeQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.30.1:
     resolution: {integrity: sha512-mSL4rqPi4iXq5YVqzSsJgMVFENoa4nGTT/GjO2c0Yl9OuQfPsIfncvLrEW6RbbB24WtZ3xP/2CCmI3tNkNV4oA==}
@@ -2561,8 +2584,8 @@ packages:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
 
-  oauth4webapi@3.8.3:
-    resolution: {integrity: sha512-pQ5BsX3QRTgnt5HxgHwgunIRaDXBdkT23tf8dfzmtTIL2LTpdmxgbpbBm0VgFWAIDlezQvQCTgnVIUmHupXHxw==}
+  oauth4webapi@3.8.4:
+    resolution: {integrity: sha512-EKlVEgav8zH31IXxvhCqjEgQws6S9QmnmJyLXmeV5REf59g7VmqRVa5l/rhGWtUqGm2rLVTNwukn9hla5kJ2WQ==}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -2625,8 +2648,8 @@ packages:
     resolution: {integrity: sha512-80WNmd9DA0tmZrw9qQa62GPPWfuXJknrmVmLcxvq4uZBdYqb1wYoKTmnlGUchvVWe0XiLupYkBoXVOxz3C8DYQ==}
     engines: {node: '>=0.12'}
 
-  react-day-picker@9.13.0:
-    resolution: {integrity: sha512-euzj5Hlq+lOHqI53NiuNhCP8HWgsPf/bBAVijR50hNaY1XwjKjShAnIe8jm8RD2W9IJUvihDIZ+KrmqfFzNhFQ==}
+  react-day-picker@9.13.2:
+    resolution: {integrity: sha512-IMPiXfXVIAuR5Yk58DDPBC8QKClrhdXV+Tr/alBrwrHUw0qDDYB1m5zPNuTnnPIr/gmJ4ChMxmtqPdxm8+R4Eg==}
     engines: {node: '>=18'}
     peerDependencies:
       react: '>=16.8.0'
@@ -3065,9 +3088,9 @@ snapshots:
     dependencies:
       typescript: 5.9.2
 
-  '@atomic-ehr/fhirpath-lsp@0.0.3(typescript@5.9.2)':
+  '@atomic-ehr/fhirpath-lsp@0.0.5(typescript@5.9.2)':
     dependencies:
-      '@atomic-ehr/fhirpath': 0.1.0(typescript@5.9.2)
+      '@atomic-ehr/fhirpath': 0.1.2(typescript@5.9.2)
       '@codemirror/autocomplete': 6.20.0
       '@codemirror/commands': 6.10.1
       '@codemirror/language': 6.12.1
@@ -3082,7 +3105,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@atomic-ehr/fhirpath@0.1.0(typescript@5.9.2)':
+  '@atomic-ehr/fhirpath@0.1.2(typescript@5.9.2)':
     dependencies:
       '@atomic-ehr/fhir-canonical-manager': 0.0.11(typescript@5.9.2)
       '@atomic-ehr/fhirschema': 0.0.2(typescript@5.9.2)
@@ -3371,7 +3394,7 @@ snapshots:
       '@lezer/common': 1.5.0
       '@lezer/highlight': 1.2.3
       '@lezer/lr': 1.4.8
-      '@lezer/yaml': 1.0.3
+      '@lezer/yaml': 1.0.4
 
   '@codemirror/language@6.12.1':
     dependencies:
@@ -3569,13 +3592,13 @@ snapshots:
   '@health-samurai/aidbox-client@0.0.0-alpha.4':
     dependencies:
       '@types/json-patch': 0.0.33
-      oauth4webapi: 3.8.3
+      oauth4webapi: 3.8.4
       yaml: 2.8.2
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.5(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)':
+  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.6(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)':
     dependencies:
-      '@atomic-ehr/fhirpath': 0.1.0(typescript@5.9.2)
-      '@atomic-ehr/fhirpath-lsp': 0.0.3(typescript@5.9.2)
+      '@atomic-ehr/fhirpath': 0.1.2(typescript@5.9.2)
+      '@atomic-ehr/fhirpath-lsp': 0.0.5(typescript@5.9.2)
       '@codemirror/lsp-client': 6.2.1
       '@codemirror/state': 6.5.4
       '@health-samurai/aidbox-client': 0.0.0-alpha.4
@@ -3584,7 +3607,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@health-samurai/react-components@0.0.0-alpha.11(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)':
+  '@health-samurai/react-components@0.0.0-alpha.12(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)':
     dependencies:
       '@codemirror/autocomplete': 6.20.0
       '@codemirror/commands': 6.10.1
@@ -3639,7 +3662,7 @@ snapshots:
       next-themes: 0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       radix-ui: 1.4.3(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       react: 19.1.1
-      react-day-picker: 9.13.0(react@19.1.1)
+      react-day-picker: 9.13.2(react@19.1.1)
       react-dom: 19.1.1(react@19.1.1)
       react-hook-form: 7.71.1(react@19.1.1)
       react-resizable-panels: 3.0.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -3793,7 +3816,7 @@ snapshots:
     dependencies:
       '@lezer/common': 1.5.0
 
-  '@lezer/yaml@1.0.3':
+  '@lezer/yaml@1.0.4':
     dependencies:
       '@lezer/common': 1.5.0
       '@lezer/highlight': 1.2.3
@@ -5520,7 +5543,7 @@ snapshots:
 
   normalize-path@3.0.0: {}
 
-  oauth4webapi@3.8.3: {}
+  oauth4webapi@3.8.4: {}
 
   object-assign@4.1.1: {}
 
@@ -5634,7 +5657,7 @@ snapshots:
       discontinuous-range: 1.0.0
       ret: 0.1.15
 
-  react-day-picker@9.13.0(react@19.1.1):
+  react-day-picker@9.13.2(react@19.1.1):
     dependencies:
       '@date-fns/tz': 1.4.1
       date-fns: 4.1.0

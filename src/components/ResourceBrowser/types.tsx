@@ -7,14 +7,37 @@ export interface ResourcesPageProps {
 	resourceType: string;
 }
 
+export interface ResourcesTabTableData {
+	resources: Resource[];
+	resourceKeys: string[];
+	snapshot?: Snapshot;
+}
+
+export type SortState = {
+	column: string;
+	direction: "asc" | "desc";
+} | null;
+
 export interface ResourcesTabTableProps {
-	data:
-		| {
-				resources: Resource[];
-				resourceKeys: string[];
-				snapshot?: Snapshot;
-		  }
-		| undefined;
+	data: ResourcesTabTableData | undefined;
+	total: number;
+	selectedIds: Set<string>;
+	setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+	sort: SortState;
+	onSortToggle: (column: string) => void;
+	hasIndex: boolean | undefined;
+}
+
+export interface ResourcesTabFooterProps {
+	total: number;
+	currentPage: number;
+	pageSize: number;
+	selectedIds: Set<string>;
+	onPageChange: (page: number) => void;
+	onPageSizeChange: (size: number) => void;
+	onExport: () => void;
+	onDelete: () => void;
+	isDeleting: boolean;
 }
 
 export interface ResourcesTabHeaderProps {

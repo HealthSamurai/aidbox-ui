@@ -217,12 +217,14 @@ export function FhirPathInput({
 	}, []);
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: wrapper captures keyboard events to prevent TreeView navigation
+		// biome-ignore lint/a11y/noStaticElementInteractions: wrapper captures keyboard/click events to prevent TreeView navigation/toggling
 		<div
 			ref={wrapperRef}
 			className={wrapperClassName}
 			onKeyDown={handleKeyDown}
 			onKeyDownCapture={handleKeyDown}
+			onClick={(e) => e.stopPropagation()}
+			onMouseDown={(e) => e.stopPropagation()}
 		>
 			<EditorInput
 				id={id}

@@ -1,6 +1,11 @@
 /**
  * AI-translated from CLJS
  */
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@health-samurai/react-components";
 import { Link } from "@tanstack/react-router";
 import type React from "react";
 
@@ -166,21 +171,6 @@ export function humanizeContact(
 	const telecom = value.telecom?.[0] ? humanizeTelecom(value.telecom[0]) : null;
 
 	return [name, relationship, telecom].filter(Boolean).join(", ");
-}
-
-export function referenceLink(ref: string | null | undefined): string | null {
-	if (!ref || typeof ref !== "string") return null;
-
-	if (ref.startsWith("http")) return ref;
-
-	if (/^[a-zA-Z]*\/.*/.test(ref)) {
-		const [resource, id] = ref.split("/");
-		return `#/resource-types/${resource}/${id}`;
-	}
-
-	if (/^[a-zA-Z]*\?.*/.test(ref)) return `#/resource-types/${ref}`;
-
-	return null;
 }
 
 type FhirAnnotation = {
@@ -559,23 +549,23 @@ function humanizeValue_(
 
 		if (datatype === "Reference") {
 			const ref = (value as FhirReference).reference;
+			const display = (value as FhirReference).display;
 			const identifier = (value as FhirReference).identifier?.value;
 			const identifierSystem = (value as FhirReference).identifier?.system;
 			const refer = element?.refers?.[0];
-			const maybeLink = referenceLink(ref);
 
-			if (maybeLink) {
+			if (ref && typeof ref === "string" && /^[a-zA-Z]+\/[^/]+$/.test(ref)) {
+				const [resourceType, id] = ref.split("/");
 				return (
-					<HumanizedValue tooltip={JSON.stringify(ref, null, " ")}>
-						<Link
-							to={maybeLink}
-							onClick={(e) => {
-								stopPropagation(e);
-							}}
-						>
-							{(value as FhirReference).display || ref}
-						</Link>
-					</HumanizedValue>
+					<Link
+						to="/resource/$resourceType/edit/$id"
+						params={{ resourceType, id }}
+						search={{ tab: "code", mode: "json" }}
+						onClick={stopPropagation}
+						className="text-text-link hover:underline"
+					>
+						{display || ref}
+					</Link>
 				);
 			}
 
@@ -584,29 +574,25 @@ function humanizeValue_(
 					(value as FhirReference).type ||
 					refer ||
 					(key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
-				const humanizedValue =
-					(value as FhirReference).display || `${rt}?identifier=${identifier}`;
+				const humanizedValue = display || `${rt}?identifier=${identifier}`;
 				const identifierParam = identifierSystem
 					? `${identifierSystem}|${identifier}`
 					: identifier;
 
 				return (
-					<HumanizedValue tooltip={JSON.stringify(humanizedValue, null, " ")}>
-						<Link
-							to={`/resource/$resourceType`}
-							params={{ resourceType: rt }}
-							search={{ identifier: identifierParam }}
-							onClick={(e) => {
-								stopPropagation(e);
-							}}
-						>
-							{humanizedValue}
-						</Link>
-					</HumanizedValue>
+					<Link
+						to="/resource/$resourceType"
+						params={{ resourceType: rt }}
+						search={{ identifier: identifierParam }}
+						onClick={stopPropagation}
+						className="text-text-link hover:underline"
+					>
+						{humanizedValue}
+					</Link>
 				);
 			}
 
-			return ref;
+			return display || ref || "-";
 		}
 
 		if (
@@ -619,8 +605,7 @@ function humanizeValue_(
 			hasProperty(value[key], "reference") &&
 			typeof value[key].reference === "string"
 		) {
-			const ref = value[key].reference;
-			const maybeLink = referenceLink(ref);
+			const ref = value[key].reference as string;
 
 			const displayString: null | string =
 				hasProperty(value[key], "display") &&
@@ -628,15 +613,22 @@ function humanizeValue_(
 					? value[key].display
 					: null;
 
-			if (!maybeLink) return ref;
+			if (/^[a-zA-Z]+\/[^/]+$/.test(ref)) {
+				const [resourceType, id] = ref.split("/");
+				return (
+					<Link
+						to="/resource/$resourceType/edit/$id"
+						params={{ resourceType, id }}
+						search={{ tab: "code", mode: "json" }}
+						onClick={stopPropagation}
+						className="text-text-link hover:underline"
+					>
+						{displayString ?? ref}
+					</Link>
+				);
+			}
 
-			return (
-				<HumanizedValue
-					tooltip={JSON.stringify(displayString || ref, null, " ")}
-				>
-					<Link to={maybeLink}>{displayString ?? ref}</Link>
-				</HumanizedValue>
-			);
+			return displayString ?? ref;
 		}
 
 		if (datatype === "Ratio") {
@@ -867,12 +859,20 @@ function humanizeValue_(
 		if (typeof value === "string") return value;
 
 		const unknownHumanized = humanizeUnknown(value);
-		return unknownHumanized === ""
-			? HumanizedValue({
-					children: "[...]",
-					tooltip: JSON.stringify(value, null, " "),
-				})
-			: unknownHumanized;
+		return unknownHumanized === "" ? (
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<span className="cursor-default">[...]</span>
+				</TooltipTrigger>
+				<TooltipContent side="bottom" className="max-w-md">
+					<pre className="text-xs whitespace-pre-wrap break-all font-mono">
+						{JSON.stringify(value, null, 2)}
+					</pre>
+				</TooltipContent>
+			</Tooltip>
+		) : (
+			unknownHumanized
+		);
 	} catch (_error) {
 		return null;
 	}

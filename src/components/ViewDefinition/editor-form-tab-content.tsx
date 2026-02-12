@@ -8,14 +8,12 @@ import type {
 } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import {
 	Button,
-	Checkbox,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 	Input,
 	type ItemInstance,
-	MultiCombobox,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -42,6 +40,7 @@ import {
 	ViewDefinitionContext,
 	ViewDefinitionResourceTypeContext,
 } from "./page";
+import { ResourceTypeSelect } from "./resource-type-select";
 
 type ItemMeta = {
 	type:
@@ -56,17 +55,8 @@ type ItemMeta = {
 		| "where-value"
 		| "properties"
 		| "name"
-		| "title"
-		| "description"
 		| "status"
-		| "url"
-		| "publisher"
-		| "copyright"
-		| "experimental"
-		| "fhir version"
-		| "identifier"
-		| "system"
-		| "value"
+		| "resource"
 		| "constant"
 		| "constant-add"
 		| "where"
@@ -269,6 +259,8 @@ const InputView = ({
 			placeholder={placeholder}
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
+			onClick={(e) => e.stopPropagation()}
+			onMouseDown={(e) => e.stopPropagation()}
 		/>
 	);
 };
@@ -276,9 +268,8 @@ const InputView = ({
 export const FormTabContent = () => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
-	const { viewDefinitionResourceType } = React.useContext(
-		ViewDefinitionResourceTypeContext,
-	);
+	const { viewDefinitionResourceType, setViewDefinitionResourceType } =
+		React.useContext(ViewDefinitionResourceTypeContext);
 
 	const [constants, setConstants] = useState<ConstantItem[]>([]);
 	const [whereConditions, setWhereConditions] = useState<WhereItem[]>([]);
@@ -468,52 +459,20 @@ export const FormTabContent = () => {
 		updateViewDefinition(undefined, updatedWhere);
 	};
 
+	// Function to update resource type
+	const updateResource = (resource: string) => {
+		setViewDefinitionResourceType(resource);
+		updateViewDefinition(undefined, undefined, { resource });
+	};
+
 	// Function to update name field
 	const updateName = (name: string) => {
 		updateViewDefinition(undefined, undefined, { name });
 	};
 
-	// Function to update title field
-	const updateTitle = (title: string) => {
-		updateViewDefinition(undefined, undefined, { title });
-	};
-
-	// Function to update description field
-	const updateDescription = (description: string) => {
-		updateViewDefinition(undefined, undefined, { description });
-	};
-
 	// Function to update status field
 	const updateStatus = (status: CanonicalResource["status"]) => {
 		updateViewDefinition(undefined, undefined, { status });
-	};
-
-	// Function to update url field
-	const updateUrl = (url: string) => {
-		updateViewDefinition(undefined, undefined, { url });
-	};
-
-	// Function to update publisher field
-	const updatePublisher = (publisher: string) => {
-		updateViewDefinition(undefined, undefined, { publisher });
-	};
-
-	// Function to update copyright field
-	const updateCopyright = (copyright: string) => {
-		updateViewDefinition(undefined, undefined, { copyright });
-	};
-
-	// Function to update experimental field
-	const updateExperimental = (experimental: boolean) => {
-		updateViewDefinition(undefined, undefined, { experimental });
-	};
-
-	// Function to update fhirVersion field
-	const updateFhirVersions = (fhirVersions: ViewDefinition["fhirVersion"]) => {
-		updateViewDefinition(undefined, undefined, {
-			fhirVersion:
-				fhirVersions && fhirVersions.length > 0 ? fhirVersions : undefined,
-		});
 	};
 
 	// Function to add a new select item
@@ -823,18 +782,13 @@ export const FormTabContent = () => {
 				meta: {
 					type: "properties",
 				},
-				children: [
-					"_name",
-					"_title",
-					"_description",
-					"_status",
-					"_url",
-					"_publisher",
-					"_copyright",
-					"_experimental",
-					"_fhirVersion",
-					"_identifier",
-				],
+				children: ["_resource", "_status", "_name"],
+			},
+			_resource: {
+				name: "_resource",
+				meta: {
+					type: "resource",
+				},
 			},
 			_name: {
 				name: "_name",
@@ -842,71 +796,10 @@ export const FormTabContent = () => {
 					type: "name",
 				},
 			},
-			_title: {
-				name: "_title",
-				meta: {
-					type: "title",
-				},
-			},
-			_description: {
-				name: "_description",
-				meta: {
-					type: "description",
-				},
-			},
 			_status: {
 				name: "_status",
 				meta: {
 					type: "status",
-				},
-			},
-			_url: {
-				name: "_url",
-				meta: {
-					type: "url",
-				},
-			},
-			_publisher: {
-				name: "_publisher",
-				meta: {
-					type: "publisher",
-				},
-			},
-			_copyright: {
-				name: "_copyright",
-				meta: {
-					type: "copyright",
-				},
-			},
-			_experimental: {
-				name: "_experimental",
-				meta: {
-					type: "experimental",
-				},
-			},
-			_fhirVersion: {
-				name: "_fhirVersion",
-				meta: {
-					type: "fhir version",
-				},
-			},
-			_identifier: {
-				name: "_identifier",
-				children: ["_identifier_system", "_identifier_value"],
-				meta: {
-					type: "identifier",
-				},
-			},
-			_identifier_system: {
-				name: "_identifier_system",
-				meta: {
-					type: "system",
-				},
-			},
-			_identifier_value: {
-				name: "_identifier_value",
-				meta: {
-					type: "value",
 				},
 			},
 			_constant: {
@@ -977,23 +870,16 @@ export const FormTabContent = () => {
 		return treeStructure;
 	}, [constants, whereConditions, selectItems]);
 
-	// Items that should always be expanded (cannot be collapsed)
-	const alwaysExpandedIds = ["_constant", "_where", "_select"];
-
 	// Compute expanded items from collapsed items
 	const expandedItems = useMemo(() => {
 		const allItemIds = Object.keys(tree).filter((id) => id !== "root");
-		return allItemIds.filter(
-			(id) => alwaysExpandedIds.includes(id) || !collapsedItemIds.includes(id),
-		);
+		return allItemIds.filter((id) => !collapsedItemIds.includes(id));
 	}, [tree, collapsedItemIds]);
 
 	const onExpandedItemsChange = useCallback(
 		(items: string[]) => {
 			const allItemIds = Object.keys(tree).filter((id) => id !== "root");
-			const newCollapsedIds = allItemIds.filter(
-				(id) => !alwaysExpandedIds.includes(id) && !items.includes(id),
-			);
+			const newCollapsedIds = allItemIds.filter((id) => !items.includes(id));
 			setCollapsedItemIds(newCollapsedIds);
 		},
 		[tree, setCollapsedItemIds],
@@ -1180,7 +1066,6 @@ export const FormTabContent = () => {
 				additionalClass = "text-[#E07B39] bg-[#FFF4EC]";
 			}
 		} else if (
-			metaType === "resource" ||
 			metaType === "constant" ||
 			metaType === "select" ||
 			metaType === "where" ||
@@ -1188,18 +1073,9 @@ export const FormTabContent = () => {
 		) {
 			additionalClass = "text-blue-500 px-1!";
 		} else if (
+			metaType === "resource" ||
 			metaType === "name" ||
-			metaType === "title" ||
-			metaType === "description" ||
-			metaType === "status" ||
-			metaType === "url" ||
-			metaType === "publisher" ||
-			metaType === "copyright" ||
-			metaType === "experimental" ||
-			metaType === "fhir version" ||
-			metaType === "system" ||
-			metaType === "value" ||
-			metaType === "identifier"
+			metaType === "status"
 		)
 			additionalClass = "text-blue-500 bg-blue-100";
 
@@ -1259,6 +1135,15 @@ export const FormTabContent = () => {
 		};
 
 		switch (metaType) {
+			case "resource":
+				return (
+					<div className="flex w-full items-center justify-between">
+						{labelView(item)}
+						<div className="w-[50%]">
+							<ResourceTypeSelect onChange={updateResource} />
+						</div>
+					</div>
+				);
 			case "name":
 				return (
 					<div className="flex w-full items-center justify-between">
@@ -1268,32 +1153,6 @@ export const FormTabContent = () => {
 								placeholder="ViewDefinition name"
 								value={viewDefinition?.name || ""}
 								onChange={(value) => updateName(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "title":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Title"
-								value={viewDefinition?.title || ""}
-								onChange={(value) => updateTitle(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "description":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Description"
-								value={viewDefinition?.description || ""}
-								onChange={(value) => updateDescription(value)}
 							/>
 						</div>
 					</div>
@@ -1319,146 +1178,6 @@ export const FormTabContent = () => {
 									<SelectItem value="unknown">unknown</SelectItem>
 								</SelectContent>
 							</Select>
-						</div>
-					</div>
-				);
-			case "url":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="URL"
-								value={viewDefinition?.url || ""}
-								onChange={(value) => updateUrl(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "publisher":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Publisher"
-								value={viewDefinition?.publisher || ""}
-								onChange={(value) => updatePublisher(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "copyright":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Copyright"
-								value={viewDefinition?.copyright || ""}
-								onChange={(value) => updateCopyright(value)}
-							/>
-						</div>
-					</div>
-				);
-			case "experimental":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%] flex items-center pl-2">
-							<Checkbox
-								checked={viewDefinition?.experimental || false}
-								onCheckedChange={(checked) =>
-									updateExperimental(checked === true)
-								}
-							/>
-						</div>
-					</div>
-				);
-			case "fhir version": {
-				const fhirVersionOptions = [
-					{ value: "6.0.0-ballot3", label: "6.0.0-ballot3" },
-					{ value: "6.0.0-ballot2", label: "6.0.0-ballot2" },
-					{ value: "6.0.0-ballot1", label: "6.0.0-ballot1" },
-					{ value: "5.0.0", label: "5.0.0" },
-					{ value: "5.0.0-draft-final", label: "5.0.0-draft-final" },
-					{ value: "5.0.0-snapshot3", label: "5.0.0-snapshot3" },
-					{ value: "5.0.0-ballot", label: "5.0.0-ballot" },
-					{ value: "5.0.0-snapshot1", label: "5.0.0-snapshot1" },
-					{ value: "4.6.0", label: "4.6.0" },
-					{ value: "4.5.0", label: "4.5.0" },
-					{ value: "4.4.0", label: "4.4.0" },
-					{ value: "4.3.0", label: "4.3.0" },
-					{ value: "4.3.0-snapshot1", label: "4.3.0-snapshot1" },
-					{ value: "4.2.0", label: "4.2.0" },
-					{ value: "4.1.0", label: "4.1.0" },
-					{ value: "4.0.1", label: "4.0.1" },
-					{ value: "4.0.0", label: "4.0.0" },
-					{ value: "3.5a.0", label: "3.5a.0" },
-					{ value: "3.5.0", label: "3.5.0" },
-					{ value: "3.3.0", label: "3.3.0" },
-					{ value: "3.2.0", label: "3.2.0" },
-					{ value: "3.0.2", label: "3.0.2" },
-					{ value: "3.0.1", label: "3.0.1" },
-					{ value: "3.0.0", label: "3.0.0" },
-				];
-				const selectedVersions = viewDefinition?.fhirVersion || [];
-
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<MultiCombobox
-								options={fhirVersionOptions}
-								value={selectedVersions}
-								onValueChange={(props: string[]) =>
-									updateFhirVersions(props as ViewDefinition["fhirVersion"])
-								}
-								placeholder="Select FHIR versions"
-								searchPlaceholder="Search versions..."
-								className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary"
-							/>
-						</div>
-					</div>
-				);
-			}
-			case "identifier":
-				return <div>{labelView(item)}</div>;
-			case "system":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Identifier system"
-								value={viewDefinition?.identifier?.[0]?.system || ""}
-								onChange={(value) => {
-									const currentIdentifier =
-										viewDefinition?.identifier?.[0] || {};
-									updateViewDefinition(undefined, undefined, {
-										identifier: [{ ...currentIdentifier, system: value }],
-									});
-								}}
-							/>
-						</div>
-					</div>
-				);
-			case "value":
-				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Identifier value"
-								value={viewDefinition?.identifier?.[0]?.value || ""}
-								onChange={(value) => {
-									const currentIdentifier =
-										viewDefinition?.identifier?.[0] || {};
-									updateViewDefinition(undefined, undefined, {
-										identifier: [{ ...currentIdentifier, value }],
-									});
-								}}
-							/>
 						</div>
 					</div>
 				);
@@ -1862,7 +1581,7 @@ export const FormTabContent = () => {
 						metaType === "where" ||
 						metaType === "properties"
 					) {
-						return "relative my-1.5 rounded-md bg-blue-100 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
+						return "relative my-1.5 rounded-md bg-blue-100 cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 					} else {
 						if (
 							metaType === "column-item" ||
@@ -1879,6 +1598,12 @@ export const FormTabContent = () => {
 				rootItemId="root"
 				customItemView={customItemView}
 				disableHover={true}
+				chevronClassName="self-center cursor-pointer"
+				onItemLabelClick={(item) => {
+					if (item.isFolder()) {
+						item.isExpanded() ? item.collapse() : item.expand();
+					}
+				}}
 				canReorder={true}
 				onDropFn={onDropTreeItem}
 				expandedItems={expandedItems}

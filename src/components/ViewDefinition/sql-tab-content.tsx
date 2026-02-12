@@ -1,7 +1,7 @@
 import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
-import { CodeEditor, TabsContent } from "@health-samurai/react-components";
+import { CodeEditor } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Constants from "./constants";
@@ -31,6 +31,13 @@ const fetchSQL = async (
 		body: JSON.stringify(parametersPayload),
 	});
 
+	const httpStatus = response.response.status;
+	if (!response.response.ok) {
+		const json = await response.response.json();
+		const diagnostics = json.issue?.[0]?.diagnostics || "Unknown error";
+		throw Error(`HTTP ${httpStatus}: ${diagnostics}`);
+	}
+
 	const json = await response.response.json();
 	if (json.issue) {
 		throw Error(`${json.issue[0]?.diagnostics || "Unknown error"}`);
@@ -51,7 +58,9 @@ export function SQLTab() {
 
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 
-	const viewDefinition = viewDefinitionContext.viewDefinition;
+	// Snapshot at mount time — the component remounts on each tab switch
+	// (no forceMount), so this always reflects the latest state on entry.
+	const [viewDefinition] = useState(() => viewDefinitionContext.viewDefinition);
 
 	const { isLoading, data, status, error } = useQuery({
 		queryKey: [viewDefinition, Constants.PageID, "sql-tab"],
@@ -64,7 +73,7 @@ export function SQLTab() {
 	});
 
 	return (
-		<TabsContent value="sql" className="grow min-h-0">
+		<>
 			{isLoading ? (
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
@@ -77,13 +86,19 @@ export function SQLTab() {
 			) : status === "error" ? (
 				<div className="flex items-center justify-center h-full text-text-secondary">
 					<div className="text-center">
-						<div className="text-lg mb-2">Error loading SQL...</div>
-						<div className="text-sm">{error.message}</div>
+						<div className="text-lg mb-2">Error loading SQL</div>
+						<div className="text-sm text-text-error-primary">
+							{error.message}
+						</div>
+						<div className="text-sm mt-2">
+							The ViewDefinition resource may be invalid. Fix the resource and
+							try again.
+						</div>
 					</div>
 				</div>
 			) : (
 				<CodeEditor readOnly currentValue={data ?? ""} mode="sql" />
 			)}
-		</TabsContent>
+		</>
 	);
 }

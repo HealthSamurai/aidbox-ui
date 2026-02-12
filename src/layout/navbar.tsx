@@ -39,14 +39,20 @@ function Breadcrumbs() {
 	}
 
 	return (
-		<Breadcrumb>
-			<BreadcrumbList>
+		<Breadcrumb className="min-w-0">
+			<BreadcrumbList className="flex-nowrap">
 				{breadcrumbs.map((crumb, index) => (
 					<React.Fragment key={`${crumb.path}-${index}`}>
 						{index > 0 && <BreadcrumbSeparator>/</BreadcrumbSeparator>}
-						<BreadcrumbItem>
+						<BreadcrumbItem
+							className={
+								index === breadcrumbs.length - 1 ? "min-w-0" : "shrink-0"
+							}
+						>
 							{index === breadcrumbs.length - 1 ? (
-								<BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+								<BreadcrumbPage className="truncate">
+									{crumb.title}
+								</BreadcrumbPage>
 							) : (
 								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>
