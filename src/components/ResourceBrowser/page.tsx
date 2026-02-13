@@ -665,7 +665,12 @@ const ResourcesTabContent = ({
 	});
 
 	const { data, isLoading, error } = ReactQuery.useQuery({
-		queryKey: [Constants.PageID, "resource-list", decodedSearchQuery],
+		queryKey: [
+			Constants.PageID,
+			"resource-list",
+			resourceType,
+			decodedSearchQuery,
+		],
 		queryFn: async () => {
 			const result = await client.searchType({
 				type: resourcesPageContext.resourceType,
