@@ -822,14 +822,82 @@ const ResourcesTabContent = ({
 	);
 };
 
+const StructureDefinitionTab = ({
+	client,
+	url,
+}: {
+	client: AidboxClientR5;
+	url: string;
+}) => {
+	const { data, isLoading } = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "structure-definition", url],
+		queryFn: async () => {
+			const response = await client.rawRequest({
+				url: `/fhir/StructureDefinition?url=${encodeURIComponent(url)}`,
+				method: "GET",
+			});
+			const bundle: {
+				entry?: Array<{ resource: unknown }>;
+			} = await response.response.json();
+			return bundle.entry?.[0]?.resource ?? null;
+		},
+		retry: false,
+	});
+
+	if (isLoading) {
+		return <div>Loading...</div>;
+	}
+
+	if (!data) {
+		return (
+			<div className="text-text-secondary">No StructureDefinition found</div>
+		);
+	}
+
+	return (
+		<HSComp.CodeEditor
+			readOnly
+			currentValue={JSON.stringify(data, null, "  ")}
+			mode="json"
+		/>
+	);
+};
+
 const ProfilesTabContent = ({
 	client,
 	resourceType,
 }: Types.ResourcesPageProps) => {
-	const [selectedProfile, setSelectedProfile] = React.useState<Schema | null>(
-		null,
-	);
-	const [detailTab, setDetailTab] = React.useState<string>("differential");
+	const navigate = Router.useNavigate();
+	const search = Router.useSearch({ strict: false }) as {
+		profile?: string;
+		detailTab?: string;
+	};
+
+	const setSelectedProfile = (schema: Schema | null) => {
+		navigate({
+			search: (prev: Record<string, unknown>) => {
+				if (!schema) {
+					const { profile: _, detailTab: __, ...rest } = prev;
+					return rest;
+				}
+				return {
+					...prev,
+					profile: schema.entity.url,
+					detailTab: "differential",
+				};
+			},
+		});
+	};
+
+	const detailTab = search.detailTab || "differential";
+	const setDetailTab = (value: string) => {
+		navigate({
+			search: (prev: Record<string, unknown>) => ({
+				...prev,
+				detailTab: value,
+			}),
+		});
+	};
 
 	const { data, isLoading } = ReactQuery.useQuery({
 		queryKey: [Constants.PageID, "resource-profiles-list"],
@@ -861,6 +929,10 @@ const ProfilesTabContent = ({
 	}
 
 	const schemas = Object.values(data);
+
+	const selectedProfile = search.profile
+		? (schemas.find((s) => s.entity.url === search.profile) ?? null)
+		: null;
 
 	const profilesTable = (
 		<HSComp.Table zebra stickyHeader>
@@ -917,63 +989,75 @@ const ProfilesTabContent = ({
 				</HSComp.ResizablePanel>
 				<HSComp.ResizableHandle />
 				<HSComp.ResizablePanel minSize={30}>
-					<div className="h-full flex flex-col">
-						<div className="border-b h-10 flex items-center justify-between px-4">
-							<HSComp.Tabs
-								value={detailTab}
-								onValueChange={setDetailTab}
-								className="flex-1"
-							>
-								<HSComp.TabsList>
-									<HSComp.TabsTrigger value="differential">
-										Differential
-									</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="snapshot">
-										Snapshot
-									</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="fhirschema">
-										FHIRSchema
-									</HSComp.TabsTrigger>
-								</HSComp.TabsList>
-							</HSComp.Tabs>
+					<HSComp.Tabs
+						variant="tertiary"
+						value={detailTab}
+						onValueChange={setDetailTab}
+						className="flex flex-col h-full"
+					>
+						<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
+							<HSComp.TabsList className="py-0! border-b-0!">
+								<HSComp.TabsTrigger value="differential">
+									Differential
+								</HSComp.TabsTrigger>
+								<HSComp.TabsTrigger value="snapshot">
+									Snapshot
+								</HSComp.TabsTrigger>
+								<HSComp.TabsTrigger value="fhirschema">
+									FHIRSchema
+								</HSComp.TabsTrigger>
+								<HSComp.TabsTrigger value="structuredefinition">
+									StructureDefinition
+								</HSComp.TabsTrigger>
+							</HSComp.TabsList>
 							<HSComp.Button
 								variant="ghost"
 								size="small"
+								className="mr-2"
 								onClick={() => setSelectedProfile(null)}
 							>
 								<Lucide.XIcon size={16} />
 							</HSComp.Button>
 						</div>
-						<div className="flex-1 overflow-auto p-4">
-							<HSComp.Tabs value={detailTab}>
-								<HSComp.TabsContent value="differential">
-									<HSComp.FhirStructureView
-										tree={Utils.transformSnapshotToTree(
-											selectedProfile.differential,
-										)}
-									/>
-								</HSComp.TabsContent>
-								<HSComp.TabsContent value="snapshot">
-									<HSComp.FhirStructureView
-										tree={Utils.transformSnapshotToTree(
-											selectedProfile.snapshot,
-										)}
-									/>
-								</HSComp.TabsContent>
-								<HSComp.TabsContent value="fhirschema">
-									<HSComp.CodeEditor
-										readOnly
-										currentValue={JSON.stringify(
-											selectedProfile.entity,
-											null,
-											"  ",
-										)}
-										mode="json"
-									/>
-								</HSComp.TabsContent>
-							</HSComp.Tabs>
-						</div>
-					</div>
+						<HSComp.TabsContent
+							value="differential"
+							className="overflow-auto p-4"
+						>
+							<HSComp.FhirStructureView
+								tree={Utils.transformSnapshotToTree(
+									selectedProfile.differential,
+								)}
+							/>
+						</HSComp.TabsContent>
+						<HSComp.TabsContent value="snapshot" className="overflow-auto p-4">
+							<HSComp.FhirStructureView
+								tree={Utils.transformSnapshotToTree(selectedProfile.snapshot)}
+							/>
+						</HSComp.TabsContent>
+						<HSComp.TabsContent
+							value="fhirschema"
+							className="relative grow min-h-0"
+						>
+							<HSComp.CodeEditor
+								readOnly
+								currentValue={JSON.stringify(
+									selectedProfile.entity,
+									null,
+									"  ",
+								)}
+								mode="json"
+							/>
+						</HSComp.TabsContent>
+						<HSComp.TabsContent
+							value="structuredefinition"
+							className="relative grow min-h-0"
+						>
+							<StructureDefinitionTab
+								client={client}
+								url={selectedProfile.entity.url}
+							/>
+						</HSComp.TabsContent>
+					</HSComp.Tabs>
 				</HSComp.ResizablePanel>
 			</HSComp.ResizablePanelGroup>
 		</div>
@@ -1082,7 +1166,10 @@ export const ResourcesPage = ({
 
 	const handleTabChange = (value: string) => {
 		navigate({
-			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
+			search: (prev: Record<string, unknown>) => {
+				const { profile: _, detailTab: __, ...rest } = prev;
+				return { ...rest, tab: value };
+			},
 		});
 	};
 
