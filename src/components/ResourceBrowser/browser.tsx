@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import { EmptyState } from "../empty-state";
 
 type ResourceRow = {
 	resourceType: string;
@@ -309,19 +310,10 @@ export function Browser() {
 			</div>
 			<div className="grow min-h-0">
 				{!isLoading && filteredData.length === 0 ? (
-					<div className="flex items-center justify-center h-full">
-						<div className="flex flex-col items-center gap-4">
-							<div className="flex flex-col items-center gap-2">
-								<img src="/no-resources.svg" alt="" />
-								<span className="text-lg font-semibold">
-									No resource types found
-								</span>
-							</div>
-							<span className="text-text-secondary">
-								Try a different search query
-							</span>
-						</div>
-					</div>
+					<EmptyState
+						title="No resource types found"
+						description="Try a different search query"
+					/>
 				) : (
 					<ResourceList
 						tableData={allTableData}

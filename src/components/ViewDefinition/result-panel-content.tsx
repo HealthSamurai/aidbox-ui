@@ -28,6 +28,7 @@ import {
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { InfiniteScrollSentinel } from "../../utils/infinite-scroll";
+import { EmptyState } from "../empty-state";
 import { ViewDefinitionContext } from "./page";
 
 const SKELETON_MARKER = "__skeleton__";
@@ -77,21 +78,6 @@ const processTableData = (response: string | undefined): ProcessedTableData => {
 	const columns = extractColumns(parsedData);
 	return { tableData: parsedData, columns, isEmptyArray: false };
 };
-
-const EmptyState = ({
-	message,
-	description,
-}: {
-	message: string;
-	description: string;
-}) => (
-	<div className="flex items-center justify-center h-full text-text-secondary bg-bg-primary">
-		<div className="text-center">
-			<div className="text-lg mb-2">{message}</div>
-			<div className="text-sm">{description}</div>
-		</div>
-	</div>
-);
 
 const ResultHeader = ({
 	isMaximized,
@@ -164,7 +150,7 @@ const ResultContent = ({
 	if (!rows) {
 		return (
 			<EmptyState
-				message="No results yet"
+				title="No results yet"
 				description="Click Run to execute the ViewDefinition"
 			/>
 		);
@@ -173,7 +159,7 @@ const ResultContent = ({
 	if (isEmptyArray) {
 		return (
 			<EmptyState
-				message="No results"
+				title="No results"
 				description="The query executed successfully but returned no data"
 			/>
 		);

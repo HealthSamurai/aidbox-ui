@@ -19,6 +19,7 @@ import { useContext, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
+import { EmptyState } from "../empty-state";
 import * as Constants from "./constants";
 import {
 	ViewDefinitionContext,
@@ -252,11 +253,10 @@ export function ExampleTabContent() {
 								/>
 							</>
 						) : (
-							<div className="flex items-center justify-center h-full text-text-secondary">
-								<div className="text-center">
-									<div className="text-lg mb-2">Resource not found</div>
-								</div>
-							</div>
+							<EmptyState
+								title="Resource not found"
+								description="If you feel lonely create a new resource"
+							/>
 						)}
 					</div>
 				)}

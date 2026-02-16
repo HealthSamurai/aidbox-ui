@@ -9,6 +9,7 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
+import { EmptyState } from "../empty-state";
 import type * as VDTypes from "../ViewDefinition/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
@@ -263,17 +264,10 @@ export const ResourcesTabTable = ({
 
 	if (!data || !data.resources || data.resources.length === 0) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="flex flex-col items-center gap-4">
-					<div className="flex flex-col items-center gap-2">
-						<img src="/no-resources.svg" alt="" />
-						<span className="text-lg font-semibold">No resources found</span>
-					</div>
-					<span className="text-text-secondary">
-						If you feel lonely create a new resource
-					</span>
-				</div>
-			</div>
+			<EmptyState
+				title="No resources found"
+				description="If you feel lonely create a new resource"
+			/>
 		);
 	}
 

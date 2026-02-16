@@ -19,6 +19,7 @@ import {
 	findYamlPathOffset,
 	getIssueLineNumbers,
 } from "../../utils/json-path-offset";
+import { EmptyState } from "../empty-state";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton } from "./action";
@@ -83,12 +84,10 @@ export const ResourceEditorPageWithLoader = (
 
 	if (!resourceData)
 		return (
-			<div className="flex items-center justify-center h-full text-red-500">
-				<div className="text-center">
-					<div className="text-lg mb-2">Failed to load resource</div>
-					<div className="text-sm">Resource not found</div>
-				</div>
-			</div>
+			<EmptyState
+				title="Failed to load resource"
+				description="Resource not found"
+			/>
 		);
 
 	return <ResourceEditorPage initialResource={resourceData} {...props} />;
