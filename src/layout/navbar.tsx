@@ -21,17 +21,21 @@ import {
 	UserRound,
 } from "lucide-react";
 import React from "react";
-import { useLogout, useUserInfo } from "../api/auth";
+import { useInstanceName, useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 
 function Breadcrumbs() {
 	const matches = useMatches();
+	const { data: instanceName } = useInstanceName();
 	if (matches.length === 0) return <div>No router matches</div>;
 
-	const breadcrumbs = matches.flatMap((match) => {
-		const breadCrumb = match.loaderData?.breadCrumb;
-		return breadCrumb ? [{ title: breadCrumb, path: match.pathname }] : [];
-	});
+	const breadcrumbs = [
+		...(instanceName ? [{ title: instanceName, path: "/" }] : []),
+		...matches.flatMap((match) => {
+			const breadCrumb = match.loaderData?.breadCrumb;
+			return breadCrumb ? [{ title: breadCrumb, path: match.pathname }] : [];
+		}),
+	];
 
 	if (breadcrumbs.length === 0) {
 		console.warn("Breadcrumb ommited!");

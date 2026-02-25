@@ -12,6 +12,7 @@ import {
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Columns3Cog,
+	Database,
 	PanelLeftClose,
 	PanelLeftOpen,
 	SquareTerminal,
@@ -28,6 +29,10 @@ const mainMenuItems = [
 	<Link key="/resource" to="/resource">
 		<Columns3Cog />
 		Resource browser
+	</Link>,
+	<Link key="/db-console" to="/db-console">
+		<Database />
+		DB Console
 	</Link>,
 ].map((link) => {
 	const linkChildren = link.props.children;

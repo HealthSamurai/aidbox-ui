@@ -30,6 +30,26 @@ export function useLogout() {
 	});
 }
 
+export function useInstanceName() {
+	const client = useAidboxClient();
+
+	return useQuery({
+		queryKey: ["instanceName"],
+		queryFn: async () => {
+			const result = await client.request<{ value?: string }>({
+				method: "GET",
+				url: "/api/v1/settings/introspect/instance-name",
+			});
+			if (result.isOk()) {
+				return result.value.resource.value ?? null;
+			}
+			return null;
+		},
+		refetchOnWindowFocus: false,
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+}
+
 export function useUIHistory() {
 	const client = useAidboxClient();
 

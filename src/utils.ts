@@ -2,20 +2,21 @@ import type { TreeViewItem } from "@health-samurai/react-components";
 import type { Header, Tab } from "./components/rest/active-tabs";
 import type { Meta, Snapshot } from "./components/ViewDefinition/types";
 
-export function getAidboxBaseURL(): string {
-	const cookies = document.cookie.split("; ");
-	for (const cookie of cookies) {
-		const [name, rest] = cookie.split("=");
-		if (name === "aidbox-base-url") {
-			return decodeURIComponent(rest ?? "");
+function getCookie(name: string): string | undefined {
+	for (const cookie of document.cookie.split("; ")) {
+		const [key, value] = cookie.split("=");
+		if (key === name) {
+			return decodeURIComponent(value ?? "");
 		}
 	}
+}
 
-	const vite_base_url = import.meta.env.VITE_AIDBOX_BASE_URL;
-	if (vite_base_url) {
-		return vite_base_url;
-	}
-	return `${window.location.protocol}//${window.location.host}`;
+export function getAidboxBaseURL(): string {
+	return (
+		getCookie("aidbox-base-url") ||
+		import.meta.env.VITE_AIDBOX_BASE_URL ||
+		`${window.location.protocol}//${window.location.host}`
+	);
 }
 
 export function parseHttpRequest(rawText: string): {

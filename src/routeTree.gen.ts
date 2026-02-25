@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
+import { Route as DbConsoleRouteImport } from './routes/db-console'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
@@ -26,6 +27,11 @@ const RestRoute = RestRouteImport.update({
 const ResourceRoute = ResourceRouteImport.update({
   id: '/resource',
   path: '/resource',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DbConsoleRoute = DbConsoleRouteImport.update({
+  id: '/db-console',
+  path: '/db-console',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -64,6 +70,7 @@ const ResourceResourceTypeEditIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/db-console': typeof DbConsoleRoute
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
@@ -74,6 +81,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
   '/resource': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
@@ -83,6 +91,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/db-console': typeof DbConsoleRoute
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/db-console'
     | '/resource'
     | '/rest'
     | '/resource/$resourceType'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/db-console'
     | '/rest'
     | '/resource'
     | '/resource/$resourceType/create'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/db-console'
     | '/resource'
     | '/rest'
     | '/resource/$resourceType'
@@ -124,6 +136,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DbConsoleRoute: typeof DbConsoleRoute
   ResourceRoute: typeof ResourceRouteWithChildren
   RestRoute: typeof RestRoute
 }
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/resource'
       fullPath: '/resource'
       preLoaderRoute: typeof ResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/db-console': {
+      id: '/db-console'
+      path: '/db-console'
+      fullPath: '/db-console'
+      preLoaderRoute: typeof DbConsoleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -220,6 +240,7 @@ const ResourceRouteWithChildren = ResourceRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DbConsoleRoute: DbConsoleRoute,
   ResourceRoute: ResourceRouteWithChildren,
   RestRoute: RestRoute,
 }
