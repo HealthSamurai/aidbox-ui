@@ -950,6 +950,13 @@ function RouteComponent() {
 		getInitialValueInEffect: false,
 		defaultValue: true,
 	});
+	const initialLeftMenuOpen = useRef(leftMenuOpen);
+
+	useEffect(() => {
+		if (!initialLeftMenuOpen.current) {
+			leftPanelRef.current?.collapse();
+		}
+	}, []);
 
 	const [panelsMode, setPanelsMode] = useLocalStorage<
 		"horizontal" | "vertical"

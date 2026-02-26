@@ -453,6 +453,13 @@ function DbConsolePage() {
 	const [hasExplicitLimit, setHasExplicitLimit] = useState(false);
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
+	const initialLeftMenuOpen = useRef(leftMenuOpen);
+
+	useEffect(() => {
+		if (!initialLeftMenuOpen.current) {
+			leftPanelRef.current?.collapse();
+		}
+	}, []);
 	const [isResultCollapsed, setIsResultCollapsed] = useState(false);
 
 	const currentResult = tabResults.get(selectedTab?.id ?? "");
