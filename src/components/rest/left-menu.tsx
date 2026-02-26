@@ -94,7 +94,13 @@ const pathLabel = cn("typo-body-xs", "text-text-secondary", "truncate");
 const pathLabelSelected = cn("typo-body-xs", "text-text-primary", "truncate");
 
 // Toggle button styles
-const toggleButton = cn("h-full", "flex-shrink-0", "border-b", "border-r");
+const toggleButton = cn(
+	"h-full",
+	"flex-shrink-0",
+	"border-b-0",
+	"border-r",
+	"rounded-none!",
+);
 
 const iconSize = cn("size-4");
 

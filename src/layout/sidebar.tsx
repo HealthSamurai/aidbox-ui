@@ -22,13 +22,13 @@ import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 
 const mainMenuItems = [
-	<Link key="/rest" to="/rest">
-		<SquareTerminal />
-		REST Console
-	</Link>,
 	<Link key="/resource" to="/resource">
 		<Columns3Cog />
 		Resource browser
+	</Link>,
+	<Link key="/rest" to="/rest">
+		<SquareTerminal />
+		REST Console
 	</Link>,
 	<Link key="/db-console" to="/db-console">
 		<Database />
