@@ -68,6 +68,7 @@ import {
 	isInsideString,
 	type JsonbColumnMap,
 	jsonbCompletionExtension,
+	transformToAidboxFormat,
 } from "../components/db-console/jsonb-completion";
 import {
 	SqlLeftMenu,
@@ -422,6 +423,7 @@ function DbConsolePage() {
 			if (!defaultSchema) return null;
 
 			const pathChildren = buildFhirPathChildren(defaultSchema.snapshot);
+			transformToAidboxFormat(pathChildren, defaultSchema.snapshot);
 			fhirSchemaCacheRef.current[resourceType] = pathChildren;
 			return pathChildren;
 		},
@@ -1562,7 +1564,11 @@ const EDITOR_PADDING_X = 0;
 
 const CellValue = ({ value }: { value: unknown }) => {
 	if (value === null || value === undefined) {
-		return <span className="text-text-tertiary">null</span>;
+		return (
+			<div className="sticky top-10">
+				<span className="text-text-tertiary">null</span>
+			</div>
+		);
 	}
 	if (typeof value === "object") {
 		const json = JSON.stringify(value, null, 2);
@@ -1584,7 +1590,7 @@ const CellValue = ({ value }: { value: unknown }) => {
 			</div>
 		);
 	}
-	return <>{String(value)}</>;
+	return <div className="sticky top-10">{String(value)}</div>;
 };
 
 const extractColumns = (data: Record<string, unknown>[]): string[] => {

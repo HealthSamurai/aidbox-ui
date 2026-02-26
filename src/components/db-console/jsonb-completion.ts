@@ -47,6 +47,34 @@ export type ColumnCompletionCtx = {
 const SQL_TABLE_KEYWORDS =
 	/\b(?:from|join|inner\s+join|left\s+join|right\s+join|full\s+join|cross\s+join|into|update|table)\s+$/i;
 
+const FHIR_PRIMITIVE_TYPES = new Set([
+	"boolean",
+	"positiveInt",
+	"unsignedInt",
+	"url",
+	"string",
+	"uri",
+	"id",
+	"dateTime",
+	"oid",
+	"uuid",
+	"canonical",
+	"time",
+	"integer",
+	"date",
+	"markdown",
+	"base64Binary",
+	"instant",
+	"code",
+	"decimal",
+]);
+
+function fhirVariantToAidboxKey(baseName: string, variantName: string): string {
+	const suffix = variantName.slice(baseName.length);
+	const decapitalized = suffix[0].toLowerCase() + suffix.slice(1);
+	return FHIR_PRIMITIVE_TYPES.has(decapitalized) ? decapitalized : suffix;
+}
+
 export function buildFhirPathChildren(snapshot: Snapshot[]): FhirPathChildren {
 	const result: FhirPathChildren = {};
 
@@ -71,6 +99,114 @@ export function buildFhirPathChildren(snapshot: Snapshot[]): FhirPathChildren {
 	}
 
 	return result;
+}
+
+function transformUnionTypes(
+	result: FhirPathChildren,
+	snapshot: Snapshot[],
+): void {
+	const unionParents = snapshot.filter(
+		(el) => el["union?"] === true && el.path,
+	);
+
+	for (const unionEl of unionParents) {
+		const unionPath = unionEl.path as string;
+		const parts = unionPath.split(".");
+		const baseName = parts[parts.length - 1];
+		const resourceParentPath = parts.slice(0, -1).join(".");
+
+		const parentChildren = result[resourceParentPath];
+		if (!parentChildren) continue;
+
+		const variants: FhirFieldInfo[] = [];
+		const nonVariants: FhirFieldInfo[] = [];
+
+		for (const child of parentChildren) {
+			if (
+				child.name !== baseName &&
+				child.name.startsWith(baseName) &&
+				child.name.length > baseName.length &&
+				/^[A-Z]/.test(child.name.slice(baseName.length))
+			) {
+				variants.push(child);
+			} else if (child.name !== baseName) {
+				nonVariants.push(child);
+			}
+		}
+
+		if (variants.length === 0) continue;
+
+		const aidboxChildren: FhirFieldInfo[] = variants.map((variant) => ({
+			name: fhirVariantToAidboxKey(baseName, variant.name),
+			datatype: variant.datatype,
+			isArray: variant.isArray,
+			description: variant.description,
+		}));
+
+		result[unionPath] = aidboxChildren;
+
+		const unionEntry: FhirFieldInfo = {
+			name: baseName,
+			datatype: "union",
+			isArray: unionEl.max === "*",
+			description: unionEl.short ?? unionEl.desc,
+		};
+		result[resourceParentPath] = [...nonVariants, unionEntry];
+
+		for (const variant of variants) {
+			const fhirVariantPath = `${resourceParentPath}.${variant.name}`;
+			const aidboxKey = fhirVariantToAidboxKey(baseName, variant.name);
+			const aidboxVariantPath = `${unionPath}.${aidboxKey}`;
+
+			if (result[fhirVariantPath]) {
+				result[aidboxVariantPath] = result[fhirVariantPath];
+				delete result[fhirVariantPath];
+			}
+
+			for (const key of Object.keys(result)) {
+				if (key.startsWith(`${fhirVariantPath}.`)) {
+					const suffix = key.slice(fhirVariantPath.length);
+					result[aidboxVariantPath + suffix] = result[key];
+					delete result[key];
+				}
+			}
+		}
+	}
+}
+
+function transformReferenceFields(result: FhirPathChildren): void {
+	for (const [path, children] of Object.entries(result)) {
+		const hasReferenceField = children.some((c) => c.name === "reference");
+		if (!hasReferenceField) continue;
+
+		result[path] = children.flatMap((child) => {
+			if (child.name === "reference") {
+				return [
+					{
+						name: "id",
+						datatype: "string",
+						isArray: false,
+						description: "Resource ID",
+					},
+					{
+						name: "resourceType",
+						datatype: "string",
+						isArray: false,
+						description: "Resource type",
+					},
+				];
+			}
+			return [child];
+		});
+	}
+}
+
+export function transformToAidboxFormat(
+	result: FhirPathChildren,
+	snapshot: Snapshot[],
+): void {
+	transformUnionTypes(result, snapshot);
+	transformReferenceFields(result);
 }
 
 function parseJsonbChain(textBefore: string): JsonbChain | null {
@@ -326,6 +462,8 @@ async function resolveNestedTypes(
 		const segmentName = path[i];
 		const element = parentChildren.find((f) => f.name === segmentName);
 		if (!element?.datatype) return;
+
+		if (element.datatype === "union") continue;
 
 		const firstChar = element.datatype[0];
 		if (firstChar !== firstChar.toUpperCase()) return;

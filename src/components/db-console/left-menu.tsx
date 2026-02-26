@@ -60,6 +60,7 @@ const commandContainer = cn(
 	"[&_[cmdk-input-wrapper]]:flex-none",
 );
 const commandList = cn("flex-1", "min-h-0", "max-h-none!", "p-0");
+const historyGroup = cn("[&_*[cmdk-group-heading]]:px-2");
 
 const historyItem = cn(
 	"flex",
@@ -95,13 +96,36 @@ const SHORT_MONTHS = [
 	"Dec",
 ];
 
-function formatHistoryDate(dateString: string): string {
+function formatHistoryTime(dateString: string): string {
 	const d = new Date(dateString);
-	const day = d.getDate();
-	const month = SHORT_MONTHS[d.getMonth()];
 	const hours = String(d.getHours()).padStart(2, "0");
 	const minutes = String(d.getMinutes()).padStart(2, "0");
-	return `${day} ${month} ${hours}:${minutes}`;
+	return `${hours}:${minutes}`;
+}
+
+function getDateGroup(dateString: string): string {
+	const date = new Date(dateString);
+	return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
+}
+
+function groupHistoryByDate(
+	items: SqlHistoryEntry[],
+): Record<string, SqlHistoryEntry[]> {
+	const groups: Record<string, SqlHistoryEntry[]> = {};
+
+	for (const item of items) {
+		const lastUpdated = item.meta?.lastUpdated;
+		if (!lastUpdated) continue;
+		const group = getDateGroup(lastUpdated);
+		if (!groups[group]) groups[group] = [];
+		groups[group].push(item);
+	}
+
+	return groups;
+}
+
+function getSortedGroupKeys(groups: Record<string, unknown[]>): string[] {
+	return Object.keys(groups);
 }
 
 // Context
@@ -112,6 +136,11 @@ const SqlLeftMenuContext = React.createContext<LeftMenuStatus>("open");
 export { SqlLeftMenuContext };
 
 // History list component
+
+function formatGroupTitle(groupKey: string, allGroupKeys: string[]): string {
+	if (allGroupKeys.length === 1) return "";
+	return groupKey;
+}
 
 function SqlHistoryCommand({
 	history,
@@ -124,6 +153,8 @@ function SqlHistoryCommand({
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+
+	const groupedHistory = useMemo(() => groupHistoryByDate(history), [history]);
 
 	const resetScroll = useCallback(() => {
 		requestAnimationFrame(() => {
@@ -141,6 +172,8 @@ function SqlHistoryCommand({
 		}
 	}, [isActive]);
 
+	const sortedKeys = getSortedGroupKeys(groupedHistory);
+
 	return (
 		<Command ref={containerRef} className={commandContainer}>
 			<CommandInput
@@ -150,55 +183,68 @@ function SqlHistoryCommand({
 			/>
 			<CommandList ref={listRef} className={commandList}>
 				<CommandEmpty>No history found.</CommandEmpty>
-				<CommandGroup>
-					{history.map((item) => {
-						const normalized = item.command.trim().replace(/\s+/g, " ");
-						let formatted: string;
-						try {
-							formatted = formatSQL(item.command, { language: "postgresql" });
-						} catch {
-							formatted = item.command;
-						}
+				{sortedKeys.map((groupKey) => {
+					const items = groupedHistory[groupKey];
+					if (!items || items.length === 0) return null;
 
-						return (
-							<Tooltip key={item.id} delayDuration={50}>
-								<TooltipTrigger asChild>
-									<div>
-										<CommandItem
-											value={`${item.id}-${normalized.toLowerCase()}`}
-											onSelect={() => onItemClick(item.command)}
-											className={historyItem}
+					return (
+						<CommandGroup
+							key={groupKey}
+							heading={formatGroupTitle(groupKey, sortedKeys)}
+							className={historyGroup}
+						>
+							{items.map((item) => {
+								const normalized = item.command.trim().replace(/\s+/g, " ");
+								let formatted: string;
+								try {
+									formatted = formatSQL(item.command, {
+										language: "postgresql",
+									});
+								} catch {
+									formatted = item.command;
+								}
+
+								return (
+									<Tooltip key={item.id} delayDuration={50}>
+										<TooltipTrigger asChild>
+											<div>
+												<CommandItem
+													value={`${item.id}-${normalized.toLowerCase()}`}
+													onSelect={() => onItemClick(item.command)}
+													className={historyItem}
+												>
+													<span className="typo-code text-xs! text-text-secondary truncate">
+														{normalized}
+													</span>
+													{item.meta?.lastUpdated && (
+														<span className="typo-code text-xs! text-text-tertiary shrink-0 ml-auto">
+															{formatHistoryTime(item.meta.lastUpdated)}
+														</span>
+													)}
+												</CommandItem>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent
+											side="right"
+											align="start"
+											sideOffset={12}
+											className="max-w-none px-2 pt-1 pb-2 rounded text-text-primary bg-bg-primary border border-border-secondary"
 										>
-											<span className="typo-code text-xs! text-text-secondary truncate">
-												{normalized}
-											</span>
-											{item.meta?.lastUpdated && (
-												<span className="typo-code text-xs! text-text-tertiary shrink-0 ml-auto">
-													{formatHistoryDate(item.meta.lastUpdated)}
-												</span>
-											)}
-										</CommandItem>
-									</div>
-								</TooltipTrigger>
-								<TooltipContent
-									side="right"
-									align="start"
-									sideOffset={12}
-									className="max-w-none px-2 pt-1 pb-2 rounded text-text-primary bg-bg-primary border border-border-secondary"
-								>
-									<CodeEditor
-										readOnly
-										currentValue={formatted}
-										mode="sql"
-										foldGutter={false}
-										lintGutter={false}
-										lineNumbers={false}
-									/>
-								</TooltipContent>
-							</Tooltip>
-						);
-					})}
-				</CommandGroup>
+											<CodeEditor
+												readOnly
+												currentValue={formatted}
+												mode="sql"
+												foldGutter={false}
+												lintGutter={false}
+												lineNumbers={false}
+											/>
+										</TooltipContent>
+									</Tooltip>
+								);
+							})}
+						</CommandGroup>
+					);
+				})}
 			</CommandList>
 		</Command>
 	);

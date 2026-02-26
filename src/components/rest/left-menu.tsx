@@ -95,7 +95,7 @@ const pathLabelSelected = cn("typo-body-xs", "text-text-primary", "truncate");
 const toggleButton = cn(
 	"h-full",
 	"flex-shrink-0",
-	"border-b-0",
+	"border-b",
 	"border-r",
 	"rounded-none!",
 );
