@@ -97,7 +97,9 @@ function truncateQuery(query: string, maxLen = 30): string {
 
 function TabContent({ tab }: { tab: SqlTab }) {
 	return (
-		<span className="truncate typo-body-xs">{truncateQuery(tab.query)}</span>
+		<span className="truncate typo-body-xs leading-4!">
+			{truncateQuery(tab.query)}
+		</span>
 	);
 }
 

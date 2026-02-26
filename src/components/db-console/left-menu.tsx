@@ -4,6 +4,7 @@ import type {
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import {
 	Button,
+	CodeEditor,
 	Command,
 	CommandEmpty,
 	CommandGroup,
@@ -19,7 +20,8 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { format as formatSQL } from "sql-formatter";
 import { useSqlHistory } from "../../api/sql-history";
 import { useLocalStorage } from "../../hooks";
 import { ActiveQueriesView } from "./active-queries-view";
@@ -70,87 +72,43 @@ const historyItem = cn(
 	"flex",
 	"items-center",
 	"gap-2",
-	"my-1",
 	"py-2",
 	"cursor-pointer",
 	"hover:bg-bg-secondary",
 	"data-[selected=true]:bg-bg-secondary",
 );
 
-const toggleButton = cn("h-full", "flex-shrink-0", "border-b", "border-r");
+const toggleButton = cn(
+	"h-full",
+	"flex-shrink-0",
+	"border-b-0",
+	"border-r",
+	"rounded-none!",
+);
 const iconSize = cn("size-4");
 
-// Date grouping helpers
+const SHORT_MONTHS = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec",
+];
 
-function getTimeGroup(dateString: string): string {
-	const date = new Date(dateString);
-	const now = new Date();
-
-	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const yesterday = new Date(today);
-	yesterday.setDate(yesterday.getDate() - 1);
-	const itemDate = new Date(
-		date.getFullYear(),
-		date.getMonth(),
-		date.getDate(),
-	);
-
-	if (itemDate.getTime() === today.getTime()) return "TODAY";
-	if (itemDate.getTime() === yesterday.getTime()) return "YESTERDAY";
-
-	const day = String(date.getDate()).padStart(2, "0");
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const year = date.getFullYear();
-	return `${day}.${month}.${year}`;
-}
-
-function groupHistoryByTime(
-	items: SqlHistoryEntry[],
-): Record<string, (SqlHistoryEntry & { lastUpdated: number })[]> {
-	const groups: Record<string, (SqlHistoryEntry & { lastUpdated: number })[]> =
-		{};
-
-	for (const item of items) {
-		const lu = item.meta?.lastUpdated;
-		if (!lu) continue;
-
-		const group = getTimeGroup(lu);
-		if (!groups[group]) groups[group] = [];
-		groups[group].push({ ...item, lastUpdated: new Date(lu).getTime() });
-	}
-
-	for (const key of Object.keys(groups)) {
-		groups[key]?.sort((a, b) => b.lastUpdated - a.lastUpdated);
-	}
-
-	return groups;
-}
-
-function formatGroupTitle(groupKey: string, allGroupKeys: string[]): string {
-	if (groupKey === "TODAY" && allGroupKeys.length === 1) return "";
-	if (groupKey === "TODAY" || groupKey === "YESTERDAY") return groupKey;
-
-	try {
-		const [day, month, year] = groupKey.split(".");
-		const date = new Date(Number(year), Number(month) - 1, Number(day));
-		const dayOfWeek = date.toLocaleDateString("en-US", { weekday: "short" });
-		return `${dayOfWeek}, ${groupKey}`;
-	} catch {
-		return groupKey;
-	}
-}
-
-function getSortedGroupKeys(groups: Record<string, unknown[]>): string[] {
-	return Object.keys(groups).sort((a, b) => {
-		if (a === "TODAY") return -1;
-		if (b === "TODAY") return 1;
-		if (a === "YESTERDAY") return -1;
-		if (b === "YESTERDAY") return 1;
-
-		const dateA = new Date(a.split(".").reverse().join("-"));
-		const dateB = new Date(b.split(".").reverse().join("-"));
-		return dateB.getTime() - dateA.getTime();
-	});
+function formatHistoryDate(dateString: string): string {
+	const d = new Date(dateString);
+	const day = d.getDate();
+	const month = SHORT_MONTHS[d.getMonth()];
+	const hours = String(d.getHours()).padStart(2, "0");
+	const minutes = String(d.getMinutes()).padStart(2, "0");
+	return `${day} ${month} ${hours}:${minutes}`;
 }
 
 // Context
@@ -163,13 +121,16 @@ export { SqlLeftMenuContext };
 // History list component
 
 function SqlHistoryCommand({
-	groupedHistory,
+	history,
 	onItemClick,
+	isActive,
 }: {
-	groupedHistory: Record<string, SqlHistoryEntry[]>;
+	history: SqlHistoryEntry[];
 	onItemClick: (command: string) => void;
+	isActive: boolean;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 
 	const resetScroll = useCallback(() => {
 		requestAnimationFrame(() => {
@@ -177,42 +138,74 @@ function SqlHistoryCommand({
 		});
 	}, []);
 
+	useEffect(() => {
+		if (isActive) {
+			requestAnimationFrame(() => {
+				containerRef.current
+					?.querySelector<HTMLInputElement>("[cmdk-input]")
+					?.focus();
+			});
+		}
+	}, [isActive]);
+
 	return (
-		<Command className={commandContainer}>
+		<Command ref={containerRef} className={commandContainer}>
 			<CommandInput
 				placeholder="Search history..."
 				onValueChange={resetScroll}
+				wrapperClassName="h-10"
 			/>
 			<CommandList ref={listRef} className={commandList}>
 				<CommandEmpty>No history found.</CommandEmpty>
-				{getSortedGroupKeys(groupedHistory).map((groupKey) => {
-					const items = groupedHistory[groupKey];
-					if (!items || items.length === 0) return null;
+				<CommandGroup>
+					{history.map((item) => {
+						const normalized = item.command.trim().replace(/\s+/g, " ");
+						let formatted: string;
+						try {
+							formatted = formatSQL(item.command, { language: "postgresql" });
+						} catch {
+							formatted = item.command;
+						}
 
-					const allGroupKeys = getSortedGroupKeys(groupedHistory);
-					const groupTitle = formatGroupTitle(groupKey, allGroupKeys);
-
-					return (
-						<CommandGroup key={groupKey} heading={groupTitle}>
-							{items.map((item) => {
-								const normalized = item.command.trim().replace(/\s+/g, " ");
-
-								return (
-									<CommandItem
-										key={item.id}
-										value={`${item.id}-${normalized.toLowerCase()}`}
-										onSelect={() => onItemClick(item.command)}
-										className={historyItem}
-									>
-										<span className="typo-body-xs leading-4! text-text-secondary truncate">
-											{normalized}
-										</span>
-									</CommandItem>
-								);
-							})}
-						</CommandGroup>
-					);
-				})}
+						return (
+							<Tooltip key={item.id} delayDuration={50}>
+								<TooltipTrigger asChild>
+									<div>
+										<CommandItem
+											value={`${item.id}-${normalized.toLowerCase()}`}
+											onSelect={() => onItemClick(item.command)}
+											className={historyItem}
+										>
+											<span className="typo-code text-xs! text-text-secondary truncate">
+												{normalized}
+											</span>
+											{item.meta?.lastUpdated && (
+												<span className="typo-code text-xs! text-text-tertiary shrink-0 ml-auto">
+													{formatHistoryDate(item.meta.lastUpdated)}
+												</span>
+											)}
+										</CommandItem>
+									</div>
+								</TooltipTrigger>
+								<TooltipContent
+									side="right"
+									align="start"
+									sideOffset={12}
+									className="max-w-none px-2 pt-1 pb-2 rounded text-text-primary bg-bg-primary border border-border-secondary"
+								>
+									<CodeEditor
+										readOnly
+										currentValue={formatted}
+										mode="sql"
+										foldGutter={false}
+										lintGutter={false}
+										lineNumbers={false}
+									/>
+								</TooltipContent>
+							</Tooltip>
+						);
+					})}
+				</CommandGroup>
 			</CommandList>
 		</Command>
 	);
@@ -238,16 +231,14 @@ export function SqlLeftMenu({
 		getInitialValueInEffect: false,
 	});
 
-	const groupedHistory = useMemo(() => {
-		if (!historyData?.entry) return {};
-		return groupHistoryByTime(
-			historyData.entry.flatMap((entry: BundleEntry) => {
-				if (isSqlHistoryEntry(entry.resource)) return entry.resource;
-				throw new Error("incorrect resource in sql history response", {
-					cause: entry.resource,
-				});
-			}),
-		);
+	const history = useMemo(() => {
+		if (!historyData?.entry) return [];
+		return historyData.entry.flatMap((entry: BundleEntry) => {
+			if (isSqlHistoryEntry(entry.resource)) return entry.resource;
+			throw new Error("incorrect resource in sql history response", {
+				cause: entry.resource,
+			});
+		});
 	}, [historyData]);
 
 	return (
@@ -291,10 +282,13 @@ export function SqlLeftMenu({
 							</span>
 						</div>
 					)}
-					{historyData?.entry && historyData.entry.length > 0 && (
+					{history.length > 0 && (
 						<SqlHistoryCommand
-							groupedHistory={groupedHistory}
+							history={history}
 							onItemClick={onHistoryItemClick}
+							isActive={
+								selectedMenuTab === "history" && leftMenuStatus === "open"
+							}
 						/>
 					)}
 				</TabsContent>
@@ -302,7 +296,7 @@ export function SqlLeftMenu({
 					<SqlTablesCommand
 						schemas={schemas}
 						onTableClick={onTableClick}
-						isActive={selectedMenuTab === "tables"}
+						isActive={selectedMenuTab === "tables" && leftMenuStatus === "open"}
 					/>
 				</TabsContent>
 				<TabsContent value="queries" className={tabsContent}>
@@ -339,7 +333,7 @@ export function SqlLeftMenuToggle({
 					)}
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>History</TooltipContent>
+			<TooltipContent>History / Tables / Queries</TooltipContent>
 		</Tooltip>
 	);
 }

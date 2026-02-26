@@ -149,17 +149,30 @@ function formatRowCount(count: number): string {
 function TablesListView({
 	schemas,
 	onSelect,
+	isActive,
 }: {
 	schemas: Record<string, string[]>;
 	onSelect: (table: TableId) => void;
+	isActive: boolean;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 
 	const resetScroll = useCallback(() => {
 		requestAnimationFrame(() => {
 			if (listRef.current) listRef.current.scrollTop = 0;
 		});
 	}, []);
+
+	useEffect(() => {
+		if (isActive) {
+			requestAnimationFrame(() => {
+				containerRef.current
+					?.querySelector<HTMLInputElement>("[cmdk-input]")
+					?.focus();
+			});
+		}
+	}, [isActive]);
 
 	const schemaKeys = Object.keys(schemas).sort((a, b) => {
 		if (a === "public") return -1;
@@ -177,12 +190,14 @@ function TablesListView({
 
 	return (
 		<Command
+			ref={containerRef}
 			className={commandContainer}
 			filter={(value, search) => (value.includes(search.toLowerCase()) ? 1 : 0)}
 		>
 			<CommandInput
 				placeholder="Search tables..."
 				onValueChange={resetScroll}
+				wrapperClassName="h-10"
 			/>
 			<CommandList ref={listRef} className={commandList}>
 				<CommandEmpty>No tables found.</CommandEmpty>
@@ -517,5 +532,11 @@ export function SqlTablesCommand({
 		);
 	}
 
-	return <TablesListView schemas={schemas} onSelect={setSelectedTable} />;
+	return (
+		<TablesListView
+			schemas={schemas}
+			onSelect={setSelectedTable}
+			isActive={isActive}
+		/>
+	);
 }

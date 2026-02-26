@@ -22,7 +22,7 @@ export function useSqlHistory() {
 				url: "/fhir/ui_history",
 				params: [
 					[".type", "sql"],
-					["_sort", "-_lastUpdated"],
+					["_sort", "-createdAt"],
 					["_count", "200"],
 				],
 			});
