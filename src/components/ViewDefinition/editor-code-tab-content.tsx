@@ -29,7 +29,7 @@ export const ViewDefinitionCodeEditor = ({
 	editorValue: string;
 	setEditorValue: (value: string) => void;
 	viewCallback?: (view: CodeEditorView) => void;
-	issueLineNumbers?: number[];
+	issueLineNumbers?: { line: number; message?: string }[];
 }) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResourceTypeContext = React.useContext(
@@ -225,11 +225,14 @@ export const CodeTabContent = () => {
 	const issueLineNumbers = React.useMemo(() => {
 		const runError = viewDefinitionContext.runError;
 		if (!runError?.issue) return undefined;
-		const expressions = runError.issue
-			.flatMap((i) => i.expression ?? [])
-			.filter(Boolean);
-		if (expressions.length === 0) return undefined;
-		return getIssueLineNumbers(editorValue, expressions, codeMode);
+		const issues = runError.issue.flatMap((i) =>
+			(i.expression ?? []).filter(Boolean).map((expr) => ({
+				expression: expr,
+				message: i.diagnostics,
+			})),
+		);
+		if (issues.length === 0) return undefined;
+		return getIssueLineNumbers(editorValue, issues, codeMode);
 	}, [viewDefinitionContext.runError, editorValue, codeMode]);
 
 	viewDefinitionContext.issueClickRef.current = (issue) => {

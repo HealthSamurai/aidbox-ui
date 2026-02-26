@@ -43,7 +43,7 @@ type EditorTabProps = {
 	actions?: React.ReactNode;
 	trailingActions?: React.ReactNode;
 	viewCallback?: (view: CodeEditorView) => void;
-	issueLineNumbers?: number[];
+	issueLineNumbers?: { line: number; message?: string }[];
 };
 
 export const EditorTab = ({

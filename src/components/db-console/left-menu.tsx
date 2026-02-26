@@ -47,14 +47,7 @@ function cn(...inputs: (string | undefined | boolean | null)[]) {
 	return inputs.filter(Boolean).join(" ");
 }
 
-const leftMenuContainer = cn(
-	"w-0",
-	"shrink-0",
-	"overflow-hidden",
-	"transition-[width]",
-	"duration-200",
-);
-const leftMenuContainerOpen = cn("w-80", "border-r");
+const leftMenuContainer = cn("h-full", "overflow-hidden");
 
 const tabsHeader = cn("border-b", "h-10", "bg-bg-secondary");
 const tabsContent = cn("p-0", "h-full");
@@ -242,16 +235,11 @@ export function SqlLeftMenu({
 	}, [historyData]);
 
 	return (
-		<div
-			className={cn(
-				leftMenuContainer,
-				leftMenuStatus === "open" && leftMenuContainerOpen,
-			)}
-		>
+		<div className={leftMenuContainer}>
 			<Tabs
 				value={selectedMenuTab}
 				onValueChange={setSelectedMenuTab}
-				className="min-w-80"
+				className="h-full min-w-0"
 			>
 				<div className={tabsHeader}>
 					<TabsList>

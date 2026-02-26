@@ -52,9 +52,7 @@ function isUiHistoryEntry(
 // =============================================================================
 
 // Layout styles
-const leftMenuContainer = cn("w-0", "invisible", "transition-[width]");
-
-const leftMenuContainerOpen = cn("min-w-80", "w-80", "visible", "border-r");
+const leftMenuContainer = cn("h-full", "overflow-hidden");
 
 const tabsHeader = cn("border-b", "h-10", "bg-bg-secondary");
 
@@ -354,7 +352,6 @@ export function LeftMenu({
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
 }) {
-	const leftMenuStatus = React.useContext(LeftMenuContext);
 	const { data: historyData, isLoading, error } = useUIHistory();
 
 	const handleHistoryItemClick = (item: UiHistoryEntry) => {
@@ -461,13 +458,12 @@ export function LeftMenu({
 	});
 
 	return (
-		<div
-			className={cn(
-				leftMenuContainer,
-				leftMenuStatus === "open" && leftMenuContainerOpen,
-			)}
-		>
-			<Tabs value={selectedMenuTab} onValueChange={setSelectedMenuTab}>
+		<div className={leftMenuContainer}>
+			<Tabs
+				value={selectedMenuTab}
+				onValueChange={setSelectedMenuTab}
+				className="h-full min-w-0"
+			>
 				<div className={tabsHeader}>
 					<TabsList>
 						<TabsTrigger value="history">History</TabsTrigger>

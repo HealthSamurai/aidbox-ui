@@ -21,7 +21,7 @@ interface EditTabContentProps {
 	actions?: React.ReactNode;
 	saveError?: OperationOutcome | null;
 	onIssueClick?: (issue: OperationOutcomeIssue) => void;
-	issueLineNumbers?: number[];
+	issueLineNumbers?: { line: number; message?: string }[];
 	resourceType: string;
 	storageKey: string;
 	autoSaveId: string;

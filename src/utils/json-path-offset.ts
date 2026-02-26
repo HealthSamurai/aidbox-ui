@@ -317,22 +317,25 @@ function offsetToLineNumber(text: string, offset: number): number {
 
 /**
  * Convert FHIR expression paths from OperationOutcome issues to
- * 1-based line numbers in editor text (JSON or YAML).
+ * 1-based line numbers with optional messages in editor text (JSON or YAML).
  */
 export function getIssueLineNumbers(
 	text: string,
-	expressions: string[],
+	issues: { expression: string; message?: string }[],
 	mode: "json" | "yaml",
-): number[] {
-	const lineNumbers: number[] = [];
-	for (const expression of expressions) {
+): { line: number; message?: string }[] {
+	const result: { line: number; message?: string }[] = [];
+	for (const issue of issues) {
 		const offset =
 			mode === "yaml"
-				? findYamlPathOffset(text, expression)
-				: findJsonPathOffset(text, expression);
+				? findYamlPathOffset(text, issue.expression)
+				: findJsonPathOffset(text, issue.expression);
 		if (offset != null) {
-			lineNumbers.push(offsetToLineNumber(text, offset));
+			result.push({
+				line: offsetToLineNumber(text, offset),
+				message: issue.message,
+			});
 		}
 	}
-	return lineNumbers;
+	return result;
 }

@@ -187,11 +187,14 @@ export const ResourceEditorPage = ({
 
 	const issueLineNumbers = React.useMemo(() => {
 		if (!saveError?.issue) return undefined;
-		const expressions = saveError.issue
-			.flatMap((i) => i.expression ?? [])
-			.filter(Boolean);
-		if (expressions.length === 0) return undefined;
-		return getIssueLineNumbers(resourceText, expressions, mode);
+		const issues = saveError.issue.flatMap((i) =>
+			(i.expression ?? []).filter(Boolean).map((expr) => ({
+				expression: expr,
+				message: i.diagnostics,
+			})),
+		);
+		if (issues.length === 0) return undefined;
+		return getIssueLineNumbers(resourceText, issues, mode);
 	}, [saveError, resourceText, mode]);
 
 	const isViewDefinition = resourceType === "ViewDefinition";

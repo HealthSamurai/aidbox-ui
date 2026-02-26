@@ -805,6 +805,20 @@ export const CollectionsView = ({
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(client, item, newTitle, queryClient);
 						}}
+						onItemLabelClick={(item) => {
+							if (item.isFolder()) return;
+							const meta = item.getItemData()?.meta;
+							if (!meta) return;
+							setSelectedCollectionItemId(meta.id);
+							ActiveTabs.addTabFromHistory(tabs, setTabs, {
+								method: meta.method,
+								path: meta.path,
+								headers: meta.headers,
+								body: meta.body,
+								params: meta.params,
+								historyId: meta.id,
+							});
+						}}
 						customItemView={(data, tree) =>
 							customItemView(
 								client,

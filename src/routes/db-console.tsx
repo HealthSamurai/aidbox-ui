@@ -1,6 +1,8 @@
-import type {
-	CompletionContext,
-	CompletionResult,
+import {
+	autocompletion,
+	type CompletionContext,
+	type CompletionResult,
+	type CompletionSource,
 } from "@codemirror/autocomplete";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -50,12 +52,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../AidboxClient";
+import { fetchSchemas } from "../api/schemas";
 import { saveSqlHistory } from "../api/sql-history";
 import {
 	DEFAULT_SQL_TAB,
 	SqlActiveTabs,
 	type SqlTab,
 } from "../components/db-console/active-tabs";
+import {
+	buildFhirPathChildren,
+	type ColumnMap,
+	columnCompletionExtension,
+	type FhirPathChildren,
+	isInJsonbContext,
+	isInsideString,
+	type JsonbColumnMap,
+	jsonbCompletionExtension,
+} from "../components/db-console/jsonb-completion";
 import {
 	SqlLeftMenu,
 	SqlLeftMenuContext,
@@ -68,6 +81,12 @@ const TITLE = "DB Console";
 
 const TABLES_QUERY = `SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type = 'BASE TABLE' ORDER BY table_schema, table_name`;
 
+const JSONB_COLUMNS_QUERY = `SELECT c.table_schema, c.table_name, c.column_name FROM information_schema.columns c JOIN information_schema.tables t ON c.table_schema = t.table_schema AND c.table_name = t.table_name WHERE t.table_type = 'BASE TABLE' AND c.table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND c.udt_name = 'jsonb'`;
+
+const FUNCTIONS_QUERY = `SELECT DISTINCT p.proname AS name FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid LEFT JOIN pg_depend d ON d.objid = p.oid AND d.deptype = 'e' WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND d.objid IS NULL ORDER BY p.proname`;
+
+const COLUMNS_QUERY = `SELECT c.table_schema, c.table_name, c.column_name, c.data_type FROM information_schema.columns c JOIN information_schema.tables t ON c.table_schema = t.table_schema AND c.table_name = t.table_name WHERE t.table_type = 'BASE TABLE' AND c.table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY c.table_schema, c.table_name, c.ordinal_position`;
+
 const LIMIT_PRESETS = [10, 100, 1000];
 
 const SQL_TABLE_KEYWORDS =
@@ -79,6 +98,8 @@ function tableCompletionExtension(schemas: SchemaMap): Extension {
 	const source = (context: CompletionContext): CompletionResult | null => {
 		const line = context.state.doc.lineAt(context.pos);
 		const textBefore = line.text.slice(0, context.pos - line.from);
+
+		if (isInsideString(textBefore)) return null;
 
 		// Case 1: user typed "schema." — suggest tables from that schema
 		const schemaDot = textBefore.match(/(\w+)\.(\w*)$/);
@@ -245,13 +266,20 @@ function flattenPlanNode(
 	};
 }
 
-function useDbSchema() {
+function useDbConsoleData() {
 	const client = useAidboxClient();
 	const [schemas, setSchemas] = useState<SchemaMap>({});
+	const [jsonbColumns, setJsonbColumns] = useState<JsonbColumnMap>({});
+	const [resourceTypes, setResourceTypes] = useState<Set<string>>(
+		() => new Set(),
+	);
+	const [functions, setFunctions] = useState<string[]>([]);
+	const [columns, setColumns] = useState<ColumnMap>({});
 
 	useEffect(() => {
 		let cancelled = false;
-		client
+
+		const fetchTables = client
 			.rawRequest({
 				method: "POST",
 				url: "/$psql",
@@ -270,14 +298,102 @@ function useDbSchema() {
 					map[s].push(row.table_name);
 				}
 				setSchemas(map);
+			});
+
+		const fetchJsonbCols = client
+			.rawRequest({
+				method: "POST",
+				url: "/$psql",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ query: JSONB_COLUMNS_QUERY }),
 			})
-			.catch(() => {});
+			.then(async (res) => {
+				if (cancelled || !res.response.ok) return;
+				const data = await res.response.json();
+				const rows: {
+					table_schema: string;
+					table_name: string;
+					column_name: string;
+				}[] = Array.isArray(data)
+					? (data[0]?.result ?? [])
+					: (data.result ?? []);
+				const map: JsonbColumnMap = {};
+				for (const row of rows) {
+					const key = `${row.table_schema}.${row.table_name}`;
+					if (!map[key]) map[key] = [];
+					map[key].push(row.column_name);
+				}
+				setJsonbColumns(map);
+			});
+
+		const fetchResourceTypes = client
+			.rawRequest({ method: "GET", url: "/$resource-types" })
+			.then(async (res) => {
+				if (cancelled || !res.response.ok) return;
+				const data: Record<string, unknown> = await res.response.json();
+				setResourceTypes(new Set(Object.keys(data)));
+			});
+
+		const fetchFunctions = client
+			.rawRequest({
+				method: "POST",
+				url: "/$psql",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ query: FUNCTIONS_QUERY }),
+			})
+			.then(async (res) => {
+				if (cancelled || !res.response.ok) return;
+				const data = await res.response.json();
+				const rows: { name: string }[] = Array.isArray(data)
+					? (data[0]?.result ?? [])
+					: (data.result ?? []);
+				setFunctions(rows.map((r) => r.name));
+			});
+
+		const fetchColumns = client
+			.rawRequest({
+				method: "POST",
+				url: "/$psql",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ query: COLUMNS_QUERY }),
+			})
+			.then(async (res) => {
+				if (cancelled || !res.response.ok) return;
+				const data = await res.response.json();
+				const rows: {
+					table_schema: string;
+					table_name: string;
+					column_name: string;
+					data_type: string;
+				}[] = Array.isArray(data)
+					? (data[0]?.result ?? [])
+					: (data.result ?? []);
+				const map: ColumnMap = {};
+				for (const row of rows) {
+					const key = `${row.table_schema}.${row.table_name}`;
+					if (!map[key]) map[key] = [];
+					map[key].push({
+						name: row.column_name,
+						dataType: row.data_type,
+					});
+				}
+				setColumns(map);
+			});
+
+		Promise.all([
+			fetchTables,
+			fetchJsonbCols,
+			fetchResourceTypes,
+			fetchFunctions,
+			fetchColumns,
+		]).catch(() => {});
+
 		return () => {
 			cancelled = true;
 		};
 	}, [client]);
 
-	return schemas;
+	return { schemas, jsonbColumns, resourceTypes, functions, columns };
 }
 
 type TabResultData = {
@@ -288,7 +404,29 @@ type TabResultData = {
 function DbConsolePage() {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
-	const schemas = useDbSchema();
+	const { schemas, jsonbColumns, resourceTypes, functions, columns } =
+		useDbConsoleData();
+	const fhirSchemaCacheRef = useRef<Record<string, FhirPathChildren>>({});
+
+	const fetchFhirSchema = useCallback(
+		async (resourceType: string): Promise<FhirPathChildren | null> => {
+			const cached = fhirSchemaCacheRef.current[resourceType];
+			if (cached) return cached;
+
+			const result = await fetchSchemas(client, resourceType);
+			if (!result) return null;
+
+			const defaultSchema = Object.values(result).find(
+				(s) => s["default?"] === true,
+			);
+			if (!defaultSchema) return null;
+
+			const pathChildren = buildFhirPathChildren(defaultSchema.snapshot);
+			fhirSchemaCacheRef.current[resourceType] = pathChildren;
+			return pathChildren;
+		},
+		[client],
+	);
 	const [tabs, setTabs] = useLocalStorage<SqlTab[]>({
 		key: "dbConsole.tabs",
 		defaultValue: [DEFAULT_SQL_TAB],
@@ -311,6 +449,7 @@ function DbConsolePage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [rowLimit, setRowLimit] = useState<number | null>(10);
 	const [hasExplicitLimit, setHasExplicitLimit] = useState(false);
+	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const [isResultCollapsed, setIsResultCollapsed] = useState(false);
 
@@ -503,7 +642,7 @@ function DbConsolePage() {
 				if (r.error) allErrors.push(r.error);
 			}
 		}
-		const lines: number[] = [];
+		const issues: { line: number; message: string }[] = [];
 		for (const err of allErrors) {
 			const posMatch = err.match(/Position:\s*(\d+)/);
 			if (!posMatch) continue;
@@ -513,9 +652,10 @@ function DbConsolePage() {
 			for (let i = 0; i < Math.min(charPos - 1, query.length); i++) {
 				if (query[i] === "\n") line++;
 			}
-			lines.push(line);
+			const msgMatch = err.match(/^ERROR:\s*(.+?)(?:\n|$)/);
+			issues.push({ line, message: msgMatch ? msgMatch[1] : err });
 		}
-		return lines.length > 0 ? lines : undefined;
+		return issues.length > 0 ? issues : undefined;
 	}, [results, error, query]);
 
 	const editorViewRef = useRef<EditorView | null>(null);
@@ -544,6 +684,89 @@ function DbConsolePage() {
 		() =>
 			Object.keys(schemas).length > 0 ? tableCompletionExtension(schemas) : [],
 		[schemas],
+	);
+
+	const jsonbCompletion = useMemo(
+		() =>
+			Object.keys(jsonbColumns).length > 0
+				? jsonbCompletionExtension({
+						schemas,
+						jsonbColumns,
+						resourceTypes,
+						fhirSchemaCache: fhirSchemaCacheRef.current,
+						fetchFhirSchema,
+					})
+				: [],
+		[schemas, jsonbColumns, resourceTypes, fetchFhirSchema],
+	);
+
+	const columnCompletion = useMemo(
+		() =>
+			Object.keys(columns).length > 0
+				? columnCompletionExtension({ schemas, columns })
+				: [],
+		[schemas, columns],
+	);
+
+	const completionOverride = useMemo(
+		() =>
+			autocompletion({
+				override: [
+					async (context: CompletionContext) => {
+						const line = context.state.doc.lineAt(context.pos);
+						const textBefore = line.text.slice(0, context.pos - line.from);
+						const inJsonb = isInJsonbContext(textBefore);
+
+						const langSources = context.state.languageDataAt<CompletionSource>(
+							"autocomplete",
+							context.pos,
+						);
+
+						const results = (
+							await Promise.all(
+								langSources.map((src) => Promise.resolve(src(context))),
+							)
+						).filter((r): r is CompletionResult => r !== null);
+
+						if (results.length === 0) return null;
+
+						if (inJsonb) {
+							const jsonbResult = results.find((r) =>
+								r.options.some((o) => o.type === "property"),
+							);
+							if (!jsonbResult) return null;
+							return {
+								...jsonbResult,
+								options: jsonbResult.options.filter(
+									(o) => o.type === "property",
+								),
+							};
+						}
+
+						if (results.length === 1) return results[0];
+
+						const groups = new Map<number, CompletionResult>();
+						for (const r of results) {
+							const existing = groups.get(r.from);
+							if (existing) {
+								existing.options.push(...r.options);
+							} else {
+								groups.set(r.from, {
+									...r,
+									options: [...r.options],
+								});
+							}
+						}
+
+						let best: CompletionResult | null = null;
+						for (const g of groups.values()) {
+							if (!best || g.options.length > best.options.length) best = g;
+						}
+						return best;
+					},
+				],
+			}),
+		[],
 	);
 
 	const sqlEditorExtensions = useMemo(
@@ -623,141 +846,183 @@ function DbConsolePage() {
 				".cm-completionIcon-keyword::after": {
 					content: "'S'",
 				},
+				".cm-completionIcon-property": {
+					background: "var(--color-purple-100)",
+					color: "var(--color-purple-600)",
+				},
+				".cm-completionIcon-property::after": {
+					content: "'F'",
+				},
+				".cm-completionIcon-variable": {
+					background: "var(--color-yellow-200)",
+					color: "var(--color-yellow-700)",
+				},
+				".cm-completionIcon-variable::after": {
+					content: "'C'",
+				},
 			}),
 			tableCompletion,
+			jsonbCompletion,
+			columnCompletion,
+			completionOverride,
 		],
-		[executeQuery, tableCompletion],
+		[
+			executeQuery,
+			tableCompletion,
+			jsonbCompletion,
+			columnCompletion,
+			completionOverride,
+		],
 	);
 
 	return (
 		<SqlLeftMenuContext value={leftMenuOpen ? "open" : "close"}>
-			<div className="flex w-full h-full">
-				<SqlLeftMenu
-					schemas={schemas}
-					onHistoryItemClick={handleHistoryItemClick}
-					onTableClick={handleHistoryItemClick}
-				/>
-				<div className="flex flex-col grow min-w-0">
-					<div className="flex h-10 w-full border-b">
-						<SqlLeftMenuToggle
-							onClose={() => setLeftMenuOpen(false)}
-							onOpen={() => setLeftMenuOpen(true)}
-						/>
-						<div className="grow min-w-0">
-							<SqlActiveTabs
-								tabs={tabs}
-								setTabs={setTabs}
-								onTabsRemoved={handleTabsRemoved}
+			<ResizablePanelGroup direction="horizontal" className="w-full h-full">
+				<ResizablePanel
+					ref={leftPanelRef}
+					defaultSize={20}
+					minSize={20}
+					maxSize={80}
+					collapsible
+					collapsedSize={0}
+					onCollapse={() => setLeftMenuOpen(false)}
+					onExpand={() => setLeftMenuOpen(true)}
+					className=""
+				>
+					<SqlLeftMenu
+						schemas={schemas}
+						onHistoryItemClick={handleHistoryItemClick}
+						onTableClick={handleHistoryItemClick}
+					/>
+				</ResizablePanel>
+				{leftMenuOpen && <ResizableHandle />}
+				<ResizablePanel defaultSize={80} minSize={40}>
+					<div className="flex flex-col h-full min-w-0">
+						<div className="flex h-10 w-full border-b">
+							<SqlLeftMenuToggle
+								onClose={() => leftPanelRef.current?.collapse()}
+								onOpen={() => leftPanelRef.current?.expand()}
 							/>
+							<div className="grow min-w-0">
+								<SqlActiveTabs
+									tabs={tabs}
+									setTabs={setTabs}
+									onTabsRemoved={handleTabsRemoved}
+								/>
+							</div>
 						</div>
-					</div>
-					<ResizablePanelGroup direction="vertical" className="flex-1 min-h-0">
-						<ResizablePanel defaultSize={40} minSize={10}>
-							<div className="flex flex-col h-full">
-								<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
-									<span className="typo-label text-text-secondary pl-6">
-										SQL Editor
-									</span>
-									<div className="flex items-center gap-4 pl-4 pr-[10px]">
-										<Tooltip delayDuration={300}>
-											<TooltipTrigger asChild>
-												<Button
-													variant="ghost"
-													size="small"
-													onClick={formatQuery}
-													disabled={!query.trim()}
-												>
-													<AlignLeft className="w-4 h-4" />
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent>Format SQL</TooltipContent>
-										</Tooltip>
-										{isLoading ? (
-											<Button
-												variant="link"
-												size="regular"
-												className="text-text-error-primary!"
-												onClick={cancelQuery}
-											>
-												<Square className="w-3.5 h-3.5 fill-current" />
-												STOP
-											</Button>
-										) : (
+						<ResizablePanelGroup
+							direction="vertical"
+							className="flex-1 min-h-0"
+						>
+							<ResizablePanel defaultSize={40} minSize={10}>
+								<div className="flex flex-col h-full">
+									<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
+										<span className="typo-label text-text-secondary pl-6">
+											SQL Editor
+										</span>
+										<div className="flex items-center gap-4 pl-4 pr-[10px]">
 											<Tooltip delayDuration={300}>
 												<TooltipTrigger asChild>
 													<Button
-														variant="link"
-														size="regular"
-														className="text-text-link!"
-														onClick={executeQuery}
+														variant="ghost"
+														size="small"
+														onClick={formatQuery}
 														disabled={!query.trim()}
 													>
-														<PlayIcon className="w-4 h-4 fill-current text-text-link" />
-														RUN
+														<AlignLeft className="w-4 h-4" />
 													</Button>
 												</TooltipTrigger>
-												<TooltipContent>
-													{navigator.platform?.includes("Mac")
-														? "⌘+Enter"
-														: "Ctrl+Enter"}
-												</TooltipContent>
+												<TooltipContent>Format SQL</TooltipContent>
 											</Tooltip>
-										)}
+											{isLoading ? (
+												<Button
+													variant="link"
+													size="regular"
+													className="text-text-error-primary!"
+													onClick={cancelQuery}
+												>
+													<Square className="w-3.5 h-3.5 fill-current" />
+													STOP
+												</Button>
+											) : (
+												<Tooltip delayDuration={300}>
+													<TooltipTrigger asChild>
+														<Button
+															variant="link"
+															size="regular"
+															className="text-text-link!"
+															onClick={executeQuery}
+															disabled={!query.trim()}
+														>
+															<PlayIcon className="w-4 h-4 fill-current text-text-link" />
+															RUN
+														</Button>
+													</TooltipTrigger>
+													<TooltipContent>
+														{navigator.platform?.includes("Mac")
+															? "⌘+Enter"
+															: "Ctrl+Enter"}
+													</TooltipContent>
+												</Tooltip>
+											)}
+										</div>
+									</div>
+									<div className="flex-1 min-h-0 pt-1">
+										<CodeEditor
+											key={selectedTab?.id}
+											mode="sql"
+											defaultValue={query}
+											onChange={handleQueryChange}
+											additionalExtensions={sqlEditorExtensions}
+											sqlExtraBuiltins={functions}
+											viewCallback={onEditorView}
+											foldGutter={false}
+											lintGutter={false}
+											issueLineNumbers={issueLineNumbers}
+										/>
 									</div>
 								</div>
-								<div className="flex-1 min-h-0 pt-1">
-									<CodeEditor
-										key={selectedTab?.id}
-										mode="sql"
-										defaultValue={query}
-										onChange={handleQueryChange}
-										additionalExtensions={sqlEditorExtensions}
-										viewCallback={onEditorView}
-										foldGutter={false}
-										lintGutter={false}
-										issueLineNumbers={issueLineNumbers}
-									/>
-								</div>
-							</div>
-						</ResizablePanel>
+							</ResizablePanel>
 
-						<ResizableHandle />
+							<ResizableHandle />
 
-						<ResizablePanel
-							ref={resultPanelRef}
-							defaultSize={60}
-							minSize={10}
-							collapsible
-							collapsedSize={5}
-							onCollapse={() => setIsResultCollapsed(true)}
-							onExpand={() => setIsResultCollapsed(false)}
-						>
-							<ResultPanel
-								key={selectedTab?.id}
-								results={results}
-								error={error}
-								isLoading={isLoading}
-								onRun={executeQuery}
-								onCancel={cancelQuery}
-								query={query}
-								rowLimit={rowLimit}
-								onRowLimitChange={setRowLimit}
-								hasExplicitLimit={hasExplicitLimit}
-								collapsed={isResultCollapsed}
-								onToggleCollapse={() => {
-									const panel = resultPanelRef.current;
-									if (!panel) return;
-									if (panel.isCollapsed()) {
-										panel.expand();
-									} else {
-										panel.collapse();
-									}
-								}}
-							/>
-						</ResizablePanel>
-					</ResizablePanelGroup>
-				</div>
-			</div>
+							<ResizablePanel
+								ref={resultPanelRef}
+								defaultSize={60}
+								minSize={10}
+								collapsible
+								collapsedSize={5}
+								onCollapse={() => setIsResultCollapsed(true)}
+								onExpand={() => setIsResultCollapsed(false)}
+							>
+								<ResultPanel
+									key={selectedTab?.id}
+									results={results}
+									error={error}
+									isLoading={isLoading}
+									onRun={executeQuery}
+									onCancel={cancelQuery}
+									query={query}
+									rowLimit={rowLimit}
+									onRowLimitChange={setRowLimit}
+									hasExplicitLimit={hasExplicitLimit}
+									collapsed={isResultCollapsed}
+									onToggleCollapse={() => {
+										const panel = resultPanelRef.current;
+										if (!panel) return;
+										if (panel.isCollapsed()) {
+											panel.expand();
+										} else {
+											panel.collapse();
+										}
+									}}
+								/>
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					</div>
+				</ResizablePanel>
+			</ResizablePanelGroup>
 		</SqlLeftMenuContext>
 	);
 }

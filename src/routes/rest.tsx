@@ -33,6 +33,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import {
 	ActiveTabs,
@@ -942,6 +943,8 @@ function RouteComponent() {
 		}));
 	}, [tabsRaw, responses]);
 
+	const leftPanelRef = useRef<ImperativePanelHandle>(null);
+
 	const [leftMenuOpen, setLeftMenuOpen] = useLocalStorage<boolean>({
 		key: "rest-console-left-menu-open",
 		getInitialValueInEffect: false,
@@ -1215,7 +1218,7 @@ function RouteComponent() {
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut handler on layout container */}
 			<div
-				className="flex w-full h-full"
+				className="w-full h-full"
 				onKeyDown={(event) => {
 					if (event.ctrlKey && event.key === "Enter") {
 						event.preventDefault();
@@ -1229,128 +1232,147 @@ function RouteComponent() {
 					}
 				}}
 			>
-				<LeftMenu
-					tabs={tabs}
-					setTabs={setTabs}
-					selectedTab={selectedTab}
-					collectionEntries={collectionEntries}
-					setSelectedCollectionItemId={setSelectedCollectionItemId}
-					selectedCollectionItemId={selectedCollectionItemId}
-				/>
-				<div className="flex flex-col grow min-w-0">
-					<div className="flex h-10 w-full">
-						<LeftMenuToggle
-							onClose={() => {
-								setLeftMenuOpen(false);
-							}}
-							onOpen={() => {
-								setLeftMenuOpen(true);
-							}}
-						/>
-						<div className="grow min-w-0">
-							<ActiveTabs
-								setTabs={setTabs}
-								tabs={tabs}
-								onTabsRemoved={(tabIds) => {
-									for (const tabId of tabIds) {
-										responseStorage.delete(tabId);
-									}
-								}}
-							/>
-						</div>
-					</div>
-					<div className="px-4 py-3 flex items-center border-b gap-2">
-						<RequestLineEditorWrapper
-							selectedTab={selectedTab}
-							handleTabPathChange={(path) => {
-								setRequestLineVersion(crypto.randomUUID());
-								handleTabRequestPathChange(path, tabs, setTabs);
-							}}
-							handleTabMethodChange={handleTabMethodChange}
-							onSubmit={() =>
-								handleSendRequest(
-									selectedTab,
-									queryClient,
-									setIsLoading,
-									responseStorage.set,
-									client,
-								)
-							}
-						/>
-						<SendButton
-							onClick={() =>
-								handleSendRequest(
-									selectedTab,
-									queryClient,
-									setIsLoading,
-									responseStorage.set,
-									client,
-								)
-							}
-						/>
-						<RestCollections.SaveButton
-							tab={selectedTab}
-							collectionEntries={collectionEntries}
-							setSelectedCollectionItemId={setSelectedCollectionItemId}
+				<ResizablePanelGroup direction="horizontal" className="w-full h-full">
+					<ResizablePanel
+						ref={leftPanelRef}
+						defaultSize={20}
+						minSize={20}
+						maxSize={80}
+						collapsible
+						collapsedSize={0}
+						onCollapse={() => setLeftMenuOpen(false)}
+						onExpand={() => setLeftMenuOpen(true)}
+						className=""
+					>
+						<LeftMenu
 							tabs={tabs}
 							setTabs={setTabs}
-							setLeftMenuOpen={setLeftMenuOpen}
+							selectedTab={selectedTab}
+							collectionEntries={collectionEntries}
+							setSelectedCollectionItemId={setSelectedCollectionItemId}
+							selectedCollectionItemId={selectedCollectionItemId}
 						/>
-					</div>
-					<ResizablePanelGroup
-						autoSaveId="rest-console-request-response"
-						direction={panelsMode}
-						className="grow"
-					>
-						<ResizablePanel
-							defaultSize={50}
-							className={`min-h-10 ${fullscreenPanel === "request" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "response" ? "hidden" : ""}`}
-						>
-							<RequestView
-								requestLineVersion={requestLineVersion}
-								selectedTab={selectedTab}
-								onBodyChange={handleTabBodyChange}
-								onHeaderChange={handleTabHeaderChange}
-								onParamChange={handleTabParamChange}
-								onSubTabChange={handleSubTabChange}
-								onRawChange={handleRawChange}
-								onHeaderRemove={handleTabHeaderRemove}
-								onParamRemove={handleTabParamRemove}
-								onFullScreenToggle={(state) =>
-									setFullscreenPanel(state === "maximized" ? "request" : null)
-								}
-								fullScreenState={
-									fullscreenPanel === "request" ? "maximized" : "normal"
-								}
-								onBodyModeChange={handleBodyModeChange}
-								onHeadersUpdate={handleHeadersUpdate}
-							/>
-						</ResizablePanel>
-						<ResizableHandle />
-						<ResizablePanel
-							defaultSize={50}
-							className={`min-h-10 ${fullscreenPanel === "response" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "request" ? "hidden" : ""}`}
-						>
-							<ResponsePane
-								key={`response-${selectedTab.id}`}
-								response={response}
-								splitState={panelsMode}
-								onSplitChange={setPanelsMode}
-								fullScreenState={
-									fullscreenPanel === "response" ? "maximized" : "normal"
-								}
-								onFullScreenToggle={(state) =>
-									state === "maximized"
-										? setFullscreenPanel("response")
-										: setFullscreenPanel(null)
-								}
-								isLoading={isLoading}
-								activeResponseTab={selectedTab.activeResponseTab || "body"}
-								onResponseTabChange={handleResponseTabChange}
-							/>
-						</ResizablePanel>
-					</ResizablePanelGroup>
-				</div>
+					</ResizablePanel>
+					{leftMenuOpen && <ResizableHandle />}
+					<ResizablePanel defaultSize={80} minSize={40}>
+						<div className="flex flex-col h-full min-w-0">
+							<div className="flex h-10 w-full">
+								<LeftMenuToggle
+									onClose={() => {
+										leftPanelRef.current?.collapse();
+									}}
+									onOpen={() => {
+										leftPanelRef.current?.expand();
+									}}
+								/>
+								<div className="grow min-w-0">
+									<ActiveTabs
+										setTabs={setTabs}
+										tabs={tabs}
+										onTabsRemoved={(tabIds) => {
+											for (const tabId of tabIds) {
+												responseStorage.delete(tabId);
+											}
+										}}
+									/>
+								</div>
+							</div>
+							<div className="px-4 py-3 flex items-center border-b gap-2">
+								<RequestLineEditorWrapper
+									selectedTab={selectedTab}
+									handleTabPathChange={(path) => {
+										setRequestLineVersion(crypto.randomUUID());
+										handleTabRequestPathChange(path, tabs, setTabs);
+									}}
+									handleTabMethodChange={handleTabMethodChange}
+									onSubmit={() =>
+										handleSendRequest(
+											selectedTab,
+											queryClient,
+											setIsLoading,
+											responseStorage.set,
+											client,
+										)
+									}
+								/>
+								<SendButton
+									onClick={() =>
+										handleSendRequest(
+											selectedTab,
+											queryClient,
+											setIsLoading,
+											responseStorage.set,
+											client,
+										)
+									}
+								/>
+								<RestCollections.SaveButton
+									tab={selectedTab}
+									collectionEntries={collectionEntries}
+									setSelectedCollectionItemId={setSelectedCollectionItemId}
+									tabs={tabs}
+									setTabs={setTabs}
+									setLeftMenuOpen={setLeftMenuOpen}
+								/>
+							</div>
+							<ResizablePanelGroup
+								autoSaveId="rest-console-request-response"
+								direction={panelsMode}
+								className="grow"
+							>
+								<ResizablePanel
+									defaultSize={50}
+									className={`min-h-10 ${fullscreenPanel === "request" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "response" ? "hidden" : ""}`}
+								>
+									<RequestView
+										requestLineVersion={requestLineVersion}
+										selectedTab={selectedTab}
+										onBodyChange={handleTabBodyChange}
+										onHeaderChange={handleTabHeaderChange}
+										onParamChange={handleTabParamChange}
+										onSubTabChange={handleSubTabChange}
+										onRawChange={handleRawChange}
+										onHeaderRemove={handleTabHeaderRemove}
+										onParamRemove={handleTabParamRemove}
+										onFullScreenToggle={(state) =>
+											setFullscreenPanel(
+												state === "maximized" ? "request" : null,
+											)
+										}
+										fullScreenState={
+											fullscreenPanel === "request" ? "maximized" : "normal"
+										}
+										onBodyModeChange={handleBodyModeChange}
+										onHeadersUpdate={handleHeadersUpdate}
+									/>
+								</ResizablePanel>
+								<ResizableHandle />
+								<ResizablePanel
+									defaultSize={50}
+									className={`min-h-10 ${fullscreenPanel === "response" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "request" ? "hidden" : ""}`}
+								>
+									<ResponsePane
+										key={`response-${selectedTab.id}`}
+										response={response}
+										splitState={panelsMode}
+										onSplitChange={setPanelsMode}
+										fullScreenState={
+											fullscreenPanel === "response" ? "maximized" : "normal"
+										}
+										onFullScreenToggle={(state) =>
+											state === "maximized"
+												? setFullscreenPanel("response")
+												: setFullscreenPanel(null)
+										}
+										isLoading={isLoading}
+										activeResponseTab={selectedTab.activeResponseTab || "body"}
+										onResponseTabChange={handleResponseTabChange}
+									/>
+								</ResizablePanel>
+							</ResizablePanelGroup>
+						</div>
+					</ResizablePanel>
+				</ResizablePanelGroup>
 			</div>
 		</LeftMenuContext>
 	);
