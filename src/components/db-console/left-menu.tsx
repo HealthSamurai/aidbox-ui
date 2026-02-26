@@ -199,6 +199,7 @@ function SqlHistoryCommand({
 								try {
 									formatted = formatSQL(item.command, {
 										language: "postgresql",
+										indentStyle: "tabularRight",
 									});
 								} catch {
 									formatted = item.command;

@@ -48,6 +48,7 @@ const fetchSQL = async (
 
 	return formatSQL(value, {
 		language: "postgresql",
+		indentStyle: "tabularRight",
 		keywordCase: "upper",
 		linesBetweenQueries: 2,
 	});

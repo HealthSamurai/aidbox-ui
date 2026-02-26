@@ -676,7 +676,10 @@ function DbConsolePage() {
 
 	const formatQuery = useCallback(() => {
 		try {
-			const formatted = formatSQL(query, { language: "postgresql" });
+			const formatted = formatSQL(query, {
+				language: "postgresql",
+				indentStyle: "tabularRight",
+			});
 			handleQueryChange(formatted);
 			const view = editorViewRef.current;
 			if (view) {
@@ -789,9 +792,28 @@ function DbConsolePage() {
 							return true;
 						},
 					},
+					{
+						key: "Mod-j",
+						run: () => {
+							const panel = resultPanelRef.current;
+							if (!panel) return false;
+							if (panel.isCollapsed()) {
+								panel.expand();
+							} else {
+								panel.collapse();
+							}
+							return true;
+						},
+					},
 				]),
 			),
 			EditorView.theme({
+				".cm-searchMatch": {
+					backgroundColor: "var(--color-blue-200)",
+				},
+				".cm-searchMatch-selected": {
+					backgroundColor: "var(--color-blue-400)",
+				},
 				".cm-lineNumbers": { minWidth: "3.5ch", paddingLeft: "8px" },
 				".cm-lineNumbers .cm-gutterElement": {
 					minWidth: "3.5ch",
@@ -1246,7 +1268,12 @@ function ResultPanel({
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent align="end">
-								{collapsed ? "Expand" : "Collapse"}
+								<span className="flex items-center gap-1.5">
+									{collapsed ? "Expand" : "Collapse"}
+									<kbd className="inline-flex items-center gap-0.5 rounded bg-bg-tertiary px-1 py-0.5 text-xs font-medium text-text-secondary">
+										⌘J
+									</kbd>
+								</span>
 							</TooltipContent>
 						</Tooltip>
 					)}

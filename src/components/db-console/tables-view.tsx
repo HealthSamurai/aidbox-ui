@@ -131,7 +131,10 @@ function extractIndexType(indexdef: string): string {
 
 function formatIndexDef(indexdef: string): string {
 	try {
-		return formatSQL(indexdef, { language: "postgresql" });
+		return formatSQL(indexdef, {
+			language: "postgresql",
+			indentStyle: "tabularRight",
+		});
 	} catch {
 		return indexdef;
 	}

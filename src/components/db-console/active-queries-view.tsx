@@ -86,7 +86,10 @@ function ActiveQueryItem({
 
 	const formattedQuery = useMemo(() => {
 		try {
-			return formatSQL(query.query, { language: "postgresql" });
+			return formatSQL(query.query, {
+				language: "postgresql",
+				indentStyle: "tabularRight",
+			});
 		} catch {
 			return query.query;
 		}
