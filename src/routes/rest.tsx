@@ -233,10 +233,8 @@ function RequestView({
 	);
 
 	// Update Content-Type and Accept headers based on body mode
-	if (bodyMode !== prevBodyMode) {
-		setPrevBodyMode(bodyMode);
-
-		const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
+	function updateHeadersForMode(mode: "json" | "yaml") {
+		const contentType = mode === "yaml" ? "text/yaml" : "application/json";
 
 		const headers = Array.isArray(selectedTab.headers)
 			? [...selectedTab.headers]
@@ -260,7 +258,6 @@ function RequestView({
 			// Update or add Content-Type header
 			if (needsContentTypeUpdate) {
 				if (contentTypeIndex >= 0 && headers[contentTypeIndex]) {
-					// Update existing Content-Type header
 					const existingHeader = headers[contentTypeIndex];
 					headers[contentTypeIndex] = {
 						id: existingHeader.id,
@@ -271,7 +268,6 @@ function RequestView({
 						}),
 					};
 				} else {
-					// Add Content-Type header if it doesn't exist (before the empty row)
 					const emptyRowIndex = headers.findIndex(
 						(h) => h.name === "" && h.value === "",
 					);
@@ -296,13 +292,11 @@ function RequestView({
 
 			// Update or add Accept header
 			if (needsAcceptUpdate) {
-				// Re-find acceptIndex since we may have modified the array
 				const currentAcceptIndex = headers.findIndex(
 					(h) => h.name?.toLowerCase() === "accept",
 				);
 
 				if (currentAcceptIndex >= 0 && headers[currentAcceptIndex]) {
-					// Update existing Accept header
 					const existingHeader = headers[currentAcceptIndex];
 					headers[currentAcceptIndex] = {
 						id: existingHeader.id,
@@ -313,7 +307,6 @@ function RequestView({
 						}),
 					};
 				} else {
-					// Add Accept header if it doesn't exist (before the empty row)
 					const emptyRowIndex = headers.findIndex(
 						(h) => h.name === "" && h.value === "",
 					);
@@ -338,12 +331,18 @@ function RequestView({
 
 			onHeadersUpdate(headers);
 
-			// Reset the flag after a short delay
 			setTimeout(() => {
 				isUpdatingHeadersRef.current = false;
 			}, 0);
 		}
 	}
+
+	if (bodyMode !== prevBodyMode) {
+		setPrevBodyMode(bodyMode);
+		updateHeadersForMode(bodyMode);
+	}
+
+	const [rawVersion, setRawVersion] = useState(0);
 
 	const getEditorValue = () => {
 		return bodyEditorValue;
@@ -354,6 +353,8 @@ function RequestView({
 			const currentBody = bodyEditorValue.trim();
 			if (!currentBody) {
 				setBodyMode(newMode);
+				updateHeadersForMode(newMode);
+				setRawVersion((v) => v + 1);
 				onBodyModeChange(newMode);
 				return;
 			}
@@ -370,6 +371,8 @@ function RequestView({
 			setBodyEditorValue(convertedBody);
 			onBodyChange(convertedBody);
 			setBodyMode(newMode);
+			updateHeadersForMode(newMode);
+			setRawVersion((v) => v + 1);
 			onBodyModeChange(newMode);
 		} catch (_error) {
 			toast.error(`Failed to convert to ${newMode.toUpperCase()}`, {
@@ -395,6 +398,7 @@ function RequestView({
 
 			setBodyEditorValue(formattedBody);
 			onBodyChange(formattedBody);
+			setRawVersion((v) => v + 1);
 			toast.success("Code formatted", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -468,9 +472,17 @@ function RequestView({
 						onChange={handleBodyEditorChange}
 					/>
 				</TabsContent>
-				<TabsContent value="raw">
+				<TabsContent value="raw" className="relative h-full">
+					<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
+						<CodeEditorMenubar
+							mode={bodyMode}
+							onModeChange={handleBodyModeChange}
+							textToCopy={bodyEditorValue}
+							onFormat={handleFormatBody}
+						/>
+					</div>
 					<RawEditor
-						requestLineVersion={requestLineVersion}
+						requestLineVersion={`${requestLineVersion}-${rawVersion}`}
 						selectedTab={selectedTab}
 						onRawChange={onRawChange}
 					/>
