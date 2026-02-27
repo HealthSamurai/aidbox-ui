@@ -52,7 +52,7 @@ export interface Tab {
 	activeSubTab?: "params" | "headers" | "body" | "raw";
 	historyId?: string;
 	response?: ResponseData;
-	activeResponseTab?: "body" | "headers" | "raw";
+	activeResponseTab?: "body" | "headers" | "raw" | "explain";
 }
 
 export const DEFAULT_TAB_ID: TabId = "active-tab-example";
