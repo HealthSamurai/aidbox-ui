@@ -8,19 +8,15 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	Button,
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
+	CodeEditor,
+	Skeleton,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { ChevronLeft, Loader2, TableIcon, X } from "lucide-react";
+import { ChevronLeft, TableIcon, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
@@ -53,25 +49,15 @@ function cn(...inputs: (string | undefined | boolean | null)[]) {
 	return inputs.filter(Boolean).join(" ");
 }
 
-const commandContainer = cn(
-	"h-full",
-	"flex",
-	"flex-col",
-	"overflow-hidden",
-	"[&_[data-slot=command-input-wrapper]]:flex-none",
-	"[&_[data-slot=command-input-wrapper]]:h-10",
-);
-const commandList = cn("flex-1", "min-h-0", "max-h-none!", "p-0");
-
 const tableItem = cn(
 	"flex",
 	"items-center",
 	"gap-2",
-	"my-1",
-	"py-2",
+	"py-1.5",
+	"px-2",
+	"rounded",
 	"cursor-pointer",
 	"hover:bg-bg-secondary",
-	"data-[selected=true]:bg-bg-secondary",
 );
 
 // Data fetching
@@ -150,6 +136,8 @@ function formatRowCount(count: number): string {
 
 // Tables list
 
+const PAGE_SIZE = 50;
+
 function TablesListView({
 	schemas,
 	onSelect,
@@ -159,76 +147,125 @@ function TablesListView({
 	onSelect: (table: TableId) => void;
 	isActive: boolean;
 }) {
+	const [search, setSearch] = useState("");
+	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	const listRef = useRef<HTMLDivElement>(null);
-	const containerRef = useRef<HTMLDivElement>(null);
-
-	const resetScroll = useCallback(() => {
-		requestAnimationFrame(() => {
-			if (listRef.current) listRef.current.scrollTop = 0;
-		});
-	}, []);
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (isActive) {
-			requestAnimationFrame(() => {
-				containerRef.current
-					?.querySelector<HTMLInputElement>("[cmdk-input]")
-					?.focus();
-			});
+			requestAnimationFrame(() => inputRef.current?.focus());
 		}
 	}, [isActive]);
 
-	const schemaKeys = Object.keys(schemas).sort((a, b) => {
-		if (a === "public") return -1;
-		if (b === "public") return 1;
-		return a.localeCompare(b);
-	});
-
-	const sortTables = (tables: string[]) =>
-		[...tables].sort((a, b) => {
-			const aSystem = a.startsWith("_");
-			const bSystem = b.startsWith("_");
-			if (aSystem !== bSystem) return aSystem ? 1 : -1;
+	const allItems = useMemo(() => {
+		const schemaKeys = Object.keys(schemas).sort((a, b) => {
+			if (a === "public") return -1;
+			if (b === "public") return 1;
 			return a.localeCompare(b);
 		});
 
-	return (
-		<Command
-			ref={containerRef}
-			className={commandContainer}
-			filter={(value, search) => (value.includes(search.toLowerCase()) ? 1 : 0)}
-		>
-			<CommandInput
-				placeholder="Search tables..."
-				onValueChange={resetScroll}
-			/>
-			<CommandList ref={listRef} className={commandList}>
-				<CommandEmpty>No tables found.</CommandEmpty>
-				{schemaKeys.map((schema) => {
-					const tables = schemas[schema];
-					if (!tables || tables.length === 0) return null;
-					const sorted = sortTables(tables);
+		const items: { schema: string; name: string; key: string }[] = [];
+		for (const schema of schemaKeys) {
+			const tables = schemas[schema];
+			if (!tables) continue;
+			const sorted = [...tables].sort((a, b) => {
+				const aSystem = a.startsWith("_");
+				const bSystem = b.startsWith("_");
+				if (aSystem !== bSystem) return aSystem ? 1 : -1;
+				return a.localeCompare(b);
+			});
+			for (const name of sorted) {
+				items.push({ schema, name, key: `${schema}.${name}` });
+			}
+		}
+		return items;
+	}, [schemas]);
 
-					return (
-						<CommandGroup key={schema} heading={schema}>
-							{sorted.map((table) => (
-								<CommandItem
-									key={`${schema}.${table}`}
-									value={`${schema}.${table}`}
-									onSelect={() => onSelect({ schema, name: table })}
-									className={tableItem}
-								>
-									<TableIcon className="size-3.5 text-text-tertiary shrink-0" />
-									<span className="typo-body-xs leading-4! text-text-secondary truncate">
-										{table}
-									</span>
-								</CommandItem>
-							))}
-						</CommandGroup>
-					);
-				})}
-			</CommandList>
-		</Command>
+	const filtered = useMemo(() => {
+		if (!search) return allItems;
+		const lower = search.toLowerCase();
+		return allItems.filter((t) => t.key.toLowerCase().includes(lower));
+	}, [allItems, search]);
+
+	const visible = filtered.slice(0, visibleCount);
+
+	const handleScroll = useCallback(() => {
+		const el = listRef.current;
+		if (!el) return;
+		if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+			setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
+		}
+	}, [filtered.length]);
+
+	const handleSearchChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			setSearch(e.target.value);
+			setVisibleCount(PAGE_SIZE);
+			if (listRef.current) listRef.current.scrollTop = 0;
+		},
+		[],
+	);
+
+	// Group visible items by schema for display
+	const groups = useMemo(() => {
+		const map = new Map<string, typeof visible>();
+		for (const item of visible) {
+			let group = map.get(item.schema);
+			if (!group) {
+				group = [];
+				map.set(item.schema, group);
+			}
+			group.push(item);
+		}
+		return map;
+	}, [visible]);
+
+	return (
+		<div className="h-full flex flex-col overflow-hidden">
+			<div className="flex-none h-10 border-b px-3 flex items-center">
+				<input
+					ref={inputRef}
+					value={search}
+					onChange={handleSearchChange}
+					placeholder="Search tables..."
+					className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
+				/>
+			</div>
+			<div
+				ref={listRef}
+				className="flex-1 min-h-0 overflow-auto pt-1"
+				onScroll={handleScroll}
+			>
+				{filtered.length === 0 && (
+					<div className="p-4 text-center typo-body-xs text-text-tertiary">
+						No tables found.
+					</div>
+				)}
+				{Array.from(groups).map(([schema, items]) => (
+					<div key={schema} className="pl-2 pr-3">
+						<div className="px-1 py-1 typo-label-tiny text-text-tertiary">
+							{schema}
+						</div>
+						{items.map((item) => (
+							<button
+								type="button"
+								key={item.key}
+								onClick={() =>
+									onSelect({ schema: item.schema, name: item.name })
+								}
+								className={`${tableItem} w-full`}
+							>
+								<TableIcon className="size-3.5 text-text-tertiary shrink-0" />
+								<span className="typo-body-xs leading-4! text-text-secondary truncate">
+									{item.name}
+								</span>
+							</button>
+						))}
+					</div>
+				))}
+			</div>
+		</div>
 	);
 }
 
@@ -269,10 +306,20 @@ function IndexRow({
 						</div>
 					</div>
 				</TooltipTrigger>
-				<TooltipContent side="right" className="max-w-md p-0">
-					<pre className="typo-body-xs font-mono whitespace-pre-wrap p-2">
-						{formatIndexDef(index.indexdef)}
-					</pre>
+				<TooltipContent
+					side="right"
+					align="start"
+					sideOffset={12}
+					className="max-w-none px-2 pt-1 pb-2 rounded text-text-primary bg-bg-primary border border-border-secondary"
+				>
+					<CodeEditor
+						readOnly
+						currentValue={formatIndexDef(index.indexdef)}
+						mode="sql"
+						foldGutter={false}
+						lintGutter={false}
+						lineNumbers={false}
+					/>
 				</TooltipContent>
 			</Tooltip>
 			<AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
@@ -318,12 +365,10 @@ function TableDetailView({
 }) {
 	const client = useAidboxClient();
 	const [details, setDetails] = useState<TableDetails | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
-		setIsLoading(true);
 		setError(null);
 		setDetails(null);
 
@@ -344,9 +389,6 @@ function TableDetailView({
 				if (!cancelled) {
 					setError(err instanceof Error ? err.message : String(err));
 				}
-			})
-			.finally(() => {
-				if (!cancelled) setIsLoading(false);
 			});
 
 		return () => {
@@ -400,16 +442,40 @@ function TableDetailView({
 				</button>
 			</div>
 
-			{isLoading && (
-				<div className="flex items-center justify-center flex-1 text-text-secondary gap-2">
-					<Loader2 className="animate-spin size-4" />
-					<span className="typo-body-xs">Loading...</span>
-				</div>
-			)}
-
 			{error && (
 				<div className="p-4 text-center">
 					<div className="typo-body-xs text-text-error-primary">{error}</div>
+				</div>
+			)}
+
+			{!details && !error && (
+				<div className="flex-1 min-h-0 overflow-auto">
+					<DetailSection title="Columns">
+						<div className="flex flex-col">
+							{Array.from({ length: 5 }, (_, i) => (
+								<div
+									key={`sk${String(i)}`}
+									className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+								>
+									<Skeleton className="h-3 w-24" />
+									<Skeleton className="h-3 w-16" />
+								</div>
+							))}
+						</div>
+					</DetailSection>
+					<DetailSection title="Indexes">
+						<div className="flex flex-col">
+							{Array.from({ length: 2 }, (_, i) => (
+								<div
+									key={`sk${String(i)}`}
+									className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+								>
+									<Skeleton className="h-3 w-32" />
+									<Skeleton className="h-3 w-12" />
+								</div>
+							))}
+						</div>
+					</DetailSection>
 				</div>
 			)}
 
@@ -516,10 +582,30 @@ export function SqlTablesCommand({
 
 	if (Object.keys(schemas).length === 0) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="flex items-center gap-2 text-text-secondary">
-					<Loader2 className="animate-spin size-4" />
-					<span className="typo-body-xs">Loading tables...</span>
+			<div className="h-full flex flex-col overflow-hidden">
+				<div className="flex-none h-10 border-b px-3 flex items-center">
+					<input
+						disabled
+						placeholder="Search tables..."
+						className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
+					/>
+				</div>
+				<div className="flex flex-col pt-1 pl-2 pr-3">
+					<div className="px-1 py-1">
+						<Skeleton className="h-3 w-12" />
+					</div>
+					{Array.from({ length: 25 }, (_, i) => (
+						<div
+							key={`sk${String(i)}`}
+							className="flex items-center gap-2 py-1.5 px-2"
+						>
+							<Skeleton className="size-3.5 shrink-0 rounded" />
+							<Skeleton
+								className="h-3.5 rounded"
+								style={{ width: `${45 + ((i * 37) % 40)}%` }}
+							/>
+						</div>
+					))}
 				</div>
 			</div>
 		);

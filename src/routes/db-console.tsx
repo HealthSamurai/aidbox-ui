@@ -9,7 +9,6 @@ import { EditorView, keymap } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
-	ButtonDropdown,
 	CodeEditor,
 	DropdownMenu,
 	DropdownMenuContent,
@@ -38,6 +37,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	AlignLeft,
+	Check,
 	ChevronDown,
 	Download,
 	Loader2,
@@ -456,7 +456,20 @@ function DbConsolePage() {
 		() => new Map(),
 	);
 	const [isLoading, setIsLoading] = useState(false);
-	const [rowLimit, setRowLimit] = useState<number | null>(10);
+	const [showStop, setShowStop] = useState(false);
+	useEffect(() => {
+		if (!isLoading) {
+			setShowStop(false);
+			return;
+		}
+		const timer = setTimeout(() => setShowStop(true), 100);
+		return () => clearTimeout(timer);
+	}, [isLoading]);
+	const [rowLimit, setRowLimit] = useLocalStorage<number | null>({
+		key: "db-console-row-limit",
+		defaultValue: 10,
+		getInitialValueInEffect: false,
+	});
 	const [hasExplicitLimit, setHasExplicitLimit] = useState(false);
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
@@ -586,7 +599,7 @@ function DbConsolePage() {
 			}
 			runningQueryRef.current = null;
 		}
-	}, [client, queryClient]);
+	}, [client, queryClient, setRowLimit]);
 
 	const cancelQuery = useCallback(async () => {
 		const tabId = selectedTabRef.current?.id;
@@ -1013,37 +1026,39 @@ function DbConsolePage() {
 												</TooltipTrigger>
 												<TooltipContent>Format SQL</TooltipContent>
 											</Tooltip>
-											{isLoading ? (
-												<Button
-													variant="link"
-													size="regular"
-													className="text-text-error-primary!"
-													onClick={cancelQuery}
-												>
-													<Square className="w-3.5 h-3.5 fill-current" />
-													STOP
-												</Button>
-											) : (
-												<Tooltip delayDuration={300}>
-													<TooltipTrigger asChild>
-														<Button
-															variant="link"
-															size="regular"
-															className="text-text-link!"
-															onClick={executeQuery}
-															disabled={!query.trim()}
-														>
-															<PlayIcon className="w-4 h-4 fill-current text-text-link" />
-															RUN
-														</Button>
-													</TooltipTrigger>
-													<TooltipContent>
-														{navigator.platform?.includes("Mac")
-															? "⌘+Enter"
-															: "Ctrl+Enter"}
-													</TooltipContent>
-												</Tooltip>
-											)}
+											<div className="w-[72px] flex justify-end">
+												{showStop ? (
+													<Button
+														variant="link"
+														size="regular"
+														className="text-text-error-primary!"
+														onClick={cancelQuery}
+													>
+														<Square className="w-3.5 h-3.5 fill-current" />
+														STOP
+													</Button>
+												) : (
+													<Tooltip delayDuration={300}>
+														<TooltipTrigger asChild>
+															<Button
+																variant="link"
+																size="regular"
+																className="text-text-link!"
+																onClick={executeQuery}
+																disabled={!query.trim()}
+															>
+																<PlayIcon className="w-4 h-4 fill-current text-text-link" />
+																RUN
+															</Button>
+														</TooltipTrigger>
+														<TooltipContent>
+															{navigator.platform?.includes("Mac")
+																? "⌘+Enter"
+																: "Ctrl+Enter"}
+														</TooltipContent>
+													</Tooltip>
+												)}
+											</div>
 										</div>
 									</div>
 									<div className="flex-1 min-h-0 pt-1">
@@ -1618,47 +1633,71 @@ function ResultContent({
 
 	if (isLoading) {
 		return (
-			<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
-				<div className="flex items-center">
-					<Loader2 className="animate-spin mr-2" size={16} />
-					Executing query…
+			<>
+				<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
+					<div className="flex items-center">
+						<Loader2 className="animate-spin mr-2" size={16} />
+						Executing query…
+					</div>
+					<Button variant="secondary" size="small" onClick={onCancel}>
+						Cancel
+					</Button>
 				</div>
-				<Button variant="secondary" size="small" onClick={onCancel}>
-					Cancel
-				</Button>
-			</div>
+				{!hasExplicitLimit && (
+					<ResultFooterLimitOnly
+						rowLimit={rowLimit}
+						onRowLimitChange={onRowLimitChange}
+					/>
+				)}
+			</>
 		);
 	}
 
 	if (error) {
 		return (
-			<div className="p-6">
-				<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
-					{error}
-				</pre>
-			</div>
+			<>
+				<div className="flex-1 min-h-0 overflow-auto p-6">
+					<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
+						{error}
+					</pre>
+				</div>
+				{!hasExplicitLimit && (
+					<ResultFooterLimitOnly
+						rowLimit={rowLimit}
+						onRowLimitChange={onRowLimitChange}
+					/>
+				)}
+			</>
 		);
 	}
 
 	if (!results) {
 		return (
-			<EmptyState
-				grayscale
-				title="No results yet"
-				description={
-					<>
-						Click{" "}
-						<button
-							type="button"
-							className="text-text-link hover:underline cursor-pointer"
-							onClick={onRun}
-						>
-							Run
-						</button>{" "}
-						to execute a query
-					</>
-				}
-			/>
+			<>
+				<EmptyState
+					grayscale
+					title="No results yet"
+					description={
+						<>
+							Click{" "}
+							<button
+								type="button"
+								className="text-text-link hover:underline cursor-pointer"
+								onClick={onRun}
+							>
+								Run
+							</button>{" "}
+							to execute a query
+						</>
+					}
+				/>
+				{!hasExplicitLimit && (
+					<ResultFooterLimitOnly
+						rowLimit={rowLimit}
+						onRowLimitChange={onRowLimitChange}
+					/>
+				)}
+			</>
 		);
 	}
 
@@ -1738,51 +1777,109 @@ function ResultContent({
 	);
 }
 
-const cellEditorTheme = EditorView.theme({
-	"&": { height: "auto", padding: "0" },
-	".cm-scroller": { overflow: "visible" },
-	".cm-gutters": { display: "none" },
-	".cm-content": { padding: "0" },
-	".cm-line": { padding: "0" },
-});
+function tryParseJson(value: string): string | null {
+	try {
+		const parsed = JSON.parse(value);
+		if (typeof parsed === "object" && parsed !== null) {
+			return JSON.stringify(parsed, null, 2);
+		}
+	} catch {
+		/* not JSON */
+	}
+	return null;
+}
 
-const cellEditorExtensions = [cellEditorTheme];
+const JSON_TOKEN_RE =
+	/("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(\b(?:true|false|null)\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
 
-const LINE_HEIGHT = 20;
-const EDITOR_PADDING_Y = 0;
-const CHAR_WIDTH = 8.4;
-const GUTTER_WIDTH = 0;
-const EDITOR_PADDING_X = 0;
+const JSON_COLORS: Record<string, string> = {
+	key: "#EA4A35",
+	string: "#405CBF",
+	keyword: "#569cd6",
+	number: "#00A984",
+};
+
+function highlightJson(json: string): React.ReactNode[] {
+	const parts: React.ReactNode[] = [];
+	let lastIndex = 0;
+	let match: RegExpExecArray | null = null;
+
+	while (true) {
+		match = JSON_TOKEN_RE.exec(json);
+		if (!match) break;
+
+		if (match.index > lastIndex) {
+			parts.push(json.slice(lastIndex, match.index));
+		}
+
+		let color: string;
+		if (match[1]) color = JSON_COLORS.key;
+		else if (match[2]) color = JSON_COLORS.string;
+		else if (match[3]) color = JSON_COLORS.keyword;
+		else color = JSON_COLORS.number;
+
+		parts.push(
+			<span key={match.index} style={{ color }}>
+				{match[0]}
+			</span>,
+		);
+		lastIndex = match.index + match[0].length;
+	}
+
+	if (lastIndex < json.length) {
+		parts.push(json.slice(lastIndex));
+	}
+
+	return parts;
+}
+
+function JsonCellEditor({ json }: { json: string }) {
+	return (
+		<pre className="typo-code m-0 whitespace-pre">{highlightJson(json)}</pre>
+	);
+}
 
 const CellValue = ({ value }: { value: unknown }) => {
 	if (value === null || value === undefined) {
 		return (
-			<div className="sticky top-10">
-				<span className="text-text-tertiary">null</span>
+			<div className="sticky top-10 typo-code">
+				<span style={{ color: "#569cd6" }}>null</span>
 			</div>
 		);
 	}
 	if (typeof value === "object") {
-		const json = JSON.stringify(value, null, 2);
-		const lines = json.split("\n");
-		const height = lines.length * LINE_HEIGHT + EDITOR_PADDING_Y;
-		const maxLineLen = Math.max(...lines.map((l) => l.length));
-		const width = Math.max(
-			300,
-			maxLineLen * CHAR_WIDTH + GUTTER_WIDTH + EDITOR_PADDING_X,
-		);
+		return <JsonCellEditor json={JSON.stringify(value, null, 2)} />;
+	}
+	if (typeof value === "string") {
+		const json = tryParseJson(value);
+		if (json !== null) {
+			return <JsonCellEditor json={json} />;
+		}
 		return (
-			<div style={{ width, height }}>
-				<CodeEditor
-					readOnly
-					currentValue={json}
-					mode="json"
-					additionalExtensions={cellEditorExtensions}
-				/>
+			<div className="sticky top-10 typo-code">
+				<span style={{ color: "#405CBF" }}>"{value}"</span>
 			</div>
 		);
 	}
-	return <div className="sticky top-10">{String(value)}</div>;
+	if (typeof value === "boolean") {
+		return (
+			<div className="sticky top-10 typo-code">
+				<span style={{ color: "#569cd6" }}>{String(value)}</span>
+			</div>
+		);
+	}
+	if (typeof value === "number") {
+		return (
+			<div className="sticky top-10 typo-code">
+				<span style={{ color: "#00A984" }}>{value}</span>
+			</div>
+		);
+	}
+	return (
+		<div className="sticky top-10 typo-code">
+			<span className="text-text-primary">{String(value)}</span>
+		</div>
+	);
 };
 
 const extractColumns = (data: Record<string, unknown>[]): string[] => {
@@ -1959,6 +2056,65 @@ function QueryResultHeader({
 	);
 }
 
+function ResultFooterLimitOnly({
+	rowLimit,
+	onRowLimitChange,
+}: {
+	rowLimit: number | null;
+	onRowLimitChange: (limit: number | null) => void;
+}) {
+	const limitOptions = useMemo(() => {
+		const opts = LIMIT_PRESETS.map((n) => ({
+			value: String(n),
+			label: String(n),
+		}));
+		if (rowLimit !== null && !LIMIT_PRESETS.includes(rowLimit)) {
+			opts.push({ value: String(rowLimit), label: String(rowLimit) });
+			opts.sort((a, b) => Number(a.value) - Number(b.value));
+		}
+		opts.push({ value: "none", label: "No limit" });
+		return opts;
+	}, [rowLimit]);
+
+	return (
+		<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex items-center justify-end">
+			<span className="flex items-center gap-1">
+				Limit:
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="link"
+							className="text-text-secondary bg-gray-100 rounded-full px-2 h-6"
+						>
+							<span className="typo-body">
+								{rowLimit === null ? "No limit" : rowLimit}
+							</span>
+							<ChevronDown className="size-4" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						{limitOptions.map((option) => (
+							<DropdownMenuItem
+								key={option.value}
+								onSelect={() =>
+									onRowLimitChange(
+										option.value === "none" ? null : Number(option.value),
+									)
+								}
+							>
+								{option.label}
+								{String(rowLimit ?? "none") === option.value && (
+									<Check className="ml-auto size-4" />
+								)}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</span>
+		</div>
+	);
+}
+
 function ResultFooter({
 	results,
 	rowLimit,
@@ -2000,13 +2156,36 @@ function ResultFooter({
 				{!hasExplicitLimit && (
 					<span className="flex items-center gap-1">
 						Limit:
-						<ButtonDropdown
-							options={limitOptions}
-							selectedValue={String(rowLimit ?? "none")}
-							onSelectItem={(v) =>
-								onRowLimitChange(v === "none" ? null : Number(v))
-							}
-						/>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="link"
+									className="text-text-secondary bg-gray-100 rounded-full px-2 h-6"
+								>
+									<span className="typo-body">
+										{rowLimit === null ? "No limit" : rowLimit}
+									</span>
+									<ChevronDown className="size-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								{limitOptions.map((option) => (
+									<DropdownMenuItem
+										key={option.value}
+										onSelect={() =>
+											onRowLimitChange(
+												option.value === "none" ? null : Number(option.value),
+											)
+										}
+									>
+										{option.label}
+										{String(rowLimit ?? "none") === option.value && (
+											<Check className="ml-auto size-4" />
+										)}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</span>
 				)}
 			</div>

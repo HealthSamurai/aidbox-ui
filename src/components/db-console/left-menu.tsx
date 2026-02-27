@@ -5,12 +5,7 @@ import type {
 import {
 	Button,
 	CodeEditor,
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
+	Skeleton,
 	Tabs,
 	TabsContent,
 	TabsList,
@@ -51,17 +46,6 @@ const leftMenuContainer = cn("h-full", "overflow-hidden");
 
 const tabsHeader = cn("border-b", "h-10", "bg-bg-secondary");
 const tabsContent = cn("p-0", "h-full");
-
-const commandContainer = cn(
-	"h-full",
-	"flex",
-	"flex-col",
-	"overflow-hidden",
-	"[&_[data-slot=command-input-wrapper]]:flex-none",
-	"[&_[data-slot=command-input-wrapper]]:h-10",
-);
-const commandList = cn("flex-1", "min-h-0", "max-h-none!", "p-0");
-const historyGroup = cn("[&_*[cmdk-group-heading]]:px-2");
 
 const historyItem = cn(
 	"flex",
@@ -138,10 +122,7 @@ export { SqlLeftMenuContext };
 
 // History list component
 
-function formatGroupTitle(groupKey: string, allGroupKeys: string[]): string {
-	if (allGroupKeys.length === 1) return "";
-	return groupKey;
-}
+const HISTORY_PAGE_SIZE = 50;
 
 function SqlHistoryCommand({
 	history,
@@ -152,47 +133,77 @@ function SqlHistoryCommand({
 	onItemClick: (command: string) => void;
 	isActive: boolean;
 }) {
+	const [search, setSearch] = React.useState("");
+	const [visibleCount, setVisibleCount] = React.useState(HISTORY_PAGE_SIZE);
 	const listRef = useRef<HTMLDivElement>(null);
-	const containerRef = useRef<HTMLDivElement>(null);
-
-	const groupedHistory = useMemo(() => groupHistoryByDate(history), [history]);
-
-	const resetScroll = useCallback(() => {
-		requestAnimationFrame(() => {
-			if (listRef.current) listRef.current.scrollTop = 0;
-		});
-	}, []);
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (isActive) {
-			requestAnimationFrame(() => {
-				containerRef.current
-					?.querySelector<HTMLInputElement>("[cmdk-input]")
-					?.focus();
-			});
+			requestAnimationFrame(() => inputRef.current?.focus());
 		}
 	}, [isActive]);
 
-	const sortedKeys = getSortedGroupKeys(groupedHistory);
+	const filtered = useMemo(() => {
+		if (!search) return history;
+		const lower = search.toLowerCase();
+		return history.filter((item) => item.command.toLowerCase().includes(lower));
+	}, [history, search]);
+
+	const visible = filtered.slice(0, visibleCount);
+
+	const handleScroll = useCallback(() => {
+		const el = listRef.current;
+		if (!el) return;
+		if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+			setVisibleCount((c) => Math.min(c + HISTORY_PAGE_SIZE, filtered.length));
+		}
+	}, [filtered.length]);
+
+	const handleSearchChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			setSearch(e.target.value);
+			setVisibleCount(HISTORY_PAGE_SIZE);
+			if (listRef.current) listRef.current.scrollTop = 0;
+		},
+		[],
+	);
+
+	const groupedVisible = useMemo(() => groupHistoryByDate(visible), [visible]);
+	const sortedKeys = getSortedGroupKeys(groupedVisible);
 
 	return (
-		<Command ref={containerRef} className={commandContainer}>
-			<CommandInput
-				placeholder="Search history..."
-				onValueChange={resetScroll}
-			/>
-			<CommandList ref={listRef} className={commandList}>
-				<CommandEmpty>No history found.</CommandEmpty>
+		<div className="h-full flex flex-col overflow-hidden">
+			<div className="flex-none h-10 border-b px-3 flex items-center">
+				<input
+					ref={inputRef}
+					value={search}
+					onChange={handleSearchChange}
+					placeholder="Search history..."
+					className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
+				/>
+			</div>
+			<div
+				ref={listRef}
+				className="flex-1 min-h-0 overflow-auto p-0"
+				onScroll={handleScroll}
+			>
+				{filtered.length === 0 && (
+					<div className="p-4 text-center typo-body-xs text-text-tertiary">
+						No history found.
+					</div>
+				)}
 				{sortedKeys.map((groupKey) => {
-					const items = groupedHistory[groupKey];
+					const items = groupedVisible[groupKey];
 					if (!items || items.length === 0) return null;
 
 					return (
-						<CommandGroup
-							key={groupKey}
-							heading={formatGroupTitle(groupKey, sortedKeys)}
-							className={historyGroup}
-						>
+						<div key={groupKey}>
+							{sortedKeys.length > 1 && (
+								<div className="px-2 py-1 typo-label-xs text-text-tertiary">
+									{groupKey}
+								</div>
+							)}
 							{items.map((item) => {
 								const normalized = item.command.trim().replace(/\s+/g, " ");
 								let formatted: string;
@@ -208,22 +219,20 @@ function SqlHistoryCommand({
 								return (
 									<Tooltip key={item.id} delayDuration={50}>
 										<TooltipTrigger asChild>
-											<div>
-												<CommandItem
-													value={`${item.id}-${normalized.toLowerCase()}`}
-													onSelect={() => onItemClick(item.command)}
-													className={historyItem}
-												>
-													<span className="typo-code text-xs! text-text-secondary truncate">
-														{normalized}
+											<button
+												type="button"
+												onClick={() => onItemClick(item.command)}
+												className={`${historyItem} w-full px-2`}
+											>
+												<span className="typo-code text-xs! text-text-secondary truncate">
+													{normalized}
+												</span>
+												{item.meta?.lastUpdated && (
+													<span className="typo-code text-xs! text-text-tertiary shrink-0 ml-auto">
+														{formatHistoryTime(item.meta.lastUpdated)}
 													</span>
-													{item.meta?.lastUpdated && (
-														<span className="typo-code text-xs! text-text-tertiary shrink-0 ml-auto">
-															{formatHistoryTime(item.meta.lastUpdated)}
-														</span>
-													)}
-												</CommandItem>
-											</div>
+												)}
+											</button>
 										</TooltipTrigger>
 										<TooltipContent
 											side="right"
@@ -243,11 +252,11 @@ function SqlHistoryCommand({
 									</Tooltip>
 								);
 							})}
-						</CommandGroup>
+						</div>
 					);
 				})}
-			</CommandList>
-		</Command>
+			</div>
+		</div>
 	);
 }
 
@@ -297,9 +306,27 @@ export function SqlLeftMenu({
 				</div>
 				<TabsContent value="history" className={tabsContent}>
 					{isLoading && (
-						<div className="p-4 text-center">
-							<div className="typo-body text-text-secondary">
-								Loading history...
+						<div className="h-full flex flex-col overflow-hidden">
+							<div className="flex-none h-10 border-b px-3 flex items-center">
+								<input
+									disabled
+									placeholder="Search history..."
+									className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
+								/>
+							</div>
+							<div className="flex flex-col p-0">
+								{Array.from({ length: 20 }, (_, i) => (
+									<div
+										key={`sk${String(i)}`}
+										className="flex items-center gap-2 py-2 px-2"
+									>
+										<Skeleton
+											className="h-3.5 rounded"
+											style={{ width: `${40 + ((i * 31) % 45)}%` }}
+										/>
+										<Skeleton className="h-3.5 w-8 rounded shrink-0 ml-auto" />
+									</div>
+								))}
 							</div>
 						</div>
 					)}

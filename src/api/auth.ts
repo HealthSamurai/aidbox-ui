@@ -30,6 +30,8 @@ export function useLogout() {
 	});
 }
 
+const INSTANCE_NAME_KEY = "aidbox-instance-name";
+
 export function useInstanceName() {
 	const client = useAidboxClient();
 
@@ -41,10 +43,17 @@ export function useInstanceName() {
 				url: "/api/v1/settings/introspect/instance-name",
 			});
 			if (result.isOk()) {
-				return result.value.resource.value ?? null;
+				const name = result.value.resource.value ?? null;
+				if (name) {
+					localStorage.setItem(INSTANCE_NAME_KEY, name);
+				} else {
+					localStorage.removeItem(INSTANCE_NAME_KEY);
+				}
+				return name;
 			}
 			return null;
 		},
+		placeholderData: () => localStorage.getItem(INSTANCE_NAME_KEY),
 		refetchOnWindowFocus: false,
 		staleTime: Number.POSITIVE_INFINITY,
 	});
