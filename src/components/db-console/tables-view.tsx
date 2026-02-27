@@ -14,7 +14,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { ChevronLeft, TableIcon, X } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
@@ -243,8 +243,8 @@ function TablesListView({
 					</div>
 				)}
 				{Array.from(groups).map(([schema, items]) => (
-					<div key={schema} className="pl-2 pr-3">
-						<div className="px-1 py-1 typo-label-tiny text-text-tertiary">
+					<div key={schema} className="pl-1 pr-3">
+						<div className="pl-2 pt-3 pb-2 typo-label-xs text-text-tertiary uppercase">
 							{schema}
 						</div>
 						{items.map((item) => (
@@ -256,8 +256,7 @@ function TablesListView({
 								}
 								className={`${tableItem} w-full`}
 							>
-								<TableIcon className="size-3.5 text-text-tertiary shrink-0" />
-								<span className="typo-body-xs leading-4! text-text-secondary truncate">
+								<span className="typo-code text-text-body truncate">
 									{item.name}
 								</span>
 							</button>
@@ -547,7 +546,9 @@ function DetailSection({
 	return (
 		<div className="border-b border-border-secondary">
 			<div className="px-4 h-6 bg-bg-tertiary border-b border-border-secondary flex items-center">
-				<span className="typo-label-xs text-text-tertiary">{title}</span>
+				<span className="typo-label-xs text-text-tertiary uppercase">
+					{title}
+				</span>
 			</div>
 			{children}
 		</div>
@@ -590,7 +591,7 @@ export function SqlTablesCommand({
 						className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 					/>
 				</div>
-				<div className="flex flex-col pt-1 pl-2 pr-3">
+				<div className="flex flex-col pt-1 pl-1 pr-3">
 					<div className="px-1 py-1">
 						<Skeleton className="h-3 w-12" />
 					</div>

@@ -51,7 +51,9 @@ const historyItem = cn(
 	"flex",
 	"items-center",
 	"gap-2",
-	"py-2",
+	"py-1.5",
+	"px-2",
+	"rounded",
 	"cursor-pointer",
 	"hover:bg-bg-secondary",
 	"data-[selected=true]:bg-bg-secondary",
@@ -185,7 +187,7 @@ function SqlHistoryCommand({
 			</div>
 			<div
 				ref={listRef}
-				className="flex-1 min-h-0 overflow-auto p-0"
+				className="flex-1 min-h-0 overflow-auto pt-1"
 				onScroll={handleScroll}
 			>
 				{filtered.length === 0 && (
@@ -198,12 +200,10 @@ function SqlHistoryCommand({
 					if (!items || items.length === 0) return null;
 
 					return (
-						<div key={groupKey}>
-							{sortedKeys.length > 1 && (
-								<div className="px-2 py-1 typo-label-xs text-text-tertiary">
-									{groupKey}
-								</div>
-							)}
+						<div key={groupKey} className="pl-1 pr-3">
+							<div className="pl-2 pt-3 pb-2 typo-label-xs text-text-tertiary uppercase">
+								{groupKey}
+							</div>
 							{items.map((item) => {
 								const normalized = item.command.trim().replace(/\s+/g, " ");
 								let formatted: string;
@@ -222,9 +222,9 @@ function SqlHistoryCommand({
 											<button
 												type="button"
 												onClick={() => onItemClick(item.command)}
-												className={`${historyItem} w-full px-2`}
+												className={`${historyItem} w-full`}
 											>
-												<span className="typo-code text-xs! text-text-secondary truncate">
+												<span className="typo-code text-text-body truncate">
 													{normalized}
 												</span>
 												{item.meta?.lastUpdated && (
@@ -237,7 +237,7 @@ function SqlHistoryCommand({
 										<TooltipContent
 											side="right"
 											align="start"
-											sideOffset={12}
+											sideOffset={20}
 											className="max-w-none px-2 pt-1 pb-2 rounded text-text-primary bg-bg-primary border border-border-secondary"
 										>
 											<CodeEditor
@@ -314,7 +314,7 @@ export function SqlLeftMenu({
 									className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 								/>
 							</div>
-							<div className="flex flex-col p-0">
+							<div className="flex flex-col pt-1 pl-1 pr-3">
 								{Array.from({ length: 20 }, (_, i) => (
 									<div
 										key={`sk${String(i)}`}

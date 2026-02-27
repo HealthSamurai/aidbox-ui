@@ -443,6 +443,35 @@ function isArrayPosition(
 	return !!element?.isArray;
 }
 
+function buildArrayIndexResult(
+	chain: JsonbChain,
+	context: CompletionContext,
+): CompletionResult {
+	if (chain.isPathOp) {
+		return {
+			from: context.pos - chain.partialInput.length,
+			options: [
+				{
+					label: "0",
+					type: "enum",
+					detail: "array index",
+				},
+			],
+		};
+	}
+
+	return {
+		from: context.pos - chain.partialInput.length,
+		options: [
+			{
+				label: "0",
+				type: "enum",
+				detail: "array index",
+			},
+		],
+	};
+}
+
 async function resolveNestedTypes(
 	pathChildren: FhirPathChildren,
 	resourceType: string,
@@ -539,7 +568,9 @@ export function jsonbCompletionExtension(ctx: JsonbCompletionCtx): Extension {
 			);
 		}
 
-		if (isArrayPosition(chain, pathChildren, resourceType)) return null;
+		if (isArrayPosition(chain, pathChildren, resourceType)) {
+			return buildArrayIndexResult(chain, context);
+		}
 
 		return buildJsonbResult(chain, pathChildren, resourceType, context);
 	};

@@ -1,8 +1,11 @@
 import {
+	acceptCompletion,
 	autocompletion,
 	type CompletionContext,
 	type CompletionResult,
 	type CompletionSource,
+	completionStatus,
+	startCompletion,
 } from "@codemirror/autocomplete";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -92,7 +95,7 @@ const LIMIT_PRESETS = [10, 100, 1000];
 
 function splitSqlStatements(query: string): string[] {
 	return query
-		.split("----")
+		.split(/----|\s*;\s*/)
 		.map((s) => s.trim())
 		.filter(Boolean);
 }
@@ -146,6 +149,121 @@ function tableCompletionExtension(schemas: SchemaMap): Extension {
 		}
 
 		return { from: word.from, options };
+	};
+
+	return EditorState.languageData.of(() => [{ autocomplete: source }]);
+}
+
+function triggerCompletionAfter(view: EditorView) {
+	requestAnimationFrame(() => startCompletion(view));
+}
+
+function jsonbOperatorExtension(): Extension {
+	const source = (context: CompletionContext): CompletionResult | null => {
+		const line = context.state.doc.lineAt(context.pos);
+		const textBefore = line.text.slice(0, context.pos - line.from);
+
+		// After `#` — suggest #>> '{}' and #> '{}'
+		if (/\w\s*#$/.test(textBefore)) {
+			return {
+				from: context.pos - 1,
+				options: [
+					{
+						label: "#>> '{}'",
+						type: "operator",
+						detail: "Get JSON object at path as text",
+						apply: (view, _completion, from, to) => {
+							const insert = "#>> '{";
+							view.dispatch({
+								changes: { from, to, insert: `${insert}}' ` },
+								selection: { anchor: from + insert.length },
+							});
+							triggerCompletionAfter(view);
+						},
+					},
+					{
+						label: "#> '{}'",
+						type: "operator",
+						detail: "Get JSON object at path",
+						apply: (view, _completion, from, to) => {
+							const insert = "#> '{";
+							view.dispatch({
+								changes: { from, to, insert: `${insert}}' ` },
+								selection: { anchor: from + insert.length },
+							});
+							triggerCompletionAfter(view);
+						},
+					},
+				],
+			};
+		}
+
+		// After `->` — suggest ->>, ->, -> int
+		if (/\w\s*->$/.test(textBefore) && !/\w\s*->>$/.test(textBefore)) {
+			return {
+				from: context.pos - 2,
+				options: [
+					{
+						label: "->> ''",
+						type: "operator",
+						detail: "Get field or element as text",
+						apply: (view, _completion, from, to) => {
+							const insert = "->> '";
+							view.dispatch({
+								changes: { from, to, insert: `${insert}' ` },
+								selection: { anchor: from + insert.length },
+							});
+							triggerCompletionAfter(view);
+						},
+					},
+					{
+						label: "-> ''",
+						type: "operator",
+						detail: "Get field or element as JSON",
+						apply: (view, _completion, from, to) => {
+							const insert = "-> '";
+							view.dispatch({
+								changes: { from, to, insert: `${insert}' ` },
+								selection: { anchor: from + insert.length },
+							});
+							triggerCompletionAfter(view);
+						},
+					},
+					{
+						label: "->> 0",
+						type: "operator",
+						detail: "Get array element as text by index",
+						apply: (view, _completion, from, to) => {
+							const insert = "->> ";
+							view.dispatch({
+								changes: { from, to, insert: `${insert}0 ` },
+								selection: {
+									anchor: from + insert.length,
+									head: from + insert.length + 1,
+								},
+							});
+						},
+					},
+					{
+						label: "-> 0",
+						type: "operator",
+						detail: "Get array element as JSON by index",
+						apply: (view, _completion, from, to) => {
+							const insert = "-> ";
+							view.dispatch({
+								changes: { from, to, insert: `${insert}0 ` },
+								selection: {
+									anchor: from + insert.length,
+									head: from + insert.length + 1,
+								},
+							});
+						},
+					},
+				],
+			};
+		}
+
+		return null;
 	};
 
 	return EditorState.languageData.of(() => [{ autocomplete: source }]);
@@ -538,7 +656,7 @@ function DbConsolePage() {
 		cancelledTabRef.current = null;
 		runningQueryRef.current = queryRef.current;
 		setIsLoading(true);
-		saveSqlHistory(queryRef.current, queryClient, client);
+		const queryToSave = queryRef.current;
 		setTabResults((prev) => {
 			const next = new Map(prev);
 			next.set(tabId, { results: null, error: null });
@@ -571,10 +689,17 @@ function DbConsolePage() {
 			const data = await response.response.json();
 			if (cancelledTabRef.current === tabId) return;
 
+			const items: QueryResultItem[] = Array.isArray(data) ? data : [data];
+			const hasError = items.some((item) => item.error);
+
+			if (!hasError) {
+				saveSqlHistory(queryToSave, queryClient, client);
+			}
+
 			setTabResults((prev) => {
 				const next = new Map(prev);
 				next.set(tabId, {
-					results: Array.isArray(data) ? data : [data],
+					results: items,
 					error: null,
 				});
 				return next;
@@ -692,12 +817,13 @@ function DbConsolePage() {
 
 		if (results) {
 			const statementOffsets = [0];
-			let idx = query.indexOf("----");
-			while (idx !== -1) {
-				let end = idx + 4;
+			const delimiterRegex = /----|\s*;\s*/g;
+			let match: RegExpExecArray | null = delimiterRegex.exec(query);
+			while (match !== null) {
+				let end = match.index + match[0].length;
 				while (end < query.length && query[end] === "\n") end++;
 				statementOffsets.push(end);
-				idx = query.indexOf("----", end);
+				match = delimiterRegex.exec(query);
 			}
 
 			for (let i = 0; i < results.length; i++) {
@@ -787,16 +913,33 @@ function DbConsolePage() {
 						if (results.length === 0) return null;
 
 						if (inJsonb) {
+							const jsonbTypes = new Set(["property", "enum", "operator"]);
 							const jsonbResult = results.find((r) =>
-								r.options.some((o) => o.type === "property"),
+								r.options.some((o) => jsonbTypes.has(o.type ?? "")),
 							);
 							if (!jsonbResult) return null;
 							return {
 								...jsonbResult,
-								options: jsonbResult.options.filter(
-									(o) => o.type === "property",
+								options: jsonbResult.options.filter((o) =>
+									jsonbTypes.has(o.type ?? ""),
 								),
 							};
+						}
+
+						const hasTableResults = results.some((r) =>
+							r.options.some((o) => o.type === "table"),
+						);
+
+						if (hasTableResults) {
+							const tableOptions = results.flatMap((r) =>
+								r.options.filter(
+									(o) => o.type === "table" || o.type === "keyword",
+								),
+							);
+							const from = results.find((r) =>
+								r.options.some((o) => o.type === "table"),
+							)?.from;
+							return { from, options: tableOptions };
 						}
 
 						if (results.length === 1) return results[0];
@@ -829,6 +972,14 @@ function DbConsolePage() {
 		() => [
 			Prec.highest(
 				keymap.of([
+					{
+						key: "Tab",
+						run: acceptCompletion,
+					},
+					{
+						key: "Enter",
+						run: (view) => completionStatus(view.state) === "active",
+					},
 					{
 						key: "Mod-Enter",
 						run: () => {
@@ -939,6 +1090,7 @@ function DbConsolePage() {
 			tableCompletion,
 			jsonbCompletion,
 			columnCompletion,
+			jsonbOperatorExtension(),
 			completionOverride,
 		],
 		[
