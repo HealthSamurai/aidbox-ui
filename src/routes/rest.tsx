@@ -553,7 +553,7 @@ function ResponseInfo({ response }: { response: ResponseData }) {
 				/>
 				<span className="flex items-center text-text-secondary text-sm pl-2">
 					<Timer className="size-4 mr-1" strokeWidth={1.5} />
-					<span className="font-bold">{response.duration}</span>
+					<span className="font-bold">{Math.round(response.duration)}</span>
 					<span className="ml-1">ms</span>
 				</span>
 			</>
