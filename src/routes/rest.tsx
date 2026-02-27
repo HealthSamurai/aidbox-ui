@@ -34,6 +34,7 @@ import {
 	useSyncExternalStore,
 } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import {
 	ActiveTabs,
@@ -479,7 +480,7 @@ function RequestView({
 	);
 }
 
-type ResponseTabs = "body" | "headers" | "raw";
+type ResponseTabs = "body" | "headers" | "raw" | "explain";
 
 function ResponseStatus({
 	status,
@@ -538,6 +539,9 @@ type ResponsePaneProps = {
 	isLoading: boolean;
 	activeResponseTab: ResponseTabs;
 	onResponseTabChange: (tab: ResponseTabs) => void;
+	selectedTab: Tab;
+	aidboxClient: AidboxClientR5;
+	sendVersion: number;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -550,7 +554,7 @@ function ResponseInfo({ response }: { response: ResponseData }) {
 				/>
 				<span className="flex items-center text-text-secondary text-sm pl-2">
 					<Timer className="size-4 mr-1" strokeWidth={1.5} />
-					<span className="font-bold">{response.duration}</span>
+					<span className="font-bold">{Math.round(response.duration)}</span>
 					<span className="ml-1">ms</span>
 				</span>
 			</>
@@ -563,12 +567,29 @@ function ResponseView({
 	activeResponseTab,
 	isLoading,
 	responseMode,
+	selectedTab,
+	aidboxClient,
+	sendVersion,
 }: {
 	response: ResponseData | null;
 	activeResponseTab: ResponseTabs;
 	isLoading: boolean;
 	responseMode: "json" | "yaml";
+	selectedTab: Tab;
+	aidboxClient: AidboxClientR5;
+	sendVersion: number;
 }) {
+	if (activeResponseTab === "explain") {
+		return (
+			<ExplainView
+				key={`explain-${selectedTab.id}`}
+				selectedTab={selectedTab}
+				sendVersion={sendVersion}
+				aidboxClient={aidboxClient}
+			/>
+		);
+	}
+
 	const getEditorContent = () => {
 		if (!response) return "";
 
@@ -641,6 +662,195 @@ function ResponseView({
 	}
 }
 
+function isGetSearchRequest(tab: Tab): boolean {
+	if (tab.method !== "GET") return false;
+	const pathWithoutQuery = (tab.path || "/").split("?")[0] || "/";
+	const normalized = pathWithoutQuery.replace(/\/+$/, "");
+	const segments = normalized.split("/").filter(Boolean);
+	// Search requests target a resource type (odd segments):
+	//   /Patient (1), /fhir/Patient (2 with prefix, but "fhir" is a prefix)
+	// Instance reads target a specific resource (even segments after type):
+	//   /Patient/123 (2), /fhir/Patient/123 (3 with prefix)
+	// Heuristic: if the last segment looks like an id (not a resource type name),
+	// it's an instance read. Resource type names start with uppercase.
+	if (segments.length === 0) return true; // root path like "/"
+	const lastSegment = segments[segments.length - 1] || "";
+	// If the last segment starts with uppercase, it's likely a resource type → search
+	// If it starts with lowercase or is a number/uuid, it's likely an id → instance read
+	return /^[A-Z]/.test(lastSegment);
+}
+
+type ExplainResponse = {
+	query?: [string, ...unknown[]];
+	"query-inline"?: [string];
+	plan?: string;
+};
+
+function buildHeaders(tab: Tab): Record<string, string> {
+	return (
+		tab.headers
+			?.filter(
+				(header) => header.name && header.value && (header.enabled ?? true),
+			)
+			.reduce(
+				(acc, header) => {
+					const name: string =
+						canonicalHeaderNames[header.name.toLowerCase()] || header.name;
+					acc[name] = header.value;
+					return acc;
+				},
+				{} as Record<string, string>,
+			) ?? {}
+	);
+}
+
+function formatSQLQuery(sql: string): string {
+	try {
+		return formatSQL(sql, {
+			language: "postgresql",
+			keywordCase: "upper",
+			indentStyle: "tabularRight",
+			linesBetweenQueries: 2,
+			paramTypes: { custom: [{ regex: "\\{[a-zA-Z0-9_]+\\}" }] },
+		});
+	} catch (error) {
+		console.warn("Failed to format SQL:", error);
+		return sql;
+	}
+}
+
+function ExplainView({
+	selectedTab,
+	aidboxClient,
+	sendVersion,
+}: {
+	selectedTab: Tab;
+	aidboxClient: AidboxClientR5;
+	sendVersion: number;
+}) {
+	const { isLoading, data, error } = useQuery({
+		queryKey: ["rest-console-explain", selectedTab.id, sendVersion],
+		queryFn: async (): Promise<ExplainResponse> => {
+			const headers = buildHeaders(selectedTab);
+			const basePath = selectedTab.path || "/";
+			const explainUrl = `${basePath}${basePath.includes("?") ? "&" : "?"}_explain=analyze`;
+
+			const response = await aidboxClient.rawRequest({
+				method: selectedTab.method,
+				url: explainUrl,
+				headers,
+				body: selectedTab.body || "",
+			});
+
+			return response.response.json();
+		},
+		retry: false,
+		refetchOnWindowFocus: false,
+	});
+
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Loading...</div>
+					<div className="text-sm">Running EXPLAIN ANALYZE</div>
+				</div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Error running explain</div>
+					<div className="text-sm text-critical-default">
+						{error instanceof Error ? error.message : "Unknown error"}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	if (!data) return null;
+
+	const querySQL = data.query?.[0] ? formatSQLQuery(data.query[0]) : "";
+	const queryParams = data.query?.slice(1) ?? [];
+	const inlineSQL = data["query-inline"]?.[0]
+		? formatSQLQuery(data["query-inline"][0])
+		: "";
+	const plan = data.plan ?? "";
+
+	if (!querySQL && !inlineSQL && !plan) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Explain not available</div>
+					<div className="text-sm">
+						The explain operation is not supported for non-search requests
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	const defaultSubTab = inlineSQL ? "query" : querySQL ? "statement" : "plan";
+
+	return (
+		<Tabs
+			variant="tertiary"
+			defaultValue={defaultSubTab}
+			className="flex flex-col grow min-h-0"
+		>
+			<div className="flex items-center bg-bg-secondary h-10 border-b shrink-0">
+				<TabsList className="py-0! border-b-0!">
+					{inlineSQL && <TabsTrigger value="query">Query</TabsTrigger>}
+					{querySQL && <TabsTrigger value="statement">Statement</TabsTrigger>}
+					{plan && <TabsTrigger value="plan">Execution Plan</TabsTrigger>}
+				</TabsList>
+			</div>
+			{inlineSQL && (
+				<TabsContent value="query" className="grow min-h-0">
+					<CodeEditor readOnly currentValue={inlineSQL} mode="sql" />
+				</TabsContent>
+			)}
+			{querySQL && (
+				<TabsContent value="statement" className="grow min-h-0">
+					{queryParams.length > 0 ? (
+						<ResizablePanelGroup direction="vertical">
+							<ResizablePanel minSize={20}>
+								<CodeEditor readOnly currentValue={querySQL} mode="sql" />
+							</ResizablePanel>
+							<ResizableHandle />
+							<ResizablePanel defaultSize={30} minSize={10}>
+								<div className="px-4 py-2 bg-bg-primary h-full overflow-auto">
+									<div className="typo-body-xs text-text-secondary mb-1">
+										Parameters:
+									</div>
+									<ol className="font-mono text-[12px] text-text-secondary list-decimal list-inside">
+										{queryParams.map((param, i) => (
+											<li key={`${i}-${String(param)}`}>{String(param)}</li>
+										))}
+									</ol>
+								</div>
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					) : (
+						<CodeEditor readOnly currentValue={querySQL} mode="sql" />
+					)}
+				</TabsContent>
+			)}
+			{plan && (
+				<TabsContent value="plan" className="grow min-h-0 overflow-auto">
+					<pre className="p-4 typo-code text-text-primary whitespace-pre">
+						{plan}
+					</pre>
+				</TabsContent>
+			)}
+		</Tabs>
+	);
+}
+
 function ResponsePane({
 	splitState,
 	onSplitChange,
@@ -650,6 +860,9 @@ function ResponsePane({
 	isLoading,
 	activeResponseTab,
 	onResponseTabChange,
+	selectedTab,
+	aidboxClient,
+	sendVersion,
 }: ResponsePaneProps) {
 	// Use response mode from the response itself (set at request time)
 	const responseMode = response?.mode || "json";
@@ -658,9 +871,7 @@ function ResponsePane({
 		<Tabs
 			value={activeResponseTab}
 			className="h-full"
-			onValueChange={(value) =>
-				onResponseTabChange(value as "body" | "headers" | "raw")
-			}
+			onValueChange={(value) => onResponseTabChange(value as ResponseTabs)}
 		>
 			<div className="flex flex-col h-full">
 				<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
@@ -672,10 +883,15 @@ function ResponsePane({
 							<TabsTrigger value="body">Body</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
 							<TabsTrigger value="raw">Raw</TabsTrigger>
+							{isGetSearchRequest(selectedTab) && (
+								<TabsTrigger value="explain">Explain</TabsTrigger>
+							)}
 						</TabsList>
 					</div>
 					<div className="flex items-center gap-1">
-						{response && <ResponseInfo response={response} />}
+						{response && activeResponseTab !== "explain" && (
+							<ResponseInfo response={response} />
+						)}
 						{fullScreenState === "normal" && (
 							<SplitButton
 								direction={splitState}
@@ -693,6 +909,9 @@ function ResponsePane({
 					activeResponseTab={activeResponseTab}
 					isLoading={isLoading}
 					responseMode={responseMode}
+					selectedTab={selectedTab}
+					aidboxClient={aidboxClient}
+					sendVersion={sendVersion}
 				/>
 			</div>
 		</Tabs>
@@ -746,20 +965,7 @@ function handleSendRequest(
 	setResponse: (tabId: string, response: ResponseData) => void,
 	aidboxClient: AidboxClientR5,
 ) {
-	const headers =
-		selectedTab.headers
-			?.filter(
-				(header) => header.name && header.value && (header.enabled ?? true),
-			)
-			.reduce(
-				(acc, header) => {
-					const name: string =
-						canonicalHeaderNames[header.name.toLowerCase()] || header.name;
-					acc[name] = header.value;
-					return acc;
-				},
-				{} as Record<string, string>,
-			) ?? {};
+	const headers = buildHeaders(selectedTab);
 
 	// Determine response mode based on Accept header at request time
 	const acceptHeader = selectedTab.headers?.find(
@@ -982,8 +1188,21 @@ function RouteComponent() {
 	>(null);
 
 	const [isLoading, setIsLoading] = useState(false);
+	const [sendVersion, setSendVersion] = useState(0);
 
 	const queryClient = useQueryClient();
+
+	const doSendRequest = useCallback(() => {
+		setSendVersion((v) => v + 1);
+		handleSendRequest(
+			selectedTab,
+			queryClient,
+			setIsLoading,
+			responseStorage.set,
+			client,
+		);
+	}, [selectedTab, queryClient, client]);
+
 	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
 		string | undefined
 	>(selectedTab.id);
@@ -1230,13 +1449,7 @@ function RouteComponent() {
 				onKeyDown={(event) => {
 					if (event.ctrlKey && event.key === "Enter") {
 						event.preventDefault();
-						handleSendRequest(
-							selectedTab,
-							queryClient,
-							setIsLoading,
-							responseStorage.set,
-							client,
-						);
+						doSendRequest();
 					}
 				}}
 			>
@@ -1385,8 +1598,16 @@ function RouteComponent() {
 												: setFullscreenPanel(null)
 										}
 										isLoading={isLoading}
-										activeResponseTab={selectedTab.activeResponseTab || "body"}
+										activeResponseTab={
+											selectedTab.activeResponseTab === "explain" &&
+											!isGetSearchRequest(selectedTab)
+												? "body"
+												: selectedTab.activeResponseTab || "body"
+										}
 										onResponseTabChange={handleResponseTabChange}
+										selectedTab={selectedTab}
+										aidboxClient={client}
+										sendVersion={sendVersion}
 									/>
 								</ResizablePanel>
 							</ResizablePanelGroup>
