@@ -57,7 +57,8 @@ const commandContainer = cn(
 	"flex",
 	"flex-col",
 	"overflow-hidden",
-	"[&_[cmdk-input-wrapper]]:flex-none",
+	"[&_[data-slot=command-input-wrapper]]:flex-none",
+	"[&_[data-slot=command-input-wrapper]]:h-10",
 );
 const commandList = cn("flex-1", "min-h-0", "max-h-none!", "p-0");
 const historyGroup = cn("[&_*[cmdk-group-heading]]:px-2");
@@ -179,7 +180,6 @@ function SqlHistoryCommand({
 			<CommandInput
 				placeholder="Search history..."
 				onValueChange={resetScroll}
-				wrapperClassName="h-10"
 			/>
 			<CommandList ref={listRef} className={commandList}>
 				<CommandEmpty>No history found.</CommandEmpty>

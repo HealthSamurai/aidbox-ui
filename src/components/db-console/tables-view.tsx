@@ -58,7 +58,8 @@ const commandContainer = cn(
 	"flex",
 	"flex-col",
 	"overflow-hidden",
-	"[&_[cmdk-input-wrapper]]:flex-none",
+	"[&_[data-slot=command-input-wrapper]]:flex-none",
+	"[&_[data-slot=command-input-wrapper]]:h-10",
 );
 const commandList = cn("flex-1", "min-h-0", "max-h-none!", "p-0");
 
@@ -200,7 +201,6 @@ function TablesListView({
 			<CommandInput
 				placeholder="Search tables..."
 				onValueChange={resetScroll}
-				wrapperClassName="h-10"
 			/>
 			<CommandList ref={listRef} className={commandList}>
 				<CommandEmpty>No tables found.</CommandEmpty>

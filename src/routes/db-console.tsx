@@ -659,26 +659,42 @@ function DbConsolePage() {
 	}, [executeQuery]);
 
 	const issueLineNumbers = useMemo(() => {
-		const allErrors: string[] = [];
-		if (error) allErrors.push(error);
-		if (results) {
-			for (const r of results) {
-				if (r.error) allErrors.push(r.error);
-			}
-		}
 		const issues: { line: number; message: string }[] = [];
-		for (const err of allErrors) {
+
+		const parseError = (err: string, charOffset: number) => {
 			const posMatch = err.match(/Position:\s*(\d+)/);
-			if (!posMatch) continue;
+			if (!posMatch) return;
 			const charPos = Number.parseInt(posMatch[1], 10);
-			if (Number.isNaN(charPos) || charPos < 1) continue;
+			if (Number.isNaN(charPos) || charPos < 1) return;
+			const absPos = charOffset + charPos;
 			let line = 1;
-			for (let i = 0; i < Math.min(charPos - 1, query.length); i++) {
+			for (let i = 0; i < Math.min(absPos - 1, query.length); i++) {
 				if (query[i] === "\n") line++;
 			}
 			const msgMatch = err.match(/^ERROR:\s*(.+?)(?:\n|$)/);
 			issues.push({ line, message: msgMatch ? msgMatch[1] : err });
+		};
+
+		if (error) parseError(error, 0);
+
+		if (results) {
+			const statementOffsets = [0];
+			let idx = query.indexOf("----");
+			while (idx !== -1) {
+				let end = idx + 4;
+				while (end < query.length && query[end] === "\n") end++;
+				statementOffsets.push(end);
+				idx = query.indexOf("----", end);
+			}
+
+			for (let i = 0; i < results.length; i++) {
+				const r = results[i];
+				if (r.error) {
+					parseError(r.error, statementOffsets[i] ?? 0);
+				}
+			}
 		}
+
 		return issues.length > 0 ? issues : undefined;
 	}, [results, error, query]);
 
