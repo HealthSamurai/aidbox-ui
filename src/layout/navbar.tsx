@@ -6,6 +6,7 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 	Button,
+	Checkbox,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
@@ -23,6 +24,8 @@ import {
 import React from "react";
 import { useInstanceName, useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
+import { PREFERRED_UI_KEY } from "../shared/const";
+import { getAidboxBaseURL } from "../utils";
 
 function Breadcrumbs() {
 	const matches = useMatches();
@@ -131,6 +134,20 @@ function NavbarButtons() {
 								Manage your account
 							</a>
 						</Button>
+					</div>
+					<div className="flex items-center gap-2 px-3 py-2 border-b mb-1">
+						<Checkbox
+							id="new-ui-toggle"
+							size="small"
+							checked={true}
+							onCheckedChange={() => {
+								localStorage.setItem(PREFERRED_UI_KEY, "old");
+								window.location.href = getAidboxBaseURL();
+							}}
+						/>
+						<label htmlFor="new-ui-toggle" className="text-sm cursor-pointer">
+							New UI
+						</label>
 					</div>
 					<Button
 						variant="ghost"

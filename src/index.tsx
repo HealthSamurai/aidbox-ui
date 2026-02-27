@@ -5,8 +5,12 @@ import { createRoot } from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
 import { AidboxClientProvider } from "./AidboxClient";
-import { UI_BASE_PATH } from "./shared/const";
+import { PREFERRED_UI_KEY, UI_BASE_PATH } from "./shared/const";
 import { getAidboxBaseURL } from "./utils";
+
+if (localStorage.getItem(PREFERRED_UI_KEY) === "old") {
+	window.location.href = getAidboxBaseURL();
+}
 
 const router = createRouter({ basepath: UI_BASE_PATH, routeTree });
 
