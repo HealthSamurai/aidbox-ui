@@ -951,6 +951,7 @@ function RouteComponent() {
 		defaultValue: true,
 	});
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
+	const [isPanelAnimating, setIsPanelAnimating] = useState(false);
 
 	useEffect(() => {
 		if (!initialLeftMenuOpen.current) {
@@ -1249,7 +1250,9 @@ function RouteComponent() {
 						collapsedSize={0}
 						onCollapse={() => setLeftMenuOpen(false)}
 						onExpand={() => setLeftMenuOpen(true)}
-						className=""
+						className={
+							isPanelAnimating ? "transition-[flex-grow] duration-200" : ""
+						}
 					>
 						<LeftMenu
 							tabs={tabs}
@@ -1260,16 +1263,26 @@ function RouteComponent() {
 							selectedCollectionItemId={selectedCollectionItemId}
 						/>
 					</ResizablePanel>
-					{leftMenuOpen && <ResizableHandle />}
-					<ResizablePanel defaultSize={80} minSize={40}>
+					{(leftMenuOpen || isPanelAnimating) && <ResizableHandle />}
+					<ResizablePanel
+						defaultSize={80}
+						minSize={40}
+						className={
+							isPanelAnimating ? "transition-[flex-grow] duration-200" : ""
+						}
+					>
 						<div className="flex flex-col h-full min-w-0">
 							<div className="flex h-10 w-full">
 								<LeftMenuToggle
 									onClose={() => {
+										setIsPanelAnimating(true);
 										leftPanelRef.current?.collapse();
+										setTimeout(() => setIsPanelAnimating(false), 200);
 									}}
 									onOpen={() => {
+										setIsPanelAnimating(true);
 										leftPanelRef.current?.expand();
+										setTimeout(() => setIsPanelAnimating(false), 200);
 									}}
 								/>
 								<div className="grow min-w-0">

@@ -311,8 +311,8 @@ export function SqlLeftMenu({
 						</div>
 					)}
 					{historyData && !historyData.entry?.length && (
-						<div className="bg-bg-tertiary h-full flex items-center justify-center">
-							<span className="text-text-disabled text-xl font-medium">
+						<div className="h-full flex items-center justify-center">
+							<span className="text-text-disabled text-xl font-medium whitespace-nowrap">
 								No history
 							</span>
 						</div>

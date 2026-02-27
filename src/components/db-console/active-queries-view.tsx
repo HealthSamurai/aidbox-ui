@@ -237,7 +237,7 @@ export function ActiveQueriesView({ isActive }: { isActive: boolean }) {
 	if (queries.length === 0) {
 		return (
 			<div className="h-full flex items-center justify-center">
-				<span className="text-text-disabled text-xl font-medium">
+				<span className="text-text-disabled text-xl font-medium whitespace-nowrap">
 					No active queries
 				</span>
 			</div>

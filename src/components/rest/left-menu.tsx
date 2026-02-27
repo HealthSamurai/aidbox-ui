@@ -483,7 +483,7 @@ export function LeftMenu({
 					)}
 					{historyData && !historyData.entry?.length && (
 						<div className="bg-bg-tertiary h-full flex items-center justify-center">
-							<span className="text-text-disabled text-xl font-medium">
+							<span className="text-text-disabled text-xl font-medium whitespace-nowrap">
 								No history
 							</span>
 						</div>

@@ -90,6 +90,13 @@ const COLUMNS_QUERY = `SELECT c.table_schema, c.table_name, c.column_name, c.dat
 
 const LIMIT_PRESETS = [10, 100, 1000];
 
+function splitSqlStatements(query: string): string[] {
+	return query
+		.split("----")
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
 const SQL_TABLE_KEYWORDS =
 	/\b(?:from|join|inner\s+join|left\s+join|right\s+join|full\s+join|cross\s+join|into|update|table)\s+$/i;
 
@@ -454,6 +461,7 @@ function DbConsolePage() {
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
+	const [isPanelAnimating, setIsPanelAnimating] = useState(false);
 
 	useEffect(() => {
 		if (!initialLeftMenuOpen.current) {
@@ -494,16 +502,23 @@ function DbConsolePage() {
 		const tabId = selectedTabRef.current?.id;
 		if (!tabId) return;
 
-		const limitMatch = q.match(
-			/\bLIMIT\s+(\d+)\s*(?:OFFSET\s+\d+\s*)?\s*;?\s*$/i,
-		);
-		if (limitMatch) {
-			setRowLimit(Number(limitMatch[1]));
+		const statements = splitSqlStatements(q);
+		const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
+
+		if (allHaveLimit && statements.length === 1) {
+			const limitMatch = statements[0].match(/\bLIMIT\s+(\d+)/i);
+			if (limitMatch) setRowLimit(Number(limitMatch[1]));
+			setHasExplicitLimit(true);
+		} else if (allHaveLimit) {
 			setHasExplicitLimit(true);
 		} else {
 			setHasExplicitLimit(false);
 			if (rowLimitRef.current !== null) {
-				q = `${q} LIMIT ${rowLimitRef.current}`;
+				q = statements
+					.map((s) =>
+						/\bLIMIT\s+\d+/i.test(s) ? s : `${s} LIMIT ${rowLimitRef.current}`,
+					)
+					.join("\n----\n");
 			}
 		}
 
@@ -918,7 +933,9 @@ function DbConsolePage() {
 					collapsedSize={0}
 					onCollapse={() => setLeftMenuOpen(false)}
 					onExpand={() => setLeftMenuOpen(true)}
-					className=""
+					className={
+						isPanelAnimating ? "transition-[flex-grow] duration-200" : ""
+					}
 				>
 					<SqlLeftMenu
 						schemas={schemas}
@@ -926,13 +943,27 @@ function DbConsolePage() {
 						onTableClick={handleHistoryItemClick}
 					/>
 				</ResizablePanel>
-				{leftMenuOpen && <ResizableHandle />}
-				<ResizablePanel defaultSize={80} minSize={40}>
+				{(leftMenuOpen || isPanelAnimating) && <ResizableHandle />}
+				<ResizablePanel
+					defaultSize={80}
+					minSize={40}
+					className={
+						isPanelAnimating ? "transition-[flex-grow] duration-200" : ""
+					}
+				>
 					<div className="flex flex-col h-full min-w-0">
 						<div className="flex h-10 w-full border-b">
 							<SqlLeftMenuToggle
-								onClose={() => leftPanelRef.current?.collapse()}
-								onOpen={() => leftPanelRef.current?.expand()}
+								onClose={() => {
+									setIsPanelAnimating(true);
+									leftPanelRef.current?.collapse();
+									setTimeout(() => setIsPanelAnimating(false), 200);
+								}}
+								onOpen={() => {
+									setIsPanelAnimating(true);
+									leftPanelRef.current?.expand();
+									setTimeout(() => setIsPanelAnimating(false), 200);
+								}}
 							/>
 							<div className="grow min-w-0">
 								<SqlActiveTabs
@@ -1086,8 +1117,8 @@ function ResultPanel({
 	const client = useAidboxClient();
 	const [isMaximized, setIsMaximized] = useState(false);
 	const [activeTab, setActiveTab] = useState("result");
-	const [explainResult, setExplainResult] = useState<
-		ExplainData | string | null
+	const [explainResults, setExplainResults] = useState<
+		(ExplainData | string)[] | null
 	>(null);
 	const [explainLoading, setExplainLoading] = useState(false);
 	const [explainError, setExplainError] = useState<string | null>(null);
@@ -1104,16 +1135,8 @@ function ResultPanel({
 		return () => document.removeEventListener("keydown", handleEscape);
 	}, [isMaximized]);
 
-	const runExplain = useCallback(async () => {
-		const q = queryRef.current
-			.trim()
-			.replace(/\s+LIMIT\s+\d+\s*(?:OFFSET\s+\d+\s*)?;?\s*$/i, "");
-		if (!q) return;
-		explainCancelledRef.current = false;
-		setExplainLoading(true);
-		setExplainError(null);
-		setExplainResult(null);
-		try {
+	const runExplainForStatement = useCallback(
+		async (q: string): Promise<ExplainData | string> => {
 			const [jsonResponse, textResponse] = await Promise.all([
 				client.rawRequest({
 					method: "POST",
@@ -1133,12 +1156,9 @@ function ResultPanel({
 				}),
 			]);
 
-			if (explainCancelledRef.current) return;
-
 			if (!jsonResponse.response.ok) {
 				const text = await jsonResponse.response.text();
-				setExplainError(`HTTP ${jsonResponse.response.status}: ${text}`);
-				return;
+				throw new Error(`HTTP ${jsonResponse.response.status}: ${text}`);
 			}
 
 			const textData = await textResponse.response.json();
@@ -1153,8 +1173,6 @@ function ResultPanel({
 			const rows: Record<string, unknown>[] = Array.isArray(data)
 				? (data[0]?.result ?? [])
 				: (data.result ?? []);
-
-			if (explainCancelledRef.current) return;
 
 			try {
 				const rawValue = Object.values(rows[0] ?? {})[0];
@@ -1177,20 +1195,40 @@ function ResultPanel({
 					);
 					items.root = { name: "root", children: ["plan-0"] };
 
-					setExplainResult({
+					return {
 						planningTime: explain["Planning Time"],
 						executionTime: explain["Execution Time"],
 						items,
 						allNodeIds,
 						rawText,
-					});
-					return;
+					};
 				}
 			} catch {
 				// Fall through to text fallback
 			}
 
-			setExplainResult(rawText);
+			return rawText;
+		},
+		[client],
+	);
+
+	const runExplain = useCallback(async () => {
+		const statements = splitSqlStatements(queryRef.current)
+			.map((s) =>
+				s.trim().replace(/\s+LIMIT\s+\d+\s*(?:OFFSET\s+\d+\s*)?;?\s*$/i, ""),
+			)
+			.filter(Boolean);
+		if (statements.length === 0) return;
+		explainCancelledRef.current = false;
+		setExplainLoading(true);
+		setExplainError(null);
+		setExplainResults(null);
+		try {
+			const results = await Promise.all(
+				statements.map((s) => runExplainForStatement(s)),
+			);
+			if (explainCancelledRef.current) return;
+			setExplainResults(results);
 		} catch (err) {
 			if (explainCancelledRef.current) return;
 
@@ -1205,7 +1243,7 @@ function ResultPanel({
 				setExplainLoading(false);
 			}
 		}
-	}, [client]);
+	}, [runExplainForStatement]);
 
 	const cancelExplain = useCallback(async () => {
 		const q = queryRef.current.trim();
@@ -1314,7 +1352,7 @@ function ResultPanel({
 				) : (
 					<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 						<ExplainContent
-							result={explainResult}
+							results={explainResults}
 							error={explainError}
 							isLoading={explainLoading}
 							onCancel={cancelExplain}
@@ -1408,18 +1446,16 @@ const EXPLAIN_VIEW_ITEMS = [
 ];
 
 function ExplainContent({
-	result,
+	results,
 	error,
 	isLoading,
 	onCancel,
 }: {
-	result: ExplainData | string | null;
+	results: (ExplainData | string)[] | null;
 	error: string | null;
 	isLoading: boolean;
 	onCancel: () => void;
 }) {
-	const [view, setView] = useState<string>("visual");
-
 	if (isLoading) {
 		return (
 			<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
@@ -1444,7 +1480,7 @@ function ExplainContent({
 		);
 	}
 
-	if (!result) {
+	if (!results) {
 		return (
 			<EmptyState
 				grayscale
@@ -1453,6 +1489,53 @@ function ExplainContent({
 			/>
 		);
 	}
+
+	if (results.length === 1) {
+		const r = results[0];
+		return (
+			<div className="flex flex-col flex-1 min-h-0">
+				<SingleExplainView result={r} />
+				{typeof r !== "string" && (
+					<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex gap-4">
+						<span>Execution: {r.executionTime.toFixed(2)}ms</span>
+						<span>Planning: {r.planningTime.toFixed(2)}ms</span>
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	return (
+		<ResizablePanelGroup direction="vertical">
+			{results.flatMap((result, index) => {
+				const key = `explain-${index}`;
+				const panel = (
+					<ResizablePanel key={`panel-${key}`} minSize={10}>
+						<div className="flex flex-col h-full min-h-0">
+							<div className="flex-none flex items-center justify-between px-4 py-1 border-b bg-bg-secondary">
+								<span className="text-xs text-text-tertiary">
+									Query {index + 1}
+								</span>
+								{typeof result !== "string" && (
+									<span className="text-xs text-text-tertiary flex gap-3">
+										<span>Execution: {result.executionTime.toFixed(2)}ms</span>
+										<span>Planning: {result.planningTime.toFixed(2)}ms</span>
+									</span>
+								)}
+							</div>
+							<SingleExplainView result={result} />
+						</div>
+					</ResizablePanel>
+				);
+				if (index === 0) return [panel];
+				return [<ResizableHandle key={`handle-${key}`} />, panel];
+			})}
+		</ResizablePanelGroup>
+	);
+}
+
+function SingleExplainView({ result }: { result: ExplainData | string }) {
+	const [view, setView] = useState<string>("visual");
 
 	if (typeof result === "string") {
 		return (
@@ -1492,10 +1575,6 @@ function ExplainContent({
 					</pre>
 				)}
 			</div>
-			<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex gap-4">
-				<span>Execution: {result.executionTime.toFixed(2)}ms</span>
-				<span>Planning: {result.planningTime.toFixed(2)}ms</span>
-			</div>
 		</div>
 	);
 }
@@ -1519,6 +1598,8 @@ function ResultContent({
 	onRowLimitChange: (limit: number | null) => void;
 	hasExplicitLimit: boolean;
 }) {
+	const [maximizedIndex, setMaximizedIndex] = useState<number | null>(null);
+
 	if (isLoading) {
 		return (
 			<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
@@ -1565,17 +1646,78 @@ function ResultContent({
 		);
 	}
 
-	return (
-		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-			{results.map((result, index) => (
-				<QueryResult
-					key={`${result.query}-${index}`}
-					result={result}
+	if (maximizedIndex !== null && results[maximizedIndex]) {
+		return (
+			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+				<div className="flex-1 min-h-0">
+					<QueryResult
+						result={results[maximizedIndex]}
+						index={maximizedIndex}
+						totalCount={results.length}
+						isMaximized
+						onToggleMaximize={() => setMaximizedIndex(null)}
+					/>
+				</div>
+				<ResultFooter
+					results={results}
 					rowLimit={rowLimit}
 					onRowLimitChange={onRowLimitChange}
 					hasExplicitLimit={hasExplicitLimit}
 				/>
-			))}
+			</div>
+		);
+	}
+
+	if (results.length === 1) {
+		return (
+			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+				<div className="flex-1 min-h-0">
+					<QueryResult
+						result={results[0]}
+						index={0}
+						totalCount={1}
+						isMaximized={false}
+						onToggleMaximize={() => {}}
+					/>
+				</div>
+				<ResultFooter
+					results={results}
+					rowLimit={rowLimit}
+					onRowLimitChange={onRowLimitChange}
+					hasExplicitLimit={hasExplicitLimit}
+				/>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+			<div className="flex-1 min-h-0">
+				<ResizablePanelGroup direction="vertical">
+					{results.flatMap((result, index) => {
+						const key = `${result.query}-${index}`;
+						const panel = (
+							<ResizablePanel key={`panel-${key}`} minSize={10}>
+								<QueryResult
+									result={result}
+									index={index}
+									totalCount={results.length}
+									isMaximized={false}
+									onToggleMaximize={() => setMaximizedIndex(index)}
+								/>
+							</ResizablePanel>
+						);
+						if (index === 0) return [panel];
+						return [<ResizableHandle key={`handle-${key}`} />, panel];
+					})}
+				</ResizablePanelGroup>
+			</div>
+			<ResultFooter
+				results={results}
+				rowLimit={rowLimit}
+				onRowLimitChange={onRowLimitChange}
+				hasExplicitLimit={hasExplicitLimit}
+			/>
 		</div>
 	);
 }
@@ -1691,11 +1833,123 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 
 function QueryResult({
 	result,
+	index,
+	totalCount,
+	isMaximized,
+	onToggleMaximize,
+}: {
+	result: QueryResultItem;
+	index: number;
+	totalCount: number;
+	isMaximized: boolean;
+	onToggleMaximize: () => void;
+}) {
+	if (result.error) {
+		return (
+			<div className="flex flex-col h-full">
+				{totalCount > 1 && (
+					<QueryResultHeader
+						index={index}
+						isMaximized={isMaximized}
+						onToggleMaximize={onToggleMaximize}
+					/>
+				)}
+				<div className="p-6">
+					<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
+						{result.error}
+					</pre>
+				</div>
+			</div>
+		);
+	}
+
+	const rows = result.result ?? [];
+	const columns = extractColumns(rows);
+
+	return (
+		<div className="flex flex-col h-full min-h-0 overflow-hidden">
+			{totalCount > 1 && (
+				<QueryResultHeader
+					index={index}
+					isMaximized={isMaximized}
+					onToggleMaximize={onToggleMaximize}
+				/>
+			)}
+			{rows.length === 0 ? (
+				<EmptyState
+					grayscale
+					title="No results"
+					description="Query returned no rows"
+				/>
+			) : (
+				<div className="flex-1 overflow-auto min-h-0">
+					<Table stickyHeader>
+						<TableHeader>
+							<TableRow>
+								{columns.map((key) => (
+									<TableHead
+										key={key}
+										className="px-6 hover:bg-transparent whitespace-nowrap"
+									>
+										{key}
+									</TableHead>
+								))}
+							</TableRow>
+						</TableHeader>
+						<TableBody className="[&_tr]:hover:bg-transparent">
+							{rows.map((row, rowIdx) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
+								<TableRow key={rowIdx}>
+									{columns.map((key) => (
+										<TableCell key={key} className="px-6 align-top">
+											<CellValue value={row[key]} />
+										</TableCell>
+									))}
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function QueryResultHeader({
+	index,
+	isMaximized,
+	onToggleMaximize,
+}: {
+	index: number;
+	isMaximized: boolean;
+	onToggleMaximize: () => void;
+}) {
+	return (
+		<div className="flex-none flex items-center justify-between px-4 py-1 border-b bg-bg-secondary">
+			<span className="text-xs text-text-tertiary">Query {index + 1}</span>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button variant="ghost" size="small" onClick={onToggleMaximize}>
+						{isMaximized ? (
+							<Minimize2 className="w-3.5 h-3.5" />
+						) : (
+							<Maximize2 className="w-3.5 h-3.5" />
+						)}
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
+			</Tooltip>
+		</div>
+	);
+}
+
+function ResultFooter({
+	results,
 	rowLimit,
 	onRowLimitChange,
 	hasExplicitLimit,
 }: {
-	result: QueryResultItem;
+	results: QueryResultItem[];
 	rowLimit: number | null;
 	onRowLimitChange: (limit: number | null) => void;
 	hasExplicitLimit: boolean;
@@ -1713,119 +1967,159 @@ function QueryResult({
 		return opts;
 	}, [rowLimit]);
 
-	if (result.error) {
-		return (
-			<div className="p-6">
-				<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
-					{result.error}
-				</pre>
-			</div>
-		);
-	}
-
-	const rows = result.result ?? [];
-	const columns = extractColumns(rows);
+	const totalRows = results.reduce(
+		(sum, r) => sum + (r.result?.length ?? 0),
+		0,
+	);
+	const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
+	const hasRows = totalRows > 0;
 
 	return (
-		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-			{rows.length === 0 ? (
-				<EmptyState
-					grayscale
-					title="No results"
-					description="Query returned no rows"
-				/>
-			) : (
-				<div className="flex-1 overflow-auto min-h-0">
-					<Table stickyHeader className="mb-40">
-						<TableHeader>
-							<TableRow>
-								{columns.map((key) => (
-									<TableHead
-										key={key}
-										className="px-6 hover:bg-transparent whitespace-nowrap"
-									>
-										{key}
-									</TableHead>
-								))}
-							</TableRow>
-						</TableHeader>
-						<TableBody className="[&_tr]:hover:bg-transparent">
-							{rows.map((row, index) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
-								<TableRow key={index}>
-									{columns.map((key) => (
-										<TableCell key={key} className="px-6 align-top">
-											<CellValue value={row[key]} />
-										</TableCell>
-									))}
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</div>
-			)}
-			<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex items-center justify-between">
-				<span>
-					{rows.length} row · Time: {result.duration}ms
-				</span>
-				<div className="flex items-center gap-3">
-					{rows.length > 0 && (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="small">
-									<Download className="w-3.5 h-3.5" />
-									Export
-									<ChevronDown className="w-3 h-3" />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem
-									onClick={() => {
-										navigator.clipboard.writeText(
-											resultsToMarkdown(columns, rows),
-										);
-									}}
-								>
-									Copy as Markdown
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() => {
-										navigator.clipboard.writeText(
-											JSON.stringify(rows, null, 2),
-										);
-									}}
-								>
-									Copy as JSON
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() => {
-										downloadFile(
-											resultsToCSV(columns, rows),
-											"export.csv",
-											"text/csv;charset=utf-8;",
-										);
-									}}
-								>
-									Download CSV
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					)}
-					{!hasExplicitLimit && (
-						<span className="flex items-center gap-1">
-							Limit:
-							<ButtonDropdown
-								options={limitOptions}
-								selectedValue={String(rowLimit ?? "none")}
-								onSelectItem={(v) =>
-									onRowLimitChange(v === "none" ? null : Number(v))
-								}
-							/>
-						</span>
-					)}
-				</div>
+		<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex items-center justify-between">
+			<span>
+				{totalRows} row · Time: {totalDuration}ms
+			</span>
+			<div className="flex items-center gap-3">
+				{hasRows && <ExportDropdown results={results} />}
+				{!hasExplicitLimit && (
+					<span className="flex items-center gap-1">
+						Limit:
+						<ButtonDropdown
+							options={limitOptions}
+							selectedValue={String(rowLimit ?? "none")}
+							onSelectItem={(v) =>
+								onRowLimitChange(v === "none" ? null : Number(v))
+							}
+						/>
+					</span>
+				)}
 			</div>
 		</div>
+	);
+}
+
+function ExportDropdown({ results }: { results: QueryResultItem[] }) {
+	const exportResult = useCallback(
+		(resultItems: QueryResultItem[], format: "markdown" | "json" | "csv") => {
+			const parts = resultItems.map((r) => {
+				const rows = r.result ?? [];
+				const columns = extractColumns(rows);
+				switch (format) {
+					case "markdown":
+						return resultsToMarkdown(columns, rows);
+					case "json":
+						return JSON.stringify(rows, null, 2);
+					case "csv":
+						return resultsToCSV(columns, rows);
+				}
+			});
+
+			if (format === "csv") {
+				const combined = parts.join("\n\n");
+				downloadFile(combined, "export.csv", "text/csv;charset=utf-8;");
+			} else {
+				const separator = format === "markdown" ? "\n\n" : "\n";
+				navigator.clipboard.writeText(parts.join(separator));
+			}
+		},
+		[],
+	);
+
+	const validResults = results.filter(
+		(r) => !r.error && (r.result?.length ?? 0) > 0,
+	);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="small">
+					<Download className="w-3.5 h-3.5" />
+					Export
+					<ChevronDown className="w-3 h-3" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				{validResults.length > 1 &&
+					validResults.map((r) => {
+						const rows = r.result ?? [];
+						const columns = extractColumns(rows);
+						return (
+							<DropdownMenu key={`query-${results.indexOf(r)}`}>
+								<DropdownMenuTrigger className="w-full px-2 py-1.5 text-sm hover:bg-bg-secondary flex items-center justify-between cursor-pointer rounded-sm">
+									Query {results.indexOf(r) + 1}
+									<ChevronDown className="w-3 h-3 -rotate-90" />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent side="left">
+									<DropdownMenuItem
+										onClick={() =>
+											navigator.clipboard.writeText(
+												resultsToMarkdown(columns, rows),
+											)
+										}
+									>
+										Copy as Markdown
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onClick={() =>
+											navigator.clipboard.writeText(
+												JSON.stringify(rows, null, 2),
+											)
+										}
+									>
+										Copy as JSON
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onClick={() =>
+											downloadFile(
+												resultsToCSV(columns, rows),
+												"export.csv",
+												"text/csv;charset=utf-8;",
+											)
+										}
+									>
+										Download CSV
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						);
+					})}
+				{validResults.length > 1 && (
+					<>
+						<div className="h-px bg-border-primary my-1" />
+						<DropdownMenuItem
+							onClick={() => exportResult(validResults, "markdown")}
+						>
+							Copy all as Markdown
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={() => exportResult(validResults, "json")}
+						>
+							Copy all as JSON
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => exportResult(validResults, "csv")}>
+							Download all as CSV
+						</DropdownMenuItem>
+					</>
+				)}
+				{validResults.length === 1 && (
+					<>
+						<DropdownMenuItem
+							onClick={() => exportResult(validResults, "markdown")}
+						>
+							Copy as Markdown
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={() => exportResult(validResults, "json")}
+						>
+							Copy as JSON
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => exportResult(validResults, "csv")}>
+							Download CSV
+						</DropdownMenuItem>
+					</>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
