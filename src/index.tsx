@@ -8,7 +8,10 @@ import { AidboxClientProvider } from "./AidboxClient";
 import { PREFERRED_UI_KEY, UI_BASE_PATH } from "./shared/const";
 import { getAidboxBaseURL } from "./utils";
 
-if (localStorage.getItem(PREFERRED_UI_KEY) === "old") {
+if (
+	!import.meta.env.DEV &&
+	localStorage.getItem(PREFERRED_UI_KEY) === "old"
+) {
 	window.location.href = getAidboxBaseURL();
 }
 
