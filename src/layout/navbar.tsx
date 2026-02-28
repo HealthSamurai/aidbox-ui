@@ -6,10 +6,10 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 	Button,
-	Checkbox,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
+	Switch,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -19,12 +19,15 @@ import {
 	BookOpenText,
 	LogOut,
 	MessageCircleQuestionMark,
+	Moon,
+	Sparkles,
 	UserRound,
 } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 import { useInstanceName, useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
-import { PREFERRED_UI_KEY } from "../shared/const";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { PREFERRED_UI_KEY, THEME_KEY } from "../shared/const";
 import { getAidboxBaseURL } from "../utils";
 
 function Breadcrumbs() {
@@ -76,6 +79,14 @@ function Breadcrumbs() {
 function NavbarButtons() {
 	const userInfo = useUserInfo();
 	const logout = useLogout();
+	const [theme, setTheme] = useLocalStorage<"light" | "dark">({
+		key: THEME_KEY,
+		defaultValue: "light",
+	});
+
+	useEffect(() => {
+		document.documentElement.classList.toggle("dark", theme === "dark");
+	}, [theme]);
 
 	return (
 		<div className="flex items-center gap-2">
@@ -135,8 +146,14 @@ function NavbarButtons() {
 							</a>
 						</Button>
 					</div>
-					<div className="flex items-center gap-2 px-3 py-2 border-b mb-1">
-						<Checkbox
+					<div className="flex items-center justify-between gap-2 px-3 py-2 border-b mb-1">
+						<div className="flex items-center gap-2">
+							<Sparkles size={16} />
+							<label htmlFor="new-ui-toggle" className="text-sm cursor-pointer">
+								New UI
+							</label>
+						</div>
+						<Switch
 							id="new-ui-toggle"
 							size="small"
 							checked={true}
@@ -145,9 +162,25 @@ function NavbarButtons() {
 								window.location.href = getAidboxBaseURL();
 							}}
 						/>
-						<label htmlFor="new-ui-toggle" className="text-sm cursor-pointer">
-							New UI
-						</label>
+					</div>
+					<div className="flex items-center justify-between gap-2 px-3 py-2 border-b mb-1">
+						<div className="flex items-center gap-2">
+							<Moon size={16} />
+							<label
+								htmlFor="dark-mode-toggle"
+								className="text-sm cursor-pointer"
+							>
+								Dark mode
+							</label>
+						</div>
+						<Switch
+							id="dark-mode-toggle"
+							size="small"
+							checked={theme === "dark"}
+							onCheckedChange={(checked) =>
+								setTheme(checked ? "dark" : "light")
+							}
+						/>
 					</div>
 					<Button
 						variant="ghost"

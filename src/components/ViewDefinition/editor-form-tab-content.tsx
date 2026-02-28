@@ -1050,20 +1050,20 @@ export const FormTabContent = () => {
 		let label: string | undefined = metaType;
 
 		if (metaType === "column") {
-			additionalClass = "text-blue-500 bg-blue-100";
+			additionalClass = "text-text-info-primary bg-bg-info-primary";
 		} else if (metaType?.startsWith("select-")) {
 			if (selectData?.type === "column") {
 				label = "column";
-				additionalClass = "text-blue-500 bg-blue-100";
+				additionalClass = "text-text-info-primary bg-bg-info-primary";
 			} else if (selectData?.type === "forEach") {
 				label = "forEach";
-				additionalClass = "text-[#5C8DD6] bg-[#E8F2FC]";
+				additionalClass = "text-text-info-primary bg-bg-info-primary";
 			} else if (selectData?.type === "forEachOrNull") {
 				label = "forEachOrNull";
-				additionalClass = "text-[#5C8DD6] bg-[#E8F2FC]";
+				additionalClass = "text-text-info-primary bg-bg-info-primary";
 			} else if (selectData?.type === "unionAll") {
 				label = "unionAll";
-				additionalClass = "text-[#E07B39] bg-[#FFF4EC]";
+				additionalClass = "text-text-warning-primary bg-bg-warning-primary";
 			}
 		} else if (
 			metaType === "constant" ||
@@ -1071,13 +1071,13 @@ export const FormTabContent = () => {
 			metaType === "where" ||
 			metaType === "properties"
 		) {
-			additionalClass = "text-blue-500 px-1!";
+			additionalClass = "text-text-info-primary px-1!";
 		} else if (
 			metaType === "resource" ||
 			metaType === "name" ||
 			metaType === "status"
 		)
-			additionalClass = "text-blue-500 bg-blue-100";
+			additionalClass = "text-text-info-primary bg-bg-info-primary";
 
 		// Prevent collapsing constant, where, and select sections
 		const isAlwaysExpanded =
@@ -1581,7 +1581,7 @@ export const FormTabContent = () => {
 						metaType === "where" ||
 						metaType === "properties"
 					) {
-						return "relative my-1.5 rounded-md bg-blue-100 cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
+						return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 					} else {
 						if (
 							metaType === "column-item" ||

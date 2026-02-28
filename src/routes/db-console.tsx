@@ -2236,7 +2236,7 @@ function ResultFooterLimitOnly({
 					<DropdownMenuTrigger asChild>
 						<Button
 							variant="link"
-							className="text-text-secondary bg-gray-100 rounded-full px-2 h-6"
+							className="text-text-secondary bg-bg-tertiary rounded-full px-2 h-6"
 						>
 							<span className="typo-body">
 								{rowLimit === null ? "No limit" : rowLimit}
@@ -2312,7 +2312,7 @@ function ResultFooter({
 							<DropdownMenuTrigger asChild>
 								<Button
 									variant="link"
-									className="text-text-secondary bg-gray-100 rounded-full px-2 h-6"
+									className="text-text-secondary bg-bg-tertiary rounded-full px-2 h-6"
 								>
 									<span className="typo-body">
 										{rowLimit === null ? "No limit" : rowLimit}

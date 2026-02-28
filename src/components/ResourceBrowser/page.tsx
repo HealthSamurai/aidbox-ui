@@ -331,7 +331,7 @@ export const ResourcesTabTable = ({
 							<HSComp.TooltipContent
 								side="bottom"
 								align="start"
-								className="bg-bg-warning-primary_inverse text-text-warning-primary"
+								className="bg-bg-warning-primary_inverse text-neutral-900"
 							>
 								Sort might be slow — no index for &apos;_lastUpdated&apos;
 							</HSComp.TooltipContent>
