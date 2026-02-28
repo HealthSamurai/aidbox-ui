@@ -3,7 +3,7 @@ import {
 	SidebarProvider,
 	Toaster,
 } from "@health-samurai/react-components";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 import { useUserInfo } from "../api/auth";
 import { useLocalStorage } from "../hooks";
 import { SIDEBAR_MODE_KEY } from "../shared/const";
@@ -13,6 +13,10 @@ import { AidboxSidebar } from "./sidebar";
 
 function Layout({ children }: PropsWithChildren) {
 	useUserInfo();
+
+	useEffect(() => {
+		document.getElementById("sk")?.remove();
+	}, []);
 
 	const [sidebarMode, setSidebarMode] = useLocalStorage<SidebarMode>({
 		key: SIDEBAR_MODE_KEY,
