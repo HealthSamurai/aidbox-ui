@@ -14,9 +14,48 @@
 	<link color="#5bbad5" href="/favicon/safari-pinned-tab.svg" rel="mask-icon">
 	<meta content="#da532c" name="msapplication-TileColor">
 	<meta content="#ffffff" name="theme-color">
+	<style>
+		body{margin:0}
+		.sk{display:flex;flex-direction:column;height:100vh;position:fixed;inset:0;z-index:0}
+		#root{position:relative;z-index:1;height:100vh}
+		.sk-nav{height:60px;display:flex;align-items:center;border-bottom:1px solid #ebecee;flex-shrink:0;box-sizing:border-box}
+		.sk-logo{width:50px;height:100%;border-right:1px solid #ebecee;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:content-box}
+.sk-body{display:flex;flex:1;min-height:0}
+		.sk-side{border-right:1px solid #ebecee;display:flex;flex-direction:column;gap:2px;padding:12px 8px 8px;flex-shrink:0;box-sizing:border-box;background:#fff}
+		.sk-mi{height:36px;border-radius:6px;background:#f0f1f2}
+.sk-nav-content{padding:0 16px;flex:1;display:flex;align-items:center;justify-content:space-between}
+		.sk-bc{height:29px;width:120px;border-radius:4px;background:#f0f1f2}
+		.sk-nav-btns{display:flex;align-items:center;gap:8px}
+		.sk-btn{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+		.sk-btn-icon{width:16px;height:16px;border-radius:50%;background:#f0f1f2}
+		.sk-avatar{width:28px;height:28px;border-radius:50%;background:#f0f1f2}
+		.sk-pulse{animation:sk-pulse 1.5s ease-in-out infinite}
+		@keyframes sk-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+	</style>
 </head>
 
 <body>
+	<div id="sk" class="sk">
+		<div class="sk-nav">
+			<div class="sk-logo"><svg width="24" height="24" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.51683 19.1826L8.09424 17.98H16.0615L17.6248 21.8152H24.0004L14.8661 0.184814H9.13423L0 21.8152H3.32753C5.11533 21.8152 6.74449 20.7914 7.51683 19.1826ZM14.7099 13.3175H9.90921L12.3096 7.0805L14.7099 13.3175Z" fill="#EA4A35"/><path d="M3.55832 21.8152H0L9.13423 0.184814H14.8661L7.9109 18.7993C7.23332 20.6127 5.49786 21.8152 3.55832 21.8152Z" fill="#C31A03"/></svg></div>
+			<div class="sk-nav-content">
+				<div class="sk-bc sk-pulse"></div>
+				<div class="sk-nav-btns">
+					<div class="sk-btn"><div class="sk-btn-icon sk-pulse"></div></div>
+					<div class="sk-btn"><div class="sk-btn-icon sk-pulse"></div></div>
+					<div class="sk-avatar sk-pulse"></div>
+				</div>
+			</div>
+		</div>
+		<div class="sk-body">
+			<div class="sk-side" id="sk-side">
+				<div class="sk-mi sk-pulse"></div>
+				<div class="sk-mi sk-pulse"></div>
+				<div class="sk-mi sk-pulse"></div>
+			</div>
+		</div>
+	</div>
+	<script>try{var m=JSON.parse(localStorage.getItem("aidbox-sidebar-mode"));document.getElementById("sk-side").style.width=m==="collapsed"?"51px":"221px"}catch(e){document.getElementById("sk-side").style.width="221px"}</script>
 	<div id="root"></div>
 	<script type="module" src="/src/index.tsx"></script>
 </body>
