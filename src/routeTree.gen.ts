@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
@@ -19,6 +20,11 @@ import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RestRoute = RestRouteImport.update({
   id: '/rest',
   path: '/rest',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/db-console': typeof DbConsoleRoute
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
+  '/settings': typeof SettingsRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/resource/': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
+  '/settings': typeof SettingsRoute
   '/resource': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/resource/$resourceType': typeof ResourceResourceTypeIndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/db-console': typeof DbConsoleRoute
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
+  '/settings': typeof SettingsRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/resource/': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/db-console'
     | '/resource'
     | '/rest'
+    | '/settings'
     | '/resource/$resourceType'
     | '/resource/'
     | '/resource/$resourceType/create'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/db-console'
     | '/rest'
+    | '/settings'
     | '/resource'
     | '/resource/$resourceType/create'
     | '/resource/$resourceType'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/db-console'
     | '/resource'
     | '/rest'
+    | '/settings'
     | '/resource/$resourceType'
     | '/resource/'
     | '/resource/$resourceType/create'
@@ -139,10 +151,18 @@ export interface RootRouteChildren {
   DbConsoleRoute: typeof DbConsoleRoute
   ResourceRoute: typeof ResourceRouteWithChildren
   RestRoute: typeof RestRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rest': {
       id: '/rest'
       path: '/rest'
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   DbConsoleRoute: DbConsoleRoute,
   ResourceRoute: ResourceRouteWithChildren,
   RestRoute: RestRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

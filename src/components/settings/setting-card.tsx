@@ -1,0 +1,82 @@
+import { BoolSetting } from "./setting-controls/bool-setting";
+import { EnumSetting } from "./setting-controls/enum-setting";
+import { TextSetting } from "./setting-controls/text-setting";
+import type { Setting } from "./types";
+import {
+	getNotEditableExplanation,
+	getSettingValue,
+	isSettingEditable,
+} from "./utils";
+
+interface SettingCardProps {
+	setting: Setting;
+	isDebugMode: boolean;
+	pendingValue?: unknown;
+	isConfirming: boolean;
+	errorMessage?: string;
+	onValueChange: (name: string, value: unknown) => void;
+	onSave: (setting: Setting, value: unknown) => void;
+	onCancel: (setting: Setting) => void;
+	onClearError: (name: string) => void;
+	onImmediateSave: (setting: Setting, value: unknown) => void;
+}
+
+export function SettingCard({
+	setting,
+	isDebugMode,
+	pendingValue,
+	isConfirming,
+	errorMessage,
+	onValueChange,
+	onSave,
+	onCancel,
+	onClearError,
+	onImmediateSave,
+}: SettingCardProps) {
+	const editable = isSettingEditable(setting, isDebugMode);
+	const notEditableExplanation = getNotEditableExplanation(
+		setting,
+		isDebugMode,
+	);
+
+	const displayValue =
+		pendingValue !== undefined ? pendingValue : getSettingValue(setting);
+
+	switch (setting.type) {
+		case "bool":
+			return (
+				<BoolSetting
+					setting={setting}
+					value={displayValue}
+					editable={editable}
+					notEditableExplanation={notEditableExplanation}
+					onSave={onImmediateSave}
+				/>
+			);
+		case "string-enum":
+			return (
+				<EnumSetting
+					setting={setting}
+					value={displayValue}
+					editable={editable}
+					notEditableExplanation={notEditableExplanation}
+					onSave={onImmediateSave}
+				/>
+			);
+		default:
+			return (
+				<TextSetting
+					setting={setting}
+					value={displayValue}
+					editable={editable}
+					notEditableExplanation={notEditableExplanation}
+					errorMessage={errorMessage}
+					isConfirming={isConfirming}
+					onValueChange={onValueChange}
+					onSave={onSave}
+					onCancel={onCancel}
+					onClearError={onClearError}
+				/>
+			);
+	}
+}

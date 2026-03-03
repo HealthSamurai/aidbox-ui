@@ -1,0 +1,140 @@
+import {
+	Button,
+	Input,
+	Label,
+	Textarea,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@health-samurai/react-components";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useCallback, useState } from "react";
+import { SettingInfoPanel } from "../setting-info-panel";
+import { SettingLabel } from "../setting-label";
+import type { Setting } from "../types";
+import { overrideSettingValue, removeNonDigits } from "../utils";
+
+interface TextSettingProps {
+	setting: Setting;
+	value: unknown;
+	editable: boolean;
+	notEditableExplanation?: string;
+	errorMessage?: string;
+	isConfirming: boolean;
+	onValueChange: (name: string, value: unknown) => void;
+	onSave: (setting: Setting, value: unknown) => void;
+	onCancel: (setting: Setting) => void;
+	onClearError: (name: string) => void;
+}
+
+export function TextSetting({
+	setting,
+	value,
+	editable,
+	notEditableExplanation,
+	errorMessage,
+	isConfirming,
+	onValueChange,
+	onSave,
+	onCancel,
+	onClearError,
+}: TextSettingProps) {
+	const [infoOpen, setInfoOpen] = useState(false);
+	const isTextarea = String(setting.value ?? "").includes("\n");
+	const isNumber = setting.type === "int";
+	const displayValue = String(overrideSettingValue(setting, value) ?? "");
+	const unit = setting.unit && setting.unit !== "1" ? setting.unit : undefined;
+
+	const handleChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+			onClearError(setting.name);
+			let newValue: unknown = e.target.value;
+			if (isNumber) {
+				const digits = removeNonDigits(e.target.value);
+				if (digits === String(value)) return;
+				newValue = digits === "" ? "" : Number.parseInt(digits, 10);
+			}
+			onValueChange(setting.name, newValue);
+		},
+		[setting.name, value, isNumber, onValueChange, onClearError],
+	);
+
+	const InputComponent = isTextarea ? Textarea : Input;
+
+	return (
+		<div className="group/setting space-y-1">
+			<Label className="text-sm">
+				<SettingLabel setting={setting} hasError={!!errorMessage} />
+			</Label>
+
+			<div className="flex items-start gap-2">
+				<div className="flex-1">
+					{notEditableExplanation && !editable ? (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div>
+									<InputComponent
+										value={displayValue}
+										disabled
+										className="text-sm"
+										{...(isTextarea ? {} : { suffix: unit })}
+									/>
+								</div>
+							</TooltipTrigger>
+							<TooltipContent>{notEditableExplanation}</TooltipContent>
+						</Tooltip>
+					) : (
+						<InputComponent
+							value={displayValue}
+							disabled={!editable}
+							onChange={handleChange}
+							invalid={!!errorMessage}
+							className="text-sm"
+							{...(isTextarea ? {} : { suffix: unit })}
+						/>
+					)}
+				</div>
+				<button
+					type="button"
+					onClick={() => setInfoOpen((o) => !o)}
+					className="invisible mt-2 text-text-secondary hover:text-text-primary group-hover/setting:visible"
+				>
+					{infoOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+				</button>
+			</div>
+
+			{errorMessage && (
+				<p className="text-xs text-text-error-primary">{errorMessage}</p>
+			)}
+
+			{setting.description && (
+				<p
+					className="text-xs text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4"
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions, matching sansara behavior
+					dangerouslySetInnerHTML={{ __html: setting.description }}
+				/>
+			)}
+
+			{isConfirming && editable && (
+				<div className="flex gap-2 pt-1">
+					<Button
+						variant="ghost"
+						size="small"
+						onClick={() => onCancel(setting)}
+					>
+						Cancel
+					</Button>
+					<Button
+						size="small"
+						disabled={setting["required?"] && displayValue === ""}
+						onClick={() => onSave(setting, value)}
+					>
+						Save
+					</Button>
+				</div>
+			)}
+
+			{infoOpen && <SettingInfoPanel setting={setting} />}
+		</div>
+	);
+}
