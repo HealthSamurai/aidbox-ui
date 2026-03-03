@@ -41,6 +41,8 @@ type TableDetails = {
 	columns: ColumnInfo[];
 	indexes: IndexInfo[];
 	rowCount: number;
+	tableSize: string;
+	indexesSize: string;
 };
 
 // Styles
@@ -78,6 +80,12 @@ function buildRowCountQuery(schema: string, table: string): string {
 	const s = schema.replace(/'/g, "''");
 	const t = table.replace(/'/g, "''");
 	return `SELECT reltuples::bigint as row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname='${t}' AND n.nspname='${s}'`;
+}
+
+function buildSizeQuery(schema: string, table: string): string {
+	const s = schema.replace(/"/g, '""');
+	const t = table.replace(/"/g, '""');
+	return `SELECT pg_size_pretty(pg_table_size('"${s}"."${t}"')) AS table_size, pg_size_pretty(pg_indexes_size('"${s}"."${t}"')) AS indexes_size`;
 }
 
 function psqlRequest(
@@ -375,13 +383,16 @@ function TableDetailView({
 			psqlRequest(client, buildColumnsQuery(table.schema, table.name)),
 			psqlRequest(client, buildIndexesQuery(table.schema, table.name)),
 			psqlRequest(client, buildRowCountQuery(table.schema, table.name)),
+			psqlRequest(client, buildSizeQuery(table.schema, table.name)),
 		])
-			.then(([columns, indexes, rowCountRows]) => {
+			.then(([columns, indexes, rowCountRows, sizeRows]) => {
 				if (cancelled) return;
 				setDetails({
 					columns,
 					indexes,
 					rowCount: rowCountRows[0]?.row_count ?? -1,
+					tableSize: sizeRows[0]?.table_size ?? "unknown",
+					indexesSize: sizeRows[0]?.indexes_size ?? "unknown",
 				});
 			})
 			.catch((err) => {
@@ -403,15 +414,18 @@ function TableDetailView({
 				const escaped = indexname.replace(/'/g, "''");
 				await psqlRequest(client, `DROP INDEX IF EXISTS "${escaped}"`);
 				// Refresh details
-				const [columns, indexes, rowCountRows] = await Promise.all([
+				const [columns, indexes, rowCountRows, sizeRows] = await Promise.all([
 					psqlRequest(client, buildColumnsQuery(table.schema, table.name)),
 					psqlRequest(client, buildIndexesQuery(table.schema, table.name)),
 					psqlRequest(client, buildRowCountQuery(table.schema, table.name)),
+					psqlRequest(client, buildSizeQuery(table.schema, table.name)),
 				]);
 				setDetails({
 					columns,
 					indexes,
 					rowCount: rowCountRows[0]?.row_count ?? -1,
+					tableSize: sizeRows[0]?.table_size ?? "unknown",
+					indexesSize: sizeRows[0]?.indexes_size ?? "unknown",
 				});
 			} catch (err) {
 				setError(err instanceof Error ? err.message : String(err));
@@ -485,6 +499,25 @@ function TableDetailView({
 							<span className="typo-body-xs text-text-primary">
 								{formatRowCount(details.rowCount)}
 							</span>
+						</div>
+					</DetailSection>
+
+					<DetailSection title="Size">
+						<div className="flex flex-col">
+							<div className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary">
+								<span className="typo-body-xs text-text-tertiary">
+									Table data
+								</span>
+								<span className="typo-body-xs text-text-primary">
+									{details.tableSize}
+								</span>
+							</div>
+							<div className="flex items-center justify-between px-4 py-1.5">
+								<span className="typo-body-xs text-text-tertiary">Indexes</span>
+								<span className="typo-body-xs text-text-primary">
+									{details.indexesSize}
+								</span>
+							</div>
 						</div>
 					</DetailSection>
 

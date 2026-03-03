@@ -1,3 +1,4 @@
+import { createFuzzySearch } from "../../utils/fuzzy-search";
 import {
 	CATEGORIES,
 	SENSITIVE_PLACEHOLDER,
@@ -91,14 +92,16 @@ export function isValueFromAidboxSetting(setting: Setting): boolean {
 	);
 }
 
-function matchesSearch(setting: Setting, search: string): boolean {
-	const lower = search.toLowerCase();
-	return (
-		setting.name.toLowerCase().includes(lower) ||
-		setting.title.toLowerCase().includes(lower) ||
-		(setting.description ?? "").toLowerCase().includes(lower) ||
-		setting.envs.some((e) => e.toLowerCase().includes(lower))
-	);
+function fuzzySearchSettings(settings: Setting[], query: string): Setting[] {
+	const search = createFuzzySearch(settings, {
+		keys: [
+			{ name: "name", weight: 4 },
+			{ name: "envs", weight: 3 },
+			{ name: "title", weight: 2 },
+			{ name: "description", weight: 1 },
+		],
+	});
+	return search(query);
 }
 
 export function filterSettings(
@@ -116,7 +119,7 @@ export function filterSettings(
 	}
 
 	if (search.trim()) {
-		filtered = filtered.filter((s) => matchesSearch(s, search));
+		filtered = fuzzySearchSettings(filtered, search);
 	}
 
 	return filtered;

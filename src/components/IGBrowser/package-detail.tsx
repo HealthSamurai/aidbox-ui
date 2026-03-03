@@ -1,0 +1,523 @@
+import * as HSComp from "@health-samurai/react-components";
+import { useQuery } from "@tanstack/react-query";
+import {
+	Link,
+	useNavigate,
+	useParams,
+	useSearch,
+} from "@tanstack/react-router";
+import { ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react";
+import { useState } from "react";
+import { useAidboxClient } from "../../AidboxClient";
+import { useDebounce } from "../../hooks/useDebounce";
+
+type Installation = {
+	intention?: string;
+	cts?: string;
+	source?: { "registry-url"?: string; type?: string };
+};
+
+type PackageMeta = {
+	name: string;
+	version: string;
+	title?: string;
+	author?: string;
+	homepage?: string;
+	description?: string;
+	type?: string;
+	fhirVersions?: string[];
+	dependencies?: Record<string, string>;
+	installation?: Installation[];
+};
+
+function usePackageMeta(packageId: string) {
+	const client = useAidboxClient();
+
+	return useQuery<PackageMeta>({
+		queryKey: ["ig-package-meta", packageId],
+		staleTime: 5 * 60 * 1000,
+		queryFn: async () => {
+			const response = await client.rawRequest({
+				method: "POST",
+				url: "/rpc?_m=aidbox.introspector/get-package-meta",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					method: "aidbox.introspector/get-package-meta",
+					params: { "package-coordinate": packageId },
+				}),
+			});
+			const json = await response.response.json();
+			return json.data ?? json.result ?? {};
+		},
+	});
+}
+
+type KVRow = { label: string; value: React.ReactNode };
+
+function KVRows({ rows }: { rows: KVRow[] }) {
+	return (
+		<div className="flex flex-col gap-3">
+			{rows.map((row) => (
+				<div key={row.label} className="flex gap-2">
+					<span className="w-28 shrink-0 text-text-secondary text-sm">
+						{row.label}
+					</span>
+					<span className="text-text-primary text-sm">{row.value}</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function Section({
+	title,
+	children,
+	className,
+}: {
+	title: string;
+	children: React.ReactNode;
+	className?: string;
+}) {
+	return (
+		<div className={`flex flex-col gap-3 ${className ?? ""}`}>
+			<span className="text-text-primary text-sm font-medium">{title}</span>
+			{children}
+		</div>
+	);
+}
+
+function ExpandableText({ text }: { text: string }) {
+	const [expanded, setExpanded] = useState(false);
+
+	return (
+		<div className="flex flex-col gap-1">
+			<span className={expanded ? "" : "line-clamp-1"}>{text}</span>
+			<button
+				type="button"
+				onClick={() => setExpanded((v) => !v)}
+				className="text-text-link hover:underline text-sm cursor-pointer self-start"
+			>
+				{expanded ? "Show less" : "Show more"}
+			</button>
+		</div>
+	);
+}
+
+function VisualView({ meta }: { meta: PackageMeta }) {
+	const deps = meta.dependencies ? Object.entries(meta.dependencies) : [];
+
+	const generalRows: KVRow[] = [];
+	if (meta.title) generalRows.push({ label: "Title", value: meta.title });
+	if (meta.version) generalRows.push({ label: "Version", value: meta.version });
+	if (meta.author) generalRows.push({ label: "Author", value: meta.author });
+	if (meta.type) generalRows.push({ label: "Type", value: meta.type });
+	if (meta.homepage)
+		generalRows.push({
+			label: "Homepage",
+			value: (
+				<a
+					href={meta.homepage}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-text-link hover:underline"
+				>
+					{meta.homepage}
+				</a>
+			),
+		});
+	if (meta.fhirVersions?.length)
+		generalRows.push({
+			label: "FHIR versions",
+			value: meta.fhirVersions.join(", "),
+		});
+	if (meta.description)
+		generalRows.push({
+			label: "Description",
+			value: <ExpandableText text={meta.description} />,
+		});
+
+	const installRows: KVRow[] = [];
+	if (meta.installation?.length) {
+		const inst = meta.installation[0];
+		if (inst.intention)
+			installRows.push({ label: "Intention", value: inst.intention });
+		if (inst.cts)
+			installRows.push({
+				label: "Installed at",
+				value: new Date(inst.cts).toLocaleDateString("en-GB", {
+					day: "2-digit",
+					month: "short",
+					year: "numeric",
+				}),
+			});
+		if (inst.source?.type)
+			installRows.push({ label: "Source", value: inst.source.type });
+		if (inst.source?.["registry-url"])
+			installRows.push({
+				label: "Registry",
+				value: inst.source["registry-url"],
+			});
+	}
+
+	return (
+		<div className="p-4 pl-7 flex flex-col gap-4 max-w-4xl">
+			{generalRows.length > 0 && (
+				<Section title="General">
+					<KVRows rows={generalRows} />
+				</Section>
+			)}
+			{installRows.length > 0 && (
+				<Section title="Installation">
+					<KVRows rows={installRows} />
+				</Section>
+			)}
+			{deps.length > 0 && (
+				<Section title="Dependencies" className="pt-4">
+					<div className="flex flex-col gap-1 pl-3">
+						{deps.map(([name, version]) => {
+							const depId = `${name}#${version}`;
+							return (
+								<Link
+									key={depId}
+									to="/ig/$packageId"
+									params={{ packageId: depId }}
+									className="text-text-link hover:underline text-sm"
+								>
+									{depId}
+								</Link>
+							);
+						})}
+					</div>
+				</Section>
+			)}
+		</div>
+	);
+}
+
+function PackageInfoContent({ meta }: { meta: PackageMeta }) {
+	const navigate = useNavigate();
+	const { view } = useSearch({ from: "/ig/$packageId/" });
+	const currentView = view ?? "visual";
+
+	return (
+		<HSComp.Tabs
+			value={currentView}
+			onValueChange={(v) =>
+				navigate({
+					search: (prev) => ({
+						...prev,
+						view: v === "visual" ? undefined : v,
+					}),
+					replace: true,
+				})
+			}
+			variant="tertiary"
+			className="flex flex-col grow min-h-0"
+		>
+			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
+				<HSComp.TabsList className="py-0! border-b-0!">
+					<HSComp.TabsTrigger value="visual">Visual</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="json">JSON</HSComp.TabsTrigger>
+				</HSComp.TabsList>
+			</div>
+			<HSComp.TabsContent value="visual" className="overflow-auto pb-20">
+				<VisualView meta={meta} />
+			</HSComp.TabsContent>
+			<HSComp.TabsContent value="json" className="relative grow min-h-0 pt-2">
+				<HSComp.CodeEditor
+					readOnly
+					currentValue={JSON.stringify(meta, null, 2)}
+					mode="json"
+				/>
+			</HSComp.TabsContent>
+		</HSComp.Tabs>
+	);
+}
+
+type CanonicalEntry = {
+	resource: {
+		resourceType: string;
+		id: string;
+		url?: string;
+		name?: string;
+		version?: string;
+		status?: string;
+	};
+};
+
+type CanonicalResult = {
+	total: number;
+	entry: CanonicalEntry[];
+};
+
+const PAGE_SIZE = 50;
+
+function PaginationPages({
+	currentPage,
+	totalPages,
+	onPageChange,
+}: {
+	currentPage: number;
+	totalPages: number;
+	onPageChange: (page: number) => void;
+}) {
+	const pages: (number | string)[] = [];
+	if (totalPages <= 7) {
+		for (let i = 1; i <= totalPages; i++) pages.push(i);
+	} else {
+		pages.push(1);
+		if (currentPage > 3) pages.push("ellipsis-start");
+		const start = Math.max(2, currentPage - 1);
+		const end = Math.min(totalPages - 1, currentPage + 1);
+		for (let i = start; i <= end; i++) pages.push(i);
+		if (currentPage < totalPages - 2) pages.push("ellipsis-end");
+		pages.push(totalPages);
+	}
+
+	return (
+		<div className="flex items-center gap-1">
+			<HSComp.Button
+				variant="ghost"
+				size="small"
+				disabled={currentPage <= 1}
+				onClick={() => onPageChange(currentPage - 1)}
+			>
+				<ChevronLeftIcon size={16} />
+			</HSComp.Button>
+			{pages.map((p) =>
+				typeof p === "string" ? (
+					<span key={p} className="px-1 text-text-secondary">
+						...
+					</span>
+				) : (
+					<HSComp.Button
+						key={p}
+						variant={p === currentPage ? "secondary" : "ghost"}
+						size="small"
+						onClick={() => onPageChange(p)}
+					>
+						{p}
+					</HSComp.Button>
+				),
+			)}
+			<HSComp.Button
+				variant="ghost"
+				size="small"
+				disabled={currentPage >= totalPages}
+				onClick={() => onPageChange(currentPage + 1)}
+			>
+				<ChevronRightIcon size={16} />
+			</HSComp.Button>
+		</div>
+	);
+}
+
+function useCanonicals(packageId: string, substring: string, page: number) {
+	const client = useAidboxClient();
+
+	return useQuery<CanonicalResult>({
+		queryKey: ["ig-canonicals", packageId, substring, page],
+		staleTime: 5 * 60 * 1000,
+		queryFn: async () => {
+			const response = await client.rawRequest({
+				method: "POST",
+				url: "/rpc?_m=aidbox.introspector/search-package-canonicals",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					method: "aidbox.introspector/search-package-canonicals",
+					params: {
+						"package-coordinate": packageId,
+						...(substring ? { substring } : {}),
+						count: PAGE_SIZE,
+						page,
+					},
+				}),
+			});
+			const json = await response.response.json();
+			return json.result ?? { total: 0, entry: [] };
+		},
+	});
+}
+
+function CanonicalsContent({ packageId }: { packageId: string }) {
+	const navigate = useNavigate();
+	const [search, setSearch] = useState("");
+	const [substring, setSubstring] = useState("");
+	const [page, setPage] = useState(1);
+
+	const debouncedSetSubstring = useDebounce((value: string) => {
+		setSubstring(value);
+		setPage(1);
+	}, 300);
+
+	const handleSearchChange = (value: string) => {
+		setSearch(value);
+		debouncedSetSubstring(value);
+	};
+
+	const { data, isLoading } = useCanonicals(packageId, substring, page);
+	const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+
+	return (
+		<div className="flex flex-col h-full min-h-0">
+			<div className="flex gap-4 items-center px-4 py-3 border-b border-border-secondary flex-none">
+				<HSComp.Input
+					type="text"
+					className="flex-1 bg-bg-primary"
+					placeholder="Search by resource type or URL, e.g. valueset birthsex"
+					autoFocus
+					value={search}
+					onChange={(e) => handleSearchChange(e.target.value)}
+					rightSlot={
+						search && (
+							<HSComp.IconButton
+								icon={<X />}
+								aria-label="Clear"
+								variant="link"
+								onClick={() => handleSearchChange("")}
+							/>
+						)
+					}
+				/>
+			</div>
+			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:h-full">
+				<HSComp.Table zebra>
+					<HSComp.TableHeader className="block scrollbar-none [&_tr]:table [&_tr]:w-full">
+						<HSComp.TableRow>
+							<HSComp.TableHead className="w-48 pl-7!">
+								Resource Type
+							</HSComp.TableHead>
+							<HSComp.TableHead>URL</HSComp.TableHead>
+						</HSComp.TableRow>
+					</HSComp.TableHeader>
+					<HSComp.TableBody
+						className="block overflow-y-auto [&_tr]:table [&_tr]:w-full"
+						style={{ height: "calc(100% - 41px)" }}
+					>
+						{isLoading
+							? Array.from({ length: 30 }, (_, i) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+									<HSComp.TableRow key={i} zebra index={i}>
+										<HSComp.TableCell className="w-48 pl-7!">
+											<HSComp.Skeleton
+												className="h-5"
+												style={{
+													width: `${80 + ((i * 23) % 60)}px`,
+												}}
+											/>
+										</HSComp.TableCell>
+										<HSComp.TableCell>
+											<HSComp.Skeleton
+												className="h-5"
+												style={{
+													width: `${200 + ((i * 31) % 200)}px`,
+												}}
+											/>
+										</HSComp.TableCell>
+									</HSComp.TableRow>
+								))
+							: data?.entry.map((item, index) => (
+									<HSComp.TableRow
+										key={item.resource.id}
+										zebra
+										index={index}
+										className="cursor-pointer"
+										onClick={() =>
+											navigate({
+												to: "/ig/$packageId/resource/$resourceType/$resourceId",
+												params: {
+													packageId,
+													resourceType: item.resource.resourceType,
+													resourceId: item.resource.id,
+												},
+											})
+										}
+									>
+										<HSComp.TableCell className="text-text-secondary text-sm w-48 pl-7!">
+											{item.resource.resourceType}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-text-primary text-sm">
+											{item.resource.url}
+										</HSComp.TableCell>
+									</HSComp.TableRow>
+								))}
+					</HSComp.TableBody>
+				</HSComp.Table>
+			</div>
+			<div className="flex items-center justify-end border-t bg-bg-secondary px-4 h-10 flex-none">
+				{totalPages > 1 && (
+					<PaginationPages
+						currentPage={page}
+						totalPages={totalPages}
+						onPageChange={setPage}
+					/>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function LoadingSkeleton() {
+	return (
+		<div className="p-4 flex flex-col gap-3">
+			{Array.from({ length: 5 }, (_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
+				<div key={i} className="flex gap-4 py-2">
+					<HSComp.Skeleton className="h-5 w-36 shrink-0" />
+					<HSComp.Skeleton
+						className="h-5"
+						style={{ width: `${120 + ((i * 47) % 200)}px` }}
+					/>
+				</div>
+			))}
+		</div>
+	);
+}
+
+export function PackageDetail() {
+	const { packageId } = useParams({ from: "/ig/$packageId/" });
+	const { tab } = useSearch({ from: "/ig/$packageId/" });
+	const navigate = useNavigate();
+	const { data, isLoading } = usePackageMeta(packageId);
+	const currentTab = tab ?? "canonicals";
+
+	return (
+		<HSComp.Tabs
+			value={currentTab}
+			onValueChange={(v) =>
+				navigate({
+					search: (prev) => ({
+						...prev,
+						tab: v === "canonicals" ? undefined : v,
+						view: v === "package-info" ? prev.view : undefined,
+					}),
+					replace: true,
+				})
+			}
+			variant="primary"
+			className="flex flex-col h-full"
+		>
+			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-secondary">
+				<HSComp.TabsList className="mx-4 py-0! border-b-0!">
+					<HSComp.TabsTrigger value="canonicals">Canonicals</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="package-info">
+						Package Info
+					</HSComp.TabsTrigger>
+				</HSComp.TabsList>
+			</div>
+			<HSComp.TabsContent
+				value="canonicals"
+				className="grow min-h-0 flex flex-col"
+			>
+				<CanonicalsContent packageId={packageId} />
+			</HSComp.TabsContent>
+			<HSComp.TabsContent value="package-info" className="overflow-auto">
+				{isLoading ? (
+					<LoadingSkeleton />
+				) : data ? (
+					<PackageInfoContent meta={data} />
+				) : null}
+			</HSComp.TabsContent>
+		</HSComp.Tabs>
+	);
+}

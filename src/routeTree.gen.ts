@@ -12,13 +12,19 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
+import { Route as IgRouteImport } from './routes/ig'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
+import { Route as IgIndexRouteImport } from './routes/ig.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
+import { Route as IgAddRouteImport } from './routes/ig.add'
+import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
+import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.index'
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
+import { Route as IgPackageIdResourceResourceTypeResourceIdRouteImport } from './routes/ig.$packageId.resource.$resourceType.$resourceId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -33,6 +39,11 @@ const RestRoute = RestRouteImport.update({
 const ResourceRoute = ResourceRouteImport.update({
   id: '/resource',
   path: '/resource',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IgRoute = IgRouteImport.update({
+  id: '/ig',
+  path: '/ig',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DbConsoleRoute = DbConsoleRouteImport.update({
@@ -50,10 +61,25 @@ const ResourceIndexRoute = ResourceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ResourceRoute,
 } as any)
+const IgIndexRoute = IgIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => IgRoute,
+} as any)
 const ResourceResourceTypeRoute = ResourceResourceTypeRouteImport.update({
   id: '/$resourceType',
   path: '/$resourceType',
   getParentRoute: () => ResourceRoute,
+} as any)
+const IgAddRoute = IgAddRouteImport.update({
+  id: '/add',
+  path: '/add',
+  getParentRoute: () => IgRoute,
+} as any)
+const IgPackageIdRoute = IgPackageIdRouteImport.update({
+  id: '/$packageId',
+  path: '/$packageId',
+  getParentRoute: () => IgRoute,
 } as any)
 const ResourceResourceTypeIndexRoute =
   ResourceResourceTypeIndexRouteImport.update({
@@ -61,6 +87,11 @@ const ResourceResourceTypeIndexRoute =
     path: '/',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
+const IgPackageIdIndexRoute = IgPackageIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => IgPackageIdRoute,
+} as any)
 const ResourceResourceTypeCreateRoute =
   ResourceResourceTypeCreateRouteImport.update({
     id: '/create',
@@ -73,82 +104,121 @@ const ResourceResourceTypeEditIdRoute =
     path: '/edit/$id',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
+const IgPackageIdResourceResourceTypeResourceIdRoute =
+  IgPackageIdResourceResourceTypeResourceIdRouteImport.update({
+    id: '/resource/$resourceType/$resourceId',
+    path: '/resource/$resourceType/$resourceId',
+    getParentRoute: () => IgPackageIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/db-console': typeof DbConsoleRoute
+  '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/ig/$packageId': typeof IgPackageIdRouteWithChildren
+  '/ig/add': typeof IgAddRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
+  '/ig/': typeof IgIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/ig/add': typeof IgAddRoute
+  '/ig': typeof IgIndexRoute
   '/resource': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/ig/$packageId': typeof IgPackageIdIndexRoute
   '/resource/$resourceType': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/db-console': typeof DbConsoleRoute
+  '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/ig/$packageId': typeof IgPackageIdRouteWithChildren
+  '/ig/add': typeof IgAddRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
+  '/ig/': typeof IgIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/db-console'
+    | '/ig'
     | '/resource'
     | '/rest'
     | '/settings'
+    | '/ig/$packageId'
+    | '/ig/add'
     | '/resource/$resourceType'
+    | '/ig/'
     | '/resource/'
     | '/resource/$resourceType/create'
+    | '/ig/$packageId/'
     | '/resource/$resourceType/'
     | '/resource/$resourceType/edit/$id'
+    | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/db-console'
     | '/rest'
     | '/settings'
+    | '/ig/add'
+    | '/ig'
     | '/resource'
     | '/resource/$resourceType/create'
+    | '/ig/$packageId'
     | '/resource/$resourceType'
     | '/resource/$resourceType/edit/$id'
+    | '/ig/$packageId/resource/$resourceType/$resourceId'
   id:
     | '__root__'
     | '/'
     | '/db-console'
+    | '/ig'
     | '/resource'
     | '/rest'
     | '/settings'
+    | '/ig/$packageId'
+    | '/ig/add'
     | '/resource/$resourceType'
+    | '/ig/'
     | '/resource/'
     | '/resource/$resourceType/create'
+    | '/ig/$packageId/'
     | '/resource/$resourceType/'
     | '/resource/$resourceType/edit/$id'
+    | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DbConsoleRoute: typeof DbConsoleRoute
+  IgRoute: typeof IgRouteWithChildren
   ResourceRoute: typeof ResourceRouteWithChildren
   RestRoute: typeof RestRoute
   SettingsRoute: typeof SettingsRoute
@@ -177,6 +247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ig': {
+      id: '/ig'
+      path: '/ig'
+      fullPath: '/ig'
+      preLoaderRoute: typeof IgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/db-console': {
       id: '/db-console'
       path: '/db-console'
@@ -198,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceIndexRouteImport
       parentRoute: typeof ResourceRoute
     }
+    '/ig/': {
+      id: '/ig/'
+      path: '/'
+      fullPath: '/ig/'
+      preLoaderRoute: typeof IgIndexRouteImport
+      parentRoute: typeof IgRoute
+    }
     '/resource/$resourceType': {
       id: '/resource/$resourceType'
       path: '/$resourceType'
@@ -205,12 +289,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceResourceTypeRouteImport
       parentRoute: typeof ResourceRoute
     }
+    '/ig/add': {
+      id: '/ig/add'
+      path: '/add'
+      fullPath: '/ig/add'
+      preLoaderRoute: typeof IgAddRouteImport
+      parentRoute: typeof IgRoute
+    }
+    '/ig/$packageId': {
+      id: '/ig/$packageId'
+      path: '/$packageId'
+      fullPath: '/ig/$packageId'
+      preLoaderRoute: typeof IgPackageIdRouteImport
+      parentRoute: typeof IgRoute
+    }
     '/resource/$resourceType/': {
       id: '/resource/$resourceType/'
       path: '/'
       fullPath: '/resource/$resourceType/'
       preLoaderRoute: typeof ResourceResourceTypeIndexRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
+    }
+    '/ig/$packageId/': {
+      id: '/ig/$packageId/'
+      path: '/'
+      fullPath: '/ig/$packageId/'
+      preLoaderRoute: typeof IgPackageIdIndexRouteImport
+      parentRoute: typeof IgPackageIdRoute
     }
     '/resource/$resourceType/create': {
       id: '/resource/$resourceType/create'
@@ -226,8 +331,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceResourceTypeEditIdRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
     }
+    '/ig/$packageId/resource/$resourceType/$resourceId': {
+      id: '/ig/$packageId/resource/$resourceType/$resourceId'
+      path: '/resource/$resourceType/$resourceId'
+      fullPath: '/ig/$packageId/resource/$resourceType/$resourceId'
+      preLoaderRoute: typeof IgPackageIdResourceResourceTypeResourceIdRouteImport
+      parentRoute: typeof IgPackageIdRoute
+    }
   }
 }
+
+interface IgPackageIdRouteChildren {
+  IgPackageIdIndexRoute: typeof IgPackageIdIndexRoute
+  IgPackageIdResourceResourceTypeResourceIdRoute: typeof IgPackageIdResourceResourceTypeResourceIdRoute
+}
+
+const IgPackageIdRouteChildren: IgPackageIdRouteChildren = {
+  IgPackageIdIndexRoute: IgPackageIdIndexRoute,
+  IgPackageIdResourceResourceTypeResourceIdRoute:
+    IgPackageIdResourceResourceTypeResourceIdRoute,
+}
+
+const IgPackageIdRouteWithChildren = IgPackageIdRoute._addFileChildren(
+  IgPackageIdRouteChildren,
+)
+
+interface IgRouteChildren {
+  IgPackageIdRoute: typeof IgPackageIdRouteWithChildren
+  IgAddRoute: typeof IgAddRoute
+  IgIndexRoute: typeof IgIndexRoute
+}
+
+const IgRouteChildren: IgRouteChildren = {
+  IgPackageIdRoute: IgPackageIdRouteWithChildren,
+  IgAddRoute: IgAddRoute,
+  IgIndexRoute: IgIndexRoute,
+}
+
+const IgRouteWithChildren = IgRoute._addFileChildren(IgRouteChildren)
 
 interface ResourceResourceTypeRouteChildren {
   ResourceResourceTypeCreateRoute: typeof ResourceResourceTypeCreateRoute
@@ -261,6 +402,7 @@ const ResourceRouteWithChildren = ResourceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DbConsoleRoute: DbConsoleRoute,
+  IgRoute: IgRouteWithChildren,
   ResourceRoute: ResourceRouteWithChildren,
   RestRoute: RestRoute,
   SettingsRoute: SettingsRoute,
