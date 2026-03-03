@@ -5,6 +5,7 @@ import type { Setting } from "./types";
 import {
 	getNotEditableExplanation,
 	getSettingValue,
+	isPendingRestart,
 	isSettingEditable,
 } from "./utils";
 
@@ -38,13 +39,16 @@ export function SettingCard({
 		setting,
 		isDebugMode,
 	);
+	const pendingRestart = isPendingRestart(setting);
 
 	const displayValue =
 		pendingValue !== undefined ? pendingValue : getSettingValue(setting);
 
+	let content: React.ReactNode;
+
 	switch (setting.type) {
 		case "bool":
-			return (
+			content = (
 				<BoolSetting
 					setting={setting}
 					value={displayValue}
@@ -53,8 +57,9 @@ export function SettingCard({
 					onSave={onImmediateSave}
 				/>
 			);
+			break;
 		case "string-enum":
-			return (
+			content = (
 				<EnumSetting
 					setting={setting}
 					value={displayValue}
@@ -63,8 +68,9 @@ export function SettingCard({
 					onSave={onImmediateSave}
 				/>
 			);
+			break;
 		default:
-			return (
+			content = (
 				<TextSetting
 					setting={setting}
 					value={displayValue}
@@ -79,4 +85,14 @@ export function SettingCard({
 				/>
 			);
 	}
+
+	if (pendingRestart) {
+		return (
+			<div className="border-l-2 border-[var(--color-illustrations-solid)] pl-3">
+				{content}
+			</div>
+		);
+	}
+
+	return content;
 }

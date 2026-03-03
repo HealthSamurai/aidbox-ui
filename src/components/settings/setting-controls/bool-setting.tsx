@@ -1,11 +1,11 @@
 import {
-	Checkbox,
 	Label,
+	Switch,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Lock, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { SettingInfoPanel } from "../setting-info-panel";
 import { SettingLabel } from "../setting-label";
@@ -29,51 +29,72 @@ export function BoolSetting({
 	const [infoOpen, setInfoOpen] = useState(false);
 	const checked = value === true;
 
+	const disabledSwitch = (
+		<div className="relative inline-flex">
+			<Switch checked={checked} disabled />
+			<Lock
+				size={10}
+				className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white"
+			/>
+		</div>
+	);
+
+	const toggle =
+		notEditableExplanation && !editable ? (
+			<Tooltip>
+				<TooltipTrigger asChild>{disabledSwitch}</TooltipTrigger>
+				<TooltipContent>{notEditableExplanation}</TooltipContent>
+			</Tooltip>
+		) : !editable ? (
+			disabledSwitch
+		) : (
+			<Switch
+				checked={checked}
+				onCheckedChange={(newChecked) => {
+					onSave(setting, newChecked === true);
+				}}
+			/>
+		);
+
 	return (
-		<div className="group/setting space-y-1">
-			<Label className="text-sm">
-				<SettingLabel setting={setting} />
-			</Label>
+		<div className="group/setting">
+			<div className="flex gap-3">
+				<div className="shrink-0 pt-0.5">{toggle}</div>
+				<div className="min-w-0 flex-1 space-y-1.5">
+					<Label className="text-sm">
+						<SettingLabel setting={setting} />
+					</Label>
 
-			<div className="flex items-center gap-2">
-				{notEditableExplanation && !editable ? (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<div>
-								<Checkbox checked={checked} disabled />
-							</div>
-						</TooltipTrigger>
-						<TooltipContent>{notEditableExplanation}</TooltipContent>
-					</Tooltip>
-				) : (
-					<Checkbox
-						checked={checked}
-						disabled={!editable}
-						onCheckedChange={(newChecked) => {
-							if (editable) {
-								onSave(setting, newChecked === true);
-							}
-						}}
-					/>
-				)}
-				<button
-					type="button"
-					onClick={() => setInfoOpen((o) => !o)}
-					className="invisible text-text-secondary hover:text-text-primary group-hover/setting:visible"
-				>
-					{infoOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-				</button>
+					{setting.description ? (
+						<div className="flex items-start gap-2 pt-0.5">
+							<div
+								className="min-w-0 flex-1 text-xs [overflow-wrap:anywhere] text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:whitespace-pre-wrap [&_table]:w-full [&_table]:table-fixed [&_td]:break-words [&_th]:break-words [&_ul]:list-disc [&_ul]:pl-4"
+								// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
+								dangerouslySetInnerHTML={{ __html: setting.description }}
+							/>
+							<button
+								type="button"
+								onClick={() => setInfoOpen((o) => !o)}
+								className="invisible ml-auto inline-flex shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+							>
+								{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
+								<span>{infoOpen ? "Less" : "More"}</span>
+							</button>
+						</div>
+					) : (
+						<button
+							type="button"
+							onClick={() => setInfoOpen((o) => !o)}
+							className="invisible flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+						>
+							{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
+							<span>{infoOpen ? "Less" : "More"}</span>
+						</button>
+					)}
+
+					{infoOpen && <SettingInfoPanel setting={setting} />}
+				</div>
 			</div>
-
-			{setting.description && (
-				<p
-					className="text-xs text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4"
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
-					dangerouslySetInnerHTML={{ __html: setting.description }}
-				/>
-			)}
-
-			{infoOpen && <SettingInfoPanel setting={setting} />}
 		</div>
 	);
 }

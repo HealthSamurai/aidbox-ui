@@ -1,4 +1,5 @@
-import { ScrollArea } from "@health-samurai/react-components";
+import { Input, ScrollArea } from "@health-samurai/react-components";
+import { Search } from "lucide-react";
 import { DeprecatedCapabilitiesAlert, RestartRequiredAlert } from "./alerts";
 import { CategorySection } from "./category-section";
 import { CATEGORIES } from "./constants";
@@ -33,8 +34,7 @@ function getCategoryDescription(category: string[]): string | undefined {
 interface SettingsContentProps {
 	allSettings: Setting[];
 	search: string;
-	hideDefaults: boolean;
-	editedSettings: Set<string>;
+	onSearchChange: (value: string) => void;
 	isDebugMode: boolean;
 	pendingChanges: Record<string, unknown>;
 	confirmations: Record<string, boolean>;
@@ -51,8 +51,7 @@ interface SettingsContentProps {
 export function SettingsContent({
 	allSettings,
 	search,
-	hideDefaults,
-	editedSettings,
+	onSearchChange,
 	isDebugMode,
 	pendingChanges,
 	confirmations,
@@ -65,20 +64,25 @@ export function SettingsContent({
 	boxInfo,
 	deprecatedCapabilities,
 }: SettingsContentProps) {
-	const filtered = filterSettings(
-		allSettings,
-		search,
-		hideDefaults,
-		editedSettings,
-	);
+	const filtered = filterSettings(allSettings, search);
 	const grouped = groupByCategory(filtered);
 	const sorted = sortSettingsByCategory(grouped);
 
 	return (
 		<ScrollArea className="h-full flex-1">
-			<div className="max-w-3xl p-6">
+			<div className="mx-auto max-w-[990px] pt-2">
 				<RestartRequiredAlert settings={allSettings} />
 				<DeprecatedCapabilitiesAlert capabilities={deprecatedCapabilities} />
+
+				<div className="mb-6 px-16">
+					<Input
+						value={search}
+						onChange={(e) => onSearchChange(e.target.value)}
+						placeholder="Search Settings"
+						leftSlot={<Search size={16} />}
+						className="rounded-full"
+					/>
+				</div>
 
 				{sorted.length === 0 ? (
 					<p className="py-8 text-center text-text-secondary">

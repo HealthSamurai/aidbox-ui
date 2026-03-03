@@ -1,5 +1,4 @@
 import {
-	Ban,
 	BarChart3,
 	Blocks,
 	Database,
@@ -138,7 +137,6 @@ export const CATEGORIES: CategoryDef[] = [
 			},
 		],
 	},
-	{ category: ["Zen Project"], desc: "Zen Project settings (legacy)" },
 ];
 
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -149,7 +147,6 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
 	"Web Server": Globe,
 	Database: Database,
 	Observability: BarChart3,
-	"Zen Project": Ban,
 };
 
 export const DEPRECATED_CAPABILITY_LABELS: Record<string, string> = {

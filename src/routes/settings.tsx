@@ -1,6 +1,10 @@
-import { Checkbox, Input, Skeleton } from "@health-samurai/react-components";
+import {
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
+	Skeleton,
+} from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { onError } from "../api/utils";
 import {
@@ -29,8 +33,7 @@ function SettingsPage() {
 	const resetSetting = useResetSetting();
 
 	const [search, setSearch] = useState("");
-	const [hideDefaults, setHideDefaults] = useState(false);
-	const [editedSettings, setEditedSettings] = useState<Set<string>>(new Set());
+	const [, setEditedSettings] = useState<Set<string>>(new Set());
 	const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>(
 		{},
 	);
@@ -42,15 +45,10 @@ function SettingsPage() {
 	// Compute visible categories from current filtered data
 	const computedVisibleCategories = useMemo(() => {
 		if (!allSettings) return new Set<string>();
-		const filtered = filterSettings(
-			allSettings,
-			search,
-			hideDefaults,
-			editedSettings,
-		);
+		const filtered = filterSettings(allSettings, search);
 		const grouped = groupByCategory(filtered);
 		return new Set(Object.keys(grouped));
-	}, [allSettings, search, hideDefaults, editedSettings]);
+	}, [allSettings, search]);
 
 	// Debug mode — always true for now, will be wired to aidbox config
 	const isDebugMode = true;
@@ -159,64 +157,52 @@ function SettingsPage() {
 
 	if (isLoading) {
 		return (
-			<div className="flex h-full">
-				<div className="w-60 shrink-0 border-r border-border-primary p-3">
-					<div className="space-y-2">
-						{Array.from({ length: 8 }).map((_, i) => (
-							<Skeleton
-								key={`sidebar-${i.toString()}`}
-								className="h-8 w-full rounded"
-							/>
-						))}
+			<ResizablePanelGroup direction="horizontal" className="h-full">
+				<ResizablePanel
+					defaultSize={15}
+					minSize={10}
+					maxSize={25}
+					className="border-r border-border-secondary"
+				>
+					<div className="p-3">
+						<div className="space-y-2">
+							{Array.from({ length: 8 }).map((_, i) => (
+								<Skeleton
+									key={`sidebar-${i.toString()}`}
+									className="h-8 w-full rounded"
+								/>
+							))}
+						</div>
 					</div>
-				</div>
-				<div className="flex-1 p-6">
-					<div className="space-y-4">
-						{Array.from({ length: 6 }).map((_, i) => (
-							<Skeleton
-								key={`content-${i.toString()}`}
-								className="h-12 w-full rounded"
-							/>
-						))}
+				</ResizablePanel>
+				<ResizableHandle />
+				<ResizablePanel defaultSize={85}>
+					<div className="flex-1 p-6">
+						<div className="space-y-4">
+							{Array.from({ length: 6 }).map((_, i) => (
+								<Skeleton
+									key={`content-${i.toString()}`}
+									className="h-12 w-full rounded"
+								/>
+							))}
+						</div>
 					</div>
-				</div>
-			</div>
+				</ResizablePanel>
+			</ResizablePanelGroup>
 		);
 	}
 
 	return (
-		<div className="flex h-full flex-col">
-			{/* Toolbar */}
-			<div className="flex shrink-0 items-center gap-4 border-b border-border-primary px-6 py-3">
-				<Input
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					placeholder="Search settings..."
-					leftSlot={<Search size={16} />}
-					className="max-w-xs"
-				/>
-				<label
-					htmlFor="hide-defaults-checkbox"
-					className="flex items-center gap-2 text-sm text-text-secondary"
-				>
-					<Checkbox
-						id="hide-defaults-checkbox"
-						checked={hideDefaults}
-						onCheckedChange={(checked) => setHideDefaults(checked === true)}
-						size="small"
-					/>
-					Hide default
-				</label>
-			</div>
-
-			{/* Main content */}
-			<div className="flex min-h-0 flex-1">
+		<ResizablePanelGroup direction="horizontal" className="h-full">
+			<ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
 				<SettingsSidebar visibleCategories={computedVisibleCategories} />
+			</ResizablePanel>
+			<ResizableHandle />
+			<ResizablePanel defaultSize={85}>
 				<SettingsContent
 					allSettings={allSettings ?? []}
 					search={search}
-					hideDefaults={hideDefaults}
-					editedSettings={editedSettings}
+					onSearchChange={setSearch}
 					isDebugMode={isDebugMode}
 					pendingChanges={pendingChanges}
 					confirmations={confirmations}
@@ -229,7 +215,7 @@ function SettingsPage() {
 					boxInfo={boxInfo}
 					deprecatedCapabilities={deprecatedCapabilities}
 				/>
-			</div>
-		</div>
+			</ResizablePanel>
+		</ResizablePanelGroup>
 	);
 }

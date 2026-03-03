@@ -11,11 +11,11 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { SettingInfoPanel } from "../setting-info-panel";
 import { SettingLabel } from "../setting-label";
-import type { Setting } from "../types";
+import type { Setting, SettingVariant } from "../types";
 
 interface EnumSettingProps {
 	setting: Setting;
@@ -23,6 +23,11 @@ interface EnumSettingProps {
 	editable: boolean;
 	notEditableExplanation?: string;
 	onSave: (setting: Setting, value: unknown) => void;
+}
+
+function normalizeVariant(v: SettingVariant | string): SettingVariant {
+	if (typeof v === "string") return { name: v, value: v };
+	return v;
 }
 
 export function EnumSetting({
@@ -33,24 +38,27 @@ export function EnumSetting({
 	onSave,
 }: EnumSettingProps) {
 	const [infoOpen, setInfoOpen] = useState(false);
-	const variants = setting.variants ?? [];
+	const rawVariants = (setting.variants as (SettingVariant | string)[]) ?? [];
+	const variants = rawVariants.map(normalizeVariant);
 	const hasDescriptions = variants.some((v) => v.desc);
 	const currentValue = String(value ?? "");
 
+	const moreButton = (
+		<button
+			type="button"
+			onClick={() => setInfoOpen((o) => !o)}
+			className="invisible ml-auto inline-flex shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+		>
+			{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
+			<span>{infoOpen ? "Less" : "More"}</span>
+		</button>
+	);
+
 	return (
 		<div className="group/setting space-y-1">
-			<div className="flex items-center justify-between">
-				<Label className="text-sm">
-					<SettingLabel setting={setting} />
-				</Label>
-				<button
-					type="button"
-					onClick={() => setInfoOpen((o) => !o)}
-					className="invisible text-text-secondary hover:text-text-primary group-hover/setting:visible"
-				>
-					{infoOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-				</button>
-			</div>
+			<Label className="text-sm">
+				<SettingLabel setting={setting} />
+			</Label>
 
 			{hasDescriptions ? (
 				<RadioGroup
@@ -133,12 +141,17 @@ export function EnumSetting({
 				</div>
 			)}
 
-			{setting.description && (
-				<p
-					className="text-xs text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4"
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
-					dangerouslySetInnerHTML={{ __html: setting.description }}
-				/>
+			{setting.description ? (
+				<div className="flex items-start gap-2 pt-1">
+					<div
+						className="min-w-0 flex-1 text-xs [overflow-wrap:anywhere] text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:whitespace-pre-wrap [&_table]:w-full [&_table]:table-fixed [&_td]:break-words [&_th]:break-words [&_ul]:list-disc [&_ul]:pl-4"
+						// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
+						dangerouslySetInnerHTML={{ __html: setting.description }}
+					/>
+					{moreButton}
+				</div>
+			) : (
+				moreButton
 			)}
 
 			{infoOpen && <SettingInfoPanel setting={setting} />}

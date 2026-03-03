@@ -104,19 +104,8 @@ function fuzzySearchSettings(settings: Setting[], query: string): Setting[] {
 	return search(query);
 }
 
-export function filterSettings(
-	settings: Setting[],
-	search: string,
-	hideDefaults: boolean,
-	editedSettings: Set<string>,
-): Setting[] {
-	let filtered = settings;
-
-	if (hideDefaults) {
-		filtered = filtered.filter(
-			(s) => isSetByUser(s) || editedSettings.has(s.name),
-		);
-	}
+export function filterSettings(settings: Setting[], search: string): Setting[] {
+	let filtered = settings.filter((s) => s.category[0] !== "Zen Project");
 
 	if (search.trim()) {
 		filtered = fuzzySearchSettings(filtered, search);

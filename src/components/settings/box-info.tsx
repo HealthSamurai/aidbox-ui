@@ -12,30 +12,29 @@ export function BoxInfoDisplay({ boxInfo }: { boxInfo: BoxInfo | undefined }) {
 		? new Date(boxInfo.license.expiration).toUTCString()
 		: undefined;
 
+	const versionLine = [version, timestamp ? `(${timestamp})` : null]
+		.filter(Boolean)
+		.join(" ");
+
+	const licenseLine = [
+		licenseType
+			? `${licenseType[0].toUpperCase()}${licenseType.slice(1)}`
+			: null,
+		licenseExpiration ? `valid until ${licenseExpiration}` : null,
+	]
+		.filter(Boolean)
+		.join(", ");
+
 	return (
-		<div className="mb-4 space-y-1 rounded-md border border-border-primary bg-bg-secondary p-4 text-sm">
-			{version && (
-				<div className="flex gap-2">
-					<span className="text-text-secondary">Version:</span>
-					<span className="font-medium">{version}</span>
+		<div className="text-sm text-text-primary">
+			{versionLine && (
+				<div>
+					<span className="font-medium">Version:</span> {versionLine}
 				</div>
 			)}
-			{timestamp && (
-				<div className="flex gap-2">
-					<span className="text-text-secondary">Timestamp:</span>
-					<span>{timestamp}</span>
-				</div>
-			)}
-			{licenseType && (
-				<div className="flex gap-2">
-					<span className="text-text-secondary">License:</span>
-					<span>{licenseType}</span>
-				</div>
-			)}
-			{licenseExpiration && (
-				<div className="flex gap-2">
-					<span className="text-text-secondary">License expiration:</span>
-					<span>{licenseExpiration}</span>
+			{licenseLine && (
+				<div>
+					<span className="font-medium">License:</span> {licenseLine}
 				</div>
 			)}
 		</div>

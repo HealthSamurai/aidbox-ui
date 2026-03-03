@@ -1,4 +1,3 @@
-import { Separator } from "@health-samurai/react-components";
 import { BoxInfoDisplay } from "./box-info";
 import { SettingCard } from "./setting-card";
 import type { BoxInfo, Setting } from "./types";
@@ -40,35 +39,43 @@ export function CategorySection({
 	const title = category.length > 1 ? category.join(": ") : category[0];
 
 	return (
-		<section id={sectionId} className="scroll-mt-4">
-			<h2 className="mb-1 text-lg font-semibold text-text-primary">{title}</h2>
-			{description && (
-				<p className="mb-3 text-sm text-text-secondary">{description}</p>
-			)}
-			<Separator className="mb-4" />
+		<section id={sectionId} className="flex scroll-mt-4">
+			{/* Left pane — section heading */}
+			<div className="sticky top-0 z-10 h-fit w-[346px] min-w-[346px] shrink-0 bg-bg-primary pt-2 pl-16 pr-4 shadow-[0_10px_10px_0_rgb(255,255,255)]">
+				<h2 className="text-lg font-semibold text-text-primary">{title}</h2>
+				{description && (
+					<p className="mt-1 text-sm text-text-secondary">{description}</p>
+				)}
+			</div>
 
-			{isGeneral && <BoxInfoDisplay boxInfo={boxInfo} />}
-
-			<div className="space-y-6">
-				{settings.map((setting) => (
-					<SettingCard
-						key={setting.name}
-						setting={setting}
-						isDebugMode={isDebugMode}
-						pendingValue={
-							setting.name in pendingChanges
-								? pendingChanges[setting.name]
-								: undefined
-						}
-						isConfirming={confirmations[setting.name] ?? false}
-						errorMessage={errors[setting.name]}
-						onValueChange={onValueChange}
-						onSave={onSave}
-						onCancel={onCancel}
-						onClearError={onClearError}
-						onImmediateSave={onImmediateSave}
-					/>
-				))}
+			{/* Right pane — form fields */}
+			<div className="min-w-0 max-w-[644px] flex-1 px-4 pt-2">
+				{isGeneral && (
+					<div className="mb-6">
+						<BoxInfoDisplay boxInfo={boxInfo} />
+					</div>
+				)}
+				<div className="space-y-8">
+					{settings.map((setting) => (
+						<SettingCard
+							key={setting.name}
+							setting={setting}
+							isDebugMode={isDebugMode}
+							pendingValue={
+								setting.name in pendingChanges
+									? pendingChanges[setting.name]
+									: undefined
+							}
+							isConfirming={confirmations[setting.name] ?? false}
+							errorMessage={errors[setting.name]}
+							onValueChange={onValueChange}
+							onSave={onSave}
+							onCancel={onCancel}
+							onClearError={onClearError}
+							onImmediateSave={onImmediateSave}
+						/>
+					))}
+				</div>
 			</div>
 		</section>
 	);

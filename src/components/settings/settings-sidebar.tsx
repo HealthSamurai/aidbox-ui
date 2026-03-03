@@ -1,4 +1,5 @@
-import { ScrollArea } from "@health-samurai/react-components";
+import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 import { CATEGORIES, CATEGORY_ICONS } from "./constants";
 import type { CategoryDef } from "./types";
 import { buildSectionId, categoryKey } from "./utils";
@@ -14,13 +15,13 @@ function scrollToSection(id: string) {
 function SidebarItem({
 	def,
 	visibleCategories,
-	depth,
 }: {
 	def: CategoryDef;
 	visibleCategories: Set<string>;
-	depth: number;
 }) {
+	const [expanded, setExpanded] = useState(false);
 	const key = categoryKey(def.category);
+	const hasSubcategories = def.subcategories && def.subcategories.length > 0;
 	const hasVisibleChildren = def.subcategories?.some((sub) =>
 		visibleCategories.has(categoryKey(sub.category)),
 	);
@@ -30,35 +31,50 @@ function SidebarItem({
 
 	const Icon = CATEGORY_ICONS[def.category[0]];
 	const sectionId = buildSectionId(def.category);
-	const label =
-		def.category.length > 1
-			? def.category[def.category.length - 1]
-			: def.category[0];
+	const label = def.category[0];
 
 	return (
 		<li>
 			<button
 				type="button"
-				onClick={() => scrollToSection(sectionId)}
-				className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-bg-secondary ${
-					depth > 0
-						? "pl-8 text-text-secondary"
-						: "font-medium text-text-primary"
-				}`}
+				onClick={() => {
+					if (hasSubcategories) {
+						setExpanded(!expanded);
+					}
+					scrollToSection(sectionId);
+				}}
+				className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-text-secondary hover:bg-bg-secondary"
 			>
-				{depth === 0 && Icon && <Icon size={16} className="shrink-0" />}
-				<span className="truncate">{label}</span>
+				{Icon && <Icon size={16} className="shrink-0" />}
+				<span className="flex-1 truncate">{label}</span>
+				{hasSubcategories && (
+					<ChevronRight
+						size={16}
+						className={`shrink-0 text-text-secondary transition-transform ${
+							expanded ? "rotate-90" : ""
+						}`}
+					/>
+				)}
 			</button>
-			{def.subcategories && def.subcategories.length > 0 && (
+			{hasSubcategories && expanded && (
 				<ul className="mt-0.5">
-					{def.subcategories.map((sub) => (
-						<SidebarItem
-							key={categoryKey(sub.category)}
-							def={sub}
-							visibleCategories={visibleCategories}
-							depth={depth + 1}
-						/>
-					))}
+					{def.subcategories?.map((sub) => {
+						const subKey = categoryKey(sub.category);
+						if (!visibleCategories.has(subKey)) return null;
+						const subSectionId = buildSectionId(sub.category);
+						const subLabel = sub.category[sub.category.length - 1];
+						return (
+							<li key={subKey}>
+								<button
+									type="button"
+									onClick={() => scrollToSection(subSectionId)}
+									className="flex w-full items-center gap-2 rounded-md py-1.5 pl-8 pr-2 text-left text-sm text-text-secondary hover:bg-bg-secondary"
+								>
+									<span className="truncate">{subLabel}</span>
+								</button>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 		</li>
@@ -67,21 +83,18 @@ function SidebarItem({
 
 export function SettingsSidebar({ visibleCategories }: SettingsSidebarProps) {
 	return (
-		<nav className="w-60 shrink-0 border-r border-border-primary">
-			<ScrollArea className="h-full">
-				<div className="p-3">
-					<ul className="space-y-0.5">
-						{CATEGORIES.map((def) => (
-							<SidebarItem
-								key={categoryKey(def.category)}
-								def={def}
-								visibleCategories={visibleCategories}
-								depth={0}
-							/>
-						))}
-					</ul>
-				</div>
-			</ScrollArea>
+		<nav className="h-full overflow-hidden border-r border-border-secondary">
+			<div className="h-full overflow-y-auto p-3">
+				<ul className="space-y-0.5">
+					{CATEGORIES.map((def) => (
+						<SidebarItem
+							key={categoryKey(def.category)}
+							def={def}
+							visibleCategories={visibleCategories}
+						/>
+					))}
+				</ul>
+			</div>
 		</nav>
 	);
 }

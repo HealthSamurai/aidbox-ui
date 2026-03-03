@@ -19,11 +19,11 @@ export function SettingLabel({
 
 	return (
 		<div className="flex w-full items-center justify-between">
-			<span>
+			<span className="font-medium">
 				{changedByUser ? (
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<span className="text-[var(--color-cta)]">{setting.title}</span>
+							<span className="text-[#2278E1]">{setting.title}</span>
 						</TooltipTrigger>
 						<TooltipContent side="right">Changed by user</TooltipContent>
 					</Tooltip>
@@ -34,7 +34,7 @@ export function SettingLabel({
 			{pendingRestart && (
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<span className="text-[var(--color-illustrations-solid)]">
+						<span className="ml-2 text-[var(--color-illustrations-solid)]">
 							<TriangleAlert size={16} />
 						</span>
 					</TooltipTrigger>

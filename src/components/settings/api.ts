@@ -74,7 +74,7 @@ export function useUpdateSetting() {
 			}>({
 				method: "POST",
 				url: "/api/v1/settings",
-				body: { [name]: value === "" ? null : value },
+				body: JSON.stringify({ [name]: value === "" ? null : value }),
 			});
 			if (result.isOk()) {
 				return result.value.resource;

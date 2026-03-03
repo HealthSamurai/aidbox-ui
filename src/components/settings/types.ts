@@ -29,7 +29,7 @@ export interface Setting {
 	"pending-restart": boolean;
 	"pending-value"?: unknown;
 	unit?: string;
-	variants?: SettingVariant[];
+	variants?: (SettingVariant | string)[];
 }
 
 export interface BoxInfo {

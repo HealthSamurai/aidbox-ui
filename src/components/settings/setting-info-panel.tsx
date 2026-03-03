@@ -39,7 +39,9 @@ function KvRow({
 	className?: string;
 }) {
 	return (
-		<div className={`flex gap-2 py-0.5 text-sm ${className ?? ""}`}>
+		<div
+			className={`grid grid-cols-[auto_1fr] gap-x-3 py-0.5 text-sm ${className ?? ""}`}
+		>
 			<span className="shrink-0 text-text-secondary">{label}</span>
 			<span className="min-w-0 break-all">{value}</span>
 		</div>
@@ -91,11 +93,7 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 
 			<KvRow
 				label="Setting ID:"
-				value={
-					<code className="rounded bg-bg-tertiary px-1 py-0.5 text-xs">
-						{setting.name}
-					</code>
-				}
+				value={<code className="text-xs">{setting.name}</code>}
 			/>
 
 			{defaultValue != null && (
@@ -125,7 +123,7 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 				{envName && (
 					<div>
 						<div
-							className={`flex items-center gap-1 text-sm ${valueFromEnv ? "text-[var(--color-cta)]" : "text-[var(--color-elements-assistive)]"}`}
+							className={`flex items-center gap-1 text-sm ${valueFromEnv ? "text-[#2278E1]" : "text-[var(--color-elements-assistive)]"}`}
 						>
 							<span>Environment variable</span>
 							{valueFromEnv && <Check size={14} />}
@@ -135,22 +133,16 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 								label="Name:"
 								className={
 									valueFromEnv
-										? "text-[var(--color-cta)]"
+										? "text-[#2278E1]"
 										: "text-[var(--color-elements-assistive)]"
 								}
-								value={
-									<code className="rounded bg-bg-tertiary px-1 py-0.5 text-xs">
-										{envName}
-									</code>
-								}
+								value={<code className="text-xs">{envName}</code>}
 							/>
 							<KvRow
 								label="Value:"
 								value={
 									sensitive && valueFromEnv ? (
-										<code className="rounded bg-bg-tertiary px-1 py-0.5 text-xs">
-											{SENSITIVE_PLACEHOLDER}
-										</code>
+										<code className="text-xs">{SENSITIVE_PLACEHOLDER}</code>
 									) : envValue != null ? (
 										<ValueDisplay value={envValue} />
 									) : (
@@ -166,7 +158,7 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 
 				<div>
 					<div
-						className={`flex items-center gap-1 text-sm ${valueFromAidbox ? "text-[var(--color-cta)]" : "text-[var(--color-elements-assistive)]"}`}
+						className={`flex items-center gap-1 text-sm ${valueFromAidbox ? "text-[#2278E1]" : "text-[var(--color-elements-assistive)]"}`}
 					>
 						<span>Aidbox settings</span>
 						{valueFromAidbox && <Check size={14} />}
@@ -177,19 +169,13 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 							className={
 								valueFromAidbox ? "" : "text-[var(--color-elements-assistive)]"
 							}
-							value={
-								<code className="rounded bg-bg-tertiary px-1 py-0.5 text-xs">
-									{setting.name}
-								</code>
-							}
+							value={<code className="text-xs">{setting.name}</code>}
 						/>
 						<KvRow
 							label="Value:"
 							value={
 								sensitive && valueFromAidbox ? (
-									<code className="rounded bg-bg-tertiary px-1 py-0.5 text-xs">
-										{SENSITIVE_PLACEHOLDER}
-									</code>
+									<code className="text-xs">{SENSITIVE_PLACEHOLDER}</code>
 								) : (
 									<ValueDisplay
 										value={overrideSettingValue(

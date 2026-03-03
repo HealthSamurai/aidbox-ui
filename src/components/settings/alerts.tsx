@@ -1,4 +1,5 @@
 import { Alert, AlertDescription } from "@health-samurai/react-components";
+import { CircleAlert } from "lucide-react";
 import { DEPRECATED_CAPABILITY_LABELS } from "./constants";
 import type { DeprecatedCapabilities, Setting } from "./types";
 import { isPendingRestart } from "./utils";
@@ -8,9 +9,12 @@ export function RestartRequiredAlert({ settings }: { settings: Setting[] }) {
 	if (!hasRestart) return null;
 
 	return (
-		<Alert variant="warning" className="mb-4">
+		<Alert variant="warning" className="sticky top-0 z-20 mb-4">
 			<AlertDescription>
-				Some settings will take effect after Aidbox restart.
+				<div className="flex items-center gap-2">
+					<CircleAlert size={16} className="shrink-0" />
+					Some settings will take effect after Aidbox restart.
+				</div>
 			</AlertDescription>
 		</Alert>
 	);
