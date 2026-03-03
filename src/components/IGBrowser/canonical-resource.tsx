@@ -299,7 +299,7 @@ function useExpandValueSet(resourceId: string, enabled: boolean) {
 
 function JsonTab({ data }: { data: Record<string, unknown> }) {
 	return (
-		<div className="relative h-full pt-2">
+		<div className="relative h-full">
 			<HSComp.CodeEditor
 				readOnly
 				currentValue={JSON.stringify(data, null, 2)}
@@ -506,6 +506,16 @@ export function CanonicalResource() {
 
 	const sdUrl = (jsonData?.url as string) ?? "";
 	const sdVersion = (jsonData?.version as string) ?? "";
+	const resourceName = (jsonData?.name as string) ?? "";
+
+	const header = resourceName ? (
+		<div className="flex flex-col gap-0.5 pl-7 py-3 border-b border-border-secondary">
+			<h1 className="text-text-primary text-base font-semibold">
+				{resourceName}
+			</h1>
+			{sdUrl && <span className="text-text-assistive text-sm">{sdUrl}</span>}
+		</div>
+	) : null;
 
 	// Single-tab case (CodeSystem, etc.) — no tab bar needed
 	if (tabs.length === 1) {
@@ -524,7 +534,12 @@ export function CanonicalResource() {
 			);
 		}
 		if (!jsonData) return null;
-		return <JsonTab data={jsonData} />;
+		return (
+			<div className="flex flex-col grow min-h-0">
+				{header}
+				<JsonTab data={jsonData} />
+			</div>
+		);
 	}
 
 	return (
@@ -534,6 +549,7 @@ export function CanonicalResource() {
 			variant="tertiary"
 			className="flex flex-col grow min-h-0"
 		>
+			{header}
 			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
 				<HSComp.TabsList className="py-0! border-b-0!">
 					{tabs.map((t) => (
@@ -550,7 +566,7 @@ export function CanonicalResource() {
 						<HSComp.TabsContent
 							key={t.value}
 							value="json"
-							className="relative grow min-h-0 pt-2"
+							className="relative grow min-h-0"
 						>
 							{jsonLoading ? (
 								<div className="p-4">

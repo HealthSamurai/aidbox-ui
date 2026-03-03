@@ -223,7 +223,7 @@ function PackageInfoContent({ meta }: { meta: PackageMeta }) {
 			<HSComp.TabsContent value="visual" className="overflow-auto pb-20">
 				<VisualView meta={meta} />
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value="json" className="relative grow min-h-0 pt-2">
+			<HSComp.TabsContent value="json" className="relative grow min-h-0">
 				<HSComp.CodeEditor
 					readOnly
 					currentValue={JSON.stringify(meta, null, 2)}

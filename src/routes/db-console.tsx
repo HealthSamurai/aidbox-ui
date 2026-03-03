@@ -1213,7 +1213,7 @@ function DbConsolePage() {
 											</div>
 										</div>
 									</div>
-									<div className="flex-1 min-h-0 pt-1">
+									<div className="flex-1 min-h-0">
 										<CodeEditor
 											key={selectedTab?.id}
 											mode="sql"
