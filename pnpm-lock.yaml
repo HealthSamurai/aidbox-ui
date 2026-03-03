@@ -41,6 +41,9 @@ importers:
       '@health-samurai/react-components':
         specifier: link:../aidbox-ts-sdk/packages/react-components
         version: link:../aidbox-ts-sdk/packages/react-components
+      '@mcp-b/global':
+        specifier: ^2.0.11
+        version: 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
       '@tanstack/react-query':
         specifier: ^5.85.3
         version: 5.90.2(react@19.1.1)
@@ -83,6 +86,9 @@ importers:
       sql-formatter:
         specifier: ^15.6.9
         version: 15.6.9
+      zod-to-json-schema:
+        specifier: ^3.25.1
+        version: 3.25.1(zod@3.25.76)
     devDependencies:
       '@atomic-ehr/codegen':
         specifier: canary
@@ -362,6 +368,9 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@cfworker/json-schema@4.1.1':
+    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
   '@codemirror/autocomplete@6.20.0':
     resolution: {integrity: sha512-bOwvTOIJcG5FVo5gUUupiwYh8MioPLQ4UcqbcRf7UQ98X90tCa9E1kZ3Z7tqwpZxYyOvh1YTYbmZE9RTfTp5hg==}
@@ -741,6 +750,32 @@ packages:
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
 
+  '@mcp-b/global@2.0.11':
+    resolution: {integrity: sha512-SujFaFkqBtzziT10zZSpE/D56FGDFMyipnj4OIFk5/YqkAtearD2U4Q3tqnV0sAj1Yl2EzGsFMeF1EaYOvvZKQ==}
+    engines: {node: '>=18'}
+
+  '@mcp-b/transports@2.0.11':
+    resolution: {integrity: sha512-jxJbsSk5hKfAu1ApJ+UkwWLIRmH7G6x/qVg8GuLETpkuBZcsbQyPaQcorkdc5yAJwo1ku2FWZd5gNLH+Id6iUQ==}
+
+  '@mcp-b/webmcp-polyfill@2.0.11':
+    resolution: {integrity: sha512-6T9uoKwo6XyZaSWfuhlUUxJ5+wttsZC1ZqvkcZ/sP9exdINZlBELiExAmZtg4RA+PAy4Yl6WYqoZHQASyfiB8g==}
+    engines: {node: '>=18'}
+
+  '@mcp-b/webmcp-ts-sdk@2.0.11':
+    resolution: {integrity: sha512-YfsXMtOWAH9xvZlMaIq5mMEUYv25DPnPIh1VkJwq3xJZi2Xri9Irn3Y9MGs784g86TM3bTd5Hg9jcTfAfPdHVQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25 || ^4.0
+      zod-to-json-schema: ^3.25.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+      zod-to-json-schema:
+        optional: true
+
+  '@mcp-b/webmcp-types@2.0.11':
+    resolution: {integrity: sha512-qRARlNLz1yi9KAbn3kz7a+UvEj7xpiU5pR9Ljyz/Uw/EPBZGANx8684zjj4bBjE+pEot6emvUWf4Ou0HNTLCDg==}
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -876,6 +911,9 @@ packages:
     resolution: {integrity: sha512-zGIbEVVXVtauFgl3MRwGWEN36P5ZGenHRMgNw88X5wEhEBpq0XrMEZwOn07+ICrwM17XO5xfMZqh0OldCH5VTA==}
     cpu: [x64]
     os: [win32]
+
+  '@standard-schema/spec@1.1.0':
+    resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
   '@tailwindcss/node@4.1.13':
     resolution: {integrity: sha512-eq3ouolC1oEFOAvOMOBAmfCIqZBJuvWvvYWh5h5iOYfe1HFC6+GZ6EIL0JdM3/niGRJmnrOc+8gl9/HGUaaptw==}
@@ -1932,6 +1970,11 @@ packages:
     resolution: {integrity: sha512-U/PBtDf35ff0D8X8D0jfdzHYEPFxAI7jJlxZXwCSez5M3190m+QobIfh+sWDWSHMCWWJN2AWamkegn6vr6YBTw==}
     engines: {node: '>=18'}
 
+  zod-to-json-schema@3.25.1:
+    resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
+    peerDependencies:
+      zod: ^3.25 || ^4
+
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
@@ -2227,6 +2270,8 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.1.3':
     optional: true
+
+  '@cfworker/json-schema@4.1.1': {}
 
   '@codemirror/autocomplete@6.20.0':
     dependencies:
@@ -2558,6 +2603,39 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
+  '@mcp-b/global@2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@mcp-b/transports': 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))
+      '@mcp-b/webmcp-polyfill': 2.0.11
+      '@mcp-b/webmcp-ts-sdk': 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/webmcp-types': 2.0.11
+    transitivePeerDependencies:
+      - zod
+      - zod-to-json-schema
+
+  '@mcp-b/transports@2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))':
+    dependencies:
+      '@mcp-b/webmcp-ts-sdk': 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - zod-to-json-schema
+
+  '@mcp-b/webmcp-polyfill@2.0.11':
+    dependencies:
+      '@cfworker/json-schema': 4.1.1
+      '@mcp-b/webmcp-types': 2.0.11
+      '@standard-schema/spec': 1.1.0
+
+  '@mcp-b/webmcp-ts-sdk@2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@mcp-b/webmcp-polyfill': 2.0.11
+      '@mcp-b/webmcp-types': 2.0.11
+    optionalDependencies:
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+
+  '@mcp-b/webmcp-types@2.0.11': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -2637,6 +2715,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.52.3':
     optional: true
+
+  '@standard-schema/spec@1.1.0': {}
 
   '@tailwindcss/node@4.1.13':
     dependencies:
@@ -3624,5 +3704,9 @@ snapshots:
       yargs-parser: 22.0.0
 
   yoctocolors-cjs@2.1.3: {}
+
+  zod-to-json-schema@3.25.1(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod@3.25.76: {}
