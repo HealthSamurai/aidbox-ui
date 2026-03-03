@@ -1,9 +1,12 @@
+import { isOperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { FileArchive, Globe, Search, Upload, X } from "lucide-react";
+import { FileArchive, Globe, Search, Terminal, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
+import { getAidboxBaseURL } from "../../utils";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
 
 type ImportMethod = "registry" | "url" | "file";
@@ -14,15 +17,14 @@ function useImportProgress() {
 	const wsRef = useRef<WebSocket | null>(null);
 
 	useEffect(() => {
-		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-		const ws = new WebSocket(
-			`${protocol}//${window.location.host}/__fhir-npm-package-upload-logs-ws`,
-		);
+		const base = getAidboxBaseURL();
+		const wsUrl = base.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+		const ws = new WebSocket(`${wsUrl}/__fhir-npm-package-upload-logs-ws`);
 		wsRef.current = ws;
 		ws.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data);
-				setEntries((prev) => [...prev, { msg: data?.data?.msg ?? event.data }]);
+				setEntries((prev) => [...prev, { msg: data?.msg ?? event.data }]);
 			} catch {
 				setEntries((prev) => [...prev, { msg: event.data }]);
 			}
@@ -34,23 +36,72 @@ function useImportProgress() {
 	return { entries, clear };
 }
 
-function ProgressLog({ entries }: { entries: ProgressEntry[] }) {
+function ProgressInline({ entries }: { entries: ProgressEntry[] }) {
+	const [open, setOpen] = useState(false);
+	const scrollRef = useRef<HTMLDivElement>(null);
+
+	const entryCount = entries.length;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new entries
+	useEffect(() => {
+		if (open && scrollRef.current) {
+			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+		}
+	}, [open, entryCount]);
+
 	if (entries.length === 0) return null;
+
+	const lastMsg = entries[entries.length - 1].msg;
+
 	return (
-		<div className="mt-6 flex h-48 flex-col-reverse overflow-y-auto rounded border border-border-secondary p-3">
-			<div>
-				{entries.map((entry, i) => (
-					<span
-						// biome-ignore lint/suspicious/noArrayIndexKey: log entries
-						key={i}
-						className="block whitespace-nowrap text-xs text-text-secondary"
+		<>
+			<button
+				type="button"
+				onClick={() => setOpen(true)}
+				className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
+			>
+				<Terminal className="size-3.5 shrink-0 text-text-secondary" />
+				<span className="truncate text-xs text-text-secondary">{lastMsg}</span>
+			</button>
+
+			<HSComp.Dialog open={open} onOpenChange={setOpen}>
+				<HSComp.DialogContent className="max-w-2xl">
+					<HSComp.DialogHeader>
+						<HSComp.DialogTitle>Import logs</HSComp.DialogTitle>
+					</HSComp.DialogHeader>
+					<div
+						ref={scrollRef}
+						className="h-80 overflow-y-auto rounded border border-border-secondary bg-bg-secondary p-3"
 					>
-						{entry.msg}
-					</span>
-				))}
-			</div>
-		</div>
+						{entries.map((entry, i) => (
+							<span
+								// biome-ignore lint/suspicious/noArrayIndexKey: log entries
+								key={i}
+								className="block whitespace-nowrap text-xs text-text-secondary"
+							>
+								{entry.msg}
+							</span>
+						))}
+					</div>
+				</HSComp.DialogContent>
+			</HSComp.Dialog>
+		</>
 	);
+}
+
+async function toastResponseError(res: Response) {
+	const body = await res.text();
+	try {
+		const parsed = JSON.parse(body);
+		if (isOperationOutcome(parsed)) {
+			Utils.toastOperationOutcome(parsed);
+			return;
+		}
+		if (parsed.message) {
+			Utils.toastError("Import failed", parsed.message);
+			return;
+		}
+	} catch {}
+	Utils.toastError("Import failed", body || `HTTP ${res.status}`);
 }
 
 const METHOD_CARDS: {
@@ -140,10 +191,12 @@ function RegistryForm({
 	onImportStart,
 	onImportEnd,
 	loading,
+	entries,
 }: {
 	onImportStart: () => void;
 	onImportEnd: () => void;
 	loading: boolean;
+	entries: ProgressEntry[];
 }) {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -250,7 +303,7 @@ function RegistryForm({
 		onImportStart();
 		try {
 			for (const pkg of packages) {
-				await client.rawRequest({
+				const res = await client.rawRequest({
 					method: "POST",
 					url: "/rpc?_m=aidbox.profiles/import-package-by-coordinate",
 					headers: { "Content-Type": "application/json" },
@@ -259,11 +312,17 @@ function RegistryForm({
 						params: { "package-coordinate": pkg.id },
 					}),
 				});
+				if (!res.response.ok) {
+					await toastResponseError(res.response);
+					return;
+				}
 			}
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
 			navigate({ to: "/ig" });
+		} catch (error) {
+			await Utils.onError(error);
 		} finally {
 			onImportEnd();
 		}
@@ -351,14 +410,17 @@ function RegistryForm({
 				))}
 			</div>
 
-			<HSComp.Button
-				variant="primary"
-				disabled={packages.length === 0 || loading}
-				onClick={handleImport}
-			>
-				<Upload className="size-4" />
-				Import
-			</HSComp.Button>
+			<div className="flex items-center gap-3">
+				<HSComp.Button
+					variant="primary"
+					disabled={packages.length === 0 || loading}
+					onClick={handleImport}
+				>
+					<Upload className="size-4" />
+					Import
+				</HSComp.Button>
+				<ProgressInline entries={entries} />
+			</div>
 		</div>
 	);
 }
@@ -367,10 +429,12 @@ function UrlForm({
 	onImportStart,
 	onImportEnd,
 	loading,
+	entries,
 }: {
 	onImportStart: () => void;
 	onImportEnd: () => void;
 	loading: boolean;
+	entries: ProgressEntry[];
 }) {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -403,15 +467,20 @@ function UrlForm({
 			for (const [i, url] of filledUrls.entries()) {
 				formData.append(`url-${i}`, url);
 			}
-			await client.rawRequest({
-				method: "POST",
-				url: "/$upload-fhir-npm-packages",
-				body: formData,
-			});
+			const res = await fetch(
+				`${client.getBaseUrl()}/$upload-fhir-npm-packages`,
+				{ method: "POST", body: formData, credentials: "include" },
+			);
+			if (!res.ok) {
+				await toastResponseError(res);
+				return;
+			}
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
 			navigate({ to: "/ig" });
+		} catch (error) {
+			await Utils.onError(error);
 		} finally {
 			onImportEnd();
 		}
@@ -447,14 +516,17 @@ function UrlForm({
 				))}
 			</div>
 
-			<HSComp.Button
-				variant="primary"
-				disabled={filledUrls.length === 0 || loading}
-				onClick={handleImport}
-			>
-				<Upload className="size-4" />
-				Import
-			</HSComp.Button>
+			<div className="flex items-center gap-3">
+				<HSComp.Button
+					variant="primary"
+					disabled={filledUrls.length === 0 || loading}
+					onClick={handleImport}
+				>
+					<Upload className="size-4" />
+					Import
+				</HSComp.Button>
+				<ProgressInline entries={entries} />
+			</div>
 		</div>
 	);
 }
@@ -463,10 +535,12 @@ function FileForm({
 	onImportStart,
 	onImportEnd,
 	loading,
+	entries,
 }: {
 	onImportStart: () => void;
 	onImportEnd: () => void;
 	loading: boolean;
+	entries: ProgressEntry[];
 }) {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -494,15 +568,20 @@ function FileForm({
 			for (const file of files) {
 				formData.append(file.name, file);
 			}
-			await client.rawRequest({
-				method: "POST",
-				url: "/$upload-fhir-npm-packages",
-				body: formData,
-			});
+			const res = await fetch(
+				`${client.getBaseUrl()}/$upload-fhir-npm-packages`,
+				{ method: "POST", body: formData, credentials: "include" },
+			);
+			if (!res.ok) {
+				await toastResponseError(res);
+				return;
+			}
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
 			navigate({ to: "/ig" });
+		} catch (error) {
+			await Utils.onError(error);
 		} finally {
 			onImportEnd();
 		}
@@ -585,14 +664,17 @@ function FileForm({
 				))}
 			</div>
 
-			<HSComp.Button
-				variant="primary"
-				disabled={files.length === 0 || loading}
-				onClick={handleImport}
-			>
-				<Upload className="size-4" />
-				Import
-			</HSComp.Button>
+			<div className="flex items-center gap-3">
+				<HSComp.Button
+					variant="primary"
+					disabled={files.length === 0 || loading}
+					onClick={handleImport}
+				>
+					<Upload className="size-4" />
+					Import
+				</HSComp.Button>
+				<ProgressInline entries={entries} />
+			</div>
 		</div>
 	);
 }
@@ -615,6 +697,7 @@ export function ImportPackage() {
 						onImportStart={onImportStart}
 						onImportEnd={onImportEnd}
 						loading={loading}
+						entries={entries}
 					/>
 				)}
 				{method === "url" && (
@@ -622,6 +705,7 @@ export function ImportPackage() {
 						onImportStart={onImportStart}
 						onImportEnd={onImportEnd}
 						loading={loading}
+						entries={entries}
 					/>
 				)}
 				{method === "file" && (
@@ -629,11 +713,10 @@ export function ImportPackage() {
 						onImportStart={onImportStart}
 						onImportEnd={onImportEnd}
 						loading={loading}
+						entries={entries}
 					/>
 				)}
 			</div>
-
-			<ProgressLog entries={entries} />
 		</div>
 	);
 }

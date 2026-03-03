@@ -4,7 +4,13 @@ import type {
 } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import {
+	Link,
+	useNavigate,
+	useParams,
+	useSearch,
+} from "@tanstack/react-router";
+import { SquarePenIcon } from "lucide-react";
 import { useAidboxClient } from "../../AidboxClient";
 
 // ---------------------------------------------------------------------------
@@ -359,11 +365,7 @@ function StructureTab({
 		);
 	}
 
-	return (
-		<div className="overflow-auto">
-			<HSComp.FhirStructureView tree={tree} />
-		</div>
-	);
+	return <HSComp.FhirStructureView tree={tree} />;
 }
 
 function ExpansionTab({ resourceId }: { resourceId: string }) {
@@ -513,9 +515,26 @@ export function CanonicalResource() {
 			<h1 className="text-text-primary text-base font-semibold">
 				{resourceName}
 			</h1>
-			{sdUrl && <span className="text-text-assistive text-sm">{sdUrl}</span>}
+			{sdUrl && (
+				<span className="text-text-secondary text-sm">
+					{sdUrl}
+					{sdVersion && `|${sdVersion}`}
+				</span>
+			)}
 		</div>
 	) : null;
+
+	const openInBrowserButton = (
+		<HSComp.Button variant="ghost" size="small" asChild>
+			<Link
+				to="/resource/$resourceType/edit/$id"
+				params={{ resourceType, id: resourceId }}
+			>
+				<SquarePenIcon className="w-4 h-4" />
+				Edit
+			</Link>
+		</HSComp.Button>
+	);
 
 	// Single-tab case (CodeSystem, etc.) — no tab bar needed
 	if (tabs.length === 1) {
@@ -537,6 +556,9 @@ export function CanonicalResource() {
 		return (
 			<div className="flex flex-col grow min-h-0">
 				{header}
+				<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
+					<div className="ml-auto mr-4">{openInBrowserButton}</div>
+				</div>
 				<JsonTab data={jsonData} />
 			</div>
 		);
@@ -558,6 +580,7 @@ export function CanonicalResource() {
 						</HSComp.TabsTrigger>
 					))}
 				</HSComp.TabsList>
+				<div className="ml-auto mr-4">{openInBrowserButton}</div>
 			</div>
 
 			{tabs.map((t) => {

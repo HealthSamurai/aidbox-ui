@@ -1,15 +1,25 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	Link,
 	useNavigate,
 	useParams,
 	useSearch,
 } from "@tanstack/react-router";
-import { ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react";
-import { useState } from "react";
+import {
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	Loader2Icon,
+	RefreshCwIcon,
+	Trash2Icon,
+	X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
 
 type Installation = {
 	intention?: string;
@@ -52,6 +62,245 @@ function usePackageMeta(packageId: string) {
 	});
 }
 
+async function rpcCall(
+	client: AidboxClientR5,
+	method: string,
+	params: Record<string, unknown>,
+) {
+	const response = await client.rawRequest({
+		method: "POST",
+		url: `/rpc?_m=${method}`,
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ method, params }),
+	});
+	const json = await response.response.json();
+	if (json.error) throw new Error(json.error.message || "RPC error");
+	return json;
+}
+
+function isSystemPackage(name: string) {
+	return name.startsWith("io.health-samurai.");
+}
+
+function isCorePackage(type?: string) {
+	return type === "fhir.core" || type === "core";
+}
+
+function DeletePackageButton({
+	meta,
+}: {
+	packageId: string;
+	meta: PackageMeta;
+}) {
+	const client = useAidboxClient();
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const [dependents, setDependents] = useState<
+		{ name: string; version: string }[]
+	>([]);
+	const [open, setOpen] = useState(false);
+
+	const disabledReason = isSystemPackage(meta.name)
+		? "Embedded Aidbox package can't be removed"
+		: isCorePackage(meta.type)
+			? "FHIR core package can't be removed"
+			: null;
+
+	const deleteMutation = useMutation({
+		mutationFn: () =>
+			rpcCall(client, "aidbox.profiles/delete-package", {
+				"package-name": meta.name,
+				"package-version": meta.version,
+			}),
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
+			navigate({ to: "/ig" });
+		},
+	});
+
+	const handleOpen = async () => {
+		try {
+			const result = await rpcCall(
+				client,
+				"aidbox.profiles/retrieve-packages-depending-on",
+				{
+					"package-name": meta.name,
+					"package-version": meta.version,
+				},
+			);
+			setDependents(Array.isArray(result.result) ? result.result : []);
+		} catch {
+			setDependents([]);
+		}
+		setOpen(true);
+	};
+
+	const pending = deleteMutation.isPending;
+
+	return (
+		<HSComp.AlertDialog
+			open={open}
+			onOpenChange={(v) => {
+				if (!pending) setOpen(v);
+			}}
+		>
+			<HSComp.Tooltip>
+				<HSComp.TooltipTrigger asChild>
+					<span>
+						<HSComp.Button
+							variant="link"
+							size="small"
+							danger
+							disabled={!!disabledReason}
+							onClick={handleOpen}
+						>
+							<Trash2Icon className="w-4 h-4" />
+							Delete
+						</HSComp.Button>
+					</span>
+				</HSComp.TooltipTrigger>
+				{disabledReason && (
+					<HSComp.TooltipContent>{disabledReason}</HSComp.TooltipContent>
+				)}
+			</HSComp.Tooltip>
+			<HSComp.AlertDialogContent>
+				<HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogTitle>
+						Delete {meta.name}#{meta.version}
+					</HSComp.AlertDialogTitle>
+				</HSComp.AlertDialogHeader>
+				<HSComp.AlertDialogDescription>
+					Are you sure you want to delete this package? This action cannot be
+					undone.
+					{dependents.length > 0 && (
+						<div className="mt-3">
+							<span className="font-medium text-text-primary">
+								The following packages depend on this package:
+							</span>
+							<ul className="mt-1 list-disc pl-5 text-text-secondary">
+								{dependents.map((dep) => (
+									<li key={`${dep.name}#${dep.version}`}>
+										{dep.name}#{dep.version}
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+				</HSComp.AlertDialogDescription>
+				<HSComp.AlertDialogFooter>
+					<HSComp.AlertDialogCancel disabled={pending}>
+						Cancel
+					</HSComp.AlertDialogCancel>
+					<HSComp.AlertDialogAction
+						danger
+						disabled={pending}
+						onClick={(e) => {
+							e.preventDefault();
+							deleteMutation.mutate();
+						}}
+					>
+						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
+						{pending ? "Deleting…" : "Delete"}
+					</HSComp.AlertDialogAction>
+				</HSComp.AlertDialogFooter>
+			</HSComp.AlertDialogContent>
+		</HSComp.AlertDialog>
+	);
+}
+
+function ReinstallPackageButton({
+	packageId,
+	meta,
+}: {
+	packageId: string;
+	meta: PackageMeta;
+}) {
+	const client = useAidboxClient();
+	const queryClient = useQueryClient();
+	const [open, setOpen] = useState(false);
+
+	const disabledReason = isSystemPackage(meta.name)
+		? "Embedded Aidbox package can't be reinstalled"
+		: null;
+
+	const reinstallMutation = useMutation({
+		mutationFn: () =>
+			rpcCall(client, "aidbox.profiles/reinstall-package", {
+				"package-name": meta.name,
+				"package-version": meta.version,
+			}),
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			setOpen(false);
+			HSComp.toast.success("Package reinstalled", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
+			queryClient.invalidateQueries({
+				queryKey: ["ig-package-meta", packageId],
+			});
+		},
+	});
+
+	const pending = reinstallMutation.isPending;
+
+	return (
+		<HSComp.AlertDialog
+			open={open}
+			onOpenChange={(v) => {
+				if (!pending) setOpen(v);
+			}}
+		>
+			<HSComp.Tooltip>
+				<HSComp.TooltipTrigger asChild>
+					<span>
+						<HSComp.AlertDialogTrigger asChild>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								disabled={!!disabledReason}
+							>
+								<RefreshCwIcon className="w-4 h-4" />
+								Reinstall
+							</HSComp.Button>
+						</HSComp.AlertDialogTrigger>
+					</span>
+				</HSComp.TooltipTrigger>
+				{disabledReason && (
+					<HSComp.TooltipContent>{disabledReason}</HSComp.TooltipContent>
+				)}
+			</HSComp.Tooltip>
+			<HSComp.AlertDialogContent>
+				<HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogTitle>
+						Reinstall {meta.name}#{meta.version}
+					</HSComp.AlertDialogTitle>
+				</HSComp.AlertDialogHeader>
+				<HSComp.AlertDialogDescription>
+					Package will be reloaded from the registry. This may take a moment.
+				</HSComp.AlertDialogDescription>
+				<HSComp.AlertDialogFooter>
+					<HSComp.AlertDialogCancel disabled={pending}>
+						Cancel
+					</HSComp.AlertDialogCancel>
+					<HSComp.AlertDialogAction
+						disabled={pending}
+						onClick={(e) => {
+							e.preventDefault();
+							reinstallMutation.mutate();
+						}}
+					>
+						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
+						{pending ? "Reinstalling…" : "Reinstall"}
+					</HSComp.AlertDialogAction>
+				</HSComp.AlertDialogFooter>
+			</HSComp.AlertDialogContent>
+		</HSComp.AlertDialog>
+	);
+}
+
 type KVRow = { label: string; value: React.ReactNode };
 
 function KVRows({ rows }: { rows: KVRow[] }) {
@@ -88,17 +337,29 @@ function Section({
 
 function ExpandableText({ text }: { text: string }) {
 	const [expanded, setExpanded] = useState(false);
+	const [clamped, setClamped] = useState(false);
+	const textRef = useRef<HTMLSpanElement>(null);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: text change means content changed, need to re-measure
+	useEffect(() => {
+		const el = textRef.current;
+		if (el) setClamped(el.scrollHeight > el.clientHeight);
+	}, [text]);
 
 	return (
 		<div className="flex flex-col gap-1">
-			<span className={expanded ? "" : "line-clamp-1"}>{text}</span>
-			<button
-				type="button"
-				onClick={() => setExpanded((v) => !v)}
-				className="text-text-link hover:underline text-sm cursor-pointer self-start"
-			>
-				{expanded ? "Show less" : "Show more"}
-			</button>
+			<span ref={textRef} className={expanded ? "" : "line-clamp-1"}>
+				{text}
+			</span>
+			{(clamped || expanded) && (
+				<button
+					type="button"
+					onClick={() => setExpanded((v) => !v)}
+					className="text-text-link hover:underline text-sm cursor-pointer self-start"
+				>
+					{expanded ? "Show less" : "Show more"}
+				</button>
+			)}
 		</div>
 	);
 }
@@ -197,20 +458,25 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 function PackageInfoContent({ meta }: { meta: PackageMeta }) {
 	const navigate = useNavigate();
 	const { view } = useSearch({ from: "/ig/$packageId/" });
-	const currentView = view ?? "visual";
+	const [storedView, setStoredView] = useLocalStorage<string>({
+		key: IG_VIEW_KEY,
+		defaultValue: "visual",
+	});
+	const currentView = view ?? storedView;
 
 	return (
 		<HSComp.Tabs
 			value={currentView}
-			onValueChange={(v) =>
+			onValueChange={(v) => {
+				setStoredView(v);
 				navigate({
 					search: (prev) => ({
 						...prev,
 						view: v === "visual" ? undefined : v,
 					}),
 					replace: true,
-				})
-			}
+				});
+			}}
 			variant="tertiary"
 			className="flex flex-col grow min-h-0"
 		>
@@ -474,17 +740,25 @@ function LoadingSkeleton() {
 	);
 }
 
+const IG_TAB_KEY = "ig-browser-tab";
+const IG_VIEW_KEY = "ig-browser-view";
+
 export function PackageDetail() {
 	const { packageId } = useParams({ from: "/ig/$packageId/" });
 	const { tab } = useSearch({ from: "/ig/$packageId/" });
 	const navigate = useNavigate();
 	const { data, isLoading } = usePackageMeta(packageId);
-	const currentTab = tab ?? "canonicals";
+	const [storedTab, setStoredTab] = useLocalStorage<string>({
+		key: IG_TAB_KEY,
+		defaultValue: "canonicals",
+	});
+	const currentTab = tab ?? storedTab;
 
 	return (
 		<HSComp.Tabs
 			value={currentTab}
-			onValueChange={(v) =>
+			onValueChange={(v) => {
+				setStoredTab(v);
 				navigate({
 					search: (prev) => ({
 						...prev,
@@ -492,8 +766,8 @@ export function PackageDetail() {
 						view: v === "package-info" ? prev.view : undefined,
 					}),
 					replace: true,
-				})
-			}
+				});
+			}}
 			variant="primary"
 			className="flex flex-col h-full"
 		>
@@ -504,6 +778,12 @@ export function PackageDetail() {
 						Package Info
 					</HSComp.TabsTrigger>
 				</HSComp.TabsList>
+				{data && (
+					<div className="ml-auto flex items-center gap-2 mr-4">
+						<ReinstallPackageButton packageId={packageId} meta={data} />
+						<DeletePackageButton packageId={packageId} meta={data} />
+					</div>
+				)}
 			</div>
 			<HSComp.TabsContent
 				value="canonicals"
