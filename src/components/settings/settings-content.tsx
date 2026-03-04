@@ -70,7 +70,7 @@ export function SettingsContent({
 
 	return (
 		<ScrollArea className="h-full flex-1">
-			<div className="mx-auto max-w-[990px] pt-2">
+			<div className="@container mx-auto max-w-[990px] pt-2">
 				<RestartRequiredAlert settings={allSettings} />
 				<DeprecatedCapabilitiesAlert capabilities={deprecatedCapabilities} />
 
