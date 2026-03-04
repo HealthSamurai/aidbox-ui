@@ -27,7 +27,7 @@ export async function getCollectionsEntries(
 ): Promise<CollectionEntry[]> {
 	const response = await client.rawRequest({
 		method: "GET",
-		url: `/ui_snippet`,
+		url: `/ui_snippet?_sort=_createdAt`,
 	});
 	const bundle: Bundle = await response.response.json();
 	return (
@@ -38,7 +38,7 @@ export async function getCollectionsEntries(
 	);
 }
 
-async function SaveRequest(
+export async function SaveRequest(
 	client: AidboxClientR5,
 	tab: Tab,
 	queryClient: QueryClient,
@@ -302,7 +302,7 @@ function buildTreeView(
 	return tree;
 }
 
-async function handleAddNewCollectionEntry(
+export async function handleAddNewCollectionEntry(
 	client: AidboxClientR5,
 	collectionName: string,
 	queryClient: QueryClient,
@@ -328,7 +328,7 @@ async function handleAddNewCollectionEntry(
 	setSelectedCollectionItemId(newTab.id);
 }
 
-async function handleDeleteSnippet(
+export async function handleDeleteSnippet(
 	client: AidboxClientR5,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
@@ -348,7 +348,7 @@ async function handleDeleteSnippet(
 	// ActiveTabs.removeTab(tabs, itemData.meta.id, setTabs);
 }
 
-async function handleDeleteCollection(
+export async function handleDeleteCollection(
 	client: AidboxClientR5,
 	itemData: ReactComponents.TreeViewItem<ItemMeta>,
 	queryClient: QueryClient,
@@ -758,6 +758,85 @@ async function handleRenameSnippet(
 	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
 }
 
+export async function deleteCollectionByName(
+	client: AidboxClientR5,
+	entries: CollectionEntry[],
+	collectionName: string,
+	queryClient: QueryClient,
+) {
+	const snippetIds = entries
+		.filter((e) => e.collection === collectionName)
+		.map((e) => e.id)
+		.filter((id): id is string => !!id);
+	if (snippetIds.length === 0)
+		throw new Error(`Collection "${collectionName}" not found`);
+	const result = await client.request({
+		method: "DELETE",
+		url: "/ui_snippet",
+		headers: { "x-conditional-delete": "remove-all" },
+		params: [["id", snippetIds.join(",")]],
+	});
+	if (result.isErr())
+		throw Error("can't delete collection", { cause: result.value.resource });
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+}
+
+export async function deleteSnippetById(
+	client: AidboxClientR5,
+	id: string,
+	queryClient: QueryClient,
+) {
+	const result = await client.delete({ type: "ui_snippet", id });
+	if (result.isErr())
+		throw Error("can't delete snippet", { cause: result.value.resource });
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+}
+
+export async function renameCollectionByName(
+	client: AidboxClientR5,
+	entries: CollectionEntry[],
+	currentName: string,
+	newName: string,
+	queryClient: QueryClient,
+) {
+	const snippetIds = entries
+		.filter((e) => e.collection === currentName)
+		.map((e) => e.id)
+		.filter((id): id is string => !!id);
+	if (snippetIds.length === 0)
+		throw new Error(`Collection "${currentName}" not found`);
+	const result = await client.transaction({
+		format: "application/json",
+		bundle: {
+			resourceType: "Bundle",
+			type: "transaction",
+			entry: snippetIds.map((id) => ({
+				request: { method: "PATCH", url: `/ui_snippet/${id}` },
+				resource: { resourceType: "ui_snippet", collection: newName },
+			})),
+		},
+	});
+	if (result.isErr())
+		throw Error("can't rename collection", { cause: result.value.resource });
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+}
+
+export async function renameSnippetById(
+	client: AidboxClientR5,
+	id: string,
+	newTitle: string,
+	queryClient: QueryClient,
+) {
+	const result = await client.request({
+		method: "PATCH",
+		url: `/ui_snippet/${id}`,
+		body: JSON.stringify({ title: newTitle }),
+	});
+	if (result.isErr())
+		throw Error("can't rename snippet", { cause: result.value.resource });
+	queryClient.invalidateQueries({ queryKey: ["rest-console-collections"] });
+}
+
 export const CollectionsView = ({
 	collectionEntries,
 	setTabs,
@@ -773,6 +852,10 @@ export const CollectionsView = ({
 	const client = useAidboxClient();
 	const [pinnedCollections, setPinnedCollections] = useLocalStorage<string[]>({
 		key: "rest-console-pinned-collections",
+		defaultValue: [],
+	});
+	const [expandedItems, setExpandedItems] = useLocalStorage<string[]>({
+		key: "rest-console-expanded-collections",
 		defaultValue: [],
 	});
 	const tree = buildTreeView(collectionEntries.data ?? [], pinnedCollections);
@@ -802,11 +885,21 @@ export const CollectionsView = ({
 						}
 						rootItemId="root"
 						items={tree}
+						expandedItems={expandedItems}
+						onExpandedItemsChange={setExpandedItems}
 						onRename={(item, newTitle) => {
 							handleRenameSnippet(client, item, newTitle, queryClient);
 						}}
 						onItemLabelClick={(item) => {
-							if (item.isFolder()) return;
+							if (item.isFolder()) {
+								const id = item.getId();
+								setExpandedItems(
+									expandedItems.includes(id)
+										? expandedItems.filter((i) => i !== id)
+										: [...expandedItems, id],
+								);
+								return;
+							}
 							const meta = item.getItemData()?.meta;
 							if (!meta) return;
 							setSelectedCollectionItemId(meta.id);

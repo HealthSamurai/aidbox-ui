@@ -23,7 +23,6 @@ import type { QueryObserverResult } from "@tanstack/react-query";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
 import { useUIHistory } from "../../api/auth";
-import { useLocalStorage } from "../../hooks";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
 import { type CollectionEntry, CollectionsView } from "./collections";
 
@@ -117,7 +116,7 @@ const LeftMenuContext = React.createContext<LeftMenuStatus>("open");
 export { LeftMenuContext };
 
 // Helper function to parse HTTP command
-function parseHttpCommand(command: string) {
+export function parseHttpCommand(command: string) {
 	const lines = command.split("\n");
 	if (lines.length === 0)
 		return { method: "", path: "", headers: [], body: "" };
@@ -255,12 +254,16 @@ function HistoryCommand({
 	selectedTab,
 	onItemClick,
 	onItemMiddleClick,
+	searchValue,
+	onSearchChange,
 }: {
 	groupedHistory: Record<string, UiHistoryEntry[]>;
 	getSortedGroupKeys: (groups: Record<string, UiHistoryEntry[]>) => string[];
 	selectedTab?: Tab;
 	onItemClick: (item: UiHistoryEntry) => void;
 	onItemMiddleClick: (item: UiHistoryEntry) => void;
+	searchValue: string;
+	onSearchChange: (value: string) => void;
 }) {
 	const getMethodColor = (method: string) => {
 		return (
@@ -289,7 +292,11 @@ function HistoryCommand({
 
 	return (
 		<Command className={commandContainer}>
-			<CommandInput placeholder="Search history..." />
+			<CommandInput
+				placeholder="Search history..."
+				value={searchValue}
+				onValueChange={onSearchChange}
+			/>
 			<CommandList className={commandList}>
 				<CommandEmpty>No history found.</CommandEmpty>
 				{getSortedGroupKeys(groupedHistory).map((groupKey) => {
@@ -344,6 +351,10 @@ export function LeftMenu({
 	collectionEntries,
 	setSelectedCollectionItemId,
 	selectedCollectionItemId,
+	menuTab,
+	onMenuTabChange,
+	historySearch,
+	onHistorySearchChange,
 }: {
 	tabs: Tab[];
 	collectionEntries: QueryObserverResult<CollectionEntry[]>;
@@ -351,6 +362,10 @@ export function LeftMenu({
 	selectedTab?: Tab;
 	setSelectedCollectionItemId: (id: string) => void;
 	selectedCollectionItemId: string | undefined;
+	menuTab: string;
+	onMenuTabChange: (tab: string) => void;
+	historySearch: string;
+	onHistorySearchChange: (value: string) => void;
 }) {
 	const { data: historyData, isLoading, error } = useUIHistory();
 
@@ -452,16 +467,11 @@ export function LeftMenu({
 		[],
 	);
 
-	const [selectedMenuTab, setSelectedMenuTab] = useLocalStorage<string>({
-		key: "rest-console-left-menu-default-tab",
-		defaultValue: "history",
-	});
-
 	return (
 		<div className={leftMenuContainer}>
 			<Tabs
-				value={selectedMenuTab}
-				onValueChange={setSelectedMenuTab}
+				value={menuTab}
+				onValueChange={onMenuTabChange}
 				className="h-full min-w-0"
 			>
 				<div className={tabsHeader}>
@@ -495,6 +505,8 @@ export function LeftMenu({
 							selectedTab={selectedTab as Tab}
 							onItemClick={handleHistoryItemClick}
 							onItemMiddleClick={handleHistoryItemMiddleClick}
+							searchValue={historySearch}
+							onSearchChange={onHistorySearchChange}
 						/>
 					)}
 				</TabsContent>

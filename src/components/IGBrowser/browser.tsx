@@ -2,9 +2,11 @@ import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { PlusIcon, X } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
+import { useWebMCPIGBrowser } from "../../webmcp/ig-browser";
+import type { IGBrowserActions } from "../../webmcp/ig-browser-context";
 import { EmptyState } from "../empty-state";
 
 type Installation = {
@@ -255,6 +257,36 @@ export function Browser() {
 	React.useEffect(() => {
 		setFocusedIndex(filteredData.length === 1 ? 0 : -1);
 	}, [filterQuery]);
+
+	const actionsRef = useRef<IGBrowserActions>({} as IGBrowserActions);
+	actionsRef.current = {
+		listPackages: (query?: string) => {
+			if (query !== undefined) {
+				setFilterQuery(query);
+			}
+			const results = fuzzySearch(query ?? filterQuery);
+			const sorted = [...results].sort((a, b) => {
+				const cmp = a[sort.column].localeCompare(b[sort.column]);
+				return sort.direction === "asc" ? cmp : -cmp;
+			});
+			return sorted.map((p) => ({
+				name: p.name,
+				version: p.version,
+				type: p.type,
+			}));
+		},
+		getSort: () => ({ column: sort.column, direction: sort.direction }),
+		sortPackages: (column) => {
+			handleSort(column);
+		},
+		selectPackage: (id) => {
+			navigate({ to: "/ig/$packageId", params: { packageId: id } });
+		},
+		openInstallationPage: () => {
+			navigate({ to: "/ig/add" });
+		},
+	};
+	useWebMCPIGBrowser(actionsRef);
 
 	const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {

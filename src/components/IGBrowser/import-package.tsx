@@ -8,6 +8,8 @@ import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { getAidboxBaseURL } from "../../utils";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
+import { useWebMCPImportPackage } from "../../webmcp/import-package";
+import type { ImportPackageActions } from "../../webmcp/import-package-context";
 
 type ImportMethod = "registry" | "url" | "file";
 type ProgressEntry = { msg: string };
@@ -192,11 +194,13 @@ function RegistryForm({
 	onImportEnd,
 	loading,
 	entries,
+	actionsRef,
 }: {
 	onImportStart: () => void;
-	onImportEnd: () => void;
+	onImportEnd: (error?: boolean) => void;
 	loading: boolean;
 	entries: ProgressEntry[];
+	actionsRef: React.RefObject<ImportPackageActions>;
 }) {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -301,6 +305,7 @@ function RegistryForm({
 	const handleImport = async () => {
 		if (packages.length === 0) return;
 		onImportStart();
+		let hadError = false;
 		try {
 			for (const pkg of packages) {
 				const res = await client.rawRequest({
@@ -314,6 +319,7 @@ function RegistryForm({
 				});
 				if (!res.response.ok) {
 					await toastResponseError(res.response);
+					hadError = true;
 					return;
 				}
 			}
@@ -322,10 +328,35 @@ function RegistryForm({
 			});
 			navigate({ to: "/ig" });
 		} catch (error) {
+			hadError = true;
 			await Utils.onError(error);
 		} finally {
-			onImportEnd();
+			onImportEnd(hadError);
 		}
+	};
+
+	actionsRef.current.searchRegistryPackage = (query: string) => {
+		setSearchQuery(query);
+		const results = indexLoaded ? fuzzySearch(query) : [];
+		return results.map((p) => ({ name: p.name, version: p.version }));
+	};
+	actionsRef.current.selectRegistryPackage = (id: string) => {
+		const pkg = indexRef.current.find((p) => p.id === id);
+		if (pkg) togglePackage(pkg);
+	};
+	actionsRef.current.getPackagesToInstall = () => ({
+		method: "registry",
+		packages: packages.map((p) => ({
+			id: p.id,
+			name: p.name,
+			version: p.version,
+		})),
+	});
+	actionsRef.current.importPackages = async () => {
+		await handleImport();
+		return packages.length > 0
+			? `Import triggered for ${packages.length} package(s)`
+			: "No packages selected";
 	};
 
 	return (
@@ -430,11 +461,13 @@ function UrlForm({
 	onImportEnd,
 	loading,
 	entries,
+	actionsRef,
 }: {
 	onImportStart: () => void;
-	onImportEnd: () => void;
+	onImportEnd: (error?: boolean) => void;
 	loading: boolean;
 	entries: ProgressEntry[];
+	actionsRef: React.RefObject<ImportPackageActions>;
 }) {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -462,6 +495,7 @@ function UrlForm({
 	const handleImport = async () => {
 		if (filledUrls.length === 0) return;
 		onImportStart();
+		let hadError = false;
 		try {
 			const formData = new FormData();
 			for (const [i, url] of filledUrls.entries()) {
@@ -473,6 +507,7 @@ function UrlForm({
 			);
 			if (!res.ok) {
 				await toastResponseError(res);
+				hadError = true;
 				return;
 			}
 			await queryClient.invalidateQueries({
@@ -480,10 +515,34 @@ function UrlForm({
 			});
 			navigate({ to: "/ig" });
 		} catch (error) {
+			hadError = true;
 			await Utils.onError(error);
 		} finally {
-			onImportEnd();
+			onImportEnd(hadError);
 		}
+	};
+
+	actionsRef.current.addUrl = (url: string) => {
+		setUrls((prev) => {
+			const last = prev[prev.length - 1];
+			if (last === "") {
+				const next = [...prev];
+				next[prev.length - 1] = url;
+				next.push("");
+				return next;
+			}
+			return [...prev, url, ""];
+		});
+	};
+	actionsRef.current.getPackagesToInstall = () => ({
+		method: "url",
+		packages: filledUrls.map((u) => ({ url: u })),
+	});
+	actionsRef.current.importPackages = async () => {
+		await handleImport();
+		return filledUrls.length > 0
+			? `Import triggered for ${filledUrls.length} URL(s)`
+			: "No URLs provided";
 	};
 
 	return (
@@ -536,11 +595,13 @@ function FileForm({
 	onImportEnd,
 	loading,
 	entries,
+	actionsRef,
 }: {
 	onImportStart: () => void;
-	onImportEnd: () => void;
+	onImportEnd: (error?: boolean) => void;
 	loading: boolean;
 	entries: ProgressEntry[];
+	actionsRef: React.RefObject<ImportPackageActions>;
 }) {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -563,6 +624,7 @@ function FileForm({
 	const handleImport = async () => {
 		if (files.length === 0) return;
 		onImportStart();
+		let hadError = false;
 		try {
 			const formData = new FormData();
 			for (const file of files) {
@@ -574,6 +636,7 @@ function FileForm({
 			);
 			if (!res.ok) {
 				await toastResponseError(res);
+				hadError = true;
 				return;
 			}
 			await queryClient.invalidateQueries({
@@ -581,9 +644,10 @@ function FileForm({
 			});
 			navigate({ to: "/ig" });
 		} catch (error) {
+			hadError = true;
 			await Utils.onError(error);
 		} finally {
-			onImportEnd();
+			onImportEnd(hadError);
 		}
 	};
 
@@ -608,6 +672,17 @@ function FileForm({
 		if (dropped.length > 0) {
 			setFiles((prev) => [...prev, ...dropped]);
 		}
+	};
+
+	actionsRef.current.getPackagesToInstall = () => ({
+		method: "file",
+		packages: files.map((f) => ({ name: f.name, size: f.size })),
+	});
+	actionsRef.current.importPackages = async () => {
+		await handleImport();
+		return files.length > 0
+			? `Import triggered for ${files.length} file(s)`
+			: "No files selected";
 	};
 
 	return (
@@ -681,11 +756,22 @@ function FileForm({
 
 export function ImportPackage() {
 	const [method, setMethod] = useState<ImportMethod>("registry");
-	const [loading, setLoading] = useState(false);
+	const [status, setStatus] = useState<"none" | "loading" | "error">("none");
 	const { entries } = useImportProgress();
 
-	const onImportStart = useCallback(() => setLoading(true), []);
-	const onImportEnd = useCallback(() => setLoading(false), []);
+	const loading = status === "loading";
+	const onImportStart = useCallback(() => setStatus("loading"), []);
+	const onImportEnd = useCallback(
+		(error?: boolean) => setStatus(error ? "error" : "none"),
+		[],
+	);
+
+	const actionsRef = useRef<ImportPackageActions>({} as ImportPackageActions);
+	actionsRef.current.getImportMethod = () => method;
+	actionsRef.current.setImportMethod = (m) => setMethod(m);
+	actionsRef.current.getImportStatus = () => ({ status });
+	actionsRef.current.getImportLogs = () => entries.map((e) => e.msg);
+	useWebMCPImportPackage(actionsRef);
 
 	return (
 		<div className="w-full max-w-4xl px-4 py-4">
@@ -698,6 +784,7 @@ export function ImportPackage() {
 						onImportEnd={onImportEnd}
 						loading={loading}
 						entries={entries}
+						actionsRef={actionsRef}
 					/>
 				)}
 				{method === "url" && (
@@ -706,6 +793,7 @@ export function ImportPackage() {
 						onImportEnd={onImportEnd}
 						loading={loading}
 						entries={entries}
+						actionsRef={actionsRef}
 					/>
 				)}
 				{method === "file" && (
@@ -714,6 +802,7 @@ export function ImportPackage() {
 						onImportEnd={onImportEnd}
 						loading={loading}
 						entries={entries}
+						actionsRef={actionsRef}
 					/>
 				)}
 			</div>

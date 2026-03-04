@@ -10,8 +10,12 @@ import {
 	useParams,
 	useSearch,
 } from "@tanstack/react-router";
-import { SquarePenIcon } from "lucide-react";
+import { SquarePenIcon, X } from "lucide-react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { useDebounce } from "../../hooks/useDebounce";
+import { useWebMCPCanonicalResource } from "../../webmcp/canonical-resource";
+import type { CanonicalResourceActions } from "../../webmcp/canonical-resource-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,6 +49,13 @@ interface ExpansionConcept {
 	code?: string;
 	display?: string;
 }
+
+interface ExpansionResult {
+	concepts: ExpansionConcept[];
+	total: number;
+}
+
+const EXPANSION_LIMIT = 500;
 
 // ---------------------------------------------------------------------------
 // Tree transformation (flat RPC elements → TreeViewItem<FhirStructure>)
@@ -227,6 +238,53 @@ function transformElementsToTree(
 }
 
 // ---------------------------------------------------------------------------
+// Fetchers (plain async functions, reused by hooks and WebMCP actions)
+// ---------------------------------------------------------------------------
+
+type AidboxClient = ReturnType<typeof useAidboxClient>;
+
+async function fetchProfileElements(
+	client: AidboxClient,
+	method: string,
+	packageId: string,
+	url: string,
+	version: string,
+): Promise<SnapshotElement[]> {
+	const response = await client.rawRequest({
+		method: "POST",
+		url: `/rpc?_m=${method}`,
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			method,
+			params: {
+				"package-coordinate": packageId,
+				url,
+				version,
+			},
+		}),
+	});
+	const json = await response.response.json();
+	return json.result?.elements ?? json.data?.elements ?? [];
+}
+
+async function fetchValueSetExpansion(
+	client: AidboxClient,
+	resourceId: string,
+	filter?: string,
+): Promise<ExpansionResult> {
+	const params = new URLSearchParams({ count: String(EXPANSION_LIMIT) });
+	if (filter) params.set("filter", filter);
+	const response = await client.rawRequest({
+		method: "GET",
+		url: `/fhir/ValueSet/${resourceId}/$expand?${params}`,
+	});
+	const json = await response.response.json();
+	const concepts: ExpansionConcept[] = json.expansion?.contains ?? [];
+	const total: number = json.expansion?.total ?? concepts.length;
+	return { concepts, total };
+}
+
+// ---------------------------------------------------------------------------
 // Hooks
 // ---------------------------------------------------------------------------
 
@@ -261,41 +319,24 @@ function useProfileElements(
 		staleTime: 5 * 60 * 1000,
 		enabled: !!url,
 		retry: false,
-		queryFn: async () => {
-			const response = await client.rawRequest({
-				method: "POST",
-				url: `/rpc?_m=${method}`,
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					method,
-					params: {
-						"package-coordinate": packageId,
-						url,
-						version,
-					},
-				}),
-			});
-			const json = await response.response.json();
-			return json.result?.elements ?? json.data?.elements ?? [];
-		},
+		queryFn: () =>
+			fetchProfileElements(client, method, packageId, url, version),
 	});
 }
 
-function useExpandValueSet(resourceId: string, enabled: boolean) {
+function useExpandValueSet(
+	resourceId: string,
+	enabled: boolean,
+	filter: string,
+) {
 	const client = useAidboxClient();
-	return useQuery<ExpansionConcept[]>({
-		queryKey: ["expand-valueset", resourceId],
+	return useQuery<ExpansionResult>({
+		queryKey: ["expand-valueset", resourceId, filter],
 		staleTime: 5 * 60 * 1000,
 		enabled: enabled && !!resourceId,
 		retry: false,
-		queryFn: async () => {
-			const response = await client.rawRequest({
-				method: "GET",
-				url: `/fhir/ValueSet/${resourceId}/$expand`,
-			});
-			const json = await response.response.json();
-			return json.expansion?.contains ?? [];
-		},
+		queryFn: () =>
+			fetchValueSetExpansion(client, resourceId, filter || undefined),
 	});
 }
 
@@ -368,66 +409,120 @@ function StructureTab({
 	return <HSComp.FhirStructureView tree={tree} />;
 }
 
-function ExpansionTab({ resourceId }: { resourceId: string }) {
-	const { data, isLoading, error } = useExpandValueSet(resourceId, true);
+function ExpansionTab({
+	resourceId,
+	actionsRef,
+}: {
+	resourceId: string;
+	actionsRef: RefObject<CanonicalResourceActions>;
+}) {
+	const client = useAidboxClient();
+	const [search, setSearch] = useState("");
+	const [filter, setFilter] = useState("");
 
-	if (!resourceId || isLoading) {
-		return (
-			<div className="p-4 flex flex-col gap-2">
-				{Array.from({ length: 10 }, (_, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
-					<HSComp.Skeleton key={`skeleton-${i}`} className="h-6 w-full" />
-				))}
-			</div>
-		);
-	}
+	const debouncedSetFilter = useDebounce((value: string) => {
+		setFilter(value);
+	}, 300);
 
-	if (error) {
-		return (
-			<div className="p-6 text-text-negative text-sm">
-				{(error as Error).message}
-			</div>
-		);
-	}
+	const handleSearchChange = (value: string) => {
+		setSearch(value);
+		debouncedSetFilter(value);
+	};
 
-	if (!data || data.length === 0) {
-		return (
-			<div className="p-6 text-text-secondary text-sm">
-				No expansion results
-			</div>
-		);
-	}
+	useEffect(() => {
+		actionsRef.current.searchValueSetExpansion = async (f: string) => {
+			setSearch(f);
+			setFilter(f);
+			const result = await fetchValueSetExpansion(
+				client,
+				resourceId,
+				f || undefined,
+			);
+			return { filter: f, total: result.total, concepts: result.concepts };
+		};
+	});
+
+	const { data, isLoading, error } = useExpandValueSet(
+		resourceId,
+		true,
+		filter,
+	);
+
+	const total = data?.total ?? 0;
 
 	return (
-		<div className="overflow-auto h-full">
-			<HSComp.Table zebra stickyHeader>
-				<HSComp.TableHeader>
-					<HSComp.TableRow>
-						<HSComp.TableHead>System</HSComp.TableHead>
-						<HSComp.TableHead>Code</HSComp.TableHead>
-						<HSComp.TableHead>Display</HSComp.TableHead>
-					</HSComp.TableRow>
-				</HSComp.TableHeader>
-				<HSComp.TableBody>
-					{data.map((concept, index) => (
-						<HSComp.TableRow
-							key={`${concept.system}-${concept.code}-${index}`}
-							zebra
-							index={index}
-						>
-							<HSComp.TableCell className="text-text-secondary text-sm">
-								{concept.system}
-							</HSComp.TableCell>
-							<HSComp.TableCell className="text-text-primary text-sm font-mono">
-								{concept.code}
-							</HSComp.TableCell>
-							<HSComp.TableCell className="text-text-primary text-sm">
-								{concept.display}
-							</HSComp.TableCell>
-						</HSComp.TableRow>
-					))}
-				</HSComp.TableBody>
-			</HSComp.Table>
+		<div className="flex flex-col h-full min-h-0">
+			<div className="flex items-center px-4 py-3 border-b border-border-secondary flex-none">
+				<HSComp.Input
+					type="text"
+					className="flex-1 bg-bg-primary"
+					placeholder="Filter by code or display"
+					value={search}
+					onChange={(e) => handleSearchChange(e.target.value)}
+					rightSlot={
+						search && (
+							<HSComp.IconButton
+								icon={<X />}
+								aria-label="Clear"
+								variant="link"
+								onClick={() => handleSearchChange("")}
+							/>
+						)
+					}
+				/>
+			</div>
+			<div className="overflow-auto min-h-0 grow">
+				{!resourceId || isLoading ? (
+					<div className="p-4 flex flex-col gap-2">
+						{Array.from({ length: 10 }, (_, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+							<HSComp.Skeleton key={`skeleton-${i}`} className="h-6 w-full" />
+						))}
+					</div>
+				) : error ? (
+					<div className="p-6 text-text-negative text-sm">
+						{(error as Error).message}
+					</div>
+				) : !data || data.concepts.length === 0 ? (
+					<div className="p-6 text-text-secondary text-sm">
+						No expansion results
+					</div>
+				) : (
+					<HSComp.Table zebra stickyHeader>
+						<HSComp.TableHeader>
+							<HSComp.TableRow>
+								<HSComp.TableHead className="pl-7!">Code</HSComp.TableHead>
+								<HSComp.TableHead>Display</HSComp.TableHead>
+								<HSComp.TableHead>System</HSComp.TableHead>
+							</HSComp.TableRow>
+						</HSComp.TableHeader>
+						<HSComp.TableBody>
+							{data.concepts.map((concept, index) => (
+								<HSComp.TableRow
+									key={`${concept.system}-${concept.code}-${index}`}
+									zebra
+									index={index}
+								>
+									<HSComp.TableCell className="text-text-primary text-sm font-mono pl-7!">
+										{concept.code}
+									</HSComp.TableCell>
+									<HSComp.TableCell className="text-text-primary text-sm">
+										{concept.display}
+									</HSComp.TableCell>
+									<HSComp.TableCell className="text-text-secondary text-sm">
+										{concept.system}
+									</HSComp.TableCell>
+								</HSComp.TableRow>
+							))}
+						</HSComp.TableBody>
+					</HSComp.Table>
+				)}
+			</div>
+			<div className="flex items-center border-t bg-bg-secondary px-7 h-10 flex-none">
+				<span className="text-text-secondary text-sm">
+					{total > 0 ? `${total} concepts` : ""}
+				</span>
+			</div>
 		</div>
 	);
 }
@@ -509,6 +604,72 @@ export function CanonicalResource() {
 	const sdUrl = (jsonData?.url as string) ?? "";
 	const sdVersion = (jsonData?.version as string) ?? "";
 	const resourceName = (jsonData?.name as string) ?? "";
+
+	const client = useAidboxClient();
+	const actionsRef = useRef<CanonicalResourceActions>(
+		{} as CanonicalResourceActions,
+	);
+	actionsRef.current = {
+		getResourceInfo: () => ({
+			name: resourceName,
+			url: sdUrl,
+			version: sdVersion,
+			resourceType,
+			packageId,
+		}),
+		getActiveView: () => currentTab,
+		setActiveView: (view: string) => {
+			const valid = tabs.map((t) => t.value);
+			if (!valid.includes(view)) {
+				throw new Error(
+					`Invalid view "${view}". Available views: ${valid.join(", ")}`,
+				);
+			}
+			setTab(view);
+		},
+		getResourceJson: () => jsonData ?? null,
+		getStructureElements: async (type) => {
+			if (
+				resourceType !== "StructureDefinition" &&
+				resourceType !== "FHIRSchema"
+			) {
+				throw new Error(
+					`get_structure_elements is only available for StructureDefinition or FHIRSchema, not ${resourceType}`,
+				);
+			}
+			const method = `aidbox.introspector/get-profile-${type}`;
+			return fetchProfileElements(client, method, packageId, sdUrl, sdVersion);
+		},
+		getValueSetExpansion: async () => {
+			if (resourceType !== "ValueSet") {
+				throw new Error(
+					`get_valueset_expansion is only available for ValueSet, not ${resourceType}`,
+				);
+			}
+			const result = await fetchValueSetExpansion(client, resourceId);
+			return result.concepts;
+		},
+		searchValueSetExpansion: async (filter) => {
+			if (resourceType !== "ValueSet") {
+				throw new Error(
+					`search_valueset_expansion is only available for ValueSet, not ${resourceType}`,
+				);
+			}
+			const result = await fetchValueSetExpansion(
+				client,
+				resourceId,
+				filter || undefined,
+			);
+			return { filter, total: result.total, concepts: result.concepts };
+		},
+		openInEditor: () => {
+			navigate({
+				to: "/resource/$resourceType/edit/$id",
+				params: { resourceType, id: resourceId },
+			});
+		},
+	};
+	useWebMCPCanonicalResource(actionsRef);
 
 	const header = resourceName ? (
 		<div className="flex flex-col gap-0.5 pl-7 py-3 border-b border-border-secondary">
@@ -651,7 +812,7 @@ export function CanonicalResource() {
 							value="expansion"
 							className="overflow-auto grow min-h-0"
 						>
-							<ExpansionTab resourceId={resourceId} />
+							<ExpansionTab resourceId={resourceId} actionsRef={actionsRef} />
 						</HSComp.TabsContent>
 					);
 				}

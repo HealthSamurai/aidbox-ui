@@ -14,12 +14,14 @@ import {
 	Trash2Icon,
 	X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { useWebMCPPackageDetail } from "../../webmcp/package-detail";
+import type { PackageDetailActions } from "../../webmcp/package-detail-context";
 
 type Installation = {
 	intention?: string;
@@ -88,13 +90,14 @@ function isCorePackage(type?: string) {
 
 function DeletePackageButton({
 	meta,
+	deleteMutate,
+	deleteIsPending,
 }: {
-	packageId: string;
 	meta: PackageMeta;
+	deleteMutate: () => void;
+	deleteIsPending: boolean;
 }) {
 	const client = useAidboxClient();
-	const navigate = useNavigate();
-	const queryClient = useQueryClient();
 	const [dependents, setDependents] = useState<
 		{ name: string; version: string }[]
 	>([]);
@@ -105,19 +108,6 @@ function DeletePackageButton({
 		: isCorePackage(meta.type)
 			? "FHIR core package can't be removed"
 			: null;
-
-	const deleteMutation = useMutation({
-		mutationFn: () =>
-			rpcCall(client, "aidbox.profiles/delete-package", {
-				"package-name": meta.name,
-				"package-version": meta.version,
-			}),
-		onError: Utils.onMutationError,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
-			navigate({ to: "/ig" });
-		},
-	});
 
 	const handleOpen = async () => {
 		try {
@@ -136,7 +126,7 @@ function DeletePackageButton({
 		setOpen(true);
 	};
 
-	const pending = deleteMutation.isPending;
+	const pending = deleteIsPending;
 
 	return (
 		<HSComp.AlertDialog
@@ -197,7 +187,7 @@ function DeletePackageButton({
 						disabled={pending}
 						onClick={(e) => {
 							e.preventDefault();
-							deleteMutation.mutate();
+							deleteMutate();
 						}}
 					>
 						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
@@ -210,41 +200,31 @@ function DeletePackageButton({
 }
 
 function ReinstallPackageButton({
-	packageId,
 	meta,
+	reinstallMutate,
+	reinstallIsPending,
 }: {
-	packageId: string;
 	meta: PackageMeta;
+	reinstallMutate: () => void;
+	reinstallIsPending: boolean;
 }) {
-	const client = useAidboxClient();
-	const queryClient = useQueryClient();
 	const [open, setOpen] = useState(false);
+	const wasPendingRef = useRef(false);
+
+	useEffect(() => {
+		if (reinstallIsPending) {
+			wasPendingRef.current = true;
+		} else if (wasPendingRef.current) {
+			wasPendingRef.current = false;
+			setOpen(false);
+		}
+	}, [reinstallIsPending]);
 
 	const disabledReason = isSystemPackage(meta.name)
 		? "Embedded Aidbox package can't be reinstalled"
 		: null;
 
-	const reinstallMutation = useMutation({
-		mutationFn: () =>
-			rpcCall(client, "aidbox.profiles/reinstall-package", {
-				"package-name": meta.name,
-				"package-version": meta.version,
-			}),
-		onError: Utils.onMutationError,
-		onSuccess: () => {
-			setOpen(false);
-			HSComp.toast.success("Package reinstalled", {
-				position: "bottom-right",
-				style: { margin: "1rem" },
-			});
-			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
-			queryClient.invalidateQueries({
-				queryKey: ["ig-package-meta", packageId],
-			});
-		},
-	});
-
-	const pending = reinstallMutation.isPending;
+	const pending = reinstallIsPending;
 
 	return (
 		<HSComp.AlertDialog
@@ -289,7 +269,7 @@ function ReinstallPackageButton({
 						disabled={pending}
 						onClick={(e) => {
 							e.preventDefault();
-							reinstallMutation.mutate();
+							reinstallMutate();
 						}}
 					>
 						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
@@ -455,7 +435,13 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 	);
 }
 
-function PackageInfoContent({ meta }: { meta: PackageMeta }) {
+function PackageInfoContent({
+	meta,
+	actionsRef,
+}: {
+	meta: PackageMeta;
+	actionsRef: RefObject<PackageDetailActions>;
+}) {
 	const navigate = useNavigate();
 	const { view } = useSearch({ from: "/ig/$packageId/" });
 	const [storedView, setStoredView] = useLocalStorage<string>({
@@ -463,6 +449,19 @@ function PackageInfoContent({ meta }: { meta: PackageMeta }) {
 		defaultValue: "visual",
 	});
 	const currentView = view ?? storedView;
+
+	useEffect(() => {
+		actionsRef.current.setPackageInfoView = (v: string) => {
+			setStoredView(v);
+			navigate({
+				search: (prev) => ({
+					...prev,
+					view: v === "visual" ? undefined : v,
+				}),
+				replace: true,
+			});
+		};
+	});
 
 	return (
 		<HSComp.Tabs
@@ -578,34 +577,48 @@ function PaginationPages({
 	);
 }
 
+async function fetchCanonicals(
+	client: AidboxClientR5,
+	packageId: string,
+	substring: string,
+	page: number,
+): Promise<CanonicalResult> {
+	const response = await client.rawRequest({
+		method: "POST",
+		url: "/rpc?_m=aidbox.introspector/search-package-canonicals",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			method: "aidbox.introspector/search-package-canonicals",
+			params: {
+				"package-coordinate": packageId,
+				...(substring ? { substring } : {}),
+				count: PAGE_SIZE,
+				page,
+			},
+		}),
+	});
+	const json = await response.response.json();
+	return json.result ?? { total: 0, entry: [] };
+}
+
 function useCanonicals(packageId: string, substring: string, page: number) {
 	const client = useAidboxClient();
 
 	return useQuery<CanonicalResult>({
 		queryKey: ["ig-canonicals", packageId, substring, page],
 		staleTime: 5 * 60 * 1000,
-		queryFn: async () => {
-			const response = await client.rawRequest({
-				method: "POST",
-				url: "/rpc?_m=aidbox.introspector/search-package-canonicals",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					method: "aidbox.introspector/search-package-canonicals",
-					params: {
-						"package-coordinate": packageId,
-						...(substring ? { substring } : {}),
-						count: PAGE_SIZE,
-						page,
-					},
-				}),
-			});
-			const json = await response.response.json();
-			return json.result ?? { total: 0, entry: [] };
-		},
+		queryFn: () => fetchCanonicals(client, packageId, substring, page),
 	});
 }
 
-function CanonicalsContent({ packageId }: { packageId: string }) {
+function CanonicalsContent({
+	packageId,
+	actionsRef,
+}: {
+	packageId: string;
+	actionsRef: RefObject<PackageDetailActions>;
+}) {
+	const client = useAidboxClient();
 	const navigate = useNavigate();
 	const [search, setSearch] = useState("");
 	const [substring, setSubstring] = useState("");
@@ -623,6 +636,58 @@ function CanonicalsContent({ packageId }: { packageId: string }) {
 
 	const { data, isLoading } = useCanonicals(packageId, substring, page);
 	const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+
+	useEffect(() => {
+		actionsRef.current.searchCanonicals = async (
+			query?: string,
+			p?: number,
+		) => {
+			const targetQuery = query ?? substring;
+			const targetPage = p ?? 1;
+
+			if (query !== undefined) {
+				setSearch(query);
+				setSubstring(query);
+				setPage(targetPage);
+			}
+			if (p !== undefined) {
+				setPage(p);
+			}
+
+			const result = await fetchCanonicals(
+				client,
+				packageId,
+				targetQuery,
+				targetPage,
+			);
+
+			const entries = result.entry.map((item) => ({
+				resourceType: item.resource.resourceType,
+				url: item.resource.url ?? "",
+				id: item.resource.id,
+			}));
+			return {
+				total: result.total,
+				page: targetPage,
+				totalPages: Math.ceil(result.total / PAGE_SIZE),
+				entries,
+			};
+		};
+
+		actionsRef.current.selectCanonical = (id: string) => {
+			const entry = data?.entry.find((item) => item.resource.id === id);
+			if (entry) {
+				navigate({
+					to: "/ig/$packageId/resource/$resourceType/$resourceId",
+					params: {
+						packageId,
+						resourceType: entry.resource.resourceType,
+						resourceId: entry.resource.id,
+					},
+				});
+			}
+		};
+	});
 
 	return (
 		<div className="flex flex-col h-full min-h-0">
@@ -743,10 +808,37 @@ function LoadingSkeleton() {
 const IG_TAB_KEY = "ig-browser-tab";
 const IG_VIEW_KEY = "ig-browser-view";
 
+function formatPackageInfoVisual(meta: PackageMeta) {
+	const rows: Record<string, string> = {};
+	if (meta.title) rows.title = meta.title;
+	if (meta.version) rows.version = meta.version;
+	if (meta.author) rows.author = meta.author;
+	if (meta.type) rows.type = meta.type;
+	if (meta.homepage) rows.homepage = meta.homepage;
+	if (meta.fhirVersions?.length)
+		rows.fhirVersions = meta.fhirVersions.join(", ");
+	if (meta.description) rows.description = meta.description;
+	if (meta.dependencies)
+		rows.dependencies = Object.entries(meta.dependencies)
+			.map(([n, v]) => `${n}#${v}`)
+			.join(", ");
+	if (meta.installation?.length) {
+		const inst = meta.installation[0];
+		if (inst.intention) rows.intention = inst.intention;
+		if (inst.cts) rows.installedAt = inst.cts;
+		if (inst.source?.type) rows.sourceType = inst.source.type;
+		if (inst.source?.["registry-url"])
+			rows.registryUrl = inst.source["registry-url"];
+	}
+	return rows;
+}
+
 export function PackageDetail() {
 	const { packageId } = useParams({ from: "/ig/$packageId/" });
 	const { tab } = useSearch({ from: "/ig/$packageId/" });
 	const navigate = useNavigate();
+	const client = useAidboxClient();
+	const queryClient = useQueryClient();
 	const { data, isLoading } = usePackageMeta(packageId);
 	const [storedTab, setStoredTab] = useLocalStorage<string>({
 		key: IG_TAB_KEY,
@@ -754,20 +846,90 @@ export function PackageDetail() {
 	});
 	const currentTab = tab ?? storedTab;
 
+	const switchTab = (v: string) => {
+		setStoredTab(v);
+		navigate({
+			search: (prev) => ({
+				...prev,
+				tab: v === "canonicals" ? undefined : v,
+				view: v === "package-info" ? prev.view : undefined,
+			}),
+			replace: true,
+		});
+	};
+
+	const reinstallMutation = useMutation({
+		mutationFn: () =>
+			rpcCall(client, "aidbox.profiles/reinstall-package", {
+				"package-name": data?.name ?? "",
+				"package-version": data?.version ?? "",
+			}),
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			HSComp.toast.success("Package reinstalled", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
+			queryClient.invalidateQueries({
+				queryKey: ["ig-package-meta", packageId],
+			});
+		},
+	});
+
+	const deleteMutation = useMutation({
+		mutationFn: () =>
+			rpcCall(client, "aidbox.profiles/delete-package", {
+				"package-name": data?.name ?? "",
+				"package-version": data?.version ?? "",
+			}),
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
+			navigate({ to: "/ig" });
+		},
+	});
+
+	const actionsRef = useRef<PackageDetailActions>({
+		getActiveTab: () => currentTab,
+		setActiveTab: switchTab,
+		getPackageInfo: (format) => {
+			if (!data) return null;
+			return format === "json" ? data : formatPackageInfoVisual(data);
+		},
+		setPackageInfoView: (v) => {
+			switchTab("package-info");
+			// Will be overridden when PackageInfoContent mounts
+			void v;
+		},
+		searchCanonicals: async () => {
+			switchTab("canonicals");
+			return { total: 0, page: 1, totalPages: 0, entries: [] };
+		},
+		selectCanonical: () => {
+			switchTab("canonicals");
+		},
+		reinstallPackage: () => reinstallMutation.mutate(),
+		deletePackage: () => deleteMutation.mutate(),
+	});
+
+	useEffect(() => {
+		actionsRef.current.getActiveTab = () => currentTab;
+		actionsRef.current.setActiveTab = switchTab;
+		actionsRef.current.getPackageInfo = (format) => {
+			if (!data) return null;
+			return format === "json" ? data : formatPackageInfoVisual(data);
+		};
+		actionsRef.current.reinstallPackage = () => reinstallMutation.mutate();
+		actionsRef.current.deletePackage = () => deleteMutation.mutate();
+	});
+
+	useWebMCPPackageDetail(actionsRef);
+
 	return (
 		<HSComp.Tabs
 			value={currentTab}
-			onValueChange={(v) => {
-				setStoredTab(v);
-				navigate({
-					search: (prev) => ({
-						...prev,
-						tab: v === "canonicals" ? undefined : v,
-						view: v === "package-info" ? prev.view : undefined,
-					}),
-					replace: true,
-				});
-			}}
+			onValueChange={switchTab}
 			variant="primary"
 			className="flex flex-col h-full"
 		>
@@ -780,8 +942,16 @@ export function PackageDetail() {
 				</HSComp.TabsList>
 				{data && (
 					<div className="ml-auto flex items-center gap-2 mr-4">
-						<ReinstallPackageButton packageId={packageId} meta={data} />
-						<DeletePackageButton packageId={packageId} meta={data} />
+						<ReinstallPackageButton
+							meta={data}
+							reinstallMutate={() => reinstallMutation.mutate()}
+							reinstallIsPending={reinstallMutation.isPending}
+						/>
+						<DeletePackageButton
+							meta={data}
+							deleteMutate={() => deleteMutation.mutate()}
+							deleteIsPending={deleteMutation.isPending}
+						/>
 					</div>
 				)}
 			</div>
@@ -789,13 +959,13 @@ export function PackageDetail() {
 				value="canonicals"
 				className="grow min-h-0 flex flex-col"
 			>
-				<CanonicalsContent packageId={packageId} />
+				<CanonicalsContent packageId={packageId} actionsRef={actionsRef} />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="package-info" className="overflow-auto">
 				{isLoading ? (
 					<LoadingSkeleton />
 				) : data ? (
-					<PackageInfoContent meta={data} />
+					<PackageInfoContent meta={data} actionsRef={actionsRef} />
 				) : null}
 			</HSComp.TabsContent>
 		</HSComp.Tabs>

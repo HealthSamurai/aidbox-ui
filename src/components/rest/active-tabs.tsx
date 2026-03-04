@@ -187,6 +187,45 @@ function TabContent({ tab }: { tab: Tab }) {
 	);
 }
 
+type SetTabs = (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
+
+export function closeOtherTabs(
+	tabs: Tab[],
+	tabId: TabId,
+	setTabs: SetTabs,
+): TabId[] {
+	const removedIds = tabs.filter((t) => t.id !== tabId).map((t) => t.id);
+	const kept = tabs.find((t) => t.id === tabId);
+	if (kept) setTabs([{ ...kept, selected: true }]);
+	return removedIds;
+}
+
+export function closeTabsToLeft(
+	tabs: Tab[],
+	tabId: TabId,
+	setTabs: SetTabs,
+): TabId[] {
+	const idx = tabs.findIndex((t) => t.id === tabId);
+	if (idx === -1) return [];
+	const removedIds = tabs.filter((_, i) => i < idx).map((t) => t.id);
+	const newTabs = tabs.filter((_, i) => i >= idx);
+	setTabs(forceSelectedTab(newTabs, 0));
+	return removedIds;
+}
+
+export function closeTabsToRight(
+	tabs: Tab[],
+	tabId: TabId,
+	setTabs: SetTabs,
+): TabId[] {
+	const idx = tabs.findIndex((t) => t.id === tabId);
+	if (idx === -1) return [];
+	const removedIds = tabs.filter((_, i) => i > idx).map((t) => t.id);
+	const newTabs = tabs.filter((_, i) => i <= idx);
+	setTabs(forceSelectedTab(newTabs, idx));
+	return removedIds;
+}
+
 function TabContextMenuContent({
 	tab,
 	tabs,
@@ -196,39 +235,13 @@ function TabContextMenuContent({
 }: {
 	tab: Tab;
 	tabs: Tab[];
-	setTabs: (val: Tab[] | ((prev: Tab[]) => Tab[])) => void;
+	setTabs: SetTabs;
 	handleCloseTab: (tabId: TabId) => void;
 	onTabsRemoved?: (tabIds: TabId[]) => void;
 }) {
-	const tabIndex = tabs.findIndex((t) => t.id === tab.id);
-
 	const handleDuplicateTab = () => {
 		const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
 		setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
-	};
-
-	const handleCloseTabsToLeft = () => {
-		const removedTabIds = tabs
-			.filter((_, index) => index < tabIndex)
-			.map((t) => t.id);
-		const newTabs = tabs.filter((_, index) => index >= tabIndex);
-		setTabs(forceSelectedTab(newTabs, tabIndex));
-		onTabsRemoved?.(removedTabIds);
-	};
-
-	const handleCloseTabsToRight = () => {
-		const removedTabIds = tabs
-			.filter((_, index) => index > tabIndex)
-			.map((t) => t.id);
-		const newTabs = tabs.filter((_, index) => index <= tabIndex);
-		setTabs(forceSelectedTab(newTabs, tabIndex));
-		onTabsRemoved?.(removedTabIds);
-	};
-
-	const handleCloseOtherTabs = () => {
-		const removedTabIds = tabs.filter((t) => t.id !== tab.id).map((t) => t.id);
-		setTabs([{ ...tab, selected: true }]);
-		onTabsRemoved?.(removedTabIds);
 	};
 
 	return (
@@ -240,13 +253,19 @@ function TabContextMenuContent({
 			<ContextMenuItem onClick={() => handleCloseTab(tab.id)}>
 				Close tab
 			</ContextMenuItem>
-			<ContextMenuItem onClick={handleCloseOtherTabs}>
+			<ContextMenuItem
+				onClick={() => onTabsRemoved?.(closeOtherTabs(tabs, tab.id, setTabs))}
+			>
 				Close other tabs
 			</ContextMenuItem>
-			<ContextMenuItem onClick={handleCloseTabsToLeft}>
+			<ContextMenuItem
+				onClick={() => onTabsRemoved?.(closeTabsToLeft(tabs, tab.id, setTabs))}
+			>
 				Close tabs to left
 			</ContextMenuItem>
-			<ContextMenuItem onClick={handleCloseTabsToRight}>
+			<ContextMenuItem
+				onClick={() => onTabsRemoved?.(closeTabsToRight(tabs, tab.id, setTabs))}
+			>
 				Close tabs to right
 			</ContextMenuItem>
 		</ContextMenuContent>
