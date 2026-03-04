@@ -1,270 +1,140 @@
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { useAidboxClient } from "../AidboxClient";
-import { errorResult, textResult } from "./helpers";
+import type { RefObject } from "react";
+import { useEffect } from "react";
+import type { DbConsoleActions } from "./db-console-context";
 
-function fillEditorAndRun(query: string, attempt = 0) {
-	if (attempt > 20) return;
-	const editor = document.querySelector(".cm-editor") as HTMLElement | null;
-	const view = (
-		editor as unknown as {
-			cmView?: {
-				view: {
-					dispatch: (tx: unknown) => void;
-					state: { doc: { length: number } };
-				};
-			};
-		}
-	)?.cmView?.view;
-	if (!view) {
-		setTimeout(() => fillEditorAndRun(query, attempt + 1), 100);
-		return;
-	}
-	view.dispatch({
-		changes: { from: 0, to: view.state.doc.length, insert: query },
-	});
-	setTimeout(() => {
-		const btn = [...document.querySelectorAll("button")].find(
-			(b) => b.textContent?.trim() === "RUN",
-		);
-		btn?.click();
-	}, 100);
+function textResult(text: string) {
+	return { content: [{ type: "text" as const, text }] };
 }
 
-export function useWebMCPSql() {
-	const client = useAidboxClient();
-	const clientRef = useRef(client);
-	clientRef.current = client;
-	const navigate = useNavigate();
-	const navigateRef = useRef(navigate);
-	navigateRef.current = navigate;
+const TOOL_NAMES = [
+	"execute_sql",
+	"run_query",
+	"set_query",
+	"get_query",
+	"format_sql",
+	"list_tabs",
+	"select_tab",
+	"select_table",
+	"open_sidebar",
+	"show_left_menu",
+	"toggle_results_panel",
+	"show_explain",
+	"show_result",
+	"get_history",
+	"open_history_entry",
+] as const;
 
+export function useWebMCPSql(actionsRef: RefObject<DbConsoleActions>) {
 	useEffect(() => {
 		if (!navigator.modelContext) return;
+
+		let lastHistoryResults: string[] = [];
 
 		navigator.modelContext.registerTool({
 			name: "execute_sql",
 			description:
-				"[DB Console page] Execute a SQL query against the Aidbox PostgreSQL database. " +
-				"Returns rows as JSON array with column names as keys. " +
-				"The UI equivalent is typing SQL in the /db-console editor and pressing Ctrl+Enter. " +
-				"Supports any PostgreSQL SQL including SELECT, INSERT, UPDATE, DELETE, and DDL.",
+				"[DB Console] Fill the SQL editor with a query and execute it. " +
+				"Results appear in the UI result panel below the editor.",
 			inputSchema: {
 				type: "object",
 				properties: {
 					query: {
 						type: "string",
-						description:
-							"SQL query to execute (e.g. 'SELECT id, resource FROM patient LIMIT 10')",
+						description: "SQL query to execute",
 					},
 				},
 				required: ["query"],
 			},
 			execute: async (args: { query: string }) => {
-				try {
-					const response = await clientRef.current.rawRequest({
-						method: "POST",
-						url: "/$psql",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ query: args.query }),
-					});
-					const json = await response.response.json();
-					return textResult(json);
-				} catch (e) {
-					return errorResult((e as Error).message);
-				}
+				actionsRef.current.executeQuery(args.query);
+				return textResult("Query executed, see results in UI");
 			},
 		});
 
 		navigator.modelContext.registerTool({
-			name: "list_tables",
+			name: "run_query",
 			description:
-				"[DB Console page] List all database tables grouped by schema. " +
-				"The UI shows this in the left sidebar of /db-console under the 'Tables' tab. " +
-				"Excludes system schemas (pg_catalog, information_schema, pgagent).",
+				"[DB Console] Execute the current SQL query in the editor without changing it.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				try {
-					const response = await clientRef.current.rawRequest({
-						method: "POST",
-						url: "/$psql",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							query: `SELECT table_schema, table_name, table_type
-FROM information_schema.tables
-WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent')
-ORDER BY table_schema, table_name`,
-						}),
-					});
-					const json = await response.response.json();
-					return textResult(json);
-				} catch (e) {
-					return errorResult((e as Error).message);
-				}
+				actionsRef.current.runCurrentQuery();
+				return textResult("Current query executed, see results in UI");
 			},
 		});
 
 		navigator.modelContext.registerTool({
-			name: "describe_table",
+			name: "set_query",
 			description:
-				"[DB Console page] Show columns, data types, and nullable info for a database table. " +
-				"The UI shows this when clicking a table name in the left sidebar of /db-console.",
+				"[DB Console] Set the SQL query in the editor without executing it.",
 			inputSchema: {
 				type: "object",
 				properties: {
-					table: {
-						type: "string",
-						description:
-							"Table name, optionally schema-qualified (e.g. 'patient', 'public.patient')",
-					},
-				},
-				required: ["table"],
-			},
-			execute: async (args: { table: string }) => {
-				try {
-					const parts = args.table.split(".");
-					const schema = parts.length > 1 ? parts[0] : "public";
-					const table = parts.length > 1 ? parts[1] : parts[0];
-
-					const response = await clientRef.current.rawRequest({
-						method: "POST",
-						url: "/$psql",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							query: `SELECT column_name, data_type, is_nullable, column_default
-FROM information_schema.columns
-WHERE table_schema = '${schema}' AND table_name = '${table}'
-ORDER BY ordinal_position`,
-						}),
-					});
-					const json = await response.response.json();
-					return textResult(json);
-				} catch (e) {
-					return errorResult((e as Error).message);
-				}
-			},
-		});
-
-		navigator.modelContext.registerTool({
-			name: "explain_query",
-			description:
-				"[DB Console page] Run EXPLAIN ANALYZE on a SQL query to show the execution plan. " +
-				"The UI shows this in the 'Explain' tab of the /db-console results panel. " +
-				"Useful for understanding query performance and index usage.",
-			inputSchema: {
-				type: "object",
-				properties: {
-					query: {
-						type: "string",
-						description: "SQL query to explain (SELECT only recommended)",
-					},
+					query: { type: "string", description: "SQL query to set" },
 				},
 				required: ["query"],
 			},
 			execute: async (args: { query: string }) => {
-				try {
-					const response = await clientRef.current.rawRequest({
-						method: "POST",
-						url: "/$psql",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							query: `EXPLAIN (ANALYZE, COSTS, BUFFERS, FORMAT JSON) ${args.query}`,
-						}),
-					});
-					const json = await response.response.json();
-					return textResult(json);
-				} catch (e) {
-					return errorResult((e as Error).message);
-				}
+				actionsRef.current.setQuery(args.query);
+				return textResult("Query set in editor");
 			},
 		});
 
 		navigator.modelContext.registerTool({
-			name: "get_sql_history",
+			name: "get_query",
 			description:
-				"[DB Console page] Get recent SQL query history. " +
-				"The UI shows this in the left sidebar of /db-console under the 'History' tab, grouped by date. " +
-				"Returns recent SQL queries with their text and execution date.",
+				"[DB Console] Get the current SQL query from the active editor tab.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				const query = actionsRef.current.getQuery();
+				return textResult(query || "(empty)");
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "format_sql",
+			description: "[DB Console] Format the current SQL query in the editor.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				actionsRef.current.formatSql();
+				return textResult("SQL formatted");
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "list_tabs",
+			description:
+				"[DB Console] List all open SQL editor tabs with their IDs and query previews.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				const tabs = actionsRef.current.getTabs();
+				return textResult(JSON.stringify(tabs, null, 2));
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "select_tab",
+			description:
+				"[DB Console] Switch to a specific SQL editor tab by its ID.",
 			inputSchema: {
 				type: "object",
 				properties: {
-					query: {
+					tab_id: {
 						type: "string",
-						description: "Optional text to filter history entries",
+						description: "Tab ID (from list_tabs)",
 					},
 				},
+				required: ["tab_id"],
 			},
-			execute: async (args: { query?: string }) => {
-				try {
-					const response = await clientRef.current.rawRequest({
-						method: "GET",
-						url: "/ui_history?.type=sql&_sort=-createdAt&_count=100",
-					});
-					const json = await response.response.json();
-					const entries = (json.entry ?? []).map(
-						(e: { resource: { command?: string; createdAt?: string } }) => ({
-							command: e.resource.command,
-							createdAt: e.resource.createdAt,
-						}),
-					);
-
-					const q = args.query?.toLowerCase();
-					const filtered = q
-						? entries.filter((e: { command?: string }) =>
-								e.command?.toLowerCase().includes(q),
-							)
-						: entries;
-
-					return textResult(filtered);
-				} catch (e) {
-					return errorResult((e as Error).message);
-				}
+			execute: async (args: { tab_id: string }) => {
+				actionsRef.current.selectTab(args.tab_id);
+				return textResult(`Switched to tab ${args.tab_id}`);
 			},
 		});
 
 		navigator.modelContext.registerTool({
-			name: "show_in_db_console",
+			name: "select_table",
 			description:
-				"[DB Console page] Navigate to DB Console, fill the SQL editor with a query, and execute it visually. " +
-				"Use this when the user wants to SEE the query and results in the DB Console UI. " +
-				"The query will appear in the editor and results will show in the Result tab below. " +
-				"Also returns the query results in the response.",
-			inputSchema: {
-				type: "object",
-				properties: {
-					query: {
-						type: "string",
-						description: "SQL query to show and execute in DB Console",
-					},
-				},
-				required: ["query"],
-			},
-			execute: async (args: { query: string }) => {
-				try {
-					navigateRef.current({ to: "/db-console" });
-					fillEditorAndRun(args.query);
-
-					const response = await clientRef.current.rawRequest({
-						method: "POST",
-						url: "/$psql",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ query: args.query }),
-					});
-					const json = await response.response.json();
-					return textResult(json);
-				} catch (e) {
-					return errorResult((e as Error).message);
-				}
-			},
-		});
-
-		navigator.modelContext.registerTool({
-			name: "show_table_info",
-			description:
-				"[DB Console page] Navigate to the DB Console Tables tab and select a specific table to show its details " +
-				"(columns, indexes, row count, table data size, indexes size). " +
-				"Use this when the user wants to SEE table information in the UI. " +
-				"Also returns the table details in the response.",
+				"[DB Console] Open the sidebar Tables tab and select a specific table.",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -277,93 +147,182 @@ ORDER BY ordinal_position`,
 				required: ["table"],
 			},
 			execute: async (args: { table: string }) => {
-				try {
-					const parts = args.table.split(".");
-					const schema = parts.length > 1 ? parts[0] : "public";
-					const table = parts.length > 1 ? parts[1] : parts[0];
+				const parts = args.table.split(".");
+				const schema = parts.length > 1 ? parts[0] : "public";
+				const name = parts.length > 1 ? parts[1] : parts[0];
+				actionsRef.current.selectTable(schema, name);
+				return textResult("Table selected in sidebar");
+			},
+		});
 
-					// Set localStorage and dispatch events to update mounted components
-					const setLS = (key: string, value: unknown) => {
-						localStorage.setItem(key, JSON.stringify(value));
-						window.dispatchEvent(
-							new CustomEvent("local-storage", {
-								detail: { key, value },
-							}),
-						);
-					};
-					setLS("db-console-left-menu-open", true);
-					setLS("db-console-left-menu-default-tab", "tables");
-					setLS("db-console-selected-table", { schema, name: table });
+		navigator.modelContext.registerTool({
+			name: "open_sidebar",
+			description:
+				"[DB Console] Open the left sidebar without changing the active tab.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				actionsRef.current.openSidebar();
+				return textResult("Sidebar opened");
+			},
+		});
 
-					navigateRef.current({ to: "/db-console" });
+		navigator.modelContext.registerTool({
+			name: "show_left_menu",
+			description:
+				"[DB Console] Open the left sidebar on a specific tab (history, tables, or queries).",
+			inputSchema: {
+				type: "object",
+				properties: {
+					tab: {
+						type: "string",
+						enum: ["history", "tables", "queries"],
+						description: "Which sidebar tab to open",
+					},
+				},
+				required: ["tab"],
+			},
+			execute: async (args: { tab: "history" | "tables" | "queries" }) => {
+				actionsRef.current.openSidebarTab(args.tab);
+				return textResult(`Sidebar opened on ${args.tab} tab`);
+			},
+		});
 
-					// Fetch table details via API
-					const [columnsRes, indexesRes, rowCountRes, sizeRes] =
-						await Promise.all([
-							clientRef.current.rawRequest({
-								method: "POST",
-								url: "/$psql",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									query: `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema='${schema}' AND table_name='${table}' ORDER BY ordinal_position`,
-								}),
-							}),
-							clientRef.current.rawRequest({
-								method: "POST",
-								url: "/$psql",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									query: `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname='${schema}' AND tablename='${table}'`,
-								}),
-							}),
-							clientRef.current.rawRequest({
-								method: "POST",
-								url: "/$psql",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									query: `SELECT reltuples::bigint as row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname='${table}' AND n.nspname='${schema}'`,
-								}),
-							}),
-							clientRef.current.rawRequest({
-								method: "POST",
-								url: "/$psql",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									query: `SELECT pg_size_pretty(pg_table_size('"${schema}"."${table}"')) AS table_size, pg_size_pretty(pg_indexes_size('"${schema}"."${table}"')) AS indexes_size`,
-								}),
-							}),
-						]);
-
-					const [columns, indexes, rowCount, size] = await Promise.all([
-						columnsRes.response.json(),
-						indexesRes.response.json(),
-						rowCountRes.response.json(),
-						sizeRes.response.json(),
-					]);
-
-					return textResult({
-						table: `${schema}.${table}`,
-						navigatedTo: "/db-console (Tables tab)",
-						columns: columns[0]?.result ?? columns,
-						indexes: indexes[0]?.result ?? indexes,
-						rowCount: (rowCount[0]?.result ?? rowCount)[0]?.row_count,
-						tableSize: (size[0]?.result ?? size)[0]?.table_size,
-						indexesSize: (size[0]?.result ?? size)[0]?.indexes_size,
-					});
-				} catch (e) {
-					return errorResult((e as Error).message);
+		navigator.modelContext.registerTool({
+			name: "toggle_results_panel",
+			description:
+				"[DB Console] Control the results panel: expand, collapse, maximize, or minimize.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					action: {
+						type: "string",
+						enum: ["expand", "collapse", "maximize", "minimize"],
+						description: "Action to perform on the results panel",
+					},
+				},
+				required: ["action"],
+			},
+			execute: async (args: {
+				action: "expand" | "collapse" | "maximize" | "minimize";
+			}) => {
+				switch (args.action) {
+					case "expand":
+						actionsRef.current.expandResults();
+						break;
+					case "collapse":
+						actionsRef.current.collapseResults();
+						break;
+					case "maximize":
+						actionsRef.current.maximizeResults();
+						break;
+					case "minimize":
+						actionsRef.current.minimizeResults();
+						break;
 				}
+				return textResult(`Results panel: ${args.action}`);
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "show_explain",
+			description:
+				"[DB Console] Switch the results panel to the Explain tab. " +
+				"Optionally set the view mode to visual (tree) or raw (text).",
+			inputSchema: {
+				type: "object",
+				properties: {
+					mode: {
+						type: "string",
+						enum: ["visual", "raw"],
+						description:
+							"Explain view mode: visual (tree, default) or raw (text)",
+					},
+				},
+			},
+			execute: async (args: { mode?: "visual" | "raw" }) => {
+				actionsRef.current.showExplain(args.mode);
+				return textResult(
+					`Explain tab opened${args.mode ? ` in ${args.mode} mode` : ""}`,
+				);
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "get_history",
+			description:
+				"[DB Console] Get SQL query history entries. " +
+				"Returns a list of previously executed queries with timestamps, sorted newest first. " +
+				"Use optional search to filter by query text.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					search: {
+						type: "string",
+						description:
+							"Optional substring to filter history entries by query text",
+					},
+					limit: {
+						type: "number",
+						description: "Maximum number of entries to return (default: all)",
+					},
+				},
+			},
+			execute: async (args: { search?: string; limit?: number }) => {
+				const entries = actionsRef.current.getHistory(args.search, args.limit);
+				lastHistoryResults = entries.map((e) => e.command);
+				if (entries.length === 0) {
+					return textResult("No history entries found");
+				}
+				const withIndex = entries.map((e, i) => ({
+					index: i,
+					...e,
+				}));
+				return textResult(JSON.stringify(withIndex, null, 2));
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "open_history_entry",
+			description:
+				"[DB Console] Open a query from the last get_history result by its index. " +
+				"Finds an existing tab with the same query or creates a new tab.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					index: {
+						type: "number",
+						description: "Entry index from the last get_history result",
+					},
+				},
+				required: ["index"],
+			},
+			execute: async (args: { index: number }) => {
+				const query = lastHistoryResults[args.index];
+				if (query === undefined) {
+					return textResult(
+						`Invalid index ${args.index}. Call get_history first.`,
+					);
+				}
+				actionsRef.current.openHistoryEntry(query);
+				return textResult("Query opened in editor tab");
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "show_result",
+			description:
+				"[DB Console] Switch the results panel back to the Result tab.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				actionsRef.current.showResults();
+				return textResult("Result tab opened");
 			},
 		});
 
 		return () => {
-			navigator.modelContext?.unregisterTool("execute_sql");
-			navigator.modelContext?.unregisterTool("list_tables");
-			navigator.modelContext?.unregisterTool("describe_table");
-			navigator.modelContext?.unregisterTool("explain_query");
-			navigator.modelContext?.unregisterTool("get_sql_history");
-			navigator.modelContext?.unregisterTool("show_in_db_console");
-			navigator.modelContext?.unregisterTool("show_table_info");
+			for (const name of TOOL_NAMES) {
+				navigator.modelContext?.unregisterTool(name);
+			}
 		};
-	}, []);
+	}, [actionsRef]);
 }

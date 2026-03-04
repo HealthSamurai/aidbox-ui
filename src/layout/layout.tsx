@@ -13,7 +13,6 @@ import {
 	useWebMCPPackages,
 	useWebMCPResources,
 	useWebMCPRest,
-	useWebMCPSql,
 } from "../webmcp";
 import { Navbar } from "./navbar";
 import { AidboxSidebar } from "./sidebar";
@@ -24,7 +23,6 @@ function Layout({ children }: PropsWithChildren) {
 	useWebMCPPackages();
 	useWebMCPResources();
 	useWebMCPRest();
-	useWebMCPSql();
 
 	useEffect(() => {
 		document.getElementById("sk")?.remove();
