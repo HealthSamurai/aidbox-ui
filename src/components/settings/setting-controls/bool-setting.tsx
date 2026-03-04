@@ -5,7 +5,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { Lock, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { SettingInfoPanel } from "../setting-info-panel";
 import { SettingLabel } from "../setting-label";
@@ -30,12 +30,8 @@ export function BoolSetting({
 	const checked = value === true;
 
 	const disabledSwitch = (
-		<div className="relative inline-flex">
-			<Switch checked={checked} disabled />
-			<Lock
-				size={10}
-				className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white"
-			/>
+		<div className="cursor-not-allowed">
+			<Switch checked={checked} locked className="pointer-events-none" />
 		</div>
 	);
 
@@ -61,7 +57,7 @@ export function BoolSetting({
 			<div className="flex gap-3">
 				<div className="shrink-0 pt-0.5">{toggle}</div>
 				<div className="min-w-0 flex-1 space-y-1.5">
-					<Label className="text-sm">
+					<Label className="select-text text-sm">
 						<SettingLabel setting={setting} />
 					</Label>
 

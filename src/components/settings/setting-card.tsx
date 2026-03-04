@@ -5,7 +5,6 @@ import type { Setting } from "./types";
 import {
 	getNotEditableExplanation,
 	getSettingValue,
-	isPendingRestart,
 	isSettingEditable,
 } from "./utils";
 
@@ -39,8 +38,6 @@ export function SettingCard({
 		setting,
 		isDebugMode,
 	);
-	const pendingRestart = isPendingRestart(setting);
-
 	const displayValue =
 		pendingValue !== undefined ? pendingValue : getSettingValue(setting);
 
@@ -84,14 +81,6 @@ export function SettingCard({
 					onClearError={onClearError}
 				/>
 			);
-	}
-
-	if (pendingRestart) {
-		return (
-			<div className="border-l-2 border-[var(--color-illustrations-solid)] pl-3">
-				{content}
-			</div>
-		);
 	}
 
 	return content;

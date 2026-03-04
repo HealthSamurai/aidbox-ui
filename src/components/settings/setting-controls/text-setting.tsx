@@ -1,8 +1,5 @@
 import {
 	Button,
-	Card,
-	CardContent,
-	CardFooter,
 	Input,
 	Label,
 	Textarea,
@@ -129,50 +126,39 @@ export function TextSetting({
 	const isEditing = isConfirming && editable;
 
 	return (
-		<div className="group/setting space-y-1">
-			<Label className="text-sm">
-				<SettingLabel setting={setting} hasError={!!errorMessage} />
-			</Label>
-
-			{isEditing ? (
-				<Card className="gap-0 py-0 shadow-none">
-					<CardContent className="p-3">
-						{inputField}
-						{errorMessage && (
-							<p className="mt-1 text-xs text-text-error-primary">
-								{errorMessage}
-							</p>
-						)}
-					</CardContent>
-					<CardFooter className="flex justify-end gap-2 border-t border-border-secondary p-3">
-						<Button
-							variant="ghost"
-							size="small"
-							onClick={() => onCancel(setting)}
-						>
-							Cancel
-						</Button>
-						<Button
-							size="small"
-							disabled={setting["required?"] && displayValue === ""}
-							onClick={() => onSave(setting, value)}
-						>
-							Save
-						</Button>
-					</CardFooter>
-				</Card>
-			) : (
-				<>
+		<div className="group/setting">
+			<div
+				className={`rounded-md border px-3 py-3 ${isEditing ? "border-border-secondary" : "border-transparent"}`}
+			>
+				<div className="space-y-1">
+					<Label className="select-text text-sm">
+						<SettingLabel setting={setting} hasError={!!errorMessage} />
+					</Label>
 					{inputField}
 					{errorMessage && (
-						<p className="text-xs text-text-error-primary">{errorMessage}</p>
+						<p className="mt-1 text-xs text-text-error-primary">
+							{errorMessage}
+						</p>
 					)}
-				</>
-			)}
-
-			{descriptionBlock}
-
-			{infoOpen && <SettingInfoPanel setting={setting} />}
+					{descriptionBlock}
+					{infoOpen && <SettingInfoPanel setting={setting} />}
+				</div>
+				{isEditing && (
+					<div className="-mx-3 mt-4 border-t border-border-secondary">
+						<div className="flex justify-end gap-2 px-3 pt-3">
+							<Button variant="ghost" onClick={() => onCancel(setting)}>
+								Cancel
+							</Button>
+							<Button
+								disabled={setting["required?"] && displayValue === ""}
+								onClick={() => onSave(setting, value)}
+							>
+								Save
+							</Button>
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
