@@ -1,10 +1,13 @@
 import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import * as Lucide from "lucide-react";
-import React, { useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { X } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import { createFuzzySearch } from "../../utils/fuzzy-search";
+import { useWebMCPResourceBrowser } from "../../webmcp/resource-browser";
+import type { ResourceBrowserActions } from "../../webmcp/resource-browser-context";
 import { EmptyState } from "../empty-state";
 
 type ResourceRow = {
@@ -183,33 +186,21 @@ type SortColumn = "resourceType" | "url";
 type SortDirection = "asc" | "desc";
 type SortState = { column: SortColumn; direction: SortDirection };
 
-function useSortedData(
-	data: ResourceRow[] | undefined,
-	favorites: Set<string>,
-	sort: SortState,
-): ResourceRow[] {
-	return useMemo(() => {
-		if (!data) return [];
-		return [...data].sort((a, b) => {
-			const aFav = favorites.has(a.resourceType);
-			const bFav = favorites.has(b.resourceType);
-			if (aFav !== bFav) return aFav ? -1 : 1;
-			const cmp = a[sort.column].localeCompare(b[sort.column]);
-			return sort.direction === "asc" ? cmp : -cmp;
-		});
-	}, [data, favorites, sort]);
-}
-
 export function Browser() {
 	const client = useAidboxClient();
 
-	const [filterQuery, setFilterQuery] = useState("");
+	const { q } = useSearch({ from: "/resource/" });
+	const filterQuery = q ?? "";
+
 	const [favoritesArray, setFavoritesArray] = useLocalStorage<string[]>({
 		key: "resource-browser-favorites",
 		defaultValue: [],
 	});
 
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
+
+	const actionsRef = useRef<ResourceBrowserActions>(null!);
+	useWebMCPResourceBrowser(actionsRef);
 
 	const [sort, setSort] = useState<SortState>({
 		column: "resourceType",
@@ -225,18 +216,70 @@ export function Browser() {
 	};
 
 	const { data, isLoading } = useResourceData(client);
-	const allTableData = useSortedData(data, favorites, sort);
+
+	const fuzzySearch = useMemo(
+		() =>
+			data
+				? createFuzzySearch(data, {
+						keys: [
+							{ name: "resourceType", weight: 2 },
+							{ name: "url", weight: 1 },
+						],
+						minMatchCharLength: 1,
+						threshold: 0.3,
+					})
+				: () => [],
+		[data],
+	);
 
 	const filteredData = useMemo(() => {
-		if (!filterQuery) return allTableData;
-		const lowerQuery = filterQuery.toLowerCase();
-		return allTableData.filter((row) =>
-			row.resourceType.toLowerCase().includes(lowerQuery),
-		);
-	}, [allTableData, filterQuery]);
+		const results = fuzzySearch(filterQuery);
+		return [...results].sort((a, b) => {
+			const aFav = favorites.has(a.resourceType);
+			const bFav = favorites.has(b.resourceType);
+			if (aFav !== bFav) return aFav ? -1 : 1;
+			const cmp = a[sort.column].localeCompare(b[sort.column]);
+			return sort.direction === "asc" ? cmp : -cmp;
+		});
+	}, [fuzzySearch, filterQuery, favorites, sort]);
 
 	const [focusedIndex, setFocusedIndex] = useState(-1);
 	const navigate = useNavigate();
+
+	const setFilterQuery = (value: string) => {
+		navigate({ search: (prev) => ({ ...prev, q: value || undefined }) });
+	};
+
+	actionsRef.current = {
+		listResourceTypes: (filter) => {
+			if (filter !== undefined) {
+				setFilterQuery(filter);
+			}
+			const results = fuzzySearch(filter ?? filterQuery);
+			const sorted = [...results].sort((a, b) => {
+				const aFav = favorites.has(a.resourceType);
+				const bFav = favorites.has(b.resourceType);
+				if (aFav !== bFav) return aFav ? -1 : 1;
+				const cmp = a[sort.column].localeCompare(b[sort.column]);
+				return sort.direction === "asc" ? cmp : -cmp;
+			});
+			return sorted.map((row) => ({
+				resourceType: row.resourceType,
+				url: row.url,
+				isFavorite: favorites.has(row.resourceType),
+			}));
+		},
+		getFavorites: () => favoritesArray,
+		toggleFavorite: (resourceType) => {
+			toggleFavorite(resourceType);
+		},
+		navigateToResourceType: (resourceType) => {
+			navigate({
+				to: "/resource/$resourceType",
+				params: { resourceType },
+			});
+		},
+	};
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset focus on filter change
 	React.useEffect(() => {
@@ -286,17 +329,19 @@ export function Browser() {
 					value={filterQuery}
 					onChange={(e) => setFilterQuery(e.target.value)}
 					onKeyDown={handleSearchKeyDown}
+					rightSlot={
+						filterQuery && (
+							<HSComp.IconButton
+								icon={<X />}
+								aria-label="Clear"
+								variant="link"
+								onClick={() => setFilterQuery("")}
+							/>
+						)
+					}
 				/>
 				<HSComp.Button variant="primary" className="min-w-24">
 					Search
-				</HSComp.Button>
-				<div className="w-px h-6 bg-border-secondary" />
-				<HSComp.Button variant="secondary">
-					<Lucide.PlusIcon
-						className="size-4 text-text-error-primary"
-						strokeWidth={1.25}
-					/>
-					Create
 				</HSComp.Button>
 			</div>
 			<div className="grow min-h-0">

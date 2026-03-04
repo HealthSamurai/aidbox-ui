@@ -19,11 +19,13 @@ import {
 	findYamlPathOffset,
 	getIssueLineNumbers,
 } from "../../utils/json-path-offset";
+import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
+import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { EmptyState } from "../empty-state";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
-import { DeleteButton, SaveButton } from "./action";
-import { fetchResource } from "./api";
+import { DeleteButton, SaveButton, type SaveHandle } from "./action";
+import { deleteResource, fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
@@ -143,7 +145,19 @@ export const ResourceEditorPage = ({
 		});
 	};
 
+	const handleTextChange = (text: string) => {
+		setResourceText(text);
+		setSaveError(null);
+		try {
+			const parsed = mode === "yaml" ? YAML.load(text) : JSON.parse(text);
+			setResource(parsed);
+		} catch {
+			// keeps text as-is if parsing failed
+		}
+	};
+
 	const editorViewRef = React.useRef<CodeEditorView | null>(null);
+	const saveRef = React.useRef<SaveHandle>(null!);
 
 	const [saveError, setSaveError] = React.useState<OperationOutcome | null>(
 		null,
@@ -197,6 +211,74 @@ export const ResourceEditorPage = ({
 		return getIssueLineNumbers(resourceText, issues, mode);
 	}, [saveError, resourceText, mode]);
 
+	const actionsRef = React.useRef<ResourceEditorActions>(null!);
+
+	actionsRef.current = {
+		editorSwitchMode: setMode,
+		editorGetMode: () => mode,
+		editorGetValue: () => resourceText,
+		editorSetValue: handleTextChange,
+		editorFormat: triggerFormat,
+		editorSave: async () => {
+			try {
+				const result = await saveRef.current.save();
+				return { status: "ok" as const, id: result.id ?? id ?? "" };
+			} catch (e) {
+				// handleSaveError already called by SaveButton's onError
+				const issues =
+					e instanceof Error && isOperationOutcome(e.cause)
+						? e.cause.issue
+						: [
+								{
+									severity: "error" as const,
+									code: "exception" as const,
+									diagnostics: e instanceof Error ? e.message : String(e),
+								},
+							];
+				return { status: "error" as const, issues };
+			}
+		},
+		editorGetValidationErrors: () => saveError?.issue ?? null,
+		editorDelete: async () => {
+			if (!id)
+				return {
+					status: "error",
+					message: "Cannot delete: resource has no ID",
+				};
+			try {
+				await deleteResource(client, resourceType, id);
+				navigate({
+					to: "/resource/$resourceType",
+					params: { resourceType },
+				});
+				return { status: "ok" };
+			} catch (e) {
+				return {
+					status: "error",
+					message: e instanceof Error ? e.message : String(e),
+				};
+			}
+		},
+		// Stubs — overridden by EditTabContent/ProfilePanel
+		editorToggleProfilePanel: () => {},
+		editorGetProfile: () => ({ open: false }),
+		editorChooseProfile: () => {},
+		// Stubs — overridden by VersionsTab
+		historyListVersions: () => null,
+		historySelectVersion: () => {},
+		historyGetSelected: () => null,
+		historyGetViewMode: () => "raw",
+		historySwitchViewMode: () => {},
+		historyGetRawMode: () => "json",
+		historySwitchRawMode: () => {},
+		historyRestore: async () => ({
+			status: "error",
+			message: "History tab is not active",
+		}),
+	};
+
+	useWebMCPResourceEditor(actionsRef);
+
 	const isViewDefinition = resourceType === "ViewDefinition";
 
 	const tabs = [];
@@ -228,6 +310,7 @@ export const ResourceEditorPage = ({
 				mode={mode}
 				client={client}
 				onError={handleSaveError}
+				saveRef={saveRef}
 			/>
 		</>
 	);
@@ -242,17 +325,7 @@ export const ResourceEditorPage = ({
 					triggerFormat={triggerFormat}
 					resourceText={resourceText}
 					defaultResourceText={resourceText}
-					setResourceText={(text: string) => {
-						setResourceText(text);
-						setSaveError(null);
-						try {
-							const parsed =
-								mode === "yaml" ? YAML.load(text) : JSON.parse(text);
-							setResource(parsed);
-						} catch {
-							// again, keeps text as-is if parsing failed
-						}
-					}}
+					setResourceText={handleTextChange}
 					viewCallback={(view) => {
 						editorViewRef.current = view;
 					}}
@@ -263,6 +336,7 @@ export const ResourceEditorPage = ({
 					resourceType={resourceType}
 					storageKey="resourceEditor-profileOpen"
 					autoSaveId="resource-editor-horizontal-panel"
+					actionsRef={actionsRef}
 				/>
 			</HSComp.TabsContent>
 		),
@@ -273,7 +347,11 @@ export const ResourceEditorPage = ({
 			trigger: <HSComp.TabsTrigger value="history">History</HSComp.TabsTrigger>,
 			content: (
 				<HSComp.TabsContent value={"history"}>
-					<VersionsTab id={id} resourceType={resourceType} />
+					<VersionsTab
+						id={id}
+						resourceType={resourceType}
+						actionsRef={actionsRef}
+					/>
 				</HSComp.TabsContent>
 			),
 		});

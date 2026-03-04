@@ -5,14 +5,22 @@ import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { fetchSchemas } from "../../api/schemas";
 import { transformSnapshotToTree } from "../../utils";
+import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { pageId } from "./types";
 
 interface ProfilePanelProps {
 	resourceType: string;
 	onClose: () => void;
+	actionsRef?: React.RefObject<ResourceEditorActions>;
+	onOpenPanel?: () => void;
 }
 
-export function ProfilePanel({ resourceType, onClose }: ProfilePanelProps) {
+export function ProfilePanel({
+	resourceType,
+	onClose,
+	actionsRef,
+	onOpenPanel,
+}: ProfilePanelProps) {
 	const client = useAidboxClient();
 	const [selectedProfileKey, setSelectedProfileKey] = React.useState<
 		string | undefined
@@ -53,6 +61,21 @@ export function ProfilePanel({ resourceType, onClose }: ProfilePanelProps) {
 			})),
 		[profileEntries],
 	);
+
+	if (actionsRef) {
+		const profile = selectedProfileKey ? data?.[selectedProfileKey] : undefined;
+		actionsRef.current.editorGetProfile = () => ({
+			open: true,
+			profileKey: selectedProfileKey,
+			profileName: profile?.entity?.name,
+			profileUrl: profile?.entity?.url,
+			isDefault: profile?.["default?"] === true,
+		});
+		actionsRef.current.editorChooseProfile = (key: string) => {
+			onOpenPanel?.();
+			setSelectedProfileKey(key);
+		};
+	}
 
 	return (
 		<div className="flex flex-col h-full">

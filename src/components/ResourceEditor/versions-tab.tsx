@@ -12,10 +12,15 @@ import * as yaml from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { fetchResourceHistory } from "./api";
 import { pageId } from "./types";
 
-type VersionsTabProps = { id: string; resourceType: string };
+type VersionsTabProps = {
+	id: string;
+	resourceType: string;
+	actionsRef?: React.RefObject<ResourceEditorActions>;
+};
 
 type VersionEntry = {
 	versionId: string;
@@ -83,7 +88,11 @@ function deepSortObject(value: unknown): unknown {
 	return root;
 }
 
-export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
+export const VersionsTab = ({
+	id,
+	resourceType,
+	actionsRef,
+}: VersionsTabProps) => {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 
@@ -170,6 +179,49 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		},
 		onError: Utils.onMutationError,
 	});
+
+	if (actionsRef) {
+		actionsRef.current.historyListVersions = () =>
+			versions.map((v) => ({ versionId: v.versionId, date: v.date }));
+		actionsRef.current.historySelectVersion = (versionId: string) => {
+			setSelectedVersionId(versionId);
+		};
+		actionsRef.current.historyGetSelected = () => {
+			if (!selectedVersion) return null;
+			const content =
+				editorMode === "yaml"
+					? yaml.dump(selectedVersion.resourceCurrent, { indent: 2 })
+					: JSON.stringify(selectedVersion.resourceCurrent, null, 2);
+			return {
+				versionId: selectedVersion.versionId,
+				date: selectedVersion.date,
+				content,
+			};
+		};
+		actionsRef.current.historyGetViewMode = () => viewMode;
+		actionsRef.current.historySwitchViewMode = (mode: "raw" | "diff") => {
+			setViewMode(mode);
+		};
+		actionsRef.current.historyGetRawMode = () => editorMode;
+		actionsRef.current.historySwitchRawMode = (mode: "json" | "yaml") => {
+			setEditorMode(mode);
+		};
+		actionsRef.current.historyRestore = async () => {
+			if (!selectedVersion)
+				return { status: "error", message: "No version selected" };
+			if (selectedVersionId === versions[0]?.versionId)
+				return { status: "error", message: "Already on the latest version" };
+			try {
+				await mutation.mutateAsync(selectedVersion.resourceCurrent);
+				return { status: "ok" };
+			} catch (e) {
+				return {
+					status: "error",
+					message: e instanceof Error ? e.message : String(e),
+				};
+			}
+		};
+	}
 
 	if (isLoading) {
 		return (
