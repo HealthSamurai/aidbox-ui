@@ -19,8 +19,11 @@ function SidebarItem({
 	def: CategoryDef;
 	visibleCategories: Set<string>;
 }) {
-	const [expanded, setExpanded] = useState(false);
 	const key = categoryKey(def.category);
+	const storageKey = `settings-sidebar-expanded:${key}`;
+	const [expanded, setExpanded] = useState(
+		() => localStorage.getItem(storageKey) === "true",
+	);
 	const hasSubcategories = def.subcategories && def.subcategories.length > 0;
 	const hasVisibleChildren = def.subcategories?.some((sub) =>
 		visibleCategories.has(categoryKey(sub.category)),
@@ -39,7 +42,9 @@ function SidebarItem({
 				type="button"
 				onClick={() => {
 					if (hasSubcategories) {
-						setExpanded(!expanded);
+						const next = !expanded;
+						setExpanded(next);
+						localStorage.setItem(storageKey, String(next));
 					}
 					scrollToSection(sectionId);
 				}}
@@ -83,7 +88,7 @@ function SidebarItem({
 
 export function SettingsSidebar({ visibleCategories }: SettingsSidebarProps) {
 	return (
-		<nav className="h-full overflow-hidden border-r border-border-secondary">
+		<nav className="h-full overflow-hidden">
 			<div className="h-full overflow-y-auto p-3">
 				<ul className="space-y-0.5">
 					{CATEGORIES.map((def) => (
