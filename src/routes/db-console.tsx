@@ -58,7 +58,9 @@ import { useAidboxClient } from "../AidboxClient";
 import { fetchSchemas } from "../api/schemas";
 import { saveSqlHistory, useSqlHistory } from "../api/sql-history";
 import {
+	addSqlTab,
 	DEFAULT_SQL_TAB,
+	forceSelectedTab,
 	SqlActiveTabs,
 	type SqlTab,
 } from "../components/db-console/active-tabs";
@@ -78,9 +80,18 @@ import {
 	SqlLeftMenuContext,
 	SqlLeftMenuToggle,
 } from "../components/db-console/left-menu";
+import {
+	extractIndexType,
+	fetchTableDetails,
+	formatColumnType,
+	psqlRequest,
+} from "../components/db-console/tables-view";
 import { EmptyState } from "../components/empty-state";
 import { useLocalStorage } from "../hooks";
-import type { DbConsoleActions } from "../webmcp/db-console-context";
+import type {
+	DbConsoleActions,
+	QueryResultItem,
+} from "../webmcp/db-console-context";
 import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "DB Console";
@@ -276,15 +287,6 @@ export const Route = createFileRoute("/db-console")({
 	staticData: { title: TITLE },
 	loader: () => ({ breadCrumb: TITLE }),
 });
-
-type QueryResultItem = {
-	query: string;
-	duration: number;
-	result: Record<string, unknown>[];
-	rows: number;
-	status: string;
-	error?: string;
-};
 
 type PlanNodeMeta = {
 	nodeType: string;
@@ -1155,6 +1157,47 @@ function DbConsolePage() {
 			tabs.map((t) => ({ id: t.id, query: t.query, selected: !!t.selected })),
 		selectTab: (tabId) =>
 			setTabs((prev) => prev.map((t) => ({ ...t, selected: t.id === tabId }))),
+		addTab: () => addSqlTab(tabs, setTabs),
+		duplicateTab: (tabId) => {
+			const tab = tabs.find((t) => t.id === tabId);
+			if (!tab) return;
+			const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
+			setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
+		},
+		closeTab: (tabId) => {
+			const newTabs = tabs.filter((t) => t.id !== tabId);
+			if (newTabs.length === 0) {
+				setTabs([{ ...DEFAULT_SQL_TAB, id: crypto.randomUUID() }]);
+			} else {
+				const removedIndex = tabs.findIndex((t) => t.id === tabId);
+				const needsSelect = tabs.find((t) => t.id === tabId)?.selected;
+				if (needsSelect) {
+					const targetIndex = Math.min(
+						Math.max(removedIndex - 1, 0),
+						newTabs.length - 1,
+					);
+					setTabs(
+						newTabs.map((t, i) => ({ ...t, selected: i === targetIndex })),
+					);
+				} else {
+					setTabs(newTabs);
+				}
+			}
+		},
+		closeOtherTabs: (tabId) => {
+			const tab = tabs.find((t) => t.id === tabId);
+			if (tab) setTabs([{ ...tab, selected: true }]);
+		},
+		closeTabsToLeft: (tabId) => {
+			const idx = tabs.findIndex((t) => t.id === tabId);
+			if (idx < 0) return;
+			setTabs(forceSelectedTab(tabs.slice(idx), 0));
+		},
+		closeTabsToRight: (tabId) => {
+			const idx = tabs.findIndex((t) => t.id === tabId);
+			if (idx < 0) return;
+			setTabs(forceSelectedTab(tabs.slice(0, idx + 1), idx));
+		},
 		openSidebar,
 		openSidebarTab: (tab) => {
 			openSidebar();
@@ -1174,6 +1217,63 @@ function DbConsolePage() {
 			if (mode) setExplainViewMode(mode);
 		},
 		showResults: () => setResultActiveTab("result"),
+		getQueryStatus: () => {
+			if (isLoading) return { status: "loading" };
+			if (currentResult?.error)
+				return { status: "error", error: currentResult.error };
+			if (currentResult?.results) return { status: "ready" };
+			return { status: "empty" };
+		},
+		getResults: (limit) => {
+			const items = currentResult?.results ?? [];
+			return limit ? items.slice(0, limit) : items;
+		},
+		getActiveQueries: async () => {
+			const rows = await psqlRequest(
+				client,
+				`SELECT DISTINCT ON (query) pid, query, state, EXTRACT(EPOCH FROM (now() - query_start))::numeric(10,1) as duration_seconds, usename FROM pg_stat_activity WHERE state = 'active' AND query NOT LIKE '%pg_stat_activity%' AND pid != pg_backend_pid() ORDER BY query, query_start`,
+			);
+			return rows.map(
+				(r: {
+					pid: number;
+					query: string;
+					duration_seconds: number;
+					usename: string;
+				}) => ({
+					pid: r.pid,
+					query: r.query,
+					duration_seconds: r.duration_seconds,
+					usename: r.usename,
+				}),
+			);
+		},
+		cancelQuery: async (pid) => {
+			await psqlRequest(client, `SELECT pg_cancel_backend(${pid})`);
+		},
+		dropIndex: async (indexName) => {
+			const escaped = indexName.replace(/'/g, "''");
+			await psqlRequest(client, `DROP INDEX IF EXISTS "${escaped}"`);
+		},
+		getTableInfo: async (schema, name) => {
+			const d = await fetchTableDetails(client, schema, name);
+			return {
+				columns: d.columns.map((c) => ({
+					name: c.column_name,
+					type: formatColumnType(c),
+					nullable: c.is_nullable === "YES",
+				})),
+				indexes: d.indexes.map((idx) => ({
+					name: idx.indexname,
+					type: extractIndexType(idx.indexdef),
+					definition: idx.indexdef,
+				})),
+				rowCount: d.rowCount,
+				tableSize: d.tableSize,
+				indexesSize: d.indexesSize,
+			};
+		},
+		getRowLimit: () => rowLimit,
+		setRowLimit,
 		getHistory: (search, limit) => {
 			const entries = (historyData?.entry ?? []).flatMap((e) => {
 				const r = e.resource;
@@ -1191,6 +1291,7 @@ function DbConsolePage() {
 			return limit ? filtered.slice(0, limit) : filtered;
 		},
 		openHistoryEntry: handleHistoryItemClick,
+		getSchemas: () => schemas,
 	};
 
 	useWebMCPSql(dbConsoleActionsRef);

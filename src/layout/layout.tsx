@@ -8,22 +8,12 @@ import { useUserInfo } from "../api/auth";
 import { useLocalStorage } from "../hooks";
 import { SIDEBAR_MODE_KEY } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
-import {
-	useWebMCPNavigation,
-	useWebMCPPackages,
-	useWebMCPResources,
-	useWebMCPRest,
-} from "../webmcp";
+import "../webmcp";
 import { Navbar } from "./navbar";
 import { AidboxSidebar } from "./sidebar";
 
 function Layout({ children }: PropsWithChildren) {
 	useUserInfo();
-	useWebMCPNavigation();
-	useWebMCPPackages();
-	useWebMCPResources();
-	useWebMCPRest();
-
 	useEffect(() => {
 		document.getElementById("sk")?.remove();
 	}, []);
