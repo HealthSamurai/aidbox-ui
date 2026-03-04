@@ -69,12 +69,9 @@ export function SettingsContent({
 	const sorted = sortSettingsByCategory(grouped);
 
 	return (
-		<ScrollArea className="h-full flex-1">
-			<div className="@container mx-auto max-w-[990px] pt-2">
-				<RestartRequiredAlert settings={allSettings} />
-				<DeprecatedCapabilitiesAlert capabilities={deprecatedCapabilities} />
-
-				<div className="mb-6 px-16">
+		<div className="relative flex h-full flex-col">
+			<div className="bg-bg-primary px-16 py-4">
+				<div className="mx-auto w-1/2">
 					<Input
 						value={search}
 						onChange={(e) => onSearchChange(e.target.value)}
@@ -83,37 +80,47 @@ export function SettingsContent({
 						className="rounded-full"
 					/>
 				</div>
-
-				{sorted.length === 0 ? (
-					<p className="py-8 text-center text-text-secondary">
-						No settings found
-					</p>
-				) : (
-					<div className="space-y-10">
-						{sorted.map(([catKey, settings]) => {
-							const category = settings[0].category;
-							return (
-								<CategorySection
-									key={catKey}
-									category={category}
-									description={getCategoryDescription(category)}
-									settings={settings}
-									isDebugMode={isDebugMode}
-									pendingChanges={pendingChanges}
-									confirmations={confirmations}
-									errors={errors}
-									onValueChange={onValueChange}
-									onSave={onSave}
-									onCancel={onCancel}
-									onClearError={onClearError}
-									onImmediateSave={onImmediateSave}
-									boxInfo={boxInfo}
-								/>
-							);
-						})}
-					</div>
-				)}
 			</div>
-		</ScrollArea>
+
+			<ScrollArea className="min-h-0 flex-1">
+				<div className="@container mx-auto max-w-[990px] pb-20 pt-2">
+					<DeprecatedCapabilitiesAlert capabilities={deprecatedCapabilities} />
+
+					{sorted.length === 0 ? (
+						<p className="py-8 text-center text-text-secondary">
+							No settings found
+						</p>
+					) : (
+						<div className="mt-6 space-y-10">
+							{sorted.map(([catKey, settings]) => {
+								const category = settings[0].category;
+								return (
+									<CategorySection
+										key={catKey}
+										category={category}
+										description={getCategoryDescription(category)}
+										settings={settings}
+										isDebugMode={isDebugMode}
+										pendingChanges={pendingChanges}
+										confirmations={confirmations}
+										errors={errors}
+										onValueChange={onValueChange}
+										onSave={onSave}
+										onCancel={onCancel}
+										onClearError={onClearError}
+										onImmediateSave={onImmediateSave}
+										boxInfo={boxInfo}
+									/>
+								);
+							})}
+						</div>
+					)}
+				</div>
+			</ScrollArea>
+
+			<div className="absolute bottom-0 right-0 z-20 p-4">
+				<RestartRequiredAlert settings={allSettings} />
+			</div>
+		</div>
 	);
 }
