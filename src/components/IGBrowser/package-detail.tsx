@@ -711,9 +711,9 @@ function CanonicalsContent({
 					}
 				/>
 			</div>
-			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:h-full">
-				<HSComp.Table zebra>
-					<HSComp.TableHeader className="block scrollbar-none [&_tr]:table [&_tr]:w-full">
+			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:flex [&_table]:flex-col [&_table]:h-full">
+				<HSComp.Table zebra className="typo-code">
+					<HSComp.TableHeader className="block shrink-0 overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 						<HSComp.TableRow>
 							<HSComp.TableHead className="w-48 pl-7!">
 								Resource Type
@@ -721,10 +721,7 @@ function CanonicalsContent({
 							<HSComp.TableHead>URL</HSComp.TableHead>
 						</HSComp.TableRow>
 					</HSComp.TableHeader>
-					<HSComp.TableBody
-						className="block overflow-y-auto [&_tr]:table [&_tr]:w-full"
-						style={{ height: "calc(100% - 41px)" }}
-					>
+					<HSComp.TableBody className="block grow min-h-0 overflow-y-auto pb-10 [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 						{isLoading
 							? Array.from({ length: 30 }, (_, i) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton

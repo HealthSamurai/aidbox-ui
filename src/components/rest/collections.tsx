@@ -420,11 +420,11 @@ function CollectionMoreButton({
 						<ReactComponents.AlertDialogTitle>
 							Delete snippet?
 						</ReactComponents.AlertDialogTitle>
-						<ReactComponents.AlertDialogDescription>
-							Are you sure you want to delete this collection? This action
-							cannot be undone.
-						</ReactComponents.AlertDialogDescription>
 					</ReactComponents.AlertDialogHeader>
+					<ReactComponents.AlertDialogDescription>
+						Are you sure you want to delete this collection? This action cannot
+						be undone.
+					</ReactComponents.AlertDialogDescription>
 					<ReactComponents.AlertDialogFooter>
 						<ReactComponents.AlertDialogCancel
 							onClick={() => setIsAlertDialogOpen(false)}
@@ -438,11 +438,8 @@ function CollectionMoreButton({
 								handleDeleteCollection(client, itemData, queryClient);
 								setIsAlertDialogOpen(false);
 							}}
-							asChild
 						>
-							<span>
-								<Lucide.Trash /> Delete
-							</span>
+							Delete
 						</ReactComponents.AlertDialogAction>
 					</ReactComponents.AlertDialogFooter>
 				</ReactComponents.AlertDialogContent>
@@ -508,11 +505,11 @@ function SnippetMoreButton({
 						<ReactComponents.AlertDialogTitle>
 							Delete snippet?
 						</ReactComponents.AlertDialogTitle>
-						<ReactComponents.AlertDialogDescription>
-							Are you sure you want to delete this snippet? This action cannot
-							be undone.
-						</ReactComponents.AlertDialogDescription>
 					</ReactComponents.AlertDialogHeader>
+					<ReactComponents.AlertDialogDescription>
+						Are you sure you want to delete this snippet? This action cannot be
+						undone.
+					</ReactComponents.AlertDialogDescription>
 					<ReactComponents.AlertDialogFooter>
 						<ReactComponents.AlertDialogCancel
 							onClick={() => setIsAlertDialogOpen(false)}
@@ -532,11 +529,8 @@ function SnippetMoreButton({
 								);
 								setIsAlertDialogOpen(false);
 							}}
-							asChild
 						>
-							<span>
-								<Lucide.Trash /> Delete
-							</span>
+							Delete
 						</ReactComponents.AlertDialogAction>
 					</ReactComponents.AlertDialogFooter>
 				</ReactComponents.AlertDialogContent>

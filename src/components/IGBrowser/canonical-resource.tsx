@@ -488,7 +488,7 @@ function ExpansionTab({
 						No expansion results
 					</div>
 				) : (
-					<HSComp.Table zebra stickyHeader>
+					<HSComp.Table zebra stickyHeader className="typo-code">
 						<HSComp.TableHeader>
 							<HSComp.TableRow>
 								<HSComp.TableHead className="pl-7!">Code</HSComp.TableHead>

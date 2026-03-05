@@ -2378,7 +2378,7 @@ function QueryResult({
 				/>
 			) : (
 				<div className="flex-1 overflow-auto min-h-0">
-					<Table stickyHeader>
+					<Table stickyHeader className="typo-code">
 						<TableHeader>
 							<TableRow>
 								{columns.map((key) => (

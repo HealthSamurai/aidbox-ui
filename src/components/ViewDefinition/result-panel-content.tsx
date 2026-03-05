@@ -175,7 +175,7 @@ const ResultContent = ({
 
 		return (
 			<div ref={containerRef} className="flex-1 overflow-auto min-h-0">
-				<Table zebra stickyHeader>
+				<Table zebra stickyHeader className="typo-code">
 					<TableHeader>
 						<TableRow>
 							{columns.map((key, i) => (

@@ -66,8 +66,8 @@ function ResourceList({
 		});
 
 	return (
-		<HSComp.Table zebra stickyHeader>
-			<HSComp.TableHeader>
+		<HSComp.Table zebra className="typo-code">
+			<HSComp.TableHeader className="block shrink-0 overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 				<HSComp.TableRow>
 					<HSComp.TableHead className="w-8 text-text-secondary">
 						<span className="opacity-50">
@@ -91,7 +91,7 @@ function ResourceList({
 					</HSComp.TableHead>
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
-			<HSComp.TableBody>
+			<HSComp.TableBody className="block grow min-h-0 overflow-y-auto pb-10 [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 				{isLoading
 					? skeletonRows
 					: data.length
@@ -238,6 +238,7 @@ export function Browser() {
 			const aFav = favorites.has(a.resourceType);
 			const bFav = favorites.has(b.resourceType);
 			if (aFav !== bFav) return aFav ? -1 : 1;
+			if (filterQuery) return 0;
 			const cmp = a[sort.column].localeCompare(b[sort.column]);
 			return sort.direction === "asc" ? cmp : -cmp;
 		});
@@ -255,11 +256,13 @@ export function Browser() {
 			if (filter !== undefined) {
 				setFilterQuery(filter);
 			}
-			const results = fuzzySearch(filter ?? filterQuery);
+			const effectiveQuery = filter ?? filterQuery;
+			const results = fuzzySearch(effectiveQuery);
 			const sorted = [...results].sort((a, b) => {
 				const aFav = favorites.has(a.resourceType);
 				const bFav = favorites.has(b.resourceType);
 				if (aFav !== bFav) return aFav ? -1 : 1;
+				if (effectiveQuery) return 0;
 				const cmp = a[sort.column].localeCompare(b[sort.column]);
 				return sort.direction === "asc" ? cmp : -cmp;
 			});
@@ -344,7 +347,7 @@ export function Browser() {
 					Search
 				</HSComp.Button>
 			</div>
-			<div className="grow min-h-0">
+			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:flex [&_table]:flex-col [&_table]:h-full">
 				{!isLoading && filteredData.length === 0 ? (
 					<EmptyState
 						title="No resource types found"

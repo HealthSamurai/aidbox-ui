@@ -303,7 +303,7 @@ export const ResourcesTabTable = ({
 	const dynamicKeys = resourceKeys.filter((k) => k !== "id" && k !== "meta");
 
 	return (
-		<HSComp.Table zebra stickyHeader>
+		<HSComp.Table zebra stickyHeader className="typo-code">
 			<HSComp.TableHeader>
 				<HSComp.TableRow>
 					<HSComp.TableHead className="w-[52px] min-w-[52px]">
@@ -389,15 +389,34 @@ export const ResourcesTabTable = ({
 									{},
 								)}
 							</HSComp.TableCell>
-							{dynamicKeys.map((k) => (
-								<HSComp.TableCell key={k}>
-									{Humanize.humanizeValue(
-										k,
-										(resource as Record<string, unknown>)[k],
-										snapshot ?? {},
-									)}
-								</HSComp.TableCell>
-							))}
+							{dynamicKeys.map((k) => {
+								const v = (resource as Record<string, unknown>)[k];
+								const hasValue = v != null;
+								return (
+									<HSComp.TableCell key={k} className="max-w-[300px]">
+										<HSComp.Tooltip
+											delayDuration={500}
+											open={hasValue ? undefined : false}
+										>
+											<HSComp.TooltipTrigger asChild>
+												<span className="block truncate">
+													{Humanize.humanizeValue(k, v, snapshot ?? {})}
+												</span>
+											</HSComp.TooltipTrigger>
+											<HSComp.TooltipContent
+												side="bottom"
+												className="max-w-[500px] typo-code"
+											>
+												<pre className="whitespace-pre-wrap break-all text-xs">
+													{typeof v === "object"
+														? JSON.stringify(v, null, 2)
+														: String(v ?? "")}
+												</pre>
+											</HSComp.TooltipContent>
+										</HSComp.Tooltip>
+									</HSComp.TableCell>
+								);
+							})}
 						</HSComp.TableRow>
 					);
 				})}
@@ -979,7 +998,7 @@ const ProfilesTabContent = ({
 		: null;
 
 	const profilesTable = (
-		<HSComp.Table zebra stickyHeader>
+		<HSComp.Table zebra stickyHeader className="typo-code">
 			<HSComp.TableHeader>
 				<HSComp.TableRow>
 					<HSComp.TableHead>URL</HSComp.TableHead>
@@ -1162,7 +1181,7 @@ const SearchParametersTabContent = ({
 
 	return (
 		<div className="h-full overflow-auto">
-			<HSComp.Table zebra stickyHeader>
+			<HSComp.Table zebra stickyHeader className="typo-code">
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
 						<HSComp.TableHead>Definition</HSComp.TableHead>

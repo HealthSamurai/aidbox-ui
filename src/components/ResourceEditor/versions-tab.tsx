@@ -424,40 +424,40 @@ export const VersionsTab = ({
 			</HSComp.Tabs>
 
 			{/* Restore confirmation dialog */}
-			<HSComp.Dialog open={confirmRestore} onOpenChange={setConfirmRestore}>
+			<HSComp.AlertDialog
+				open={confirmRestore}
+				onOpenChange={setConfirmRestore}
+			>
 				{selectedVersion && (
-					<HSComp.DialogContent showCloseButton={false}>
-						<HSComp.DialogHeader>
-							<HSComp.DialogTitle>Confirm Restore</HSComp.DialogTitle>
-						</HSComp.DialogHeader>
-						<div className="py-4">
-							<p>
-								Are you sure you want to restore the resource to this version?
-							</p>
-							<p className="mt-2">
+					<HSComp.AlertDialogContent>
+						<HSComp.AlertDialogHeader>
+							<HSComp.AlertDialogTitle>Confirm Restore</HSComp.AlertDialogTitle>
+						</HSComp.AlertDialogHeader>
+						<HSComp.AlertDialogDescription>
+							Are you sure you want to restore the resource to this version?
+							<div className="mt-2">
 								<strong>Version ID:</strong> {selectedVersion.versionId}
-							</p>
-							<p>
+							</div>
+							<div>
 								<strong>Created at:</strong> {selectedVersion.date}
-							</p>
-						</div>
-						<div className="flex gap-2 justify-end">
-							<HSComp.Button
-								variant="secondary"
+							</div>
+						</HSComp.AlertDialogDescription>
+						<HSComp.AlertDialogFooter>
+							<HSComp.AlertDialogCancel
 								onClick={() => setConfirmRestore(false)}
 							>
 								Cancel
-							</HSComp.Button>
-							<HSComp.Button
+							</HSComp.AlertDialogCancel>
+							<HSComp.AlertDialogAction
 								variant="primary"
 								onClick={() => mutation.mutate(selectedVersion.resourceCurrent)}
 							>
 								Restore
-							</HSComp.Button>
-						</div>
-					</HSComp.DialogContent>
+							</HSComp.AlertDialogAction>
+						</HSComp.AlertDialogFooter>
+					</HSComp.AlertDialogContent>
 				)}
-			</HSComp.Dialog>
+			</HSComp.AlertDialog>
 		</div>
 	);
 };

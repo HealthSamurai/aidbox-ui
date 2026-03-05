@@ -382,8 +382,8 @@ function RegistryForm({
 			/>
 
 			<div className="rounded border border-border-secondary overflow-clip [&_[data-slot=table-container]]:overflow-visible">
-				<HSComp.Table zebra>
-					<HSComp.TableHeader className="block overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:w-full">
+				<HSComp.Table zebra className="typo-code">
+					<HSComp.TableHeader className="block overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 						<HSComp.TableRow>
 							<HSComp.TableHead className="w-10" />
 							<HSComp.TableHead>Package</HSComp.TableHead>
@@ -392,7 +392,7 @@ function RegistryForm({
 					<HSComp.TableBody
 						ref={tbodyRef}
 						onScroll={handleTbodyScroll}
-						className="block h-80 overflow-y-auto [&_tr]:table [&_tr]:w-full"
+						className="block h-80 overflow-y-auto [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full"
 					>
 						{!indexLoaded
 							? registrySkeletonRows
