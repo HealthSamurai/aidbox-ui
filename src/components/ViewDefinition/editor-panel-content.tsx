@@ -405,7 +405,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 	});
 
 	const viewDefinitionMaterializeMutation = useMutation({
-		mutationFn: ({
+		mutationFn: async ({
 			viewDefinition,
 			materializeType,
 		}: {
@@ -425,7 +425,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 					},
 				],
 			};
-			return client.rawRequest({
+			const data = await client.rawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$materialize",
 				headers: {
@@ -434,9 +434,9 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 				},
 				body: JSON.stringify(parametersPayload),
 			});
+			return await data.response.json();
 		},
-		onSuccess: async (data) => {
-			const response = await data.response.json();
+		onSuccess: (response) => {
 			const viewName =
 				response.parameter?.find((p: { name: string }) => p.name === "viewName")
 					?.valueString || "unknown";
@@ -556,11 +556,10 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 	) => {
 		if (!viewDefinitionResource)
 			throw new Error("No ViewDefinition to materialize");
-		const data = await viewDefinitionMaterializeMutation.mutateAsync({
+		const response = await viewDefinitionMaterializeMutation.mutateAsync({
 			viewDefinition: viewDefinitionResource,
 			materializeType: type,
 		});
-		const response = await data.response.json();
 		return (
 			response.parameter?.find((p: { name: string }) => p.name === "viewName")
 				?.valueString || "unknown"
