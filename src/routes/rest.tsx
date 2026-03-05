@@ -1,3 +1,5 @@
+import { Prec } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
@@ -69,6 +71,10 @@ import { useWebMCPRestConsole } from "../webmcp/rest-console";
 import type { RestConsoleActions } from "../webmcp/rest-console-context";
 
 const TITLE = "REST Console";
+
+const preventNewlineOnModEnter = Prec.highest(
+	keymap.of([{ key: "Mod-Enter", run: () => true }]),
+);
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -145,6 +151,7 @@ function RawEditor({
 			key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
 			defaultValue={currentValue}
 			mode="http"
+			additionalExtensions={preventNewlineOnModEnter}
 			{...(onRawChange ? { onChange: onRawChange } : {})}
 		/>
 	);
@@ -483,6 +490,7 @@ function RequestView({
 						currentValue={getEditorValue()}
 						mode={bodyMode}
 						onChange={handleBodyEditorChange}
+						additionalExtensions={preventNewlineOnModEnter}
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
@@ -1621,6 +1629,17 @@ function RouteComponent() {
 		);
 	}, [selectedTab, queryClient, client]);
 
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+				e.preventDefault();
+				doSendRequest();
+			}
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [doSendRequest]);
+
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
 		setTabs((currentTabs) =>
@@ -1830,16 +1849,7 @@ function RouteComponent() {
 
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut handler on layout container */}
-			<div
-				className="w-full h-full"
-				onKeyDown={(event) => {
-					if (event.ctrlKey && event.key === "Enter") {
-						event.preventDefault();
-						doSendRequest();
-					}
-				}}
-			>
+			<div className="w-full h-full">
 				<ResizablePanelGroup direction="horizontal" className="w-full h-full">
 					<ResizablePanel
 						ref={leftPanelRef}
