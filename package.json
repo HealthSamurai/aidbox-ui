@@ -16,7 +16,9 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"all": "pnpm format && pnpm typecheck && biome check --write --diagnostic-level=error",
 		"hooks": "cp .hooks/* .git/hooks/",
-		"generate-types": "pnpm exec tsx scripts/generate-types.ts"
+		"generate-types": "pnpm exec tsx scripts/generate-types.ts",
+		"ts-sdk:init": "sh scripts/ts-sdk.sh init",
+		"ts-sdk:update": "sh scripts/ts-sdk.sh update"
 	},
 	"keywords": [],
 	"author": "Health Samurai",

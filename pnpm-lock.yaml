@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@health-samurai/react-components': link:../aidbox-ts-sdk/packages/react-components
+  '@health-samurai/react-components': link:./aidbox-ts-sdk/packages/react-components
 
 importers:
 
@@ -39,11 +39,11 @@ importers:
         specifier: 0.0.0-alpha.6
         version: 0.0.0-alpha.6(@codemirror/lsp-client@6.2.1)(@codemirror/state@6.5.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.9.2)
       '@health-samurai/react-components':
-        specifier: link:../aidbox-ts-sdk/packages/react-components
-        version: link:../aidbox-ts-sdk/packages/react-components
+        specifier: link:aidbox-ts-sdk/packages/react-components
+        version: link:aidbox-ts-sdk/packages/react-components
       '@mcp-b/global':
         specifier: ^2.0.11
-        version: 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+        version: 2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
       '@tanstack/react-query':
         specifier: ^5.85.3
         version: 5.90.2(react@19.1.1)
@@ -88,7 +88,7 @@ importers:
         version: 15.6.9
       zod-to-json-schema:
         specifier: ^3.25.1
-        version: 3.25.1(zod@3.25.76)
+        version: 3.25.1(zod@4.3.6)
     devDependencies:
       '@atomic-ehr/codegen':
         specifier: canary
@@ -1978,6 +1978,9 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
 snapshots:
 
   '@atomic-ehr/codegen@0.0.2-canary.20251117105828.24a32f4(typescript@5.9.2)':
@@ -2603,19 +2606,19 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
-  '@mcp-b/global@2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+  '@mcp-b/global@2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)':
     dependencies:
-      '@mcp-b/transports': 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))
+      '@mcp-b/transports': 2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))
       '@mcp-b/webmcp-polyfill': 2.0.11
-      '@mcp-b/webmcp-ts-sdk': 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/webmcp-ts-sdk': 2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
       '@mcp-b/webmcp-types': 2.0.11
     transitivePeerDependencies:
       - zod
       - zod-to-json-schema
 
-  '@mcp-b/transports@2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))':
+  '@mcp-b/transports@2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))':
     dependencies:
-      '@mcp-b/webmcp-ts-sdk': 2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/webmcp-ts-sdk': 2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - zod-to-json-schema
@@ -2626,13 +2629,21 @@ snapshots:
       '@mcp-b/webmcp-types': 2.0.11
       '@standard-schema/spec': 1.1.0
 
-  '@mcp-b/webmcp-ts-sdk@2.0.11(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+  '@mcp-b/webmcp-ts-sdk@2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@3.25.76)':
     dependencies:
       '@mcp-b/webmcp-polyfill': 2.0.11
       '@mcp-b/webmcp-types': 2.0.11
     optionalDependencies:
       zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
+
+  '@mcp-b/webmcp-ts-sdk@2.0.11(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)':
+    dependencies:
+      '@mcp-b/webmcp-polyfill': 2.0.11
+      '@mcp-b/webmcp-types': 2.0.11
+    optionalDependencies:
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
 
   '@mcp-b/webmcp-types@2.0.11': {}
 
@@ -3705,8 +3716,10 @@ snapshots:
 
   yoctocolors-cjs@2.1.3: {}
 
-  zod-to-json-schema@3.25.1(zod@3.25.76):
+  zod-to-json-schema@3.25.1(zod@4.3.6):
     dependencies:
-      zod: 3.25.76
+      zod: 4.3.6
 
   zod@3.25.76: {}
+
+  zod@4.3.6: {}

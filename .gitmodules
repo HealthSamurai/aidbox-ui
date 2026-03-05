@@ -1,0 +1,5 @@
+[submodule "aidbox-ts-sdk"]
+	path = aidbox-ts-sdk
+	url = git@github.com:HealthSamurai/aidbox-ts-sdk.git
+	shallow = true
+	branch = development
