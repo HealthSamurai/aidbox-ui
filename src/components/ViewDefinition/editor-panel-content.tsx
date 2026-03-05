@@ -614,11 +614,22 @@ export const EditorPanelContent = ({
 		setViewDefinition: (vd) => {
 			viewDefinitionContext.setViewDefinition(vd);
 			viewDefinitionContext.setIsDirty(true);
+			if (vd.resource) {
+				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
+					vd.resource,
+				);
+			}
 		},
 		getResourceType: () =>
 			viewDefinitionResourceTypeContext.viewDefinitionResourceType,
-		setResourceType: (rt) =>
-			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(rt),
+		setResourceType: (rt) => {
+			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(rt);
+			const vd = viewDefinitionContext.viewDefinition;
+			if (vd) {
+				viewDefinitionContext.setViewDefinition({ ...vd, resource: rt });
+				viewDefinitionContext.setIsDirty(true);
+			}
+		},
 		run: handleRunAsync,
 		save: handleSaveAsync,
 		materialize: handleMaterializeAsync,

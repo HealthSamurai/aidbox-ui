@@ -68,7 +68,8 @@ export function useWebMCPViewDefinition(
 			name: "vd_set_view_definition",
 			description:
 				"[ViewDefinition Builder] Set the ViewDefinition resource. " +
-				"Pass a complete ViewDefinition JSON object as a string.",
+				"Pass a complete ViewDefinition JSON object as a string. " +
+				"resourceType is auto-added if missing. Also updates the resource type selector.",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -82,6 +83,7 @@ export function useWebMCPViewDefinition(
 			execute: async (args: { value: string }) => {
 				try {
 					const vd = JSON.parse(args.value);
+					if (!vd.resourceType) vd.resourceType = "ViewDefinition";
 					actionsRef.current.setViewDefinition(vd);
 					return textResult("ViewDefinition updated");
 				} catch (e) {
@@ -106,7 +108,8 @@ export function useWebMCPViewDefinition(
 		navigator.modelContext.registerTool({
 			name: "vd_set_resource_type",
 			description:
-				"[ViewDefinition Builder] Set the resource type for the ViewDefinition.",
+				"[ViewDefinition Builder] Set the resource type (the 'resource' field) for the ViewDefinition. " +
+				"Updates both the ViewDefinition and the Instances panel.",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -699,7 +702,7 @@ export function useWebMCPViewDefinition(
 		navigator.modelContext.registerTool({
 			name: "vd_add_column",
 			description:
-				"[ViewDefinition Builder Form] Add a new column to a column-type select item. " +
+				"[ViewDefinition Builder Form] Add a new column to any select item (column, forEach, forEachOrNull, unionAll). " +
 				"Optionally provide name and path to set them immediately (recommended to avoid race conditions). " +
 				"Returns the column nodeId.",
 			inputSchema: {

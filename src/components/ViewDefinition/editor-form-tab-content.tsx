@@ -569,7 +569,7 @@ export const FormTabContent = ({
 			items: SelectItemInternal[],
 		): SelectItemInternal[] => {
 			return items.map((item) => {
-				if (item.nodeId === selectItemId && item.type === "column") {
+				if (item.nodeId === selectItemId) {
 					return {
 						...item,
 						column: [
