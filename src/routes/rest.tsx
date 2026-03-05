@@ -1121,7 +1121,7 @@ function SendButton(
 					Send
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+			<TooltipContent>Send request (Ctrl+Enter / ⌘+Enter)</TooltipContent>
 		</Tooltip>
 	);
 }
