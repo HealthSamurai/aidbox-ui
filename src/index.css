@@ -3,6 +3,26 @@
 @import "@health-samurai/react-components/css";
 @source "../node_modules/@health-samurai/react-components";
 
+/* Consistent scrollbar across browsers */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-border-primary) transparent;
+}
+
+*::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--color-border-primary);
+	border-radius: 9999px;
+}
+
 /* Show pin button on table row hover */
 tr:hover .pin-button {
 	opacity: 0.5 !important;
