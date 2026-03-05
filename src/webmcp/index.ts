@@ -1,4 +1,5 @@
 import "@mcp-b/global";
+import { THEME_KEY } from "../shared/const";
 
 const pages = [
 	{
@@ -275,5 +276,37 @@ if (navigator.modelContext) {
 				},
 			],
 		}),
+	});
+
+	navigator.modelContext.registerTool({
+		name: "set_theme",
+		description:
+			"[Global] Set the UI theme to light or dark mode. " +
+			"If no mode is provided, toggles between light and dark.",
+		inputSchema: {
+			type: "object",
+			properties: {
+				mode: {
+					type: "string",
+					enum: ["light", "dark"],
+					description: "Theme mode. Omit to toggle.",
+				},
+			},
+		},
+		execute: async (args: { mode?: "light" | "dark" }) => {
+			const raw = localStorage.getItem(THEME_KEY);
+			const current: "light" | "dark" = raw ? JSON.parse(raw) : "light";
+			const next = args.mode ?? (current === "dark" ? "light" : "dark");
+			localStorage.setItem(THEME_KEY, JSON.stringify(next));
+			document.documentElement.classList.toggle("dark", next === "dark");
+			window.dispatchEvent(
+				new CustomEvent("local-storage", {
+					detail: { key: THEME_KEY, value: next },
+				}),
+			);
+			return {
+				content: [{ type: "text" as const, text: `Theme set to ${next}` }],
+			};
+		},
 	});
 }
