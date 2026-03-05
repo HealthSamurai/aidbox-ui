@@ -313,7 +313,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
-				search: { tab: "edit", mode: "json" },
+				search: { tab: "builder", mode: "json" },
 			});
 		},
 		onError: Utils.onMutationError,
