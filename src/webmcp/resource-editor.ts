@@ -7,6 +7,8 @@ function textResult(text: string) {
 }
 
 const TOOL_NAMES = [
+	"editor_switch_tab",
+	"editor_get_tab",
 	"editor_switch_mode",
 	"editor_get_mode",
 	"editor_get_value",
@@ -26,6 +28,7 @@ const TOOL_NAMES = [
 	"history_get_raw_mode",
 	"history_switch_raw_mode",
 	"history_restore",
+	"history_get_selected_diff",
 ] as const;
 
 export function useWebMCPResourceEditor(
@@ -33,6 +36,37 @@ export function useWebMCPResourceEditor(
 ) {
 	useEffect(() => {
 		if (!navigator.modelContext) return;
+
+		navigator.modelContext.registerTool({
+			name: "editor_switch_tab",
+			description:
+				"[Resource Editor] Switch the active tab. Available tabs: edit (JSON/YAML editor), " +
+				"history (version history), builder (ViewDefinition Builder, only for ViewDefinition resources).",
+			inputSchema: {
+				type: "object",
+				properties: {
+					tab: {
+						type: "string",
+						enum: ["edit", "history", "builder"],
+						description: "Tab to switch to",
+					},
+				},
+				required: ["tab"],
+			},
+			execute: async (args: { tab: "edit" | "history" | "builder" }) => {
+				actionsRef.current.switchTab(args.tab);
+				return textResult(`Switched to ${args.tab} tab`);
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "editor_get_tab",
+			description: "[Resource Editor] Get the currently active tab.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				return textResult(actionsRef.current.getTab());
+			},
+		});
 
 		navigator.modelContext.registerTool({
 			name: "editor_switch_mode",
@@ -330,6 +364,23 @@ export function useWebMCPResourceEditor(
 						`Error: ${e instanceof Error ? e.message : String(e)}`,
 					);
 				}
+			},
+		});
+
+		navigator.modelContext.registerTool({
+			name: "history_get_selected_diff",
+			description:
+				"[Resource Editor] Get the unified text diff between the selected history version " +
+				"and its previous version. Switches to Diff view mode. Requires the History tab to be active.",
+			inputSchema: { type: "object", properties: {} },
+			execute: async () => {
+				actionsRef.current.historySwitchViewMode("diff");
+				const diff = actionsRef.current.historyGetSelectedDiff();
+				if (!diff)
+					return textResult(
+						"No diff available (first version or History tab not active)",
+					);
+				return textResult(diff);
 			},
 		});
 

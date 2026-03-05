@@ -34,6 +34,10 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
+import type {
+	FormTreeSelectItem,
+	ViewDefinitionBuilderActions,
+} from "../../webmcp/view-definition-context";
 import { computeFhirPathContext, FhirPathInput } from "./fhirpath-input";
 import { FhirPathLspProvider } from "./fhirpath-lsp-context";
 import {
@@ -265,7 +269,11 @@ const InputView = ({
 	);
 };
 
-export const FormTabContent = () => {
+export const FormTabContent = ({
+	actionsRef,
+}: {
+	actionsRef: React.RefObject<ViewDefinitionBuilderActions>;
+}) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
 	const { viewDefinitionResourceType, setViewDefinitionResourceType } =
@@ -389,11 +397,11 @@ export const FormTabContent = () => {
 	);
 
 	// Function to add a new constant
-	const addConstant = () => {
+	const addConstant = (name?: string, valueString?: string) => {
 		const newConstant = {
 			nodeId: `constant-${constants.length}-${crypto.randomUUID()}`,
-			name: "",
-			valueString: "",
+			name: name ?? "",
+			valueString: valueString ?? "",
 		};
 		const updatedConstants = [...constants, newConstant];
 		setConstants(updatedConstants);
@@ -404,6 +412,7 @@ export const FormTabContent = () => {
 		setCollapsedItemIds(newCollapsedIds);
 
 		updateViewDefinition(updatedConstants);
+		return newConstant.nodeId;
 	};
 
 	// Function to update a specific constant
@@ -427,10 +436,10 @@ export const FormTabContent = () => {
 	};
 
 	// Function to add a new where condition
-	const addWhereCondition = () => {
+	const addWhereCondition = (path?: string) => {
 		const newWhere = {
 			nodeId: `where-${whereConditions.length}-${crypto.randomUUID()}`,
-			path: "",
+			path: path ?? "",
 		};
 		const updatedWhere = [...whereConditions, newWhere];
 		setWhereConditions(updatedWhere);
@@ -441,6 +450,7 @@ export const FormTabContent = () => {
 		setCollapsedItemIds(newCollapsedIds);
 
 		updateViewDefinition(undefined, updatedWhere);
+		return newWhere.nodeId;
 	};
 
 	// Function to update a specific where condition
@@ -542,10 +552,15 @@ export const FormTabContent = () => {
 			setSelectItems(updatedItems);
 			updateViewDefinition(undefined, undefined, undefined, updatedItems);
 		}
+		return newItem.nodeId;
 	};
 
 	// Function to add a column to a column-type select item
-	const addColumnToSelectItem = (selectItemId: string) => {
+	const addColumnToSelectItem = (
+		selectItemId: string,
+		name?: string,
+		path?: string,
+	) => {
 		const newColumnId = `col-${Date.now()}-${crypto.randomUUID()}`;
 
 		const parentPath = findPath(selectItems, selectItemId);
@@ -561,8 +576,8 @@ export const FormTabContent = () => {
 							...(item.column || []),
 							{
 								nodeId: newColumnId,
-								name: "",
-								path: "",
+								name: name ?? "",
+								path: path ?? "",
 							},
 						],
 					};
@@ -591,6 +606,7 @@ export const FormTabContent = () => {
 
 		setSelectItems(updatedItems);
 		updateViewDefinition(undefined, undefined, undefined, updatedItems);
+		return newColumnId;
 	};
 
 	// Function to update a column in a select item
@@ -1564,6 +1580,68 @@ export const FormTabContent = () => {
 			}
 		}
 	};
+
+	// Populate form actions on actionsRef
+	const serializeSelectItems = useCallback(
+		(items: SelectItemInternal[]): FormTreeSelectItem[] => {
+			return items.map((item) => ({
+				nodeId: item.nodeId,
+				type: item.type,
+				...(item.expression !== undefined
+					? { expression: item.expression }
+					: {}),
+				...(item.column
+					? {
+							columns: item.column.map((c) => ({
+								nodeId: c.nodeId,
+								name: c.name,
+								path: c.path,
+							})),
+						}
+					: {}),
+				...(item.children?.length
+					? { children: serializeSelectItems(item.children) }
+					: {}),
+			}));
+		},
+		[],
+	);
+
+	actionsRef.current.getFormTree = () => ({
+		name: viewDefinition?.name,
+		status: viewDefinition?.status,
+		resourceType: viewDefinitionResourceType,
+		constants: constants.map((c) => ({
+			nodeId: c.nodeId,
+			name: c.name,
+			value: c.valueString,
+		})),
+		where: whereConditions.map((w) => ({
+			nodeId: w.nodeId,
+			path: w.path,
+		})),
+		select: serializeSelectItems(selectItems),
+	});
+	actionsRef.current.setName = updateName;
+	actionsRef.current.setStatus = updateStatus;
+	actionsRef.current.addConstant = addConstant;
+	actionsRef.current.updateConstant = updateConstant;
+	actionsRef.current.removeConstant = removeConstant;
+	actionsRef.current.addWhere = addWhereCondition;
+	actionsRef.current.updateWhere = updateWhereCondition;
+	actionsRef.current.removeWhere = removeWhereCondition;
+	actionsRef.current.addSelect = (type, parentNodeId?) => {
+		if (parentNodeId) {
+			const path = findPath(selectItems, parentNodeId) ?? [];
+			return addSelectItem(type, [...path, parentNodeId]);
+		}
+		return addSelectItem(type);
+	};
+	actionsRef.current.removeSelect = removeSelectItem;
+	actionsRef.current.updateSelectExpression = updateSelectExpression;
+	actionsRef.current.addColumn = addColumnToSelectItem;
+	actionsRef.current.updateColumn = updateSelectColumn;
+	actionsRef.current.removeColumn = removeSelectColumn;
 
 	if (!viewDefinition) {
 		return null;

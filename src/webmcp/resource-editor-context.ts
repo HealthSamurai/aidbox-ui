@@ -1,6 +1,8 @@
 import type { OperationOutcomeIssue } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 
 export interface ResourceEditorActions {
+	switchTab: (tab: "edit" | "history" | "builder") => void;
+	getTab: () => "edit" | "history" | "builder";
 	editorSwitchMode: (mode: "json" | "yaml") => void;
 	editorGetMode: () => "json" | "yaml";
 	editorGetValue: () => string;
@@ -42,4 +44,5 @@ export interface ResourceEditorActions {
 	historyRestore: () => Promise<
 		{ status: "ok" } | { status: "error"; message: string }
 	>;
+	historyGetSelectedDiff: () => string | null;
 }

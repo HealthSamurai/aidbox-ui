@@ -1,29 +1,21 @@
 import { Button, Input } from "@health-samurai/react-components";
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import { ViewDefinitionResourceTypeContext } from "./page";
 
-const handleKeyPress = (
-	e: React.KeyboardEvent<HTMLInputElement>,
-	handleSearch: (query?: string) => void,
-	searchQuery?: string,
-) => {
-	if (e.key === "Enter") {
-		handleSearch(searchQuery);
-	}
-};
-
 export function SearchBar({
+	value,
+	onChange,
 	handleSearch,
 	isLoadingExample,
 }: {
-	handleSearch: (query?: string) => void;
+	value: string;
+	onChange: (value: string) => void;
+	handleSearch: () => void;
 	isLoadingExample: boolean;
 }) {
 	const viewDefinitionTypeContext = useContext(
 		ViewDefinitionResourceTypeContext,
 	);
-
-	const [searchQuery, setSearchQuery] = useState("");
 
 	return (
 		<div className="px-4 py-3 border-b bg-bg-tertiary">
@@ -38,17 +30,15 @@ export function SearchBar({
 						</span>
 					}
 					placeholder={`e.g., _id=123, name=John, _count=10`}
-					value={searchQuery}
-					onChange={(e) => setSearchQuery(e.target.value)}
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
 					onKeyPress={(e) => {
-						handleKeyPress(e, handleSearch, searchQuery);
+						if (e.key === "Enter") handleSearch();
 					}}
 				/>
 				<Button
 					variant="secondary"
-					onClick={() => {
-						handleSearch(searchQuery);
-					}}
+					onClick={handleSearch}
 					disabled={isLoadingExample}
 				>
 					Search

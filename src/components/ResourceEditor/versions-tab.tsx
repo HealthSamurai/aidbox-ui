@@ -206,6 +206,37 @@ export const VersionsTab = ({
 		actionsRef.current.historySwitchRawMode = (mode: "json" | "yaml") => {
 			setEditorMode(mode);
 		};
+		actionsRef.current.historyGetSelectedDiff = () => {
+			if (!selectedVersion?.resourcePrevious) return null;
+			const prev = JSON.stringify(
+				deepSortObject(selectedVersion.resourcePrevious),
+				null,
+				2,
+			);
+			const curr = JSON.stringify(
+				deepSortObject(selectedVersion.resourceCurrent),
+				null,
+				2,
+			);
+			const prevLines = prev.split("\n");
+			const currLines = curr.split("\n");
+			const lines: string[] = [
+				`--- version ${versions.find((v) => v.resourceCurrent === selectedVersion.resourcePrevious)?.versionId ?? "previous"}`,
+				`+++ version ${selectedVersion.versionId}`,
+			];
+			const max = Math.max(prevLines.length, currLines.length);
+			for (let i = 0; i < max; i++) {
+				const p = prevLines[i];
+				const c = currLines[i];
+				if (p === c) {
+					lines.push(` ${p}`);
+				} else {
+					if (p !== undefined) lines.push(`-${p}`);
+					if (c !== undefined) lines.push(`+${c}`);
+				}
+			}
+			return lines.join("\n");
+		};
 		actionsRef.current.historyRestore = async () => {
 			if (!selectedVersion)
 				return { status: "error", message: "No version selected" };

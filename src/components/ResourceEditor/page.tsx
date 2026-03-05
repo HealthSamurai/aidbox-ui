@@ -211,9 +211,24 @@ export const ResourceEditorPage = ({
 		return getIssueLineNumbers(resourceText, issues, mode);
 	}, [saveError, resourceText, mode]);
 
+	const handleOnTabSelect = (value: ResourceEditorTab) => {
+		storeSelectedTab(value);
+		navigate({
+			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
+		});
+	};
+
 	const actionsRef = React.useRef<ResourceEditorActions>(null!);
 
 	actionsRef.current = {
+		switchTab: (value: ResourceEditorTab) => {
+			storeSelectedTab(value);
+			const url = new URL(window.location.href);
+			url.searchParams.set("tab", value);
+			window.history.pushState(window.history.state, "", url);
+			window.dispatchEvent(new PopStateEvent("popstate"));
+		},
+		getTab: () => tab,
 		editorSwitchMode: setMode,
 		editorGetMode: () => mode,
 		editorGetValue: () => resourceText,
@@ -275,6 +290,7 @@ export const ResourceEditorPage = ({
 			status: "error",
 			message: "History tab is not active",
 		}),
+		historyGetSelectedDiff: () => null,
 	};
 
 	useWebMCPResourceEditor(actionsRef);
@@ -357,16 +373,9 @@ export const ResourceEditorPage = ({
 		});
 	}
 
-	const handleOnTabSelect = (value: ResourceEditorTab) => {
-		storeSelectedTab(value);
-		navigate({
-			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
-		});
-	};
-
 	const content = (
 		<HSComp.Tabs
-			defaultValue={tab}
+			value={tab}
 			onValueChange={handleOnTabSelect}
 			className="grow min-h-0"
 		>
