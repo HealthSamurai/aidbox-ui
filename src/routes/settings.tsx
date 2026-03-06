@@ -17,7 +17,11 @@ import {
 import { SettingsContent } from "../components/settings/settings-content";
 import { SettingsSidebar } from "../components/settings/settings-sidebar";
 import type { Setting } from "../components/settings/types";
-import { filterSettings, groupByCategory } from "../components/settings/utils";
+import {
+	createSettingsSearch,
+	filterSettings,
+	groupByCategory,
+} from "../components/settings/utils";
 
 export const Route = createFileRoute("/settings")({
 	staticData: { title: "Settings" },
@@ -42,13 +46,24 @@ function SettingsPage() {
 	);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
+	// Build Fuse index once when settings data changes
+	const searchFn = useMemo(
+		() =>
+			allSettings
+				? createSettingsSearch(
+						allSettings.filter((s) => s.category[0] !== "Zen Project"),
+					)
+				: undefined,
+		[allSettings],
+	);
+
 	// Compute visible categories from current filtered data
 	const computedVisibleCategories = useMemo(() => {
 		if (!allSettings) return new Set<string>();
-		const filtered = filterSettings(allSettings, search);
+		const filtered = filterSettings(allSettings, search, searchFn);
 		const grouped = groupByCategory(filtered);
 		return new Set(Object.keys(grouped));
-	}, [allSettings, search]);
+	}, [allSettings, search, searchFn]);
 
 	// Debug mode — always true for now, will be wired to aidbox config
 	const isDebugMode = true;
@@ -214,6 +229,7 @@ function SettingsPage() {
 					onImmediateSave={handleImmediateSave}
 					boxInfo={boxInfo}
 					deprecatedCapabilities={deprecatedCapabilities}
+					searchFn={searchFn}
 				/>
 			</ResizablePanel>
 		</ResizablePanelGroup>

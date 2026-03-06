@@ -92,8 +92,8 @@ export function isValueFromAidboxSetting(setting: Setting): boolean {
 	);
 }
 
-function fuzzySearchSettings(settings: Setting[], query: string): Setting[] {
-	const search = createFuzzySearch(settings, {
+export function createSettingsSearch(settings: Setting[]) {
+	return createFuzzySearch(settings, {
 		threshold: 0.2,
 		keys: [
 			{ name: "name", weight: 4 },
@@ -102,14 +102,17 @@ function fuzzySearchSettings(settings: Setting[], query: string): Setting[] {
 			{ name: "description", weight: 1 },
 		],
 	});
-	return search(query);
 }
 
-export function filterSettings(settings: Setting[], search: string): Setting[] {
+export function filterSettings(
+	settings: Setting[],
+	search: string,
+	searchFn?: (query: string) => Setting[],
+): Setting[] {
 	let filtered = settings.filter((s) => s.category[0] !== "Zen Project");
 
-	if (search.trim()) {
-		filtered = fuzzySearchSettings(filtered, search);
+	if (search.trim() && searchFn) {
+		filtered = searchFn(search);
 	}
 
 	return filtered;

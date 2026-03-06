@@ -46,6 +46,7 @@ interface SettingsContentProps {
 	onImmediateSave: (setting: Setting, value: unknown) => void;
 	boxInfo?: BoxInfo;
 	deprecatedCapabilities?: DeprecatedCapabilities;
+	searchFn?: (query: string) => Setting[];
 }
 
 export function SettingsContent({
@@ -63,8 +64,9 @@ export function SettingsContent({
 	onImmediateSave,
 	boxInfo,
 	deprecatedCapabilities,
+	searchFn,
 }: SettingsContentProps) {
-	const filtered = filterSettings(allSettings, search);
+	const filtered = filterSettings(allSettings, search, searchFn);
 	const grouped = groupByCategory(filtered);
 	const sorted = sortSettingsByCategory(grouped);
 
