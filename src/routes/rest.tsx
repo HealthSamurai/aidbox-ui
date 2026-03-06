@@ -1,3 +1,5 @@
+import { Prec } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
@@ -36,11 +38,18 @@ import {
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
+import { fetchUIHistory } from "../api/auth";
 import {
 	ActiveTabs,
+	addTab,
+	addTabFromHistory,
+	closeOtherTabs,
+	closeTabsToLeft,
+	closeTabsToRight,
 	DEFAULT_TAB,
 	type Header,
 	type ResponseData,
+	removeTab,
 	type Tab,
 } from "../components/rest/active-tabs";
 import * as RestCollections from "../components/rest/collections";
@@ -49,6 +58,7 @@ import {
 	LeftMenu,
 	LeftMenuContext,
 	LeftMenuToggle,
+	parseHttpCommand,
 } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
 import { SplitButton, type SplitDirection } from "../components/Split";
@@ -57,8 +67,14 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest } from "../utils";
 import { responseStorage } from "../utils/response-storage";
+import { useWebMCPRestConsole } from "../webmcp/rest-console";
+import type { RestConsoleActions } from "../webmcp/rest-console-context";
 
 const TITLE = "REST Console";
+
+const preventNewlineOnModEnter = Prec.highest(
+	keymap.of([{ key: "Mod-Enter", run: () => true }]),
+);
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -135,6 +151,7 @@ function RawEditor({
 			key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
 			defaultValue={currentValue}
 			mode="http"
+			additionalExtensions={preventNewlineOnModEnter}
 			{...(onRawChange ? { onChange: onRawChange } : {})}
 		/>
 	);
@@ -154,6 +171,7 @@ function RequestView({
 	fullScreenState,
 	onBodyModeChange,
 	onHeadersUpdate,
+	webmcpActionsRef,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
@@ -168,6 +186,7 @@ function RequestView({
 	fullScreenState: "maximized" | "normal";
 	onBodyModeChange: (mode: "json" | "yaml") => void;
 	onHeadersUpdate: (headers: Header[]) => void;
+	webmcpActionsRef: React.RefObject<RestConsoleActions>;
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -412,6 +431,11 @@ function RequestView({
 		onBodyChange(value);
 	};
 
+	// Override WebMCP stubs with real implementations
+	webmcpActionsRef.current.getBodyMode = () => bodyMode;
+	webmcpActionsRef.current.setBodyMode = handleBodyModeChange;
+	webmcpActionsRef.current.formatBody = handleFormatBody;
+
 	return (
 		<div className="flex flex-col h-full">
 			<Tabs
@@ -466,6 +490,7 @@ function RequestView({
 						currentValue={getEditorValue()}
 						mode={bodyMode}
 						onChange={handleBodyEditorChange}
+						additionalExtensions={preventNewlineOnModEnter}
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
@@ -922,11 +947,7 @@ function requestParamsHasEmpty(params: Header[]): boolean {
 	return params.some((param) => param.name === "" && param.value === "");
 }
 
-function handleTabRequestPathChange(
-	path: string,
-	tabs: Tab[],
-	setTabs: (tabs: Tab[]) => void,
-) {
+function parsePathParams(path: string): Header[] {
 	const queryParams = path.split("?")[1];
 	const params =
 		queryParams?.split("&").map((param, index) => {
@@ -947,7 +968,15 @@ function handleTabRequestPathChange(
 			enabled: true,
 		});
 	}
+	return params;
+}
 
+function handleTabRequestPathChange(
+	path: string,
+	tabs: Tab[],
+	setTabs: (tabs: Tab[]) => void,
+) {
+	const params = parsePathParams(path);
 	setTabs(
 		tabs.map((tab) => (tab.selected ? { ...tab, path, params } : tab)) as Tab[],
 	);
@@ -958,6 +987,51 @@ const canonicalHeaderNames: Record<string, string> = {
 	accept: "Accept",
 };
 
+async function executeRequest(
+	tab: Tab,
+	aidboxClient: AidboxClientR5,
+): Promise<ResponseData> {
+	const headers = buildHeaders(tab);
+	const acceptHeader = tab.headers?.find(
+		(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
+	);
+	const responseMode: "json" | "yaml" =
+		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
+
+	try {
+		const response: AidboxTypes.ResponseWithMeta =
+			await aidboxClient.rawRequest({
+				method: tab.method,
+				url: tab.path || "/",
+				headers,
+				body: tab.body || "",
+			});
+		return {
+			status: response.response.status,
+			statusText: response.response.statusText,
+			headers: response.responseHeaders,
+			body: (await response.response.text()) as string,
+			duration: response.duration,
+			mode: responseMode,
+		};
+	} catch (error) {
+		const cause = (error as AidboxTypes.ErrorResponse).responseWithMeta;
+		const errorMode =
+			cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
+			"text/yaml"
+				? "yaml"
+				: "json";
+		return {
+			status: cause.response.status,
+			statusText: cause.response.statusText,
+			headers: cause.responseHeaders,
+			body: (await cause.response.text()) as string,
+			duration: cause.duration,
+			mode: errorMode,
+		};
+	}
+}
+
 function handleSendRequest(
 	selectedTab: Tab,
 	queryClient: QueryClient,
@@ -965,61 +1039,11 @@ function handleSendRequest(
 	setResponse: (tabId: string, response: ResponseData) => void,
 	aidboxClient: AidboxClientR5,
 ) {
-	const headers = buildHeaders(selectedTab);
-
-	// Determine response mode based on Accept header at request time
-	const acceptHeader = selectedTab.headers?.find(
-		(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
-	);
-	const responseMode: "json" | "yaml" =
-		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
-
-	// Save to UI history (don't wait for it)
 	saveToUIHistory(selectedTab, queryClient, aidboxClient);
-
 	setIsLoading(true);
-
-	aidboxClient
-		.rawRequest({
-			method: selectedTab.method,
-			url: selectedTab.path || "/",
-			headers,
-			body: selectedTab.body || "",
-		})
-		.then(async (response: AidboxTypes.ResponseWithMeta) => {
-			const responseData: ResponseData = {
-				status: response.response.status,
-				statusText: response.response.statusText,
-				headers: response.responseHeaders,
-				body: (await response.response.text()) as string,
-				duration: response.duration,
-				mode: responseMode,
-			};
-			// Store response in IndexedDB
-			setResponse(selectedTab.id, responseData);
-		})
-		.catch(async (error: AidboxTypes.ErrorResponse) => {
-			const cause = error.responseWithMeta;
-			const errorMode =
-				cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
-				"text/yaml"
-					? "yaml"
-					: "json";
-
-			const errorResponse: ResponseData = {
-				status: cause.response.status,
-				statusText: cause.response.statusText,
-				headers: cause.responseHeaders,
-				body: (await cause.response.text()) as string,
-				duration: cause.duration,
-				mode: errorMode,
-			};
-			// Store error response in IndexedDB
-			setResponse(selectedTab.id, errorResponse);
-		})
-		.finally(() => {
-			setIsLoading(false);
-		});
+	executeRequest(selectedTab, aidboxClient)
+		.then((responseData) => setResponse(selectedTab.id, responseData))
+		.finally(() => setIsLoading(false));
 }
 
 function requestParamsEditorSyncPath(params: Header[], path: string) {
@@ -1105,7 +1129,7 @@ function SendButton(
 					Send
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Send request (Ctrl+Enter)</TooltipContent>
+			<TooltipContent>Send request (Ctrl+Enter / ⌘+Enter)</TooltipContent>
 		</Tooltip>
 	);
 }
@@ -1117,6 +1141,7 @@ function stripResponsesFromTabs(tabs: Tab[]): Tab[] {
 
 function RouteComponent() {
 	const client = useAidboxClient();
+	const queryClient = useQueryClient();
 
 	// Responses are stored in IndexedDB, subscribed via useSyncExternalStore
 	const responses = useSyncExternalStore(
@@ -1159,6 +1184,413 @@ function RouteComponent() {
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
 	const [isPanelAnimating, setIsPanelAnimating] = useState(false);
 
+	const [menuTab, setMenuTab] = useLocalStorage<string>({
+		key: "rest-console-left-menu-default-tab",
+		getInitialValueInEffect: false,
+		defaultValue: "history",
+	});
+
+	const [historySearch, setHistorySearch] = useState("");
+
+	const selectedTab = useMemo(() => {
+		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
+	}, [tabs]);
+
+	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
+		string | undefined
+	>(selectedTab.id);
+
+	const webmcpActionsRef = useRef<RestConsoleActions>({} as RestConsoleActions);
+	webmcpActionsRef.current = {
+		getLeftMenuOpen: () => leftMenuOpen,
+		setLeftMenuOpen: (open) => {
+			if (open === leftMenuOpen) return;
+			setIsPanelAnimating(true);
+			if (open) {
+				leftPanelRef.current?.expand();
+			} else {
+				leftPanelRef.current?.collapse();
+			}
+			setTimeout(() => setIsPanelAnimating(false), 200);
+		},
+		getMenuTab: () => menuTab,
+		setMenuTab,
+		searchHistory: async (query) => {
+			setHistorySearch(query ?? "");
+			const bundle = await fetchUIHistory(client);
+			const entries = bundle?.entry ?? [];
+			const items = entries
+				.filter((e) => e.resource?.resourceType === "ui_history")
+				.map((e) => {
+					const r = e.resource as {
+						id: string;
+						command: string;
+						meta?: { lastUpdated?: string };
+					};
+					const { method, path } = parseHttpCommand(r.command);
+					return {
+						id: r.id,
+						method,
+						path,
+						date: r.meta?.lastUpdated ?? "",
+					};
+				});
+			if (!query) return items;
+			const q = query.toLowerCase();
+			return items.filter(
+				(i) =>
+					i.method.toLowerCase().includes(q) ||
+					i.path.toLowerCase().includes(q),
+			);
+		},
+		listCollections: async () => {
+			const entries = await RestCollections.getCollectionsEntries(client);
+			const grouped: Record<
+				string,
+				{ id: string; method: string; path: string; title?: string }[]
+			> = {};
+			const ungrouped: {
+				id: string;
+				method: string;
+				path: string;
+				title?: string;
+			}[] = [];
+			for (const e of entries) {
+				if (!e.id) continue;
+				const parsed = parseHttpRequest(e.command);
+				const item = {
+					id: e.id,
+					method: parsed.method,
+					path: parsed.path,
+					...(e.title ? { title: e.title } : {}),
+				};
+				if (e.collection) {
+					if (!grouped[e.collection]) grouped[e.collection] = [];
+					grouped[e.collection].push(item);
+				} else {
+					ungrouped.push(item);
+				}
+			}
+			const result = Object.entries(grouped).map(([name, items]) => ({
+				name,
+				items,
+			}));
+			if (ungrouped.length > 0) {
+				result.push({ name: "(ungrouped)", items: ungrouped });
+			}
+			return result;
+		},
+		saveToCollection: async (collectionName) => {
+			const entries = await RestCollections.getCollectionsEntries(client);
+			await RestCollections.SaveRequest(
+				client,
+				selectedTab,
+				queryClient,
+				entries,
+				setSelectedCollectionItemId,
+				!collectionName,
+				setTabs,
+				tabs,
+				collectionName,
+				!collectionName,
+			);
+		},
+		addCollectionEntry: async (collectionName) => {
+			await RestCollections.handleAddNewCollectionEntry(
+				client,
+				collectionName,
+				queryClient,
+				setSelectedCollectionItemId,
+				setTabs,
+				tabs,
+			);
+		},
+		renameCollection: async (name, newName) => {
+			const entries = await RestCollections.getCollectionsEntries(client);
+			await RestCollections.renameCollectionByName(
+				client,
+				entries,
+				name,
+				newName,
+				queryClient,
+			);
+		},
+		deleteCollection: async (name) => {
+			const entries = await RestCollections.getCollectionsEntries(client);
+			await RestCollections.deleteCollectionByName(
+				client,
+				entries,
+				name,
+				queryClient,
+			);
+		},
+		renameSnippet: async (id, newTitle) => {
+			await RestCollections.renameSnippetById(
+				client,
+				id,
+				newTitle,
+				queryClient,
+			);
+		},
+		deleteSnippet: async (id) => {
+			await RestCollections.deleteSnippetById(client, id, queryClient);
+		},
+		listTabs: () =>
+			tabs.map((t) => ({
+				id: t.id,
+				method: t.method,
+				path: t.path ?? "",
+				selected: !!t.selected,
+			})),
+		selectTab: (id) => {
+			if (!tabs.some((t) => t.id === id)) {
+				throw new Error(`Tab ${id} not found`);
+			}
+			setTabs(tabs.map((t) => ({ ...t, selected: t.id === id })));
+		},
+		addTab: () => {
+			const newTab = addTab(tabs, setTabs);
+			return newTab.id;
+		},
+		closeTab: (id) => {
+			const tabId = id ?? tabs.find((t) => t.selected)?.id;
+			if (!tabId) throw new Error("No tab to close");
+			removeTab(tabs, tabId, setTabs);
+			responseStorage.delete(tabId);
+		},
+		closeOtherTabs: (id) => {
+			const keepId = id ?? tabs.find((t) => t.selected)?.id;
+			if (!keepId) throw new Error("No tab specified");
+			for (const rid of closeOtherTabs(tabs, keepId, setTabs))
+				responseStorage.delete(rid);
+		},
+		closeTabsToLeft: (id) => {
+			const anchorId = id ?? tabs.find((t) => t.selected)?.id;
+			if (!anchorId) throw new Error("No tab specified");
+			for (const rid of closeTabsToLeft(tabs, anchorId, setTabs))
+				responseStorage.delete(rid);
+		},
+		closeTabsToRight: (id) => {
+			const anchorId = id ?? tabs.find((t) => t.selected)?.id;
+			if (!anchorId) throw new Error("No tab specified");
+			for (const rid of closeTabsToRight(tabs, anchorId, setTabs))
+				responseStorage.delete(rid);
+		},
+		getRawRequest: () => formatRequestAsHttpCommand(selectedTab),
+		setRawRequest: (raw) => {
+			const parsed = parseHttpRequest(raw);
+			setRequestLineVersion(crypto.randomUUID());
+			setTabs((current) =>
+				current.map((tab) => {
+					if (!tab.selected) return tab;
+					return {
+						...tab,
+						method: parsed.method as Tab["method"],
+						path: parsed.path,
+						params: parsePathParams(parsed.path),
+						headers: parsed.headers,
+						body: parsed.body,
+					};
+				}),
+			);
+		},
+		getBodyMode: () => "json",
+		setBodyMode: () => {},
+		formatBody: () => {},
+		getRequestBody: () => selectedTab.body ?? "",
+		setRequestBody: (body) => {
+			setRequestLineVersion(crypto.randomUUID());
+			setTabs((current) =>
+				current.map((tab) => (tab.selected ? { ...tab, body } : tab)),
+			);
+		},
+		getRequestHeaders: () =>
+			(selectedTab.headers ?? [])
+				.filter((h) => h.name || h.value)
+				.map((h) => ({
+					name: h.name,
+					value: h.value,
+					enabled: h.enabled ?? true,
+				})),
+		setRequestHeaders: (headers) => {
+			setRequestLineVersion(crypto.randomUUID());
+			setTabs((current) =>
+				current.map((tab) => {
+					if (!tab.selected) return tab;
+					return {
+						...tab,
+						headers: [
+							...headers.map((h) => ({
+								id: crypto.randomUUID(),
+								name: h.name,
+								value: h.value,
+								enabled: h.enabled ?? true,
+							})),
+							{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
+						],
+					};
+				}),
+			);
+		},
+		toggleRequestHeader: (name, enabled) => {
+			setRequestLineVersion(crypto.randomUUID());
+			setTabs((current) =>
+				current.map((tab) => {
+					if (!tab.selected) return tab;
+					return {
+						...tab,
+						headers: (tab.headers ?? []).map((h) =>
+							h.name.toLowerCase() === name.toLowerCase()
+								? { ...h, enabled: enabled ?? !(h.enabled ?? true) }
+								: h,
+						),
+					};
+				}),
+			);
+		},
+		getRequestParams: () =>
+			(selectedTab.params ?? [])
+				.filter((p) => p.name || p.value)
+				.map((p) => ({
+					name: p.name,
+					value: p.value,
+					enabled: p.enabled ?? true,
+				})),
+		setRequestParams: (params) => {
+			setRequestLineVersion(crypto.randomUUID());
+			setTabs((current) =>
+				current.map((tab) => {
+					if (!tab.selected) return tab;
+					const newParams = [
+						...params.map((p) => ({
+							id: crypto.randomUUID(),
+							name: p.name,
+							value: p.value,
+							enabled: p.enabled ?? true,
+						})),
+						{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
+					];
+					return {
+						...tab,
+						params: newParams,
+						path: requestParamsEditorSyncPath(newParams, tab.path ?? ""),
+					};
+				}),
+			);
+		},
+		toggleRequestParam: (name, enabled) => {
+			setRequestLineVersion(crypto.randomUUID());
+			setTabs((current) =>
+				current.map((tab) => {
+					if (!tab.selected) return tab;
+					const newParams = (tab.params ?? []).map((p) =>
+						p.name.toLowerCase() === name.toLowerCase()
+							? { ...p, enabled: enabled ?? !(p.enabled ?? true) }
+							: p,
+					);
+					return {
+						...tab,
+						params: newParams,
+						path: requestParamsEditorSyncPath(newParams, tab.path ?? ""),
+					};
+				}),
+			);
+		},
+		sendRequest: async () => {
+			saveToUIHistory(selectedTab, queryClient, client);
+			const resp = await executeRequest(selectedTab, client);
+			responseStorage.set(selectedTab.id, resp);
+			return resp;
+		},
+		getResponse: () => response,
+		getResponseTab: () => selectedTab.activeResponseTab || "body",
+		setResponseTab: (tab) =>
+			handleResponseTabChange(tab as "body" | "headers" | "raw" | "explain"),
+		getPanelLayout: () => {
+			if (fullscreenPanel === "request") return "request-maximized";
+			if (fullscreenPanel === "response") return "response-maximized";
+			return panelsMode === "horizontal" ? "horizontal" : "vertical";
+		},
+		setPanelLayout: (layout) => {
+			if (layout === "request-maximized") setFullscreenPanel("request");
+			else if (layout === "response-maximized") setFullscreenPanel("response");
+			else if (layout === "horizontal") {
+				setFullscreenPanel(null);
+				setPanelsMode("horizontal");
+			} else if (layout === "vertical") {
+				setFullscreenPanel(null);
+				setPanelsMode("vertical");
+			} else {
+				setFullscreenPanel(null);
+			}
+		},
+		setRequestSubTab: (subTab) => {
+			setTabs((currentTabs) =>
+				currentTabs.map((tab) =>
+					tab.selected ? { ...tab, activeSubTab: subTab } : tab,
+				),
+			);
+		},
+		selectHistoryItem: (id) => {
+			const entry = tabs.find((t) => t.historyId === id);
+			if (entry) {
+				setTabs(tabs.map((t) => ({ ...t, selected: t.id === entry.id })));
+				return;
+			}
+			// Need to fetch the history item to get its command
+			fetchUIHistory(client).then((bundle) => {
+				const resource = bundle?.entry?.find((e) => e.resource?.id === id)
+					?.resource as { id: string; command: string } | undefined;
+				if (!resource) throw new Error(`History item ${id} not found`);
+				const { method, path, headers, body } = parseHttpCommand(
+					resource.command,
+				);
+				const queryParams = path.split("?")[1];
+				const params =
+					queryParams?.split("&").map((param, index) => {
+						const [name, value] = param.split("=");
+						try {
+							return {
+								id: `${index}`,
+								name: decodeURIComponent(name ?? ""),
+								value: decodeURIComponent(value ?? ""),
+								enabled: true,
+							};
+						} catch {
+							return {
+								id: `${index}`,
+								name: name ?? "",
+								value: value ?? "",
+								enabled: true,
+							};
+						}
+					}) || [];
+				if (!params.some((p) => p.name === "" && p.value === "")) {
+					params.push({
+						id: crypto.randomUUID(),
+						name: "",
+						value: "",
+						enabled: true,
+					});
+				}
+				addTabFromHistory(tabs, setTabs, {
+					method,
+					path,
+					headers: headers.map((h) => ({
+						id: crypto.randomUUID(),
+						name: h.key,
+						value: h.value,
+						enabled: true,
+					})),
+					body,
+					params,
+					historyId: id,
+				});
+			});
+		},
+	};
+	useWebMCPRestConsole(webmcpActionsRef);
+
 	useEffect(() => {
 		if (!initialLeftMenuOpen.current) {
 			leftPanelRef.current?.collapse();
@@ -1173,10 +1605,6 @@ function RouteComponent() {
 		defaultValue: "vertical",
 	});
 
-	const selectedTab = useMemo(() => {
-		return tabs.find((tab) => tab.selected) || DEFAULT_TAB;
-	}, [tabs]);
-
 	const response = selectedTab.response || null;
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
@@ -1190,8 +1618,6 @@ function RouteComponent() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [sendVersion, setSendVersion] = useState(0);
 
-	const queryClient = useQueryClient();
-
 	const doSendRequest = useCallback(() => {
 		setSendVersion((v) => v + 1);
 		handleSendRequest(
@@ -1203,9 +1629,16 @@ function RouteComponent() {
 		);
 	}, [selectedTab, queryClient, client]);
 
-	const [selectedCollectionItemId, setSelectedCollectionItemId] = useState<
-		string | undefined
-	>(selectedTab.id);
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+				e.preventDefault();
+				doSendRequest();
+			}
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [doSendRequest]);
 
 	function handleTabMethodChange(method: string) {
 		setRequestLineVersion(crypto.randomUUID());
@@ -1303,47 +1736,20 @@ function RouteComponent() {
 		(rawText: string) => {
 			try {
 				const parsed = parseHttpRequest(rawText);
-
-				setTabs((currentTabs) => {
-					return currentTabs.map((tab) => {
-						if (!tab.selected) return tab;
-
-						const queryParams = parsed.path.split("?")[1];
-						const params =
-							queryParams?.split("&").map((param, index) => {
-								const [name, value] = param.split("=");
-								return {
-									id: `${index}`,
-									name: name ?? "",
-									value: value ?? "",
-									enabled: true,
-								};
-							}) || [];
-
-						if (!requestParamsHasEmpty(params)) {
-							params.push({
-								id: crypto.randomUUID(),
-								name: "",
-								value: "",
-								enabled: true,
-							});
-						}
-
-						return {
-							...tab,
-							method: parsed.method as
-								| "GET"
-								| "POST"
-								| "PUT"
-								| "PATCH"
-								| "DELETE",
-							path: parsed.path,
-							headers: parsed.headers,
-							body: parsed.body,
-							params: params,
-						};
-					}) as Tab[];
-				});
+				setTabs(
+					(currentTabs) =>
+						currentTabs.map((tab) => {
+							if (!tab.selected) return tab;
+							return {
+								...tab,
+								method: parsed.method as Tab["method"],
+								path: parsed.path,
+								headers: parsed.headers,
+								body: parsed.body,
+								params: parsePathParams(parsed.path),
+							};
+						}) as Tab[],
+				);
 			} catch (error) {
 				console.warn("Failed to parse HTTP request:", error);
 			}
@@ -1443,16 +1849,7 @@ function RouteComponent() {
 
 	return (
 		<LeftMenuContext value={leftMenuOpen ? "open" : "close"}>
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut handler on layout container */}
-			<div
-				className="w-full h-full"
-				onKeyDown={(event) => {
-					if (event.ctrlKey && event.key === "Enter") {
-						event.preventDefault();
-						doSendRequest();
-					}
-				}}
-			>
+			<div className="w-full h-full">
 				<ResizablePanelGroup direction="horizontal" className="w-full h-full">
 					<ResizablePanel
 						ref={leftPanelRef}
@@ -1474,6 +1871,10 @@ function RouteComponent() {
 							collectionEntries={collectionEntries}
 							setSelectedCollectionItemId={setSelectedCollectionItemId}
 							selectedCollectionItemId={selectedCollectionItemId}
+							menuTab={menuTab}
+							onMenuTabChange={setMenuTab}
+							historySearch={historySearch}
+							onHistorySearchChange={setHistorySearch}
 						/>
 					</ResizablePanel>
 					{(leftMenuOpen || isPanelAnimating) && <ResizableHandle />}
@@ -1577,6 +1978,7 @@ function RouteComponent() {
 										}
 										onBodyModeChange={handleBodyModeChange}
 										onHeadersUpdate={handleHeadersUpdate}
+										webmcpActionsRef={webmcpActionsRef}
 									/>
 								</ResizablePanel>
 								<ResizableHandle />

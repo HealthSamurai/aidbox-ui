@@ -9,6 +9,8 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
+import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
+import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
 import { EmptyState } from "../empty-state";
 import type * as VDTypes from "../ViewDefinition/types";
 import * as Constants from "./constants";
@@ -301,7 +303,7 @@ export const ResourcesTabTable = ({
 	const dynamicKeys = resourceKeys.filter((k) => k !== "id" && k !== "meta");
 
 	return (
-		<HSComp.Table zebra stickyHeader>
+		<HSComp.Table zebra stickyHeader className="typo-code">
 			<HSComp.TableHeader>
 				<HSComp.TableRow>
 					<HSComp.TableHead className="w-[52px] min-w-[52px]">
@@ -387,15 +389,34 @@ export const ResourcesTabTable = ({
 									{},
 								)}
 							</HSComp.TableCell>
-							{dynamicKeys.map((k) => (
-								<HSComp.TableCell key={k}>
-									{Humanize.humanizeValue(
-										k,
-										(resource as Record<string, unknown>)[k],
-										snapshot ?? {},
-									)}
-								</HSComp.TableCell>
-							))}
+							{dynamicKeys.map((k) => {
+								const v = (resource as Record<string, unknown>)[k];
+								const hasValue = v != null;
+								return (
+									<HSComp.TableCell key={k} className="max-w-[300px]">
+										<HSComp.Tooltip
+											delayDuration={500}
+											open={hasValue ? undefined : false}
+										>
+											<HSComp.TooltipTrigger asChild>
+												<span className="block truncate">
+													{Humanize.humanizeValue(k, v, snapshot ?? {})}
+												</span>
+											</HSComp.TooltipTrigger>
+											<HSComp.TooltipContent
+												side="bottom"
+												className="max-w-[500px] typo-code"
+											>
+												<pre className="whitespace-pre-wrap break-all text-xs">
+													{typeof v === "object"
+														? JSON.stringify(v, null, 2)
+														: String(v ?? "")}
+												</pre>
+											</HSComp.TooltipContent>
+										</HSComp.Tooltip>
+									</HSComp.TableCell>
+								);
+							})}
 						</HSComp.TableRow>
 					);
 				})}
@@ -603,7 +624,10 @@ const columnToSortKey = (column: string): string => {
 const ResourcesTabContent = ({
 	client,
 	resourceType,
-}: Types.ResourcesPageProps) => {
+	actionsRef,
+}: Types.ResourcesPageProps & {
+	actionsRef: React.RefObject<ResourceInstancesActions>;
+}) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 	const queryClient = ReactQuery.useQueryClient();
@@ -789,6 +813,45 @@ const ResourcesTabContent = ({
 		});
 	};
 
+	actionsRef.current.instancesGetSelected = () => Array.from(selectedIds);
+
+	actionsRef.current.instancesSelect = (ids, selected) => {
+		if (ids.length === 1 && ids[0] === "*") {
+			const allIds = (data?.resources ?? [])
+				.map((r) => r.id)
+				.filter(Boolean) as string[];
+			setSelectedIds(selected ? new Set(allIds) : new Set());
+		} else {
+			setSelectedIds((prev) => {
+				const next = new Set(prev);
+				for (const id of ids) {
+					if (selected) next.add(id);
+					else next.delete(id);
+				}
+				return next;
+			});
+		}
+	};
+
+	actionsRef.current.instancesDeleteSelected = async () => {
+		const ids = Array.from(selectedIds);
+		if (ids.length === 0) throw new Error("No resources selected");
+		await deleteMutation.mutateAsync();
+		return ids;
+	};
+
+	actionsRef.current.instancesExportSelected = () => {
+		const selected = (data?.resources ?? []).filter(
+			(r) => r.id && selectedIds.has(r.id),
+		);
+		if (selected.length === 0) return null;
+		return {
+			resourceType: "Bundle",
+			type: "collection",
+			entry: selected.map((resource) => ({ resource })),
+		};
+	};
+
 	return (
 		<ResourcesTabContentContext.Provider
 			value={{ resourcesLoading: isLoading }}
@@ -935,7 +998,7 @@ const ProfilesTabContent = ({
 		: null;
 
 	const profilesTable = (
-		<HSComp.Table zebra stickyHeader>
+		<HSComp.Table zebra stickyHeader className="typo-code">
 			<HSComp.TableHeader>
 				<HSComp.TableRow>
 					<HSComp.TableHead>URL</HSComp.TableHead>
@@ -1118,7 +1181,7 @@ const SearchParametersTabContent = ({
 
 	return (
 		<div className="h-full overflow-auto">
-			<HSComp.Table zebra stickyHeader>
+			<HSComp.Table zebra stickyHeader className="typo-code">
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
 						<HSComp.TableHead>Definition</HSComp.TableHead>
@@ -1161,8 +1224,159 @@ export const ResourcesPage = ({
 	resourceType,
 }: Types.ResourcesPageProps) => {
 	const navigate = Router.useNavigate();
+	const queryClient = ReactQuery.useQueryClient();
 	const search = Router.useSearch({ strict: false });
 	const currentTab = (search as { tab?: string }).tab || "resources";
+
+	const encodedSearchQuery = (search as { searchQuery?: string }).searchQuery;
+	const decodedSearchQuery = encodedSearchQuery
+		? atob(encodedSearchQuery)
+		: Constants.DEFAULT_SEARCH_QUERY;
+
+	const actionsRef = React.useRef<ResourceInstancesActions>(null!);
+
+	actionsRef.current = {
+		switchTab: (tab) => {
+			navigate({
+				search: (prev: Record<string, unknown>) => {
+					const { profile: _, detailTab: __, ...rest } = prev;
+					return { ...rest, tab };
+				},
+			});
+		},
+		instancesGetSearch: () => decodedSearchQuery,
+		instancesSearch: (query) => {
+			navigate({ to: ".", search: { searchQuery: btoa(query) } });
+		},
+		instancesGetResults: () => {
+			type CachedData =
+				| {
+						resources: Resource[];
+						resourceKeys: string[];
+						total: number;
+				  }
+				| undefined;
+			const data = queryClient.getQueryData<CachedData>([
+				Constants.PageID,
+				"resource-list",
+				resourceType,
+				decodedSearchQuery,
+			]);
+			if (!data) return null;
+			return {
+				total: data.total,
+				page: parseSearchParam(decodedSearchQuery, "_page", 1),
+				pageSize: parseSearchParam(decodedSearchQuery, "_count", 30),
+				resourceType,
+				searchQuery: decodedSearchQuery,
+				columns: data.resourceKeys,
+				resources: data.resources,
+			};
+		},
+		instancesGetPage: () => {
+			type CachedData = { total: number } | undefined;
+			const data = queryClient.getQueryData<CachedData>([
+				Constants.PageID,
+				"resource-list",
+				resourceType,
+				decodedSearchQuery,
+			]);
+			return {
+				page: parseSearchParam(decodedSearchQuery, "_page", 1),
+				pageSize: parseSearchParam(decodedSearchQuery, "_count", 30),
+				total: data?.total ?? 0,
+			};
+		},
+		// Stubs — overridden by ResourcesTabContent when mounted
+		instancesGetSelected: () => [],
+		instancesSelect: () => {},
+		instancesDeleteSelected: async () => [],
+		instancesExportSelected: () => null,
+		instancesChangePage: (page) => {
+			const params = new URLSearchParams(decodedSearchQuery);
+			params.set("_page", String(page));
+			navigate({ to: ".", search: { searchQuery: btoa(params.toString()) } });
+		},
+		instancesChangePageSize: (pageSize) => {
+			const params = new URLSearchParams(decodedSearchQuery);
+			params.set("_count", String(pageSize));
+			params.set("_page", "1");
+			navigate({ to: ".", search: { searchQuery: btoa(params.toString()) } });
+		},
+		instancesNavigateToResource: (id) => {
+			navigate({
+				to: "/resource/$resourceType/edit/$id",
+				params: { resourceType, id },
+				search: { tab: "code", mode: "json" },
+			});
+		},
+		instancesOpenCreatePage: () => {
+			navigate({
+				to: "/resource/$resourceType/create",
+				params: { resourceType },
+				search: { tab: "code", mode: "json" },
+			});
+		},
+		profilesList: async () => {
+			const schemas = await queryClient.fetchQuery({
+				queryKey: [Constants.PageID, "resource-profiles-list"],
+				queryFn: () => fetchSchemas(client, resourceType),
+			});
+			if (!schemas) return [];
+			return Object.values(schemas).map((s) => ({
+				url: s.entity.url,
+				name: s.entity.name,
+				version: s.entity.version,
+				isDefault: s["default?"] === true,
+			}));
+		},
+		profilesSelect: (url) => {
+			navigate({
+				search: (prev: Record<string, unknown>) => ({
+					...prev,
+					tab: "profiles",
+					profile: url,
+					detailTab: "differential",
+				}),
+			});
+		},
+		profilesSelectTab: (tab) => {
+			navigate({
+				search: (prev: Record<string, unknown>) => ({
+					...prev,
+					detailTab: tab,
+				}),
+			});
+		},
+		searchParamsList: async () => {
+			const data = await queryClient.fetchQuery({
+				queryKey: [
+					Constants.PageID,
+					"resource-search-parameters-list",
+					resourceType,
+				],
+				queryFn: async () => {
+					const response = await client.rawRequest({
+						method: "GET",
+						url: `/fhir/SearchParameter?base=${resourceType}`,
+						headers: { "Content-Type": "application/json" },
+					});
+					const bundle: SearchParameterBundle = await response.response.json();
+					return bundle.entry?.map((e) => e.resource) ?? [];
+				},
+			});
+			return (data ?? []).map((p) => ({
+				id: p.id,
+				url: p.url ?? "",
+				code: p.code ?? "",
+				name: p.name ?? "",
+				type: p.type ?? "",
+				description: p.description ?? "",
+			}));
+		},
+	};
+
+	useWebMCPResourceInstances(actionsRef);
 
 	const handleTabChange = (value: string) => {
 		navigate({
@@ -1178,7 +1392,11 @@ export const ResourcesPage = ({
 			<HSComp.Tabs value={currentTab} onValueChange={handleTabChange}>
 				<ResourcePageTabList />
 				<HSComp.TabsContent value="resources" className="overflow-hidden">
-					<ResourcesTabContent client={client} resourceType={resourceType} />
+					<ResourcesTabContent
+						client={client}
+						resourceType={resourceType}
+						actionsRef={actionsRef}
+					/>
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="profiles">
 					<ProfilesTabContent client={client} resourceType={resourceType} />

@@ -5,10 +5,15 @@ import { useMutation } from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import * as Lucide from "lucide-react";
+import type React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { createResource, deleteResource, updateResource } from "./api";
 import type { EditorMode } from "./types";
+
+export interface SaveHandle {
+	save: () => Promise<Resource>;
+}
 
 export const SaveButton = ({
 	resourceType,
@@ -17,6 +22,7 @@ export const SaveButton = ({
 	mode,
 	client,
 	onError,
+	saveRef,
 }: {
 	resourceType: string;
 	id: string | undefined;
@@ -24,6 +30,7 @@ export const SaveButton = ({
 	mode: EditorMode;
 	client: AidboxClientR5;
 	onError?: (error: Error) => void;
+	saveRef?: React.RefObject<SaveHandle>;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
@@ -52,6 +59,12 @@ export const SaveButton = ({
 				});
 		},
 	});
+
+	if (saveRef) {
+		saveRef.current = {
+			save: () => mutation.mutateAsync(resource),
+		};
+	}
 
 	return (
 		<HSComp.Button

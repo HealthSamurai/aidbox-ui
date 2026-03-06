@@ -21,10 +21,15 @@ import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { storeSelectedBuilderTab } from "../../routes/resource.$resourceType.create";
+import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
+import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
 import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
-import { ViewDefinitionContext } from "./page";
+import {
+	ViewDefinitionContext,
+	ViewDefinitionResourceTypeContext,
+} from "./page";
 import { ResultPanel } from "./result-panel-content";
 import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
@@ -308,7 +313,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
-				search: { tab: "edit", mode: "json" },
+				search: { tab: "builder", mode: "json" },
 			});
 		},
 		onError: Utils.onMutationError,
@@ -400,7 +405,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 	});
 
 	const viewDefinitionMaterializeMutation = useMutation({
-		mutationFn: ({
+		mutationFn: async ({
 			viewDefinition,
 			materializeType,
 		}: {
@@ -420,7 +425,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 					},
 				],
 			};
-			return client.rawRequest({
+			const data = await client.rawRequest({
 				method: "POST",
 				url: "/fhir/ViewDefinition/$materialize",
 				headers: {
@@ -429,9 +434,9 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 				},
 				body: JSON.stringify(parametersPayload),
 			});
+			return await data.response.json();
 		},
-		onSuccess: async (data) => {
-			const response = await data.response.json();
+		onSuccess: (response) => {
 			const viewName =
 				response.parameter?.find((p: { name: string }) => p.name === "viewName")
 					?.valueString || "unknown";
@@ -518,20 +523,168 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 		viewDefinitionDeleteMutation.mutate();
 	};
 
-	return { handleSave, handleRun, handleMaterialize, handleDelete };
+	const handleRunAsync = async () => {
+		if (!viewDefinitionResource) throw new Error("No ViewDefinition to run");
+		const result = await viewDefinitionRunMutation.mutateAsync(
+			cleanEmptyValues(viewDefinitionResource),
+		);
+		if (result.isErr()) {
+			const issues = result.value.resource.issue ?? [];
+			throw new Error(
+				issues.map((i) => i.diagnostics).join("; ") || "Run failed",
+			);
+		}
+		return atob(result.value.resource.data);
+	};
+
+	const handleSaveAsync = async () => {
+		if (!viewDefinitionResource) throw new Error("No ViewDefinition to save");
+		const cleaned = cleanEmptyValues(viewDefinitionResource);
+		const result = viewDefinitionContext.originalId
+			? await viewDefinitionMutation.mutateAsync(cleaned)
+			: await viewDefinitionCreateMutation.mutateAsync(cleaned);
+		if (result.isErr()) {
+			const issues = result.value.resource.issue ?? [];
+			throw new Error(
+				issues.map((i) => i.diagnostics).join("; ") || "Save failed",
+			);
+		}
+	};
+
+	const handleMaterializeAsync = async (
+		type: "view" | "materialized-view" | "table",
+	) => {
+		if (!viewDefinitionResource)
+			throw new Error("No ViewDefinition to materialize");
+		const response = await viewDefinitionMaterializeMutation.mutateAsync({
+			viewDefinition: viewDefinitionResource,
+			materializeType: type,
+		});
+		return (
+			response.parameter?.find((p: { name: string }) => p.name === "viewName")
+				?.valueString || "unknown"
+		);
+	};
+
+	const handleDeleteAsync = async () => {
+		await viewDefinitionDeleteMutation.mutateAsync();
+	};
+
+	return {
+		handleSave,
+		handleRun,
+		handleMaterialize,
+		handleDelete,
+		handleRunAsync,
+		handleSaveAsync,
+		handleMaterializeAsync,
+		handleDeleteAsync,
+	};
 };
 
 export const EditorPanelContent = ({
 	isPreviewOpen,
 	onTogglePreview,
+	actionsRef,
+	onInstancesQueryChange,
 }: {
 	isPreviewOpen: boolean;
 	onTogglePreview: () => void;
+	actionsRef: React.RefObject<ViewDefinitionBuilderActions>;
+	onInstancesQueryChange: (query: string) => void;
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const { handleSave, handleRun, handleMaterialize } =
-		useViewDefinitionActions(aidboxClient);
+	const viewDefinitionResourceTypeContext = React.useContext(
+		ViewDefinitionResourceTypeContext,
+	);
+	const {
+		handleSave,
+		handleRun,
+		handleMaterialize,
+		handleRunAsync,
+		handleSaveAsync,
+		handleMaterializeAsync,
+		handleDeleteAsync,
+	} = useViewDefinitionActions(aidboxClient);
+
+	actionsRef.current = {
+		getViewDefinition: () => viewDefinitionContext.viewDefinition,
+		setViewDefinition: (vd) => {
+			viewDefinitionContext.setViewDefinition(vd);
+			viewDefinitionContext.setIsDirty(true);
+			if (vd.resource) {
+				viewDefinitionResourceTypeContext.setViewDefinitionResourceType(
+					vd.resource,
+				);
+			}
+		},
+		getResourceType: () =>
+			viewDefinitionResourceTypeContext.viewDefinitionResourceType,
+		setResourceType: (rt) => {
+			viewDefinitionResourceTypeContext.setViewDefinitionResourceType(rt);
+			const vd = viewDefinitionContext.viewDefinition;
+			if (vd) {
+				viewDefinitionContext.setViewDefinition({ ...vd, resource: rt });
+				viewDefinitionContext.setIsDirty(true);
+			}
+		},
+		run: handleRunAsync,
+		save: handleSaveAsync,
+		materialize: handleMaterializeAsync,
+		delete: handleDeleteAsync,
+		getRunResults: () => viewDefinitionContext.runResult,
+		getRunError: () => viewDefinitionContext.runError,
+		isDirty: () => viewDefinitionContext.isDirty,
+		switchBuilderTab: (tab: Types.ViewDefinitionEditorTab) => {
+			storeSelectedBuilderTab(tab);
+			const url = new URL(window.location.href);
+			url.searchParams.set("builderTab", tab);
+			window.history.pushState(window.history.state, "", url);
+			window.dispatchEvent(new PopStateEvent("popstate"));
+		},
+		getBuilderTab: () => selectedTab,
+
+		// Instances panel
+		toggleInstancesPanel: onTogglePreview,
+		openInstancesPanel: () => {
+			if (!isPreviewOpen) onTogglePreview();
+		},
+		isInstancesPanelOpen: () => isPreviewOpen,
+		// Stubs — overridden by ExampleTabContent when mounted
+		instancesSearch: (q: string) => onInstancesQueryChange(q),
+		instancesGetCurrent: () => null,
+		instancesGetCount: () => 0,
+		instancesGetIndex: () => 0,
+		instancesNext: () => {},
+		instancesPrevious: () => {},
+		instancesGoToIndex: () => {},
+
+		// Form stubs — overridden by FormTabContent when mounted
+		getFormTree: () => ({
+			name: undefined,
+			status: undefined,
+			resourceType: undefined,
+			constants: [],
+			where: [],
+			select: [],
+		}),
+		setName: () => {},
+		setStatus: () => {},
+		addConstant: () => "",
+		updateConstant: () => {},
+		removeConstant: () => {},
+		addWhere: () => "",
+		updateWhere: () => {},
+		removeWhere: () => {},
+		addSelect: () => "",
+		removeSelect: () => {},
+		updateSelectExpression: () => {},
+		addColumn: () => "",
+		updateColumn: () => {},
+		removeColumn: () => {},
+	};
+	useWebMCPViewDefinition(actionsRef);
 
 	const navigate = useNavigate();
 
@@ -569,7 +722,7 @@ export const EditorPanelContent = ({
 			<HSComp.ResizablePanel minSize={20}>
 				<HSComp.Tabs
 					variant="tertiary"
-					defaultValue={selectedTab}
+					value={selectedTab}
 					onValueChange={handleOnTabSelect}
 					className="h-full"
 				>
@@ -587,11 +740,11 @@ export const EditorPanelContent = ({
 					>
 						{isPreviewOpen ? (
 							<div className="px-2.5 py-1">
-								<FormTabContent />
+								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						) : (
 							<div className="mx-auto max-w-[687px] min-h-full bg-bg-primary border-x border-border-secondary px-2.5 py-3">
-								<FormTabContent />
+								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						)}
 					</HSComp.TabsContent>
@@ -622,6 +775,25 @@ export const EditorPanelContent = ({
 };
 
 export const BuilderContent = () => {
+	const actionsRef = React.useRef<ViewDefinitionBuilderActions>(null!);
+	const viewDefinitionTypeContext = React.useContext(
+		ViewDefinitionResourceTypeContext,
+	);
+
+	const [instancesQuery, setInstancesQuery] = React.useState("");
+
+	const resourceTypeRef = React.useRef(
+		viewDefinitionTypeContext.viewDefinitionResourceType,
+	);
+	if (
+		resourceTypeRef.current !==
+		viewDefinitionTypeContext.viewDefinitionResourceType
+	) {
+		resourceTypeRef.current =
+			viewDefinitionTypeContext.viewDefinitionResourceType;
+		setInstancesQuery("");
+	}
+
 	const [isPreviewOpen, setIsPreviewOpen] = useLocalStorage<boolean>({
 		key: "viewDefinition-instancePreviewOpen",
 		defaultValue: true,
@@ -662,13 +834,20 @@ export const BuilderContent = () => {
 							<EditorPanelContent
 								isPreviewOpen={isPreviewOpen}
 								onTogglePreview={handleTogglePreview}
+								actionsRef={actionsRef}
+								onInstancesQueryChange={setInstancesQuery}
 							/>
 						</HSComp.ResizablePanel>
 						{isPreviewOpen && (
 							<>
 								<HSComp.ResizableHandle />
 								<HSComp.ResizablePanel minSize={20}>
-									<InfoPanel onClose={handleTogglePreview} />
+									<InfoPanel
+										onClose={handleTogglePreview}
+										actionsRef={actionsRef}
+										instancesQuery={instancesQuery}
+										onInstancesQueryChange={setInstancesQuery}
+									/>
 								</HSComp.ResizablePanel>
 							</>
 						)}
@@ -708,13 +887,20 @@ export const BuilderContent = () => {
 							<EditorPanelContent
 								isPreviewOpen={isPreviewOpen}
 								onTogglePreview={handleTogglePreview}
+								actionsRef={actionsRef}
+								onInstancesQueryChange={setInstancesQuery}
 							/>
 						</HSComp.ResizablePanel>
 						{isPreviewOpen && (
 							<>
 								<HSComp.ResizableHandle />
 								<HSComp.ResizablePanel minSize={20}>
-									<InfoPanel onClose={handleTogglePreview} />
+									<InfoPanel
+										onClose={handleTogglePreview}
+										actionsRef={actionsRef}
+										instancesQuery={instancesQuery}
+										onInstancesQueryChange={setInstancesQuery}
+									/>
 								</HSComp.ResizablePanel>
 							</>
 						)}

@@ -12,10 +12,15 @@ import * as yaml from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { fetchResourceHistory } from "./api";
 import { pageId } from "./types";
 
-type VersionsTabProps = { id: string; resourceType: string };
+type VersionsTabProps = {
+	id: string;
+	resourceType: string;
+	actionsRef?: React.RefObject<ResourceEditorActions>;
+};
 
 type VersionEntry = {
 	versionId: string;
@@ -83,7 +88,11 @@ function deepSortObject(value: unknown): unknown {
 	return root;
 }
 
-export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
+export const VersionsTab = ({
+	id,
+	resourceType,
+	actionsRef,
+}: VersionsTabProps) => {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 
@@ -170,6 +179,80 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 		},
 		onError: Utils.onMutationError,
 	});
+
+	if (actionsRef) {
+		actionsRef.current.historyListVersions = () =>
+			versions.map((v) => ({ versionId: v.versionId, date: v.date }));
+		actionsRef.current.historySelectVersion = (versionId: string) => {
+			setSelectedVersionId(versionId);
+		};
+		actionsRef.current.historyGetSelected = () => {
+			if (!selectedVersion) return null;
+			const content =
+				editorMode === "yaml"
+					? yaml.dump(selectedVersion.resourceCurrent, { indent: 2 })
+					: JSON.stringify(selectedVersion.resourceCurrent, null, 2);
+			return {
+				versionId: selectedVersion.versionId,
+				date: selectedVersion.date,
+				content,
+			};
+		};
+		actionsRef.current.historyGetViewMode = () => viewMode;
+		actionsRef.current.historySwitchViewMode = (mode: "raw" | "diff") => {
+			setViewMode(mode);
+		};
+		actionsRef.current.historyGetRawMode = () => editorMode;
+		actionsRef.current.historySwitchRawMode = (mode: "json" | "yaml") => {
+			setEditorMode(mode);
+		};
+		actionsRef.current.historyGetSelectedDiff = () => {
+			if (!selectedVersion?.resourcePrevious) return null;
+			const prev = JSON.stringify(
+				deepSortObject(selectedVersion.resourcePrevious),
+				null,
+				2,
+			);
+			const curr = JSON.stringify(
+				deepSortObject(selectedVersion.resourceCurrent),
+				null,
+				2,
+			);
+			const prevLines = prev.split("\n");
+			const currLines = curr.split("\n");
+			const lines: string[] = [
+				`--- version ${versions.find((v) => v.resourceCurrent === selectedVersion.resourcePrevious)?.versionId ?? "previous"}`,
+				`+++ version ${selectedVersion.versionId}`,
+			];
+			const max = Math.max(prevLines.length, currLines.length);
+			for (let i = 0; i < max; i++) {
+				const p = prevLines[i];
+				const c = currLines[i];
+				if (p === c) {
+					lines.push(` ${p}`);
+				} else {
+					if (p !== undefined) lines.push(`-${p}`);
+					if (c !== undefined) lines.push(`+${c}`);
+				}
+			}
+			return lines.join("\n");
+		};
+		actionsRef.current.historyRestore = async () => {
+			if (!selectedVersion)
+				return { status: "error", message: "No version selected" };
+			if (selectedVersionId === versions[0]?.versionId)
+				return { status: "error", message: "Already on the latest version" };
+			try {
+				await mutation.mutateAsync(selectedVersion.resourceCurrent);
+				return { status: "ok" };
+			} catch (e) {
+				return {
+					status: "error",
+					message: e instanceof Error ? e.message : String(e),
+				};
+			}
+		};
+	}
 
 	if (isLoading) {
 		return (
@@ -264,7 +347,7 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 					className="flex-1 overflow-auto bg-bg-secondary m-0!"
 				>
 					{selectedVersion && (
-						<div className="relative h-full w-full pt-3 bg-bg-primary">
+						<div className="relative h-full w-full bg-bg-primary">
 							<div className="absolute top-2 right-3 z-10">
 								<div className="flex items-center gap-2 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
 									<HSComp.SegmentControl
@@ -341,40 +424,40 @@ export const VersionsTab = ({ id, resourceType }: VersionsTabProps) => {
 			</HSComp.Tabs>
 
 			{/* Restore confirmation dialog */}
-			<HSComp.Dialog open={confirmRestore} onOpenChange={setConfirmRestore}>
+			<HSComp.AlertDialog
+				open={confirmRestore}
+				onOpenChange={setConfirmRestore}
+			>
 				{selectedVersion && (
-					<HSComp.DialogContent showCloseButton={false}>
-						<HSComp.DialogHeader>
-							<HSComp.DialogTitle>Confirm Restore</HSComp.DialogTitle>
-						</HSComp.DialogHeader>
-						<div className="py-4">
-							<p>
-								Are you sure you want to restore the resource to this version?
-							</p>
-							<p className="mt-2">
+					<HSComp.AlertDialogContent>
+						<HSComp.AlertDialogHeader>
+							<HSComp.AlertDialogTitle>Confirm Restore</HSComp.AlertDialogTitle>
+						</HSComp.AlertDialogHeader>
+						<HSComp.AlertDialogDescription>
+							Are you sure you want to restore the resource to this version?
+							<div className="mt-2">
 								<strong>Version ID:</strong> {selectedVersion.versionId}
-							</p>
-							<p>
+							</div>
+							<div>
 								<strong>Created at:</strong> {selectedVersion.date}
-							</p>
-						</div>
-						<div className="flex gap-2 justify-end">
-							<HSComp.Button
-								variant="secondary"
+							</div>
+						</HSComp.AlertDialogDescription>
+						<HSComp.AlertDialogFooter>
+							<HSComp.AlertDialogCancel
 								onClick={() => setConfirmRestore(false)}
 							>
 								Cancel
-							</HSComp.Button>
-							<HSComp.Button
+							</HSComp.AlertDialogCancel>
+							<HSComp.AlertDialogAction
 								variant="primary"
 								onClick={() => mutation.mutate(selectedVersion.resourceCurrent)}
 							>
 								Restore
-							</HSComp.Button>
-						</div>
-					</HSComp.DialogContent>
+							</HSComp.AlertDialogAction>
+						</HSComp.AlertDialogFooter>
+					</HSComp.AlertDialogContent>
 				)}
-			</HSComp.Dialog>
+			</HSComp.AlertDialog>
 		</div>
 	);
 };

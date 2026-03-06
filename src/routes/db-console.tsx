@@ -56,9 +56,11 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../AidboxClient";
 import { fetchSchemas } from "../api/schemas";
-import { saveSqlHistory } from "../api/sql-history";
+import { saveSqlHistory, useSqlHistory } from "../api/sql-history";
 import {
+	addSqlTab,
 	DEFAULT_SQL_TAB,
+	forceSelectedTab,
 	SqlActiveTabs,
 	type SqlTab,
 } from "../components/db-console/active-tabs";
@@ -78,8 +80,19 @@ import {
 	SqlLeftMenuContext,
 	SqlLeftMenuToggle,
 } from "../components/db-console/left-menu";
+import {
+	extractIndexType,
+	fetchTableDetails,
+	formatColumnType,
+	psqlRequest,
+} from "../components/db-console/tables-view";
 import { EmptyState } from "../components/empty-state";
 import { useLocalStorage } from "../hooks";
+import type {
+	DbConsoleActions,
+	QueryResultItem,
+} from "../webmcp/db-console-context";
+import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "DB Console";
 
@@ -274,15 +287,6 @@ export const Route = createFileRoute("/db-console")({
 	staticData: { title: TITLE },
 	loader: () => ({ breadCrumb: TITLE }),
 });
-
-type QueryResultItem = {
-	query: string;
-	duration: number;
-	result: Record<string, unknown>[];
-	rows: number;
-	status: string;
-	error?: string;
-};
 
 type PlanNodeMeta = {
 	nodeType: string;
@@ -600,6 +604,11 @@ function DbConsolePage() {
 		}
 	}, []);
 	const [isResultCollapsed, setIsResultCollapsed] = useState(false);
+	const [isResultMaximized, setIsResultMaximized] = useState(false);
+	const [resultActiveTab, setResultActiveTab] = useState("result");
+	const [explainViewMode, setExplainViewMode] = useState<"visual" | "raw">(
+		"visual",
+	);
 
 	const currentResult = tabResults.get(selectedTab?.id ?? "");
 	const results = currentResult?.results ?? null;
@@ -626,105 +635,113 @@ function DbConsolePage() {
 		[setTabs],
 	);
 
-	const executeQuery = useCallback(async () => {
-		let q = queryRef.current;
-		if (!q.trim()) return;
-
-		const tabId = selectedTabRef.current?.id;
-		if (!tabId) return;
-
-		const statements = splitSqlStatements(q);
-		const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
-
-		if (allHaveLimit && statements.length === 1) {
-			const limitMatch = statements[0].match(/\bLIMIT\s+(\d+)/i);
-			if (limitMatch) setRowLimit(Number(limitMatch[1]));
-			setHasExplicitLimit(true);
-		} else if (allHaveLimit) {
-			setHasExplicitLimit(true);
-		} else {
-			setHasExplicitLimit(false);
-			if (rowLimitRef.current !== null) {
-				q = statements
-					.map((s) =>
-						/\bLIMIT\s+\d+/i.test(s) ? s : `${s} LIMIT ${rowLimitRef.current}`,
-					)
-					.join("\n----\n");
+	const executeQuery = useCallback(
+		async (overrideQuery?: string) => {
+			if (overrideQuery !== undefined) {
+				handleQueryChange(overrideQuery);
 			}
-		}
+			let q = overrideQuery ?? queryRef.current;
+			if (!q.trim()) return;
 
-		cancelledTabRef.current = null;
-		runningQueryRef.current = queryRef.current;
-		setIsLoading(true);
-		const queryToSave = queryRef.current;
-		setTabResults((prev) => {
-			const next = new Map(prev);
-			next.set(tabId, { results: null, error: null });
-			return next;
-		});
+			const tabId = selectedTabRef.current?.id;
+			if (!tabId) return;
 
-		try {
-			const response = await client.rawRequest({
-				method: "POST",
-				url: "/$psql",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ query: q }),
+			const statements = splitSqlStatements(q);
+			const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
+
+			if (allHaveLimit && statements.length === 1) {
+				const limitMatch = statements[0].match(/\bLIMIT\s+(\d+)/i);
+				if (limitMatch) setRowLimit(Number(limitMatch[1]));
+				setHasExplicitLimit(true);
+			} else if (allHaveLimit) {
+				setHasExplicitLimit(true);
+			} else {
+				setHasExplicitLimit(false);
+				if (rowLimitRef.current !== null) {
+					q = statements
+						.map((s) =>
+							/\bLIMIT\s+\d+/i.test(s)
+								? s
+								: `${s} LIMIT ${rowLimitRef.current}`,
+						)
+						.join("\n----\n");
+				}
+			}
+
+			cancelledTabRef.current = null;
+			runningQueryRef.current = queryRef.current;
+			setIsLoading(true);
+			const queryToSave = queryRef.current;
+			setTabResults((prev) => {
+				const next = new Map(prev);
+				next.set(tabId, { results: null, error: null });
+				return next;
 			});
 
-			if (cancelledTabRef.current === tabId) return;
+			try {
+				const response = await client.rawRequest({
+					method: "POST",
+					url: "/$psql",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ query: q }),
+				});
 
-			if (!response.response.ok) {
-				const text = await response.response.text();
+				if (cancelledTabRef.current === tabId) return;
+
+				if (!response.response.ok) {
+					const text = await response.response.text();
+					setTabResults((prev) => {
+						const next = new Map(prev);
+						next.set(tabId, {
+							results: null,
+							error: `HTTP ${response.response.status}: ${text}`,
+						});
+						return next;
+					});
+					return;
+				}
+
+				const data = await response.response.json();
+				if (cancelledTabRef.current === tabId) return;
+
+				const items: QueryResultItem[] = Array.isArray(data) ? data : [data];
+				const hasError = items.some((item) => item.error);
+
+				if (!hasError) {
+					saveSqlHistory(queryToSave, queryClient, client);
+				}
+
 				setTabResults((prev) => {
 					const next = new Map(prev);
 					next.set(tabId, {
-						results: null,
-						error: `HTTP ${response.response.status}: ${text}`,
+						results: items,
+						error: null,
 					});
 					return next;
 				});
-				return;
-			}
+			} catch (err) {
+				if (cancelledTabRef.current === tabId) return;
 
-			const data = await response.response.json();
-			if (cancelledTabRef.current === tabId) return;
-
-			const items: QueryResultItem[] = Array.isArray(data) ? data : [data];
-			const hasError = items.some((item) => item.error);
-
-			if (!hasError) {
-				saveSqlHistory(queryToSave, queryClient, client);
-			}
-
-			setTabResults((prev) => {
-				const next = new Map(prev);
-				next.set(tabId, {
-					results: items,
-					error: null,
+				let errorMsg: string;
+				if (isAidboxError(err)) {
+					errorMsg = await err.response.text();
+				} else {
+					errorMsg = err instanceof Error ? err.message : String(err);
+				}
+				setTabResults((prev) => {
+					const next = new Map(prev);
+					next.set(tabId, { results: null, error: errorMsg });
+					return next;
 				});
-				return next;
-			});
-		} catch (err) {
-			if (cancelledTabRef.current === tabId) return;
-
-			let errorMsg: string;
-			if (isAidboxError(err)) {
-				errorMsg = await err.response.text();
-			} else {
-				errorMsg = err instanceof Error ? err.message : String(err);
+			} finally {
+				if (cancelledTabRef.current !== tabId) {
+					setIsLoading(false);
+				}
+				runningQueryRef.current = null;
 			}
-			setTabResults((prev) => {
-				const next = new Map(prev);
-				next.set(tabId, { results: null, error: errorMsg });
-				return next;
-			});
-		} finally {
-			if (cancelledTabRef.current !== tabId) {
-				setIsLoading(false);
-			}
-			runningQueryRef.current = null;
-		}
-	}, [client, queryClient, setRowLimit]);
+		},
+		[client, queryClient, setRowLimit, handleQueryChange],
+	);
 
 	const cancelQuery = useCallback(async () => {
 		const tabId = selectedTabRef.current?.id;
@@ -756,6 +773,8 @@ function DbConsolePage() {
 			}
 		}
 	}, [client]);
+
+	const { data: historyData } = useSqlHistory();
 
 	const handleHistoryItemClick = useCallback(
 		(command: string) => {
@@ -1102,6 +1121,181 @@ function DbConsolePage() {
 		],
 	);
 
+	const setLS = useCallback((key: string, value: unknown) => {
+		localStorage.setItem(key, JSON.stringify(value));
+		window.dispatchEvent(
+			new CustomEvent("local-storage", { detail: { key, value } }),
+		);
+	}, []);
+
+	const openSidebar = useCallback(() => {
+		setLeftMenuOpen(true);
+		leftPanelRef.current?.expand();
+	}, [setLeftMenuOpen]);
+
+	const dbConsoleActionsRef = useRef({} as DbConsoleActions);
+	const syncEditor = (sql: string) => {
+		handleQueryChange(sql);
+		const view = editorViewRef.current;
+		if (view) {
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: sql },
+			});
+		}
+	};
+
+	dbConsoleActionsRef.current = {
+		executeQuery: (sql) => {
+			syncEditor(sql);
+			executeQuery(sql);
+		},
+		setQuery: syncEditor,
+		getQuery: () => query,
+		runCurrentQuery: () => executeQuery(),
+		formatSql: formatQuery,
+		getTabs: () =>
+			tabs.map((t) => ({ id: t.id, query: t.query, selected: !!t.selected })),
+		selectTab: (tabId) =>
+			setTabs((prev) => prev.map((t) => ({ ...t, selected: t.id === tabId }))),
+		addTab: () => addSqlTab(tabs, setTabs),
+		duplicateTab: (tabId) => {
+			const tab = tabs.find((t) => t.id === tabId);
+			if (!tab) return;
+			const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
+			setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
+		},
+		closeTab: (tabId) => {
+			const newTabs = tabs.filter((t) => t.id !== tabId);
+			if (newTabs.length === 0) {
+				setTabs([{ ...DEFAULT_SQL_TAB, id: crypto.randomUUID() }]);
+			} else {
+				const removedIndex = tabs.findIndex((t) => t.id === tabId);
+				const needsSelect = tabs.find((t) => t.id === tabId)?.selected;
+				if (needsSelect) {
+					const targetIndex = Math.min(
+						Math.max(removedIndex - 1, 0),
+						newTabs.length - 1,
+					);
+					setTabs(
+						newTabs.map((t, i) => ({ ...t, selected: i === targetIndex })),
+					);
+				} else {
+					setTabs(newTabs);
+				}
+			}
+		},
+		closeOtherTabs: (tabId) => {
+			const tab = tabs.find((t) => t.id === tabId);
+			if (tab) setTabs([{ ...tab, selected: true }]);
+		},
+		closeTabsToLeft: (tabId) => {
+			const idx = tabs.findIndex((t) => t.id === tabId);
+			if (idx < 0) return;
+			setTabs(forceSelectedTab(tabs.slice(idx), 0));
+		},
+		closeTabsToRight: (tabId) => {
+			const idx = tabs.findIndex((t) => t.id === tabId);
+			if (idx < 0) return;
+			setTabs(forceSelectedTab(tabs.slice(0, idx + 1), idx));
+		},
+		openSidebar,
+		openSidebarTab: (tab) => {
+			openSidebar();
+			setLS("db-console-left-menu-default-tab", tab);
+		},
+		selectTable: (schema, name) => {
+			openSidebar();
+			setLS("db-console-left-menu-default-tab", "tables");
+			setLS("db-console-selected-table", { schema, name });
+		},
+		expandResults: () => resultPanelRef.current?.expand(),
+		collapseResults: () => resultPanelRef.current?.collapse(),
+		maximizeResults: () => setIsResultMaximized(true),
+		minimizeResults: () => setIsResultMaximized(false),
+		showExplain: (mode) => {
+			setResultActiveTab("explain");
+			if (mode) setExplainViewMode(mode);
+		},
+		showResults: () => setResultActiveTab("result"),
+		getQueryStatus: () => {
+			if (isLoading) return { status: "loading" };
+			if (currentResult?.error)
+				return { status: "error", error: currentResult.error };
+			if (currentResult?.results) return { status: "ready" };
+			return { status: "empty" };
+		},
+		getResults: (limit) => {
+			const items = currentResult?.results ?? [];
+			return limit ? items.slice(0, limit) : items;
+		},
+		getActiveQueries: async () => {
+			const rows = await psqlRequest(
+				client,
+				`SELECT DISTINCT ON (query) pid, query, state, EXTRACT(EPOCH FROM (now() - query_start))::numeric(10,1) as duration_seconds, usename FROM pg_stat_activity WHERE state = 'active' AND query NOT LIKE '%pg_stat_activity%' AND pid != pg_backend_pid() ORDER BY query, query_start`,
+			);
+			return rows.map(
+				(r: {
+					pid: number;
+					query: string;
+					duration_seconds: number;
+					usename: string;
+				}) => ({
+					pid: r.pid,
+					query: r.query,
+					duration_seconds: r.duration_seconds,
+					usename: r.usename,
+				}),
+			);
+		},
+		cancelQuery: async (pid) => {
+			await psqlRequest(client, `SELECT pg_cancel_backend(${pid})`);
+		},
+		dropIndex: async (indexName) => {
+			const escaped = indexName.replace(/'/g, "''");
+			await psqlRequest(client, `DROP INDEX IF EXISTS "${escaped}"`);
+		},
+		getTableInfo: async (schema, name) => {
+			const d = await fetchTableDetails(client, schema, name);
+			return {
+				columns: d.columns.map((c) => ({
+					name: c.column_name,
+					type: formatColumnType(c),
+					nullable: c.is_nullable === "YES",
+				})),
+				indexes: d.indexes.map((idx) => ({
+					name: idx.indexname,
+					type: extractIndexType(idx.indexdef),
+					definition: idx.indexdef,
+				})),
+				rowCount: d.rowCount,
+				tableSize: d.tableSize,
+				indexesSize: d.indexesSize,
+			};
+		},
+		getRowLimit: () => rowLimit,
+		setRowLimit,
+		getHistory: (search, limit) => {
+			const entries = (historyData?.entry ?? []).flatMap((e) => {
+				const r = e.resource;
+				if (r?.resourceType !== "ui_history") return [];
+				return {
+					command: (r as { command: string }).command,
+					timestamp: r.meta?.lastUpdated ?? "",
+				};
+			});
+			const filtered = search
+				? entries.filter((e) =>
+						e.command.toLowerCase().includes(search.toLowerCase()),
+					)
+				: entries;
+			return limit ? filtered.slice(0, limit) : filtered;
+		},
+		openHistoryEntry: handleHistoryItemClick,
+		getSchemas: () => schemas,
+	};
+
+	useWebMCPSql(dbConsoleActionsRef);
+
 	return (
 		<SqlLeftMenuContext value={leftMenuOpen ? "open" : "close"}>
 			<ResizablePanelGroup direction="horizontal" className="w-full h-full">
@@ -1213,7 +1407,7 @@ function DbConsolePage() {
 											</div>
 										</div>
 									</div>
-									<div className="flex-1 min-h-0 pt-1">
+									<div className="flex-1 min-h-0">
 										<CodeEditor
 											key={selectedTab?.id}
 											mode="sql"
@@ -1262,6 +1456,12 @@ function DbConsolePage() {
 											panel.collapse();
 										}
 									}}
+									isMaximized={isResultMaximized}
+									setIsMaximized={setIsResultMaximized}
+									activeTab={resultActiveTab}
+									setActiveTab={setResultActiveTab}
+									explainViewMode={explainViewMode}
+									setExplainViewMode={setExplainViewMode}
 								/>
 							</ResizablePanel>
 						</ResizablePanelGroup>
@@ -1284,6 +1484,12 @@ function ResultPanel({
 	hasExplicitLimit,
 	collapsed,
 	onToggleCollapse,
+	isMaximized,
+	setIsMaximized,
+	activeTab,
+	setActiveTab,
+	explainViewMode,
+	setExplainViewMode,
 }: {
 	results: QueryResultItem[] | null;
 	error: string | null;
@@ -1296,10 +1502,14 @@ function ResultPanel({
 	hasExplicitLimit: boolean;
 	collapsed: boolean;
 	onToggleCollapse: () => void;
+	isMaximized: boolean;
+	setIsMaximized: (v: boolean) => void;
+	activeTab: string;
+	setActiveTab: (tab: string) => void;
+	explainViewMode: "visual" | "raw";
+	setExplainViewMode: (mode: "visual" | "raw") => void;
 }) {
 	const client = useAidboxClient();
-	const [isMaximized, setIsMaximized] = useState(false);
-	const [activeTab, setActiveTab] = useState("result");
 	const [explainResults, setExplainResults] = useState<
 		(ExplainData | string)[] | null
 	>(null);
@@ -1316,7 +1526,7 @@ function ResultPanel({
 		};
 		document.addEventListener("keydown", handleEscape);
 		return () => document.removeEventListener("keydown", handleEscape);
-	}, [isMaximized]);
+	}, [isMaximized, setIsMaximized]);
 
 	const runExplainForStatement = useCallback(
 		async (q: string): Promise<ExplainData | string> => {
@@ -1503,7 +1713,7 @@ function ResultPanel({
 							<Button
 								variant="ghost"
 								size="small"
-								onClick={() => setIsMaximized((v) => !v)}
+								onClick={() => setIsMaximized(!isMaximized)}
 							>
 								{isMaximized ? (
 									<Minimize2 className="w-4 h-4" />
@@ -1539,6 +1749,8 @@ function ResultPanel({
 							error={explainError}
 							isLoading={explainLoading}
 							onCancel={cancelExplain}
+							viewMode={explainViewMode}
+							onViewModeChange={setExplainViewMode}
 						/>
 					</div>
 				))}
@@ -1633,11 +1845,15 @@ function ExplainContent({
 	error,
 	isLoading,
 	onCancel,
+	viewMode,
+	onViewModeChange,
 }: {
 	results: (ExplainData | string)[] | null;
 	error: string | null;
 	isLoading: boolean;
 	onCancel: () => void;
+	viewMode: "visual" | "raw";
+	onViewModeChange: (mode: "visual" | "raw") => void;
 }) {
 	if (isLoading) {
 		return (
@@ -1677,7 +1893,11 @@ function ExplainContent({
 		const r = results[0];
 		return (
 			<div className="flex flex-col flex-1 min-h-0">
-				<SingleExplainView result={r} />
+				<SingleExplainView
+					result={r}
+					viewMode={viewMode}
+					onViewModeChange={onViewModeChange}
+				/>
 				{typeof r !== "string" && (
 					<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex gap-4">
 						<span>Execution: {r.executionTime.toFixed(2)}ms</span>
@@ -1706,7 +1926,11 @@ function ExplainContent({
 									</span>
 								)}
 							</div>
-							<SingleExplainView result={result} />
+							<SingleExplainView
+								result={result}
+								viewMode={viewMode}
+								onViewModeChange={onViewModeChange}
+							/>
 						</div>
 					</ResizablePanel>
 				);
@@ -1717,9 +1941,15 @@ function ExplainContent({
 	);
 }
 
-function SingleExplainView({ result }: { result: ExplainData | string }) {
-	const [view, setView] = useState<string>("visual");
-
+function SingleExplainView({
+	result,
+	viewMode,
+	onViewModeChange,
+}: {
+	result: ExplainData | string;
+	viewMode: "visual" | "raw";
+	onViewModeChange: (mode: "visual" | "raw") => void;
+}) {
 	if (typeof result === "string") {
 		return (
 			<div className="flex-1 overflow-auto p-6">
@@ -1734,13 +1964,13 @@ function SingleExplainView({ result }: { result: ExplainData | string }) {
 		<div className="relative flex flex-col flex-1 min-h-0">
 			<div className="absolute top-2 right-4 z-50 flex items-center border rounded-full p-2 border-border-secondary bg-bg-primary">
 				<SegmentControl
-					value={view}
-					onValueChange={setView}
+					value={viewMode}
+					onValueChange={onViewModeChange}
 					items={EXPLAIN_VIEW_ITEMS}
 				/>
 			</div>
 			<div className="flex-1 overflow-auto pl-[14px] pr-6 py-4">
-				{view === "visual" ? (
+				{viewMode === "visual" ? (
 					<TreeView<PlanNodeMeta>
 						rootItemId="root"
 						items={result.items}
@@ -2148,7 +2378,7 @@ function QueryResult({
 				/>
 			) : (
 				<div className="flex-1 overflow-auto min-h-0">
-					<Table stickyHeader>
+					<Table stickyHeader className="typo-code">
 						<TableHeader>
 							<TableRow>
 								{columns.map((key) => (

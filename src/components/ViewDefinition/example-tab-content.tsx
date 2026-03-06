@@ -15,10 +15,12 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { RefObject } from "react";
 import { useContext, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
+import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
 import { EmptyState } from "../empty-state";
 import * as Constants from "./constants";
 import {
@@ -115,7 +117,15 @@ const ExampleTabEditorMenu = ({
 	);
 };
 
-export function ExampleTabContent() {
+export function ExampleTabContent({
+	actionsRef,
+	instancesQuery,
+	onInstancesQueryChange,
+}: {
+	actionsRef: RefObject<ViewDefinitionBuilderActions>;
+	instancesQuery: string;
+	onInstancesQueryChange: (query: string) => void;
+}) {
 	const aidboxClient = useAidboxClient();
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const viewDefinitionTypeContext = useContext(
@@ -133,7 +143,8 @@ export function ExampleTabContent() {
 			getInitialValueInEffect: false,
 		});
 
-	const [query, setQuery] = useState("");
+	const query = instancesQuery;
+	const setQuery = onInstancesQueryChange;
 	const queryClient = useQueryClient();
 
 	const { isLoading, data, status, error } = useQuery({
@@ -172,6 +183,27 @@ export function ExampleTabContent() {
 	const resourceType = viewDefinitionResourceType || "Patient";
 	const exampleResource = data ? data[currentResultIndex] : null;
 
+	// Populate instances panel actions on actionsRef
+	actionsRef.current.instancesSearch = (q: string) => {
+		setQuery(q);
+		queryClient.invalidateQueries({
+			queryKey: [viewDefinitionResourceType, Constants.PageID, q],
+		});
+	};
+	actionsRef.current.instancesGetCurrent = () => {
+		if (!exampleResource) return null;
+		return JSON.stringify(exampleResource, null, 2);
+	};
+	actionsRef.current.instancesGetCount = () => data?.length ?? 0;
+	actionsRef.current.instancesGetIndex = () => currentResultIndex;
+	actionsRef.current.instancesNext = handleNext;
+	actionsRef.current.instancesPrevious = handlePrevious;
+	actionsRef.current.instancesGoToIndex = (index: number) => {
+		if (data && index >= 0 && index < data.length) {
+			setCurrentResultIndex(index);
+		}
+	};
+
 	const getCopyText = () => {
 		return exampleMode === "yaml"
 			? yaml.dump(exampleResource, { indent: 2 })
@@ -181,10 +213,11 @@ export function ExampleTabContent() {
 	return (
 		<div className="flex flex-col flex-1 min-h-0">
 			<SearchBar
-				handleSearch={(q?: string) => {
-					setQuery(q || "");
+				value={query}
+				onChange={setQuery}
+				handleSearch={() => {
 					queryClient.invalidateQueries({
-						queryKey: [viewDefinitionResourceType, Constants.PageID, q || ""],
+						queryKey: [viewDefinitionResourceType, Constants.PageID, query],
 					});
 				}}
 				isLoadingExample={isLoading}

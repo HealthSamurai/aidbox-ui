@@ -26,10 +26,10 @@ export default defineConfig({
 			"@aidbox-ui": "/src",
 		},
 
-		dedupe: [
-			"@codemirror/autocomplete",
-			"@codemirror/state",
-			"@codemirror/view",
-		],
+		// dedupe: [
+		// 	"@codemirror/autocomplete",
+		// 	"@codemirror/state",
+		// 	"@codemirror/view",
+		// ],
 	},
 });

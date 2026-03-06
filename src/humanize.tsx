@@ -26,7 +26,16 @@ function HumanizedValue({
 }: HumanizedValueProps): React.ReactNode {
 	if (!tooltip) return children;
 
-	return <span title={tooltip}>{children}</span>;
+	return (
+		<Tooltip delayDuration={500}>
+			<TooltipTrigger asChild>
+				<span>{children}</span>
+			</TooltipTrigger>
+			<TooltipContent side="bottom" className="typo-code">
+				{tooltip}
+			</TooltipContent>
+		</Tooltip>
+	);
 }
 
 interface Name {
@@ -77,35 +86,7 @@ export interface Snapshot {
 }
 
 export function humanizeDatetime(datetime: string): React.ReactNode {
-	const date = new Date(datetime);
-	let pretty = date.toLocaleDateString(undefined, {
-		day: "2-digit",
-		month: "2-digit",
-		year: "numeric",
-	});
-
-	if (
-		!(
-			date.getSeconds() === 0 &&
-			date.getMinutes() === 0 &&
-			date.getHours() === 0
-		)
-	) {
-		const timeOptions: Intl.DateTimeFormatOptions = {
-			hour: "2-digit",
-			minute: "2-digit",
-			second: "2-digit",
-		};
-
-		if (date.getMilliseconds() !== 0) {
-			// @ts-ignore - fractionalSecondDigits is valid but not in all TS versions
-			timeOptions.fractionalSecondDigits = 3;
-		}
-
-		pretty += `, ${date.toLocaleTimeString(undefined, timeOptions)}`;
-	}
-
-	return <HumanizedValue tooltip={pretty}>{pretty}</HumanizedValue>;
+	return datetime;
 }
 
 export function humanizeName(value: Name): string {

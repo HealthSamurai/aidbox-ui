@@ -2,9 +2,11 @@ import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { PlusIcon, X } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
+import { useWebMCPIGBrowser } from "../../webmcp/ig-browser";
+import type { IGBrowserActions } from "../../webmcp/ig-browser-context";
 import { EmptyState } from "../empty-state";
 
 type Installation = {
@@ -23,14 +25,18 @@ function capitalize(s: string): string {
 	return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function getIntentions(installation: Installation[]): string {
-	return (
-		installation
-			?.map((i) => i.intention)
-			.filter(Boolean)
-			.map(capitalize)
-			.join(", ") ?? ""
-	);
+const SYSTEM_PREFIXES = [
+	"io.health-samurai.core",
+	"io.health-samurai.sdc",
+	"io.health-samurai.mdm",
+];
+
+function getPackageType(name: string, installation: Installation[]): string {
+	if (SYSTEM_PREFIXES.some((prefix) => name.startsWith(prefix))) {
+		return "System";
+	}
+	const first = installation?.[0]?.intention;
+	return first ? capitalize(first) : "";
 }
 
 function usePackagesData() {
@@ -59,7 +65,7 @@ function usePackagesData() {
 					id: `${name}#${version}`,
 					name,
 					version,
-					type: getIntentions(installation),
+					type: getPackageType(name, installation),
 					installation,
 				};
 			});
@@ -122,55 +128,60 @@ function PackageList({
 		});
 
 	return (
-		<HSComp.Table zebra stickyHeader>
-			<HSComp.TableHeader>
-				<HSComp.TableRow>
-					<HSComp.TableHead
-						sortable
-						sorted={sort.column === "name" && sort.direction}
-						onClick={() => onSort("name")}
-						className="pl-7!"
-					>
-						Package
-					</HSComp.TableHead>
-					<HSComp.TableHead
-						className="w-36"
-						sortable
-						sorted={sort.column === "type" && sort.direction}
-						onClick={() => onSort("type")}
-					>
-						Type
-					</HSComp.TableHead>
-				</HSComp.TableRow>
-			</HSComp.TableHeader>
-			<HSComp.TableBody>
-				{isLoading
-					? skeletonRows
-					: data.map((row, index) => (
-							<HSComp.TableRow
-								ref={index === focusedIndex ? focusedRowRef : undefined}
-								key={row.id}
-								zebra
-								index={index}
-								className={HSComp.cn(
-									"cursor-pointer",
-									index === focusedIndex && "bg-bg-hover",
-								)}
-								onClick={() => goToPackage(row.id)}
-							>
-								<HSComp.TableCell className="pl-7!">
-									<span className="text-text-link hover:underline">
-										{row.name}
-									</span>{" "}
-									<span className="text-text-secondary">{row.version}</span>
-								</HSComp.TableCell>
-								<HSComp.TableCell className="w-36 text-text-secondary">
-									{row.type}
-								</HSComp.TableCell>
-							</HSComp.TableRow>
-						))}
-			</HSComp.TableBody>
-		</HSComp.Table>
+		<div className="h-full overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:h-full">
+			<HSComp.Table zebra>
+				<HSComp.TableHeader className="block overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:w-full">
+					<HSComp.TableRow>
+						<HSComp.TableHead
+							sortable
+							sorted={sort.column === "name" && sort.direction}
+							onClick={() => onSort("name")}
+							className="pl-7!"
+						>
+							Package
+						</HSComp.TableHead>
+						<HSComp.TableHead
+							className="w-36"
+							sortable
+							sorted={sort.column === "type" && sort.direction}
+							onClick={() => onSort("type")}
+						>
+							Type
+						</HSComp.TableHead>
+					</HSComp.TableRow>
+				</HSComp.TableHeader>
+				<HSComp.TableBody
+					className="block overflow-y-auto [&_tr]:table [&_tr]:w-full"
+					style={{ height: "calc(100% - 41px)" }}
+				>
+					{isLoading
+						? skeletonRows
+						: data.map((row, index) => (
+								<HSComp.TableRow
+									ref={index === focusedIndex ? focusedRowRef : undefined}
+									key={row.id}
+									zebra
+									index={index}
+									className={HSComp.cn(
+										"cursor-pointer",
+										index === focusedIndex && "bg-bg-hover",
+									)}
+									onClick={() => goToPackage(row.id)}
+								>
+									<HSComp.TableCell className="pl-7!">
+										<span className="text-text-link hover:underline">
+											{row.name}
+										</span>{" "}
+										<span className="text-text-secondary">{row.version}</span>
+									</HSComp.TableCell>
+									<HSComp.TableCell className="w-36 text-text-secondary">
+										{row.type}
+									</HSComp.TableCell>
+								</HSComp.TableRow>
+							))}
+				</HSComp.TableBody>
+			</HSComp.Table>
+		</div>
 	);
 }
 
@@ -246,6 +257,36 @@ export function Browser() {
 	React.useEffect(() => {
 		setFocusedIndex(filteredData.length === 1 ? 0 : -1);
 	}, [filterQuery]);
+
+	const actionsRef = useRef<IGBrowserActions>({} as IGBrowserActions);
+	actionsRef.current = {
+		listPackages: (query?: string) => {
+			if (query !== undefined) {
+				setFilterQuery(query);
+			}
+			const results = fuzzySearch(query ?? filterQuery);
+			const sorted = [...results].sort((a, b) => {
+				const cmp = a[sort.column].localeCompare(b[sort.column]);
+				return sort.direction === "asc" ? cmp : -cmp;
+			});
+			return sorted.map((p) => ({
+				name: p.name,
+				version: p.version,
+				type: p.type,
+			}));
+		},
+		getSort: () => ({ column: sort.column, direction: sort.direction }),
+		sortPackages: (column) => {
+			handleSort(column);
+		},
+		selectPackage: (id) => {
+			navigate({ to: "/ig/$packageId", params: { packageId: id } });
+		},
+		openInstallationPage: () => {
+			navigate({ to: "/ig/add" });
+		},
+	};
+	useWebMCPIGBrowser(actionsRef);
 
 	const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {

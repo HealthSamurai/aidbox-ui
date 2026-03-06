@@ -64,6 +64,47 @@ const tableItem = cn(
 
 // Data fetching
 
+export function psqlRequest(
+	client: ReturnType<typeof useAidboxClient>,
+	query: string,
+) {
+	return client
+		.rawRequest({
+			method: "POST",
+			url: "/$psql",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ query }),
+		})
+		.then(async (res) => {
+			if (!res.response.ok) throw new Error(`HTTP ${res.response.status}`);
+			const data = await res.response.json();
+			const arr = Array.isArray(data) ? data : [data];
+			return arr[0]?.result ?? [];
+		});
+}
+
+export type { TableDetails };
+
+export async function fetchTableDetails(
+	client: ReturnType<typeof useAidboxClient>,
+	schema: string,
+	name: string,
+): Promise<TableDetails> {
+	const [columns, indexes, rowCountRows, sizeRows] = await Promise.all([
+		psqlRequest(client, buildColumnsQuery(schema, name)),
+		psqlRequest(client, buildIndexesQuery(schema, name)),
+		psqlRequest(client, buildRowCountQuery(schema, name)),
+		psqlRequest(client, buildSizeQuery(schema, name)),
+	]);
+	return {
+		columns,
+		indexes,
+		rowCount: rowCountRows[0]?.row_count ?? -1,
+		tableSize: sizeRows[0]?.table_size ?? "unknown",
+		indexesSize: sizeRows[0]?.indexes_size ?? "unknown",
+	};
+}
+
 function buildColumnsQuery(schema: string, table: string): string {
 	const s = schema.replace(/'/g, "''");
 	const t = table.replace(/'/g, "''");
@@ -88,38 +129,19 @@ function buildSizeQuery(schema: string, table: string): string {
 	return `SELECT pg_size_pretty(pg_table_size('"${s}"."${t}"')) AS table_size, pg_size_pretty(pg_indexes_size('"${s}"."${t}"')) AS indexes_size`;
 }
 
-function psqlRequest(
-	client: ReturnType<typeof useAidboxClient>,
-	query: string,
-) {
-	return client
-		.rawRequest({
-			method: "POST",
-			url: "/$psql",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ query }),
-		})
-		.then(async (res) => {
-			if (!res.response.ok) throw new Error(`HTTP ${res.response.status}`);
-			const data = await res.response.json();
-			const arr = Array.isArray(data) ? data : [data];
-			return arr[0]?.result ?? [];
-		});
-}
-
 function formatTableName(table: TableId): string {
 	return table.schema === "public"
 		? table.name
 		: `${table.schema}.${table.name}`;
 }
 
-function formatColumnType(col: ColumnInfo): string {
+export function formatColumnType(col: ColumnInfo): string {
 	if (col.data_type === "USER-DEFINED") return col.udt_name;
 	if (col.data_type === "ARRAY") return `${col.udt_name.replace(/^_/, "")}[]`;
 	return col.data_type;
 }
 
-function extractIndexType(indexdef: string): string {
+export function extractIndexType(indexdef: string): string {
 	const match = indexdef.match(/USING\s+(\w+)/i);
 	return match?.[1] ?? "";
 }
@@ -379,21 +401,9 @@ function TableDetailView({
 		setError(null);
 		setDetails(null);
 
-		Promise.all([
-			psqlRequest(client, buildColumnsQuery(table.schema, table.name)),
-			psqlRequest(client, buildIndexesQuery(table.schema, table.name)),
-			psqlRequest(client, buildRowCountQuery(table.schema, table.name)),
-			psqlRequest(client, buildSizeQuery(table.schema, table.name)),
-		])
-			.then(([columns, indexes, rowCountRows, sizeRows]) => {
-				if (cancelled) return;
-				setDetails({
-					columns,
-					indexes,
-					rowCount: rowCountRows[0]?.row_count ?? -1,
-					tableSize: sizeRows[0]?.table_size ?? "unknown",
-					indexesSize: sizeRows[0]?.indexes_size ?? "unknown",
-				});
+		fetchTableDetails(client, table.schema, table.name)
+			.then((d) => {
+				if (!cancelled) setDetails(d);
 			})
 			.catch((err) => {
 				if (!cancelled) {
@@ -413,20 +423,8 @@ function TableDetailView({
 			try {
 				const escaped = indexname.replace(/'/g, "''");
 				await psqlRequest(client, `DROP INDEX IF EXISTS "${escaped}"`);
-				// Refresh details
-				const [columns, indexes, rowCountRows, sizeRows] = await Promise.all([
-					psqlRequest(client, buildColumnsQuery(table.schema, table.name)),
-					psqlRequest(client, buildIndexesQuery(table.schema, table.name)),
-					psqlRequest(client, buildRowCountQuery(table.schema, table.name)),
-					psqlRequest(client, buildSizeQuery(table.schema, table.name)),
-				]);
-				setDetails({
-					columns,
-					indexes,
-					rowCount: rowCountRows[0]?.row_count ?? -1,
-					tableSize: sizeRows[0]?.table_size ?? "unknown",
-					indexesSize: sizeRows[0]?.indexes_size ?? "unknown",
-				});
+				const d = await fetchTableDetails(client, table.schema, table.name);
+				setDetails(d);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : String(err));
 			}

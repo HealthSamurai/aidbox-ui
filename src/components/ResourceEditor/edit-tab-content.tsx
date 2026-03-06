@@ -7,6 +7,7 @@ import * as HSComp from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import { useLocalStorage } from "../../hooks";
+import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { EditorTab } from "./editor-tab";
 import { ProfilePanel } from "./profile-panel";
 
@@ -25,6 +26,7 @@ interface EditTabContentProps {
 	resourceType: string;
 	storageKey: string;
 	autoSaveId: string;
+	actionsRef?: React.RefObject<ResourceEditorActions>;
 }
 
 export function EditTabContent({
@@ -42,6 +44,7 @@ export function EditTabContent({
 	resourceType,
 	storageKey,
 	autoSaveId,
+	actionsRef,
 }: EditTabContentProps) {
 	const [isProfileOpen, setIsProfileOpen] = useLocalStorage<boolean>({
 		key: storageKey,
@@ -52,6 +55,13 @@ export function EditTabContent({
 	const handleToggleProfile = () => {
 		setIsProfileOpen((prev) => !prev);
 	};
+
+	if (actionsRef) {
+		actionsRef.current.editorToggleProfilePanel = () => {
+			setIsProfileOpen((prev) => !prev);
+		};
+		actionsRef.current.editorGetProfile = () => ({ open: isProfileOpen });
+	}
 
 	React.useEffect(() => {
 		if (!isProfileOpen) return;
@@ -113,6 +123,8 @@ export function EditTabContent({
 						<ProfilePanel
 							resourceType={resourceType}
 							onClose={handleToggleProfile}
+							actionsRef={actionsRef}
+							onOpenPanel={() => setIsProfileOpen(true)}
 						/>
 					</HSComp.ResizablePanel>
 				</>

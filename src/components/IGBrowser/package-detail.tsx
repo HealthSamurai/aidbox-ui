@@ -1,15 +1,27 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	Link,
 	useNavigate,
 	useParams,
 	useSearch,
 } from "@tanstack/react-router";
-import { ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react";
-import { useState } from "react";
+import {
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	Loader2Icon,
+	RefreshCwIcon,
+	Trash2Icon,
+	X,
+} from "lucide-react";
+import { type RefObject, useEffect, useRef, useState } from "react";
+import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { useWebMCPPackageDetail } from "../../webmcp/package-detail";
+import type { PackageDetailActions } from "../../webmcp/package-detail-context";
 
 type Installation = {
 	intention?: string;
@@ -52,6 +64,223 @@ function usePackageMeta(packageId: string) {
 	});
 }
 
+async function rpcCall(
+	client: AidboxClientR5,
+	method: string,
+	params: Record<string, unknown>,
+) {
+	const response = await client.rawRequest({
+		method: "POST",
+		url: `/rpc?_m=${method}`,
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ method, params }),
+	});
+	const json = await response.response.json();
+	if (json.error) throw new Error(json.error.message || "RPC error");
+	return json;
+}
+
+function isSystemPackage(name: string) {
+	return name.startsWith("io.health-samurai.");
+}
+
+function isCorePackage(type?: string) {
+	return type === "fhir.core" || type === "core";
+}
+
+function DeletePackageButton({
+	meta,
+	deleteMutate,
+	deleteIsPending,
+}: {
+	meta: PackageMeta;
+	deleteMutate: () => void;
+	deleteIsPending: boolean;
+}) {
+	const client = useAidboxClient();
+	const [dependents, setDependents] = useState<
+		{ name: string; version: string }[]
+	>([]);
+	const [open, setOpen] = useState(false);
+
+	const disabledReason = isSystemPackage(meta.name)
+		? "Embedded Aidbox package can't be removed"
+		: isCorePackage(meta.type)
+			? "FHIR core package can't be removed"
+			: null;
+
+	const handleOpen = async () => {
+		try {
+			const result = await rpcCall(
+				client,
+				"aidbox.profiles/retrieve-packages-depending-on",
+				{
+					"package-name": meta.name,
+					"package-version": meta.version,
+				},
+			);
+			setDependents(Array.isArray(result.result) ? result.result : []);
+		} catch {
+			setDependents([]);
+		}
+		setOpen(true);
+	};
+
+	const pending = deleteIsPending;
+
+	return (
+		<HSComp.AlertDialog
+			open={open}
+			onOpenChange={(v) => {
+				if (!pending) setOpen(v);
+			}}
+		>
+			<HSComp.Tooltip>
+				<HSComp.TooltipTrigger asChild>
+					<span>
+						<HSComp.Button
+							variant="link"
+							size="small"
+							danger
+							disabled={!!disabledReason}
+							onClick={handleOpen}
+						>
+							<Trash2Icon className="w-4 h-4" />
+							Delete
+						</HSComp.Button>
+					</span>
+				</HSComp.TooltipTrigger>
+				{disabledReason && (
+					<HSComp.TooltipContent>{disabledReason}</HSComp.TooltipContent>
+				)}
+			</HSComp.Tooltip>
+			<HSComp.AlertDialogContent>
+				<HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogTitle>
+						Delete {meta.name}#{meta.version}
+					</HSComp.AlertDialogTitle>
+				</HSComp.AlertDialogHeader>
+				<HSComp.AlertDialogDescription>
+					Are you sure you want to delete this package? This action cannot be
+					undone.
+					{dependents.length > 0 && (
+						<div className="mt-3">
+							<span className="font-medium text-text-primary">
+								The following packages depend on this package:
+							</span>
+							<ul className="mt-1 list-disc pl-5 text-text-secondary">
+								{dependents.map((dep) => (
+									<li key={`${dep.name}#${dep.version}`}>
+										{dep.name}#{dep.version}
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+				</HSComp.AlertDialogDescription>
+				<HSComp.AlertDialogFooter>
+					<HSComp.AlertDialogCancel disabled={pending}>
+						Cancel
+					</HSComp.AlertDialogCancel>
+					<HSComp.AlertDialogAction
+						danger
+						disabled={pending}
+						onClick={(e) => {
+							e.preventDefault();
+							deleteMutate();
+						}}
+					>
+						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
+						{pending ? "Deleting…" : "Delete"}
+					</HSComp.AlertDialogAction>
+				</HSComp.AlertDialogFooter>
+			</HSComp.AlertDialogContent>
+		</HSComp.AlertDialog>
+	);
+}
+
+function ReinstallPackageButton({
+	meta,
+	reinstallMutate,
+	reinstallIsPending,
+}: {
+	meta: PackageMeta;
+	reinstallMutate: () => void;
+	reinstallIsPending: boolean;
+}) {
+	const [open, setOpen] = useState(false);
+	const wasPendingRef = useRef(false);
+
+	useEffect(() => {
+		if (reinstallIsPending) {
+			wasPendingRef.current = true;
+		} else if (wasPendingRef.current) {
+			wasPendingRef.current = false;
+			setOpen(false);
+		}
+	}, [reinstallIsPending]);
+
+	const disabledReason = isSystemPackage(meta.name)
+		? "Embedded Aidbox package can't be reinstalled"
+		: null;
+
+	const pending = reinstallIsPending;
+
+	return (
+		<HSComp.AlertDialog
+			open={open}
+			onOpenChange={(v) => {
+				if (!pending) setOpen(v);
+			}}
+		>
+			<HSComp.Tooltip>
+				<HSComp.TooltipTrigger asChild>
+					<span>
+						<HSComp.AlertDialogTrigger asChild>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								disabled={!!disabledReason}
+							>
+								<RefreshCwIcon className="w-4 h-4" />
+								Reinstall
+							</HSComp.Button>
+						</HSComp.AlertDialogTrigger>
+					</span>
+				</HSComp.TooltipTrigger>
+				{disabledReason && (
+					<HSComp.TooltipContent>{disabledReason}</HSComp.TooltipContent>
+				)}
+			</HSComp.Tooltip>
+			<HSComp.AlertDialogContent>
+				<HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogTitle>
+						Reinstall {meta.name}#{meta.version}
+					</HSComp.AlertDialogTitle>
+				</HSComp.AlertDialogHeader>
+				<HSComp.AlertDialogDescription>
+					Package will be reloaded from the registry. This may take a moment.
+				</HSComp.AlertDialogDescription>
+				<HSComp.AlertDialogFooter>
+					<HSComp.AlertDialogCancel disabled={pending}>
+						Cancel
+					</HSComp.AlertDialogCancel>
+					<HSComp.AlertDialogAction
+						disabled={pending}
+						onClick={(e) => {
+							e.preventDefault();
+							reinstallMutate();
+						}}
+					>
+						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
+						{pending ? "Reinstalling…" : "Reinstall"}
+					</HSComp.AlertDialogAction>
+				</HSComp.AlertDialogFooter>
+			</HSComp.AlertDialogContent>
+		</HSComp.AlertDialog>
+	);
+}
+
 type KVRow = { label: string; value: React.ReactNode };
 
 function KVRows({ rows }: { rows: KVRow[] }) {
@@ -88,17 +317,29 @@ function Section({
 
 function ExpandableText({ text }: { text: string }) {
 	const [expanded, setExpanded] = useState(false);
+	const [clamped, setClamped] = useState(false);
+	const textRef = useRef<HTMLSpanElement>(null);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: text change means content changed, need to re-measure
+	useEffect(() => {
+		const el = textRef.current;
+		if (el) setClamped(el.scrollHeight > el.clientHeight);
+	}, [text]);
 
 	return (
 		<div className="flex flex-col gap-1">
-			<span className={expanded ? "" : "line-clamp-1"}>{text}</span>
-			<button
-				type="button"
-				onClick={() => setExpanded((v) => !v)}
-				className="text-text-link hover:underline text-sm cursor-pointer self-start"
-			>
-				{expanded ? "Show less" : "Show more"}
-			</button>
+			<span ref={textRef} className={expanded ? "" : "line-clamp-1"}>
+				{text}
+			</span>
+			{(clamped || expanded) && (
+				<button
+					type="button"
+					onClick={() => setExpanded((v) => !v)}
+					className="text-text-link hover:underline text-sm cursor-pointer self-start"
+				>
+					{expanded ? "Show less" : "Show more"}
+				</button>
+			)}
 		</div>
 	);
 }
@@ -194,23 +435,47 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 	);
 }
 
-function PackageInfoContent({ meta }: { meta: PackageMeta }) {
+function PackageInfoContent({
+	meta,
+	actionsRef,
+}: {
+	meta: PackageMeta;
+	actionsRef: RefObject<PackageDetailActions>;
+}) {
 	const navigate = useNavigate();
 	const { view } = useSearch({ from: "/ig/$packageId/" });
-	const currentView = view ?? "visual";
+	const [storedView, setStoredView] = useLocalStorage<string>({
+		key: IG_VIEW_KEY,
+		defaultValue: "visual",
+	});
+	const currentView = view ?? storedView;
+
+	useEffect(() => {
+		actionsRef.current.setPackageInfoView = (v: string) => {
+			setStoredView(v);
+			navigate({
+				search: (prev) => ({
+					...prev,
+					view: v === "visual" ? undefined : v,
+				}),
+				replace: true,
+			});
+		};
+	});
 
 	return (
 		<HSComp.Tabs
 			value={currentView}
-			onValueChange={(v) =>
+			onValueChange={(v) => {
+				setStoredView(v);
 				navigate({
 					search: (prev) => ({
 						...prev,
 						view: v === "visual" ? undefined : v,
 					}),
 					replace: true,
-				})
-			}
+				});
+			}}
 			variant="tertiary"
 			className="flex flex-col grow min-h-0"
 		>
@@ -223,7 +488,7 @@ function PackageInfoContent({ meta }: { meta: PackageMeta }) {
 			<HSComp.TabsContent value="visual" className="overflow-auto pb-20">
 				<VisualView meta={meta} />
 			</HSComp.TabsContent>
-			<HSComp.TabsContent value="json" className="relative grow min-h-0 pt-2">
+			<HSComp.TabsContent value="json" className="relative grow min-h-0">
 				<HSComp.CodeEditor
 					readOnly
 					currentValue={JSON.stringify(meta, null, 2)}
@@ -312,34 +577,48 @@ function PaginationPages({
 	);
 }
 
+async function fetchCanonicals(
+	client: AidboxClientR5,
+	packageId: string,
+	substring: string,
+	page: number,
+): Promise<CanonicalResult> {
+	const response = await client.rawRequest({
+		method: "POST",
+		url: "/rpc?_m=aidbox.introspector/search-package-canonicals",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			method: "aidbox.introspector/search-package-canonicals",
+			params: {
+				"package-coordinate": packageId,
+				...(substring ? { substring } : {}),
+				count: PAGE_SIZE,
+				page,
+			},
+		}),
+	});
+	const json = await response.response.json();
+	return json.result ?? { total: 0, entry: [] };
+}
+
 function useCanonicals(packageId: string, substring: string, page: number) {
 	const client = useAidboxClient();
 
 	return useQuery<CanonicalResult>({
 		queryKey: ["ig-canonicals", packageId, substring, page],
 		staleTime: 5 * 60 * 1000,
-		queryFn: async () => {
-			const response = await client.rawRequest({
-				method: "POST",
-				url: "/rpc?_m=aidbox.introspector/search-package-canonicals",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					method: "aidbox.introspector/search-package-canonicals",
-					params: {
-						"package-coordinate": packageId,
-						...(substring ? { substring } : {}),
-						count: PAGE_SIZE,
-						page,
-					},
-				}),
-			});
-			const json = await response.response.json();
-			return json.result ?? { total: 0, entry: [] };
-		},
+		queryFn: () => fetchCanonicals(client, packageId, substring, page),
 	});
 }
 
-function CanonicalsContent({ packageId }: { packageId: string }) {
+function CanonicalsContent({
+	packageId,
+	actionsRef,
+}: {
+	packageId: string;
+	actionsRef: RefObject<PackageDetailActions>;
+}) {
+	const client = useAidboxClient();
 	const navigate = useNavigate();
 	const [search, setSearch] = useState("");
 	const [substring, setSubstring] = useState("");
@@ -357,6 +636,58 @@ function CanonicalsContent({ packageId }: { packageId: string }) {
 
 	const { data, isLoading } = useCanonicals(packageId, substring, page);
 	const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+
+	useEffect(() => {
+		actionsRef.current.searchCanonicals = async (
+			query?: string,
+			p?: number,
+		) => {
+			const targetQuery = query ?? substring;
+			const targetPage = p ?? 1;
+
+			if (query !== undefined) {
+				setSearch(query);
+				setSubstring(query);
+				setPage(targetPage);
+			}
+			if (p !== undefined) {
+				setPage(p);
+			}
+
+			const result = await fetchCanonicals(
+				client,
+				packageId,
+				targetQuery,
+				targetPage,
+			);
+
+			const entries = result.entry.map((item) => ({
+				resourceType: item.resource.resourceType,
+				url: item.resource.url ?? "",
+				id: item.resource.id,
+			}));
+			return {
+				total: result.total,
+				page: targetPage,
+				totalPages: Math.ceil(result.total / PAGE_SIZE),
+				entries,
+			};
+		};
+
+		actionsRef.current.selectCanonical = (id: string) => {
+			const entry = data?.entry.find((item) => item.resource.id === id);
+			if (entry) {
+				navigate({
+					to: "/ig/$packageId/resource/$resourceType/$resourceId",
+					params: {
+						packageId,
+						resourceType: entry.resource.resourceType,
+						resourceId: entry.resource.id,
+					},
+				});
+			}
+		};
+	});
 
 	return (
 		<div className="flex flex-col h-full min-h-0">
@@ -380,9 +711,9 @@ function CanonicalsContent({ packageId }: { packageId: string }) {
 					}
 				/>
 			</div>
-			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:h-full">
-				<HSComp.Table zebra>
-					<HSComp.TableHeader className="block scrollbar-none [&_tr]:table [&_tr]:w-full">
+			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:flex [&_table]:flex-col [&_table]:h-full">
+				<HSComp.Table zebra className="typo-code">
+					<HSComp.TableHeader className="block shrink-0 overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 						<HSComp.TableRow>
 							<HSComp.TableHead className="w-48 pl-7!">
 								Resource Type
@@ -390,10 +721,7 @@ function CanonicalsContent({ packageId }: { packageId: string }) {
 							<HSComp.TableHead>URL</HSComp.TableHead>
 						</HSComp.TableRow>
 					</HSComp.TableHeader>
-					<HSComp.TableBody
-						className="block overflow-y-auto [&_tr]:table [&_tr]:w-full"
-						style={{ height: "calc(100% - 41px)" }}
-					>
+					<HSComp.TableBody className="block grow min-h-0 overflow-y-auto pb-10 [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 						{isLoading
 							? Array.from({ length: 30 }, (_, i) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
@@ -474,26 +802,131 @@ function LoadingSkeleton() {
 	);
 }
 
+const IG_TAB_KEY = "ig-browser-tab";
+const IG_VIEW_KEY = "ig-browser-view";
+
+function formatPackageInfoVisual(meta: PackageMeta) {
+	const rows: Record<string, string> = {};
+	if (meta.title) rows.title = meta.title;
+	if (meta.version) rows.version = meta.version;
+	if (meta.author) rows.author = meta.author;
+	if (meta.type) rows.type = meta.type;
+	if (meta.homepage) rows.homepage = meta.homepage;
+	if (meta.fhirVersions?.length)
+		rows.fhirVersions = meta.fhirVersions.join(", ");
+	if (meta.description) rows.description = meta.description;
+	if (meta.dependencies)
+		rows.dependencies = Object.entries(meta.dependencies)
+			.map(([n, v]) => `${n}#${v}`)
+			.join(", ");
+	if (meta.installation?.length) {
+		const inst = meta.installation[0];
+		if (inst.intention) rows.intention = inst.intention;
+		if (inst.cts) rows.installedAt = inst.cts;
+		if (inst.source?.type) rows.sourceType = inst.source.type;
+		if (inst.source?.["registry-url"])
+			rows.registryUrl = inst.source["registry-url"];
+	}
+	return rows;
+}
+
 export function PackageDetail() {
 	const { packageId } = useParams({ from: "/ig/$packageId/" });
 	const { tab } = useSearch({ from: "/ig/$packageId/" });
 	const navigate = useNavigate();
+	const client = useAidboxClient();
+	const queryClient = useQueryClient();
 	const { data, isLoading } = usePackageMeta(packageId);
-	const currentTab = tab ?? "canonicals";
+	const [storedTab, setStoredTab] = useLocalStorage<string>({
+		key: IG_TAB_KEY,
+		defaultValue: "canonicals",
+	});
+	const currentTab = tab ?? storedTab;
+
+	const switchTab = (v: string) => {
+		setStoredTab(v);
+		navigate({
+			search: (prev) => ({
+				...prev,
+				tab: v === "canonicals" ? undefined : v,
+				view: v === "package-info" ? prev.view : undefined,
+			}),
+			replace: true,
+		});
+	};
+
+	const reinstallMutation = useMutation({
+		mutationFn: () =>
+			rpcCall(client, "aidbox.profiles/reinstall-package", {
+				"package-name": data?.name ?? "",
+				"package-version": data?.version ?? "",
+			}),
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			HSComp.toast.success("Package reinstalled", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
+			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
+			queryClient.invalidateQueries({
+				queryKey: ["ig-package-meta", packageId],
+			});
+		},
+	});
+
+	const deleteMutation = useMutation({
+		mutationFn: () =>
+			rpcCall(client, "aidbox.profiles/delete-package", {
+				"package-name": data?.name ?? "",
+				"package-version": data?.version ?? "",
+			}),
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
+			navigate({ to: "/ig" });
+		},
+	});
+
+	const actionsRef = useRef<PackageDetailActions>({
+		getActiveTab: () => currentTab,
+		setActiveTab: switchTab,
+		getPackageInfo: (format) => {
+			if (!data) return null;
+			return format === "json" ? data : formatPackageInfoVisual(data);
+		},
+		setPackageInfoView: (v) => {
+			switchTab("package-info");
+			// Will be overridden when PackageInfoContent mounts
+			void v;
+		},
+		searchCanonicals: async () => {
+			switchTab("canonicals");
+			return { total: 0, page: 1, totalPages: 0, entries: [] };
+		},
+		selectCanonical: () => {
+			switchTab("canonicals");
+		},
+		reinstallPackage: () => reinstallMutation.mutate(),
+		deletePackage: () => deleteMutation.mutate(),
+	});
+
+	useEffect(() => {
+		actionsRef.current.getActiveTab = () => currentTab;
+		actionsRef.current.setActiveTab = switchTab;
+		actionsRef.current.getPackageInfo = (format) => {
+			if (!data) return null;
+			return format === "json" ? data : formatPackageInfoVisual(data);
+		};
+		actionsRef.current.reinstallPackage = () => reinstallMutation.mutate();
+		actionsRef.current.deletePackage = () => deleteMutation.mutate();
+	});
+
+	useWebMCPPackageDetail(actionsRef);
 
 	return (
 		<HSComp.Tabs
 			value={currentTab}
-			onValueChange={(v) =>
-				navigate({
-					search: (prev) => ({
-						...prev,
-						tab: v === "canonicals" ? undefined : v,
-						view: v === "package-info" ? prev.view : undefined,
-					}),
-					replace: true,
-				})
-			}
+			onValueChange={switchTab}
 			variant="primary"
 			className="flex flex-col h-full"
 		>
@@ -504,18 +937,32 @@ export function PackageDetail() {
 						Package Info
 					</HSComp.TabsTrigger>
 				</HSComp.TabsList>
+				{data && (
+					<div className="ml-auto flex items-center gap-2 mr-4">
+						<ReinstallPackageButton
+							meta={data}
+							reinstallMutate={() => reinstallMutation.mutate()}
+							reinstallIsPending={reinstallMutation.isPending}
+						/>
+						<DeletePackageButton
+							meta={data}
+							deleteMutate={() => deleteMutation.mutate()}
+							deleteIsPending={deleteMutation.isPending}
+						/>
+					</div>
+				)}
 			</div>
 			<HSComp.TabsContent
 				value="canonicals"
 				className="grow min-h-0 flex flex-col"
 			>
-				<CanonicalsContent packageId={packageId} />
+				<CanonicalsContent packageId={packageId} actionsRef={actionsRef} />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="package-info" className="overflow-auto">
 				{isLoading ? (
 					<LoadingSkeleton />
 				) : data ? (
-					<PackageInfoContent meta={data} />
+					<PackageInfoContent meta={data} actionsRef={actionsRef} />
 				) : null}
 			</HSComp.TabsContent>
 		</HSComp.Tabs>
