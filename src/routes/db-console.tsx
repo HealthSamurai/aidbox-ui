@@ -1390,7 +1390,7 @@ function DbConsolePage() {
 																variant="link"
 																size="regular"
 																className="text-text-link!"
-																onClick={executeQuery}
+																onClick={() => executeQuery()}
 																disabled={!query.trim()}
 															>
 																<PlayIcon className="w-4 h-4 fill-current text-text-link" />
@@ -2065,7 +2065,7 @@ function ResultContent({
 							<button
 								type="button"
 								className="text-text-link hover:underline cursor-pointer"
-								onClick={onRun}
+								onClick={() => onRun()}
 							>
 								Run
 							</button>{" "}
