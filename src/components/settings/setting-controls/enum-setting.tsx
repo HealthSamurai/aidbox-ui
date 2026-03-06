@@ -55,106 +55,108 @@ export function EnumSetting({
 	);
 
 	return (
-		<div className="group/setting space-y-1">
-			<Label className="text-sm">
-				<SettingLabel setting={setting} />
-			</Label>
+		<div className="group/setting">
+			<div className="space-y-1 px-3 py-3">
+				<Label className="text-sm">
+					<SettingLabel setting={setting} />
+				</Label>
 
-			{hasDescriptions ? (
-				<RadioGroup
-					value={currentValue}
-					disabled={!editable}
-					onValueChange={(newValue) => {
-						if (editable) onSave(setting, newValue);
-					}}
-					className="space-y-2"
-				>
-					{variants.map((variant) => (
-						<div key={variant.value} className="flex items-start gap-2">
-							{notEditableExplanation && !editable ? (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="pt-0.5">
-											<RadioGroupItem value={variant.value} disabled />
-										</div>
-									</TooltipTrigger>
-									<TooltipContent>{notEditableExplanation}</TooltipContent>
-								</Tooltip>
-							) : (
-								<RadioGroupItem value={variant.value} className="mt-0.5" />
-							)}
-							<div>
-								<code className="text-xs">{variant.value}</code>
-								{variant.desc && (
-									<p
-										className="text-xs text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline"
-										// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
-										dangerouslySetInnerHTML={{ __html: variant.desc }}
-									/>
+				{hasDescriptions ? (
+					<RadioGroup
+						value={currentValue}
+						disabled={!editable}
+						onValueChange={(newValue) => {
+							if (editable) onSave(setting, newValue);
+						}}
+						className="space-y-2"
+					>
+						{variants.map((variant) => (
+							<div key={variant.value} className="flex items-start gap-2">
+								{notEditableExplanation && !editable ? (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className="pt-0.5">
+												<RadioGroupItem value={variant.value} disabled />
+											</div>
+										</TooltipTrigger>
+										<TooltipContent>{notEditableExplanation}</TooltipContent>
+									</Tooltip>
+								) : (
+									<RadioGroupItem value={variant.value} className="mt-0.5" />
 								)}
-							</div>
-						</div>
-					))}
-				</RadioGroup>
-			) : (
-				<div>
-					{notEditableExplanation && !editable ? (
-						<Tooltip>
-							<TooltipTrigger asChild>
 								<div>
-									<Select value={currentValue} disabled>
-										<SelectTrigger className="w-full">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{variants.map((v) => (
-												<SelectItem key={v.value} value={v.value}>
-													{v.value}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+									<code className="text-xs">{variant.value}</code>
+									{variant.desc && (
+										<p
+											className="text-xs text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline"
+											// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
+											dangerouslySetInnerHTML={{ __html: variant.desc }}
+										/>
+									)}
 								</div>
-							</TooltipTrigger>
-							<TooltipContent>{notEditableExplanation}</TooltipContent>
-						</Tooltip>
-					) : (
-						<Select
-							value={currentValue}
-							disabled={!editable}
-							onValueChange={(newValue) => {
-								if (editable) onSave(setting, newValue);
-							}}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{variants.map((v) => (
-									<SelectItem key={v.value} value={v.value}>
-										{v.value}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					)}
-				</div>
-			)}
+							</div>
+						))}
+					</RadioGroup>
+				) : (
+					<div>
+						{notEditableExplanation && !editable ? (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<div>
+										<Select value={currentValue} disabled>
+											<SelectTrigger className="w-full">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{variants.map((v) => (
+													<SelectItem key={v.value} value={v.value}>
+														{v.value}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								</TooltipTrigger>
+								<TooltipContent>{notEditableExplanation}</TooltipContent>
+							</Tooltip>
+						) : (
+							<Select
+								value={currentValue}
+								disabled={!editable}
+								onValueChange={(newValue) => {
+									if (editable) onSave(setting, newValue);
+								}}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{variants.map((v) => (
+										<SelectItem key={v.value} value={v.value}>
+											{v.value}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					</div>
+				)}
 
-			{setting.description ? (
-				<div className="flex items-start gap-2 pt-1">
-					<div
-						className="min-w-0 flex-1 text-xs [overflow-wrap:anywhere] text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:whitespace-pre-wrap [&_table]:w-full [&_table]:table-fixed [&_td]:break-words [&_th]:break-words [&_ul]:list-disc [&_ul]:pl-4"
-						// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
-						dangerouslySetInnerHTML={{ __html: setting.description }}
-					/>
-					{moreButton}
-				</div>
-			) : (
-				moreButton
-			)}
+				{setting.description ? (
+					<div className="flex items-start gap-2 pt-1">
+						<div
+							className="min-w-0 flex-1 text-xs [overflow-wrap:anywhere] text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:whitespace-pre-wrap [&_table]:w-full [&_table]:table-fixed [&_td]:break-words [&_th]:break-words [&_ul]:list-disc [&_ul]:pl-4"
+							// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions
+							dangerouslySetInnerHTML={{ __html: setting.description }}
+						/>
+						{moreButton}
+					</div>
+				) : (
+					moreButton
+				)}
 
-			{infoOpen && <SettingInfoPanel setting={setting} />}
+				{infoOpen && <SettingInfoPanel setting={setting} />}
+			</div>
 		</div>
 	);
 }
