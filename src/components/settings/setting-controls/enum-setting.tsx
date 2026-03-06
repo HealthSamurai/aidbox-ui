@@ -47,7 +47,7 @@ export function EnumSetting({
 		<button
 			type="button"
 			onClick={() => setInfoOpen((o) => !o)}
-			className="invisible ml-auto inline-flex shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+			className="invisible ml-auto inline-flex cursor-pointer shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
 		>
 			{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
 			<span>{infoOpen ? "Less" : "More"}</span>
