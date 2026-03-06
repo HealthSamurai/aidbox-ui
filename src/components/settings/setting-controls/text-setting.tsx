@@ -144,8 +144,8 @@ export function TextSetting({
 					{infoOpen && <SettingInfoPanel setting={setting} />}
 				</div>
 				{isEditing && (
-					<div className="-mx-3 mt-4 border-t border-border-secondary">
-						<div className="flex justify-end gap-2 px-3 pt-3">
+					<div className="mt-4 border-t border-border-secondary">
+						<div className="flex justify-end gap-2 pt-3">
 							<Button variant="ghost" onClick={() => onCancel(setting)}>
 								Cancel
 							</Button>

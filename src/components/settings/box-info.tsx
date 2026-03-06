@@ -26,7 +26,7 @@ export function BoxInfoDisplay({ boxInfo }: { boxInfo: BoxInfo | undefined }) {
 		.join(", ");
 
 	return (
-		<div className="text-sm text-text-primary">
+		<div className="px-3 py-3 text-sm text-text-primary">
 			{versionLine && (
 				<div>
 					<span className="font-medium">Version:</span> {versionLine}
