@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
 import { Route as IgRouteImport } from './routes/ig'
@@ -25,6 +26,11 @@ import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resourc
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
 import { Route as IgPackageIdResourceResourceTypeResourceIdRouteImport } from './routes/ig.$packageId.resource.$resourceType.$resourceId'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RestRoute = RestRouteImport.update({
   id: '/rest',
   path: '/rest',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
+  '/settings': typeof SettingsRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
+  '/settings': typeof SettingsRoute
   '/ig/add': typeof IgAddRoute
   '/ig': typeof IgIndexRoute
   '/resource': typeof ResourceIndexRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
+  '/settings': typeof SettingsRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/ig'
     | '/resource'
     | '/rest'
+    | '/settings'
     | '/ig/$packageId'
     | '/ig/add'
     | '/resource/$resourceType'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/db-console'
     | '/rest'
+    | '/settings'
     | '/ig/add'
     | '/ig'
     | '/resource'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/ig'
     | '/resource'
     | '/rest'
+    | '/settings'
     | '/ig/$packageId'
     | '/ig/add'
     | '/resource/$resourceType'
@@ -209,10 +221,18 @@ export interface RootRouteChildren {
   IgRoute: typeof IgRouteWithChildren
   ResourceRoute: typeof ResourceRouteWithChildren
   RestRoute: typeof RestRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rest': {
       id: '/rest'
       path: '/rest'
@@ -385,6 +405,7 @@ const rootRouteChildren: RootRouteChildren = {
   IgRoute: IgRouteWithChildren,
   ResourceRoute: ResourceRouteWithChildren,
   RestRoute: RestRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

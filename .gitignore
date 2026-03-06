@@ -4,3 +4,4 @@
 /.tanstack
 /tmp
 /.codegen-cache/
+/pnpm-workspace.yaml

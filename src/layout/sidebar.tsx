@@ -16,6 +16,7 @@ import {
 	Package,
 	PanelLeftClose,
 	PanelLeftOpen,
+	Settings,
 	SquareTerminal,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -38,6 +39,10 @@ const mainMenuItems = [
 	<Link key="/ig" to="/ig">
 		<Package />
 		FHIR Packages
+	</Link>,
+	<Link key="/settings" to="/settings">
+		<Settings />
+		Settings
 	</Link>,
 ].map((link) => {
 	const linkChildren = link.props.children;
