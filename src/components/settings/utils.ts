@@ -94,6 +94,7 @@ export function isValueFromAidboxSetting(setting: Setting): boolean {
 
 function fuzzySearchSettings(settings: Setting[], query: string): Setting[] {
 	const search = createFuzzySearch(settings, {
+		threshold: 0.2,
 		keys: [
 			{ name: "name", weight: 4 },
 			{ name: "envs", weight: 3 },
