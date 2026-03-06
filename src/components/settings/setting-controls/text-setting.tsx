@@ -106,7 +106,7 @@ export function TextSetting({
 			<button
 				type="button"
 				onClick={() => setInfoOpen((o) => !o)}
-				className="invisible ml-auto inline-flex shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+				className="invisible ml-auto inline-flex cursor-pointer shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
 			>
 				{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
 				<span>{infoOpen ? "Less" : "More"}</span>
@@ -116,7 +116,7 @@ export function TextSetting({
 		<button
 			type="button"
 			onClick={() => setInfoOpen((o) => !o)}
-			className="invisible flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+			className="invisible flex cursor-pointer items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
 		>
 			{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
 			<span>{infoOpen ? "Less" : "More"}</span>
