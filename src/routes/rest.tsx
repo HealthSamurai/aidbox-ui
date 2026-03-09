@@ -757,6 +757,7 @@ function ExplainView({
 		queryKey: ["rest-console-explain", selectedTab.id, sendVersion],
 		queryFn: async (): Promise<ExplainResponse> => {
 			const headers = buildHeaders(selectedTab);
+			headers["Accept"] = "application/json";
 			const basePath = selectedTab.path || "/";
 			const explainUrl = `${basePath}${basePath.includes("?") ? "&" : "?"}_explain=analyze`;
 
