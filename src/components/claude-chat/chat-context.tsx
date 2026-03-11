@@ -9,6 +9,7 @@ import {
 import type { ChatMessage, ConnectionStatus, ElementContext } from "./types";
 
 const STORAGE_KEY = "claude-chat-messages";
+const OPEN_STORAGE_KEY = "claude-chat-open";
 const MAX_PERSISTED = 10;
 
 function loadMessages(): ChatMessage[] {
@@ -59,9 +60,17 @@ type Action =
 	| { type: "set_picker"; active: boolean }
 	| { type: "set_element_context"; context: ElementContext | null };
 
+function loadIsOpen(): boolean {
+	try {
+		return localStorage.getItem(OPEN_STORAGE_KEY) === "true";
+	} catch {
+		return false;
+	}
+}
+
 function createInitialState(): State {
 	return {
-		isOpen: false,
+		isOpen: loadIsOpen(),
 		status: "disconnected",
 		messages: loadMessages(),
 		pickerActive: false,
@@ -73,9 +82,17 @@ const initialState: State = createInitialState();
 
 function reducer(state: State, action: Action): State {
 	switch (action.type) {
-		case "toggle":
-			return { ...state, isOpen: !state.isOpen };
+		case "toggle": {
+			const isOpen = !state.isOpen;
+			try {
+				localStorage.setItem(OPEN_STORAGE_KEY, String(isOpen));
+			} catch {}
+			return { ...state, isOpen };
+		}
 		case "close":
+			try {
+				localStorage.setItem(OPEN_STORAGE_KEY, "false");
+			} catch {}
 			return { ...state, isOpen: false };
 		case "set_status":
 			return { ...state, status: action.status };

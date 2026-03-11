@@ -9,8 +9,11 @@ export function ElementContextBadge() {
 	if (!elementContext) return null;
 
 	return (
-		<Badge variant="secondary" className="flex items-center gap-1 text-xs">
-			<span className="truncate max-w-60">
+		<Badge
+			variant="secondary"
+			className="flex items-center gap-1 text-xs min-w-0 max-w-full"
+		>
+			<span className="truncate">
 				{elementContext.componentName !== "unknown"
 					? elementContext.componentName
 					: `<${elementContext.tagName}>`}
