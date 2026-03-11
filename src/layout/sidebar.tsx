@@ -11,44 +11,85 @@ import {
 } from "@health-samurai/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+	ClipboardList,
 	Columns3Cog,
 	Database,
 	Package,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Settings,
+	SquareArrowOutUpRight,
 	SquareTerminal,
 } from "lucide-react";
 import { useEffect } from "react";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
+import { getAidboxBaseURL } from "../utils";
 
-const mainMenuItems = [
-	<Link key="/resource" to="/resource">
-		<Columns3Cog />
-		Resource browser
-	</Link>,
-	<Link key="/rest" to="/rest">
-		<SquareTerminal />
-		REST Console
-	</Link>,
-	<Link key="/db-console" to="/db-console">
-		<Database />
-		DB Console
-	</Link>,
-	<Link key="/ig" to="/ig">
-		<Package />
-		FHIR Packages
-	</Link>,
-	<Link key="/settings" to="/settings">
-		<Settings />
-		Settings
-	</Link>,
-].map((link) => {
-	const linkChildren = link.props.children;
-	const title = linkChildren[linkChildren.length - 1];
-	return { link, url: link.props.to, title };
-});
+const mainMenuItems: { link: React.JSX.Element; url: string; title: string }[] =
+	[
+		{
+			url: "/resource",
+			title: "Resource browser",
+			link: (
+				<Link to="/resource">
+					<Columns3Cog />
+					Resource browser
+				</Link>
+			),
+		},
+		{
+			url: "/rest",
+			title: "REST Console",
+			link: (
+				<Link to="/rest">
+					<SquareTerminal />
+					REST Console
+				</Link>
+			),
+		},
+		{
+			url: "/db-console",
+			title: "DB Console",
+			link: (
+				<Link to="/db-console">
+					<Database />
+					DB Console
+				</Link>
+			),
+		},
+		{
+			url: "/ig",
+			title: "FHIR Packages",
+			link: (
+				<Link to="/ig">
+					<Package />
+					FHIR Packages
+				</Link>
+			),
+		},
+		{
+			url: `${getAidboxBaseURL()}/ui/sdc`,
+			title: "Aidbox Forms",
+			link: (
+				<a href={`${getAidboxBaseURL()}/ui/sdc`}>
+					<ClipboardList />
+					Aidbox Forms
+					<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
+				</a>
+			),
+		},
+		{
+			url: "/settings",
+			title: "Settings",
+			link: (
+				<Link to="/settings">
+					<Settings />
+					Settings
+				</Link>
+			),
+		},
+	];
 
 const isActiveNavItem = (
 	item: (typeof mainMenuItems)[number],
