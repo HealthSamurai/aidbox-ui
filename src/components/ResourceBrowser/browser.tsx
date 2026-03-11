@@ -69,8 +69,8 @@ function ResourceList({
 		<HSComp.Table zebra className="typo-code">
 			<HSComp.TableHeader className="block shrink-0 overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 				<HSComp.TableRow>
-					<HSComp.TableHead className="w-8 text-text-secondary">
-						<span className="opacity-50">
+					<HSComp.TableHead className="w-8 px-1 text-text-secondary">
+						<span className="opacity-50 flex items-center justify-center">
 							<HSComp.PinIcon />
 						</span>
 					</HSComp.TableHead>
@@ -113,7 +113,7 @@ function ResourceList({
 										)}
 									>
 										<HSComp.TableCell
-											className="w-8 align-middle text-center cursor-pointer"
+											className="w-8 px-1 align-middle text-center cursor-pointer"
 											onClick={() => onToggleFavorite(row.resourceType)}
 										>
 											<span
