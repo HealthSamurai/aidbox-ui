@@ -10,6 +10,11 @@ export default defineConfig({
 	optimizeDeps: {
 		exclude: ["@health-samurai/aidbox-fhirpath-lsp"],
 	},
+	// server: {
+	// 	fs: {
+	// 		allow: [".."],
+	// 	},
+	// },
 	plugins: [
 		claudeChat(),
 		tailwindcss(),
