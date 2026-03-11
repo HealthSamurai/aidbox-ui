@@ -15,7 +15,7 @@ function renderInline(text: string): ReactNode[] {
 			nodes.push(
 				<code
 					key={match.index}
-					className="px-1 py-0.5 rounded bg-black/10 text-[0.85em] font-mono"
+					className="px-1 py-0.5 rounded bg-black/10 text-[0.85em] font-mono break-all"
 				>
 					{m.slice(1, -1)}
 				</code>,
@@ -54,7 +54,7 @@ function MarkdownContent({ content }: { content: string }) {
 			blocks.push(
 				<pre
 					key={`b${String(blocks.length)}`}
-					className="my-1.5 p-2 rounded bg-black/10 overflow-x-auto text-[0.85em] font-mono"
+					className="my-1.5 p-2 rounded bg-black/10 overflow-x-auto max-w-full text-[0.85em] font-mono"
 				>
 					<code data-lang={lang || undefined}>{codeLines.join("\n")}</code>
 				</pre>,
@@ -144,9 +144,9 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
 	const isUser = message.role === "user";
 
 	return (
-		<div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+		<div className="min-w-0">
 			<div
-				className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+				className={`min-w-0 rounded-lg px-3 py-2 text-sm ${
 					isUser
 						? "bg-blue-600 text-white"
 						: "bg-bg-secondary text-text-primary"
@@ -164,7 +164,7 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
 						Using: {message.toolName}
 					</div>
 				)}
-				<div className="break-words">
+				<div className="break-words [overflow-wrap:anywhere]">
 					{isUser ? (
 						<span className="whitespace-pre-wrap">{message.content}</span>
 					) : (

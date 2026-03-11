@@ -14,12 +14,15 @@ export function ChatHeader() {
 				: "bg-red-500";
 
 	return (
-		<div className="flex items-center justify-between px-3 py-2 border-b border-border-primary shrink-0">
-			<div className="flex items-center gap-2">
-				<span className="text-sm font-medium text-text-primary">
+		<div className="flex items-center justify-between gap-1 px-3 py-2 border-b border-border-primary shrink-0 min-w-0">
+			<div className="flex items-center gap-2 min-w-0 overflow-hidden">
+				<span className="text-sm font-medium text-text-primary truncate">
 					Claude Chat
 				</span>
-				<Badge variant="outline" className="flex items-center gap-1.5 text-xs">
+				<Badge
+					variant="outline"
+					className="flex items-center gap-1.5 text-xs shrink-0"
+				>
 					<span className={`size-1.5 rounded-full ${statusColor}`} />
 					{status}
 				</Badge>

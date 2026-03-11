@@ -13,8 +13,8 @@ export function ChatMessages() {
 	}, [messages]);
 
 	return (
-		<ScrollArea className="flex-1 min-h-0 px-3">
-			<div className="flex flex-col gap-2 py-3">
+		<ScrollArea className="flex-1 min-h-0">
+			<div className="flex flex-col gap-2 py-3 px-3 min-w-0">
 				{messages.length === 0 && (
 					<div className="text-center text-sm text-text-secondary py-8">
 						Send a message or pick an element to start

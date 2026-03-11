@@ -42,7 +42,7 @@ export function ChatInput({
 	return (
 		<div className="border-t border-border-primary p-3 shrink-0">
 			<ElementContextBadge />
-			<div className="flex items-center gap-1.5 mt-1">
+			<div className="flex items-center gap-1.5 mt-1 min-w-0">
 				<IconButton
 					variant="ghost"
 					className="size-8 shrink-0"
@@ -56,7 +56,7 @@ export function ChatInput({
 					onChange={(e) => setValue(e.target.value)}
 					onKeyDown={handleKeyDown}
 					placeholder="Describe what to fix..."
-					className="min-h-[2.5rem] max-h-32 resize-none text-sm"
+					className="min-h-[2.5rem] min-w-0 max-h-32 resize-none text-sm"
 					rows={1}
 				/>
 				<IconButton
