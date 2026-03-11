@@ -23,6 +23,11 @@
 	border-radius: 9999px;
 }
 
+/* Disable row transition animation */
+tr {
+	transition-property: none;
+}
+
 /* Show pin button on table row hover */
 tr:hover .pin-button {
 	opacity: 0.5 !important;
