@@ -40,7 +40,7 @@ type State = {
 	status: ConnectionStatus;
 	messages: ChatMessage[];
 	pickerActive: boolean;
-	elementContext: ElementContext | null;
+	elementContexts: ElementContext[];
 };
 
 type Action =
@@ -51,14 +51,16 @@ type Action =
 			type: "add_user_message";
 			id: string;
 			content: string;
-			elementContext?: ElementContext;
+			elementContexts?: ElementContext[];
 	  }
 	| { type: "append_chunk"; id: string; text: string }
 	| { type: "set_tool_use"; id: string; tool: string }
 	| { type: "mark_done"; id: string }
 	| { type: "set_error"; id: string; error: string }
 	| { type: "set_picker"; active: boolean }
-	| { type: "set_element_context"; context: ElementContext | null };
+	| { type: "add_element_context"; context: ElementContext }
+	| { type: "remove_element_context"; index: number }
+	| { type: "clear_element_contexts" };
 
 function loadIsOpen(): boolean {
 	try {
@@ -74,7 +76,7 @@ function createInitialState(): State {
 		status: "disconnected",
 		messages: loadMessages(),
 		pickerActive: false,
-		elementContext: null,
+		elementContexts: [],
 	};
 }
 
@@ -105,7 +107,10 @@ function reducer(state: State, action: Action): State {
 						id: action.id,
 						role: "user",
 						content: action.content,
-						elementContext: action.elementContext,
+						elementContexts:
+							action.elementContexts && action.elementContexts.length > 0
+								? action.elementContexts
+								: undefined,
 					},
 					{
 						id: `${action.id}-response`,
@@ -114,7 +119,7 @@ function reducer(state: State, action: Action): State {
 						isStreaming: true,
 					},
 				],
-				elementContext: null,
+				elementContexts: [],
 			};
 		case "append_chunk":
 			return {
@@ -158,8 +163,20 @@ function reducer(state: State, action: Action): State {
 			};
 		case "set_picker":
 			return { ...state, pickerActive: action.active };
-		case "set_element_context":
-			return { ...state, elementContext: action.context };
+		case "add_element_context":
+			return {
+				...state,
+				elementContexts: [...state.elementContexts, action.context],
+			};
+		case "remove_element_context":
+			return {
+				...state,
+				elementContexts: state.elementContexts.filter(
+					(_, i) => i !== action.index,
+				),
+			};
+		case "clear_element_contexts":
+			return { ...state, elementContexts: [] };
 	}
 }
 

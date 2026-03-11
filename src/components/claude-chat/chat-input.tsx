@@ -8,10 +8,10 @@ import type { ElementContext } from "./types";
 export function ChatInput({
 	onSend,
 }: {
-	onSend: (id: string, content: string, context?: ElementContext) => void;
+	onSend: (id: string, content: string, contexts?: ElementContext[]) => void;
 }) {
 	const [value, setValue] = useState("");
-	const { status, elementContext, messages } = useChatState();
+	const { status, elementContexts, messages } = useChatState();
 	const dispatch = useChatDispatch();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -21,13 +21,14 @@ export function ChatInput({
 	function handleSend() {
 		if (!canSend) return;
 		const id = crypto.randomUUID();
+		const contexts = elementContexts.length > 0 ? elementContexts : undefined;
 		dispatch({
 			type: "add_user_message",
 			id,
 			content: value.trim(),
-			elementContext: elementContext ?? undefined,
+			elementContexts: contexts,
 		});
-		onSend(id, value.trim(), elementContext ?? undefined);
+		onSend(id, value.trim(), contexts);
 		setValue("");
 		textareaRef.current?.focus();
 	}
