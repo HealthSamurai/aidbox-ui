@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import claudeChat from "./vite-plugin-claude-chat.ts";
 
 const ReactCompilerConfig = {};
 
@@ -10,6 +11,7 @@ export default defineConfig({
 		exclude: ["@health-samurai/aidbox-fhirpath-lsp"],
 	},
 	plugins: [
+		claudeChat(),
 		tailwindcss(),
 		tanstackRouter({
 			target: "react",

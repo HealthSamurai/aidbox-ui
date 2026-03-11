@@ -25,6 +25,7 @@
 	"license": "MIT",
 	"packageManager": "pnpm@10.29.2",
 	"devDependencies": {
+		"@agentclientprotocol/sdk": "^0.14.1",
 		"@atomic-ehr/codegen": "canary",
 		"@biomejs/biome": "2.1.3",
 		"@tailwindcss/vite": "^4.1.12",
@@ -33,11 +34,15 @@
 		"@types/css-modules": "^1.0.5",
 		"@types/react": "19.2.0",
 		"@types/react-dom": "19.2.0",
+		"@types/ws": "^8.18.1",
 		"@vitejs/plugin-react": "^4.7.0",
+		"@zed-industries/claude-agent-acp": "^0.20.2",
 		"tailwindcss": "^4.1.12",
 		"tw-animate-css": "^1.3.6",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.2"
+		"vite": "^7.1.2",
+		"ws": "^8.19.0",
+		"zod": "^4.3.6"
 	},
 	"dependencies": {
 		"@atomic-ehr/fhirpath-lsp": "^0.0.5",

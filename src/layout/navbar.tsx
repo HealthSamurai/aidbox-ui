@@ -23,10 +23,15 @@ import {
 	Sparkles,
 	UserRound,
 } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import { useInstanceName, useLogout, useUserInfo } from "../api/auth";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+
+const ClaudeChatToggle = import.meta.env.DEV
+	? lazy(() => import("../components/claude-chat/claude-chat-toggle"))
+	: () => null;
+
 import { PREFERRED_UI_KEY, THEME_KEY } from "../shared/const";
 import { getAidboxBaseURL } from "../utils";
 
@@ -192,6 +197,11 @@ function NavbarButtons() {
 					</Button>
 				</DropdownMenuContent>
 			</DropdownMenu>
+			{import.meta.env.DEV && (
+				<Suspense>
+					<ClaudeChatToggle />
+				</Suspense>
+			)}
 		</div>
 	);
 }
