@@ -20,7 +20,7 @@ export type ChatMessage = {
 	role: "user" | "assistant";
 	content: string;
 	toolName?: string;
-	elementContext?: ElementContext;
+	elementContexts?: ElementContext[];
 	isStreaming?: boolean;
 };
 
@@ -30,7 +30,7 @@ export type ClientMessage =
 			type: "send_message";
 			id: string;
 			content: string;
-			context?: ElementContext;
+			contexts?: ElementContext[];
 	  }
 	| { type: "abort"; id: string };
 

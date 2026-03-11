@@ -36,12 +36,16 @@ export function useChatWebSocket() {
 		};
 	}, [dispatch]);
 
-	function sendMessage(id: string, content: string, context?: ElementContext) {
+	function sendMessage(
+		id: string,
+		content: string,
+		contexts?: ElementContext[],
+	) {
 		import.meta.hot?.send("claude-chat:send", {
 			type: "send_message",
 			id,
 			content,
-			context,
+			contexts,
 		});
 	}
 

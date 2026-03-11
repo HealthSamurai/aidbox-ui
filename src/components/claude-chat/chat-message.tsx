@@ -152,11 +152,14 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
 						: "bg-bg-secondary text-text-primary"
 				}`}
 			>
-				{message.elementContext && (
+				{message.elementContexts && message.elementContexts.length > 0 && (
 					<div className="mb-1.5 text-xs opacity-75 border-b border-current/20 pb-1.5">
-						Element: &lt;{message.elementContext.tagName}&gt;
-						{message.elementContext.componentName !== "unknown" &&
-							` (${message.elementContext.componentName})`}
+						{message.elementContexts.map((ctx, i) => (
+							<div key={`${ctx.selector}-${String(i)}`}>
+								Element: &lt;{ctx.tagName}&gt;
+								{ctx.componentName !== "unknown" && ` (${ctx.componentName})`}
+							</div>
+						))}
 					</div>
 				)}
 				{message.toolName && (

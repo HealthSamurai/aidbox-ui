@@ -156,8 +156,8 @@ export default function claudeChat(): Plugin {
 				if (msgType === "send_message") {
 					const id = data["id"] as string;
 					const content = data["content"] as string;
-					const context = data["context"] as
-						| Record<string, unknown>
+					const contexts = data["contexts"] as
+						| Record<string, unknown>[]
 						| undefined;
 
 					if (!clientConn || !sessionId) {
@@ -169,33 +169,37 @@ export default function claudeChat(): Plugin {
 					}
 
 					let prompt = content;
-					if (context) {
-						const lines = [
-							"[UI Element Context]",
-							`Page: ${context["pageUrl"]}`,
-							`Route: ${context["routePath"]}`,
-							`Tag: <${context["tagName"]}>`,
-							`Component: ${context["componentName"]}`,
-							`Component hierarchy: ${(context["componentHierarchy"] as string[])?.join(" → ") || "unknown"}`,
-							`Selector: ${context["selector"]}`,
-							`Nearest landmark: ${context["nearestLandmark"]}`,
-							`Text: "${context["textContent"]}"`,
-							`Attributes: ${JSON.stringify(context["attributes"])}`,
-						];
-						const props = context["props"] as
-							| Record<string, unknown>
-							| undefined;
-						if (props && Object.keys(props).length > 0) {
-							lines.push(`Props: ${JSON.stringify(props)}`);
+					if (contexts && contexts.length > 0) {
+						const allLines: string[] = [];
+						for (const context of contexts) {
+							const lines = [
+								"[UI Element Context]",
+								`Page: ${context["pageUrl"]}`,
+								`Route: ${context["routePath"]}`,
+								`Tag: <${context["tagName"]}>`,
+								`Component: ${context["componentName"]}`,
+								`Component hierarchy: ${(context["componentHierarchy"] as string[])?.join(" → ") || "unknown"}`,
+								`Selector: ${context["selector"]}`,
+								`Nearest landmark: ${context["nearestLandmark"]}`,
+								`Text: "${context["textContent"]}"`,
+								`Attributes: ${JSON.stringify(context["attributes"])}`,
+							];
+							const props = context["props"] as
+								| Record<string, unknown>
+								| undefined;
+							if (props && Object.keys(props).length > 0) {
+								lines.push(`Props: ${JSON.stringify(props)}`);
+							}
+							const styles = context["computedStyles"] as
+								| Record<string, string>
+								| undefined;
+							if (styles && Object.keys(styles).length > 0) {
+								lines.push(`Computed styles: ${JSON.stringify(styles)}`);
+							}
+							allLines.push(lines.join("\n"));
 						}
-						const styles = context["computedStyles"] as
-							| Record<string, string>
-							| undefined;
-						if (styles && Object.keys(styles).length > 0) {
-							lines.push(`Computed styles: ${JSON.stringify(styles)}`);
-						}
-						lines.push("", `User request: ${content}`);
-						prompt = lines.join("\n");
+						allLines.push("", `User request: ${content}`);
+						prompt = allLines.join("\n\n");
 					}
 
 					currentPromptId = id;

@@ -248,11 +248,10 @@ export function ElementPicker() {
 			if (!el || el.closest(`#${CHAT_WIDGET_ID}`)) return;
 			try {
 				const context = extractElementContext(el);
-				dispatch({ type: "set_element_context", context });
+				dispatch({ type: "add_element_context", context });
 			} catch (err) {
 				console.error("[element-picker] extraction failed:", err);
 			}
-			dispatch({ type: "set_picker", active: false });
 		},
 		[dispatch],
 	);
@@ -303,6 +302,26 @@ export function ElementPicker() {
 					transition: "all 0.05s ease-out",
 				}}
 			/>
+			<div
+				style={{
+					position: "fixed",
+					bottom: "24px",
+					left: "50%",
+					transform: "translateX(-50%)",
+					display: "flex",
+					gap: "8px",
+					alignItems: "center",
+					background: "rgba(0, 0, 0, 0.8)",
+					color: "white",
+					padding: "8px 16px",
+					borderRadius: "8px",
+					fontSize: "13px",
+					pointerEvents: "auto",
+					cursor: "default",
+				}}
+			>
+				<span>Click elements to select · Esc to finish</span>
+			</div>
 		</div>
 	);
 }
