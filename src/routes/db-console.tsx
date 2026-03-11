@@ -86,7 +86,6 @@ import {
 	formatColumnType,
 	psqlRequest,
 } from "../components/db-console/tables-view";
-import { EmptyState } from "../components/empty-state";
 import { useLocalStorage } from "../hooks";
 import type {
 	DbConsoleActions,
@@ -1881,11 +1880,14 @@ function ExplainContent({
 
 	if (!results) {
 		return (
-			<EmptyState
-				grayscale
-				title="No plan yet"
-				description="Run a query first, then switch to this tab"
-			/>
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No plan yet</div>
+					<div className="text-sm">
+						Run a query first, then switch to this tab
+					</div>
+				</div>
+			</div>
 		);
 	}
 
@@ -2056,11 +2058,10 @@ function ResultContent({
 	if (!results) {
 		return (
 			<>
-				<EmptyState
-					grayscale
-					title="No results yet"
-					description={
-						<>
+				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+					<div className="text-center">
+						<div className="text-lg mb-2">No results yet</div>
+						<div className="text-sm">
 							Click{" "}
 							<button
 								type="button"
@@ -2070,9 +2071,9 @@ function ResultContent({
 								Run
 							</button>{" "}
 							to execute a query
-						</>
-					}
-				/>
+						</div>
+					</div>
+				</div>
 				{!hasExplicitLimit && (
 					<ResultFooterLimitOnly
 						rowLimit={rowLimit}
@@ -2371,11 +2372,12 @@ function QueryResult({
 				/>
 			)}
 			{rows.length === 0 ? (
-				<EmptyState
-					grayscale
-					title="No results"
-					description="Query returned no rows"
-				/>
+				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+					<div className="text-center">
+						<div className="text-lg mb-2">No results</div>
+						<div className="text-sm">Query returned no rows</div>
+					</div>
+				</div>
 			) : (
 				<div className="flex-1 overflow-auto min-h-0">
 					<Table stickyHeader className="typo-code">

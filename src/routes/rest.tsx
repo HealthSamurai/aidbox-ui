@@ -114,7 +114,7 @@ function RequestLineEditorWrapper({
 		>
 			<RequestLineEditor
 				key={`request-line-editor-${selectedTab.id}`}
-				placeholder="/fhir/Patient"
+				placeholder="Enter URL"
 				autoFocus={selectedTab.path === ""}
 				className="w-full"
 				method={selectedTab.method}

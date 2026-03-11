@@ -252,6 +252,7 @@ export function ElementPicker() {
 			} catch (err) {
 				console.error("[element-picker] extraction failed:", err);
 			}
+			dispatch({ type: "set_picker", active: false });
 		},
 		[dispatch],
 	);
