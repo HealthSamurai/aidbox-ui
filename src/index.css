@@ -3,6 +3,11 @@
 @import "@health-samurai/react-components/css";
 @source "../node_modules/@health-samurai/react-components";
 
+/* Disable background transition for instant theme switching */
+* {
+	transition: background 0s !important;
+}
+
 /* Consistent scrollbar across browsers */
 * {
 	scrollbar-width: thin;
