@@ -1,6 +1,5 @@
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { redirect } from "@tanstack/react-router";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 
 export function useUserInfo() {
@@ -18,14 +17,18 @@ export function useLogout() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: client.logout,
-		onSuccess: () => {
+		mutationFn: async () => {
+			const baseUrl = client.getBaseUrl();
+			await fetch(`${baseUrl}/auth/logout`, {
+				method: "POST",
+				credentials: "include",
+				redirect: "manual",
+			});
+		},
+		onSettled: () => {
 			queryClient.removeQueries({ queryKey: ["userInfo"] });
-			const encodedLocation = btoa(window.location.href);
-			const redirectTo = `${client.getBaseUrl()}/auth/login?redirect_to=${encodedLocation}`;
-			window.location.href = redirectTo;
-			// FIXME: doesn't work without window.location.href
-			throw redirect({ href: redirectTo });
+			const encodedLocation = encodeURIComponent(btoa(window.location.href));
+			window.location.href = `${client.getBaseUrl()}/auth/login?redirect_to=${encodedLocation}`;
 		},
 	});
 }
