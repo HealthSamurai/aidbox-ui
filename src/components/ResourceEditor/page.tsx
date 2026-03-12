@@ -10,6 +10,7 @@ import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
+import { useBlocker } from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
@@ -21,6 +22,8 @@ import {
 } from "../../utils/json-path-offset";
 import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
+import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
+import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
@@ -92,7 +95,22 @@ export const ResourceEditorPageWithLoader = (
 			/>
 		);
 
-	return <ResourceEditorPage initialResource={resourceData} {...props} />;
+	const versionId = (resourceData as Record<string, unknown>).meta
+		? (
+				(resourceData as Record<string, unknown>).meta as Record<
+					string,
+					unknown
+				>
+			).versionId
+		: undefined;
+
+	return (
+		<ResourceEditorPage
+			key={String(versionId ?? "")}
+			initialResource={resourceData}
+			{...props}
+		/>
+	);
 };
 
 export const ResourceEditorPage = ({
@@ -107,12 +125,14 @@ export const ResourceEditorPage = ({
 	const client = useAidboxClient();
 
 	const [resource, setResource] = React.useState<Resource>(initialResource);
-	const [resourceText, setResourceText] = React.useState<string>(() => {
-		if (mode === "yaml") {
-			return YAML.dump(initialResource, { indent });
-		}
-		return JSON.stringify(initialResource, undefined, indent);
-	});
+	const initialTextRef = React.useRef(
+		mode === "yaml"
+			? YAML.dump(initialResource, { indent })
+			: JSON.stringify(initialResource, undefined, indent),
+	);
+	const [resourceText, setResourceText] = React.useState<string>(
+		initialTextRef.current,
+	);
 
 	const triggerFormat = () => {
 		let text: string;
@@ -145,9 +165,24 @@ export const ResourceEditorPage = ({
 		});
 	};
 
+	const [_editDirty, _setEditDirty] = React.useState(false);
+	const editDirtyRef = React.useRef(false);
+	const editDismissedRef = React.useRef(false);
+	const setEditDirty = React.useCallback(
+		(value: boolean | ((prev: boolean) => boolean)) => {
+			_setEditDirty((prev) => {
+				const next = typeof value === "function" ? value(prev) : value;
+				editDirtyRef.current = next;
+				return next;
+			});
+		},
+		[],
+	);
+
 	const handleTextChange = (text: string) => {
 		setResourceText(text);
 		setSaveError(null);
+		setEditDirty(text !== initialTextRef.current);
 		try {
 			const parsed = mode === "yaml" ? YAML.load(text) : JSON.parse(text);
 			setResource(parsed);
@@ -179,6 +214,24 @@ export const ResourceEditorPage = ({
 			});
 		}
 	}, []);
+
+	const {
+		proceed: editProceed,
+		reset: editReset,
+		status: editBlockerStatus,
+	} = useBlocker({
+		shouldBlockFn: ({ current, next }) => {
+			if (!editDirtyRef.current) return false;
+			const currentTab = (current.search as Record<string, unknown>).tab;
+			const nextTab = (next.search as Record<string, unknown>).tab;
+			if (current.pathname === next.pathname && currentTab === nextTab) {
+				return false;
+			}
+			return true;
+		},
+		enableBeforeUnload: () => editDirtyRef.current,
+		withResolver: true,
+	});
 
 	const handleIssueClick = React.useCallback(
 		(issue: OperationOutcomeIssue) => {
@@ -212,6 +265,13 @@ export const ResourceEditorPage = ({
 	}, [saveError, resourceText, mode]);
 
 	const handleOnTabSelect = (value: ResourceEditorTab) => {
+		if (editDismissedRef.current) {
+			editDismissedRef.current = false;
+			setResourceText(initialTextRef.current);
+			setResource(initialResource);
+			setEditDirty(false);
+			setSaveError(null);
+		}
 		storeSelectedTab(value);
 		navigate({
 			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
@@ -296,6 +356,7 @@ export const ResourceEditorPage = ({
 	useWebMCPResourceEditor(actionsRef);
 
 	const isViewDefinition = resourceType === "ViewDefinition";
+	const isAccessPolicy = resourceType === "AccessPolicy";
 
 	const tabs = [];
 
@@ -330,6 +391,19 @@ export const ResourceEditorPage = ({
 			/>
 		</>
 	);
+
+	if (isAccessPolicy) {
+		tabs.push({
+			trigger: (
+				<HSComp.TabsTrigger value="builder">Dev Tool</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<AccessPolicyBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
 
 	tabs.push({
 		trigger: <HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>,
@@ -374,18 +448,49 @@ export const ResourceEditorPage = ({
 	}
 
 	const content = (
-		<HSComp.Tabs
-			value={tab}
-			onValueChange={handleOnTabSelect}
-			className="grow min-h-0"
-		>
-			{tabs.length > 1 && (
-				<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
-					<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-				</div>
-			)}
-			{tabs.map((t) => t.content)}
-		</HSComp.Tabs>
+		<>
+			<HSComp.Tabs
+				value={tab}
+				onValueChange={handleOnTabSelect}
+				className="grow min-h-0"
+			>
+				{tabs.length > 1 && (
+					<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
+						<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
+					</div>
+				)}
+				{tabs.map((t) => t.content)}
+			</HSComp.Tabs>
+
+			<HSComp.AlertDialog open={editBlockerStatus === "blocked"}>
+				<HSComp.AlertDialogContent>
+					<HSComp.AlertDialogHeader>
+						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>
+					</HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogDescription>
+						You have unsaved changes. Are you sure you want to leave this page?
+						Your changes will be lost.
+					</HSComp.AlertDialogDescription>
+					<HSComp.AlertDialogFooter>
+						<HSComp.AlertDialogCancel onClick={editReset}>
+							Cancel
+						</HSComp.AlertDialogCancel>
+						<HSComp.AlertDialogAction
+							variant="primary"
+							danger
+							onClick={() => {
+								setEditDirty(false);
+								editDismissedRef.current = true;
+								setSaveError(null);
+								editProceed?.();
+							}}
+						>
+							Leave
+						</HSComp.AlertDialogAction>
+					</HSComp.AlertDialogFooter>
+				</HSComp.AlertDialogContent>
+			</HSComp.AlertDialog>
+		</>
 	);
 
 	if (isViewDefinition) {
@@ -393,6 +498,14 @@ export const ResourceEditorPage = ({
 			<ViewDefinitionProvider id={id} initialResource={initialResource}>
 				{content}
 			</ViewDefinitionProvider>
+		);
+	}
+
+	if (isAccessPolicy) {
+		return (
+			<AccessPolicyProvider id={id} initialResource={initialResource}>
+				{content}
+			</AccessPolicyProvider>
 		);
 	}
 
