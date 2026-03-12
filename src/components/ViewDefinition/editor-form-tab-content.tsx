@@ -1479,7 +1479,7 @@ export const FormTabContent = ({
 						variant="link"
 						size="small"
 						className="px-0"
-						onClick={addWhereCondition}
+						onClick={() => addWhereCondition()}
 						asChild
 					>
 						<span>
@@ -1530,7 +1530,7 @@ export const FormTabContent = ({
 						variant="link"
 						size="small"
 						className="px-0"
-						onClick={addConstant}
+						onClick={() => addConstant()}
 						asChild
 					>
 						<span>
