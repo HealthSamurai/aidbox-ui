@@ -61,6 +61,7 @@ import {
 	parseHttpCommand,
 } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
+import { UrlAutocomplete } from "../components/rest/url-autocomplete";
 import { SplitButton, type SplitDirection } from "../components/Split";
 import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menubar";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -83,48 +84,6 @@ export const Route = createFileRoute("/rest")({
 	component: RouteComponent,
 	loader: () => ({ breadCrumb: TITLE }),
 });
-
-function RequestLineEditorWrapper({
-	selectedTab,
-	handleTabPathChange,
-	handleTabMethodChange,
-	onSubmit,
-}: {
-	selectedTab: Tab;
-	handleTabPathChange: (path: string) => void;
-	handleTabMethodChange: (method: string) => void;
-	onSubmit: () => void;
-}) {
-	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut handler on layout container
-		<div
-			className="w-full"
-			onKeyDown={(event) => {
-				if (
-					event.key === "Enter" &&
-					!event.ctrlKey &&
-					!event.shiftKey &&
-					!event.metaKey &&
-					!event.altKey
-				) {
-					event.preventDefault();
-					onSubmit();
-				}
-			}}
-		>
-			<RequestLineEditor
-				key={`request-line-editor-${selectedTab.id}`}
-				placeholder="Enter URL"
-				autoFocus={selectedTab.path === ""}
-				className="w-full"
-				method={selectedTab.method}
-				path={selectedTab.path || ""}
-				onMethodChange={(method) => handleTabMethodChange(method)}
-				onPathChange={(event) => handleTabPathChange(event.target.value)}
-			/>
-		</div>
-	);
-}
 
 function RawEditor({
 	selectedTab,
@@ -1913,13 +1872,14 @@ function RouteComponent() {
 								</div>
 							</div>
 							<div className="px-4 py-3 flex items-center border-b gap-2">
-								<RequestLineEditorWrapper
-									selectedTab={selectedTab}
-									handleTabPathChange={(path) => {
+								<UrlAutocomplete
+									key={`url-autocomplete-${selectedTab.id}`}
+									path={selectedTab.path || ""}
+									method={selectedTab.method}
+									onSelectSuggestion={(path) => {
 										setRequestLineVersion(crypto.randomUUID());
 										handleTabRequestPathChange(path, tabs, setTabs);
 									}}
-									handleTabMethodChange={handleTabMethodChange}
 									onSubmit={() =>
 										handleSendRequest(
 											selectedTab,
@@ -1929,7 +1889,25 @@ function RouteComponent() {
 											client,
 										)
 									}
-								/>
+								>
+									<RequestLineEditor
+										key={`request-line-editor-${selectedTab.id}`}
+										placeholder="Enter URL"
+										autoFocus={selectedTab.path === ""}
+										className="w-full"
+										method={selectedTab.method}
+										path={selectedTab.path || ""}
+										onMethodChange={(method) => handleTabMethodChange(method)}
+										onPathChange={(event) => {
+											setRequestLineVersion(crypto.randomUUID());
+											handleTabRequestPathChange(
+												event.target.value,
+												tabs,
+												setTabs,
+											);
+										}}
+									/>
+								</UrlAutocomplete>
 								<SendButton
 									onClick={() =>
 										handleSendRequest(
