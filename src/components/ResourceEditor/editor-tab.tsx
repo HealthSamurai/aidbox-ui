@@ -1,37 +1,7 @@
-import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@health-samurai/react-components";
-import * as Lucide from "lucide-react";
+import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
 import type { EditorMode } from "./types";
-
-const FormatButton = ({ triggerFormat }: { triggerFormat: () => void }) => {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<HSComp.Button
-					variant="ghost"
-					size="small"
-					className="px-0!"
-					onClick={() => {
-						triggerFormat();
-						HSComp.toast.success("Formatted", defaultToastPlacement);
-					}}
-					title="Format code"
-				>
-					<Lucide.TextQuote className="w-4 h-4" />
-				</HSComp.Button>
-			</TooltipTrigger>
-			<TooltipContent>
-				<p>Format code</p>
-			</TooltipContent>
-		</Tooltip>
-	);
-};
 
 type EditorTabProps = {
 	mode: EditorMode;
@@ -59,46 +29,33 @@ export const EditorTab = ({
 	issueLineNumbers,
 }: EditorTabProps) => {
 	return (
-		<HSComp.Tabs
-			variant="tertiary"
-			value={mode}
-			onValueChange={(value) => setMode(value as EditorMode)}
-			className="flex flex-col h-full"
-		>
-			<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b">
-				<HSComp.TabsList className="py-0! border-b-0!">
-					<HSComp.TabsTrigger value="json">JSON</HSComp.TabsTrigger>
-					<HSComp.TabsTrigger value="yaml">YAML</HSComp.TabsTrigger>
-				</HSComp.TabsList>
-				<div className="flex items-center gap-4 px-4">
-					{actions}
-					{actions && (
-						<HSComp.Separator orientation="vertical" className="h-6!" />
+		<div className="flex flex-col h-full">
+			{(actions || trailingActions) && (
+				<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b px-4">
+					<div className="flex items-center gap-4">{actions}</div>
+					{trailingActions && (
+						<div className="flex items-center gap-4">{trailingActions}</div>
 					)}
-					<FormatButton triggerFormat={triggerFormat} />
-					{trailingActions}
 				</div>
+			)}
+			<div className="relative grow min-h-0">
+				<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
+					<CodeEditorMenubar
+						mode={mode}
+						onModeChange={setMode}
+						textToCopy={resourceText}
+						onFormat={triggerFormat}
+					/>
+				</div>
+				<HSComp.CodeEditor
+					mode={mode}
+					defaultValue={defaultResourceText}
+					currentValue={resourceText}
+					onChange={setResourceText}
+					viewCallback={viewCallback}
+					issueLineNumbers={issueLineNumbers}
+				/>
 			</div>
-			<HSComp.TabsContent value="json" className="relative grow min-h-0">
-				<HSComp.CodeEditor
-					mode="json"
-					defaultValue={defaultResourceText}
-					currentValue={resourceText}
-					onChange={setResourceText}
-					viewCallback={viewCallback}
-					issueLineNumbers={issueLineNumbers}
-				/>
-			</HSComp.TabsContent>
-			<HSComp.TabsContent value="yaml" className="relative grow min-h-0">
-				<HSComp.CodeEditor
-					mode="yaml"
-					defaultValue={defaultResourceText}
-					currentValue={resourceText}
-					onChange={setResourceText}
-					viewCallback={viewCallback}
-					issueLineNumbers={issueLineNumbers}
-				/>
-			</HSComp.TabsContent>
-		</HSComp.Tabs>
+		</div>
 	);
 };
