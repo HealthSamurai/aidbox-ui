@@ -93,7 +93,6 @@ export function EditTabContent({
 							getStructureDefinition={getStructureDefinition}
 							trailingActions={
 								<>
-									<HSComp.Separator orientation="vertical" className="h-6!" />
 									<HSComp.Toggle
 										variant="outline"
 										pressed={isProfileOpen}
