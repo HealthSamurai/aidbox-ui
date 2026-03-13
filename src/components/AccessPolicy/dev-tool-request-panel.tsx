@@ -7,8 +7,12 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
-import { parseHttpRequest } from "../../utils";
-import type { Header } from "../rest/active-tabs";
+import {
+	parseHttpRequest,
+	parsePathParams,
+	syncPathFromParams,
+} from "../../utils";
+import { type Header, methodColors } from "../rest/active-tabs";
 import HeadersEditor from "../rest/headers-editor";
 import ParamsEditor from "../rest/params-editor";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
@@ -60,36 +64,10 @@ const DEFAULT_HEADERS: Header[] = [
 	{ id: "3", name: "", value: "", enabled: true },
 ];
 
-function parsePathParams(path: string): Header[] {
-	const queryParams = path.split("?")[1];
-	const params =
-		queryParams?.split("&").map((param, index) => {
-			const [name, value] = param.split("=");
-			return {
-				id: `${index}`,
-				name: name ?? "",
-				value: value ?? "",
-				enabled: true,
-			};
-		}) || [];
-	if (!params.some((h) => h.name === "" && h.value === "")) {
-		params.push({
-			id: crypto.randomUUID(),
-			name: "",
-			value: "",
-			enabled: true,
-		});
+function ensureEmptyRow(rows: Header[]): void {
+	if (!rows.some((h) => h.name === "" && h.value === "")) {
+		rows.push({ id: crypto.randomUUID(), name: "", value: "", enabled: true });
 	}
-	return params;
-}
-
-function syncPathFromParams(params: Header[], path: string): string {
-	const location = path.split("?")[0];
-	const queryString = params
-		.filter((p) => (p.enabled ?? true) && p.name)
-		.map((p) => `${p.name}=${p.value}`)
-		.join("&");
-	return queryString ? `${location}?${queryString}` : (location ?? "");
 }
 
 function createTab(): RequestTab {
@@ -212,14 +190,6 @@ async function executeDebugRequest(
 }
 
 // ── Status bar ─────────────────────────────────────────────────────────
-
-const methodColors: Record<string, string> = {
-	GET: "text-utility-green typo-label-xs",
-	POST: "text-utility-yellow typo-label-xs",
-	PUT: "text-utility-blue typo-label-xs",
-	PATCH: "text-utility-violet typo-label-xs",
-	DELETE: "text-utility-red typo-label-xs",
-};
 
 function StatusBar({ response }: { response: ResponseData }) {
 	const policies = response.debugData?.policies;
@@ -373,6 +343,17 @@ function RawEditor({
 	);
 }
 
+function NoResponsePlaceholder({ children }: { children: string }) {
+	return (
+		<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+			<div className="text-center">
+				<div className="text-lg mb-2">No response yet</div>
+				<div className="text-sm">{children}</div>
+			</div>
+		</div>
+	);
+}
+
 // ── Policy eval list ───────────────────────────────────────────────────
 
 function PolicyEvalRow({ policy }: { policy: DebugPolicy }) {
@@ -428,12 +409,9 @@ function PolicyEvalView({
 }) {
 	if (!response) {
 		return (
-			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">No response yet</div>
-					<div className="text-sm">Send a request to see policy evaluation</div>
-				</div>
-			</div>
+			<NoResponsePlaceholder>
+				Send a request to see policy evaluation
+			</NoResponsePlaceholder>
 		);
 	}
 
@@ -469,14 +447,9 @@ function PolicyEvalView({
 function RequestContextView({ response }: { response: ResponseData | null }) {
 	if (!response) {
 		return (
-			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">No response yet</div>
-					<div className="text-sm">
-						Send a request to see the request context
-					</div>
-				</div>
-			</div>
+			<NoResponsePlaceholder>
+				Send a request to see the request context
+			</NoResponsePlaceholder>
 		);
 	}
 
@@ -496,12 +469,9 @@ function RequestContextView({ response }: { response: ResponseData | null }) {
 function ResponseHeadersView({ response }: { response: ResponseData | null }) {
 	if (!response) {
 		return (
-			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">No response yet</div>
-					<div className="text-sm">Send a request to see response headers</div>
-				</div>
-			</div>
+			<NoResponsePlaceholder>
+				Send a request to see response headers
+			</NoResponsePlaceholder>
 		);
 	}
 
@@ -557,34 +527,35 @@ function SqlQueryView({
 		| string
 		| undefined;
 
+	const request = response?.debugData?.request;
+
+	const { formatted, unresolved } = React.useMemo(() => {
+		if (!response || !sqlQuery) {
+			return { formatted: "", unresolved: [] as string[] };
+		}
+		const { result: substituted, unresolved } = request
+			? substituteTemplates(sqlQuery, request)
+			: { result: sqlQuery, unresolved: [] as string[] };
+		let fmt: string;
+		try {
+			fmt = formatSQL(substituted, {
+				language: "postgresql",
+				keywordCase: "upper",
+				indentStyle: "tabularRight",
+				linesBetweenQueries: 2,
+			});
+		} catch {
+			fmt = substituted;
+		}
+		return { formatted: fmt, unresolved };
+	}, [response, sqlQuery, request]);
+
 	if (!response || !sqlQuery) {
 		return (
-			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">No response yet</div>
-					<div className="text-sm">
-						Send a request to see the substituted SQL query
-					</div>
-				</div>
-			</div>
+			<NoResponsePlaceholder>
+				Send a request to see the substituted SQL query
+			</NoResponsePlaceholder>
 		);
-	}
-
-	const request = response.debugData?.request;
-	const { result: substituted, unresolved } = request
-		? substituteTemplates(sqlQuery, request)
-		: { result: sqlQuery, unresolved: [] as string[] };
-
-	let formatted: string;
-	try {
-		formatted = formatSQL(substituted, {
-			language: "postgresql",
-			keywordCase: "upper",
-			indentStyle: "tabularRight",
-			linesBetweenQueries: 2,
-		});
-	} catch {
-		formatted = substituted;
 	}
 
 	return (
@@ -626,14 +597,15 @@ export function DevToolRequestPanel() {
 	});
 
 	const selectedTab = React.useMemo(() => {
-		const tab = tabs.find((t) => t.selected) || tabs[0] || createTab();
-		if (!tab.params) {
-			tab.params = parsePathParams(tab.path);
-		}
-		if (tab.activeResponseTab === "sql" && !isSqlEngine) {
-			tab.activeResponseTab = "policy-eval";
-		}
-		return tab;
+		const found = tabs.find((t) => t.selected) || tabs[0] || createTab();
+		return {
+			...found,
+			params: found.params || parsePathParams(found.path),
+			activeResponseTab:
+				found.activeResponseTab === "sql" && !isSqlEngine
+					? "policy-eval"
+					: found.activeResponseTab,
+		};
 	}, [tabs, isSqlEngine]);
 
 	const [isLoading, setIsLoading] = React.useState(false);
@@ -690,14 +662,7 @@ export function DevToolRequestPanel() {
 		updateSelected((tab) => {
 			const headers = [...tab.headers];
 			headers[headerIndex] = { ...headers[headerIndex], ...header };
-			if (!headers.some((h) => h.name === "" && h.value === "")) {
-				headers.push({
-					id: crypto.randomUUID(),
-					name: "",
-					value: "",
-					enabled: true,
-				});
-			}
+			ensureEmptyRow(headers);
 			return { headers };
 		});
 	};
@@ -706,14 +671,7 @@ export function DevToolRequestPanel() {
 		updateSelected((tab) => {
 			const headers = [...tab.headers];
 			headers.splice(headerIndex, 1);
-			if (!headers.some((h) => h.name === "" && h.value === "")) {
-				headers.push({
-					id: crypto.randomUUID(),
-					name: "",
-					value: "",
-					enabled: true,
-				});
-			}
+			ensureEmptyRow(headers);
 			return { headers };
 		});
 	};
@@ -722,14 +680,7 @@ export function DevToolRequestPanel() {
 		updateSelected((tab) => {
 			const params = [...tab.params];
 			params[paramIndex] = { ...params[paramIndex], ...param };
-			if (!params.some((h) => h.name === "" && h.value === "")) {
-				params.push({
-					id: crypto.randomUUID(),
-					name: "",
-					value: "",
-					enabled: true,
-				});
-			}
+			ensureEmptyRow(params);
 			return { params, path: syncPathFromParams(params, tab.path) };
 		});
 	};
@@ -738,14 +689,7 @@ export function DevToolRequestPanel() {
 		updateSelected((tab) => {
 			const params = [...tab.params];
 			params.splice(paramIndex, 1);
-			if (!params.some((h) => h.name === "" && h.value === "")) {
-				params.push({
-					id: crypto.randomUUID(),
-					name: "",
-					value: "",
-					enabled: true,
-				});
-			}
+			ensureEmptyRow(params);
 			return { params, path: syncPathFromParams(params, tab.path) };
 		});
 	};
