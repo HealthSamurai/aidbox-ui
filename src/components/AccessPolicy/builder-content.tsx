@@ -68,13 +68,16 @@ export const AccessPolicyBuilderContent = () => {
 	const strippedRef = React.useRef(
 		accessPolicy ? stripResource(accessPolicy) : {},
 	);
-	const [strippedText, setStrippedText] = React.useState(() =>
+	const initialStrippedTextRef = React.useRef(
 		serializeResource(strippedRef.current, mode, indent),
+	);
+	const [strippedText, setStrippedText] = React.useState(
+		initialStrippedTextRef.current,
 	);
 
 	const handleTextChange = (text: string) => {
 		setStrippedText(text);
-		setIsDirty(true);
+		setIsDirty(text !== initialStrippedTextRef.current);
 		try {
 			const parsed = mode === "yaml" ? YAML.load(text) : JSON.parse(text);
 			strippedRef.current = parsed;
@@ -96,7 +99,9 @@ export const AccessPolicyBuilderContent = () => {
 		try {
 			const parsed =
 				mode === "yaml" ? YAML.load(strippedText) : JSON.parse(strippedText);
-			setStrippedText(serializeResource(parsed, newMode, indent));
+			const newText = serializeResource(parsed, newMode, indent);
+			setStrippedText(newText);
+			initialStrippedTextRef.current = newText;
 			strippedRef.current = parsed;
 		} catch {
 			// keep current if parsing fails
@@ -129,19 +134,15 @@ export const AccessPolicyBuilderContent = () => {
 			autoSaveId="access-policy-builder"
 		>
 			<HSComp.ResizablePanel minSize={20}>
-				<HSComp.ResizablePanelGroup direction="vertical">
-					<HSComp.ResizablePanel>
-						<EditorTab
-							mode={mode}
-							setMode={handleSetMode}
-							triggerFormat={triggerFormat}
-							resourceText={strippedText}
-							defaultResourceText={strippedText}
-							setResourceText={handleTextChange}
-							actions={actions}
-						/>
-					</HSComp.ResizablePanel>
-				</HSComp.ResizablePanelGroup>
+				<EditorTab
+					mode={mode}
+					setMode={handleSetMode}
+					triggerFormat={triggerFormat}
+					resourceText={strippedText}
+					defaultResourceText={strippedText}
+					setResourceText={handleTextChange}
+					actions={actions}
+				/>
 			</HSComp.ResizablePanel>
 			<HSComp.ResizableHandle />
 			<HSComp.ResizablePanel minSize={20}>
