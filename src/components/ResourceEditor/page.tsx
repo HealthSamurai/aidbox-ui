@@ -10,10 +10,10 @@ import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
-import { useBlocker } from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { useUnsavedChangesBlocker } from "../../hooks/useUnsavedChangesBlocker";
 import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
 import {
 	findJsonPathOffset,
@@ -95,18 +95,13 @@ export const ResourceEditorPageWithLoader = (
 			/>
 		);
 
-	const versionId = (resourceData as Record<string, unknown>).meta
-		? (
-				(resourceData as Record<string, unknown>).meta as Record<
-					string,
-					unknown
-				>
-			).versionId
-		: undefined;
+	const meta = (resourceData as Record<string, unknown>).meta as
+		| Record<string, unknown>
+		| undefined;
 
 	return (
 		<ResourceEditorPage
-			key={String(versionId ?? "")}
+			key={String(meta?.versionId ?? "")}
 			initialResource={resourceData}
 			{...props}
 		/>
@@ -153,6 +148,7 @@ export const ResourceEditorPage = ({
 					? YAML.dump(parsed, { indent })
 					: JSON.stringify(parsed, null, indent);
 			setResourceText(newText);
+			initialTextRef.current = newText;
 			setResource(parsed);
 		} catch {
 			// If parsing fails, we keep the current value
@@ -165,19 +161,13 @@ export const ResourceEditorPage = ({
 		});
 	};
 
-	const [_editDirty, _setEditDirty] = React.useState(false);
-	const editDirtyRef = React.useRef(false);
+	const {
+		setIsDirty: setEditDirty,
+		proceed: editProceed,
+		reset: editReset,
+		status: editBlockerStatus,
+	} = useUnsavedChangesBlocker();
 	const editDismissedRef = React.useRef(false);
-	const setEditDirty = React.useCallback(
-		(value: boolean | ((prev: boolean) => boolean)) => {
-			_setEditDirty((prev) => {
-				const next = typeof value === "function" ? value(prev) : value;
-				editDirtyRef.current = next;
-				return next;
-			});
-		},
-		[],
-	);
 
 	const handleTextChange = (text: string) => {
 		setResourceText(text);
@@ -215,24 +205,6 @@ export const ResourceEditorPage = ({
 		}
 	}, []);
 
-	const {
-		proceed: editProceed,
-		reset: editReset,
-		status: editBlockerStatus,
-	} = useBlocker({
-		shouldBlockFn: ({ current, next }) => {
-			if (!editDirtyRef.current) return false;
-			const currentTab = (current.search as Record<string, unknown>).tab;
-			const nextTab = (next.search as Record<string, unknown>).tab;
-			if (current.pathname === next.pathname && currentTab === nextTab) {
-				return false;
-			}
-			return true;
-		},
-		enableBeforeUnload: () => editDirtyRef.current,
-		withResolver: true,
-	});
-
 	const handleIssueClick = React.useCallback(
 		(issue: OperationOutcomeIssue) => {
 			const view = editorViewRef.current;
@@ -267,7 +239,12 @@ export const ResourceEditorPage = ({
 	const handleOnTabSelect = (value: ResourceEditorTab) => {
 		if (editDismissedRef.current) {
 			editDismissedRef.current = false;
-			setResourceText(initialTextRef.current);
+			const text =
+				mode === "yaml"
+					? YAML.dump(initialResource, { indent })
+					: JSON.stringify(initialResource, null, indent);
+			setResourceText(text);
+			initialTextRef.current = text;
 			setResource(initialResource);
 			setEditDirty(false);
 			setSaveError(null);

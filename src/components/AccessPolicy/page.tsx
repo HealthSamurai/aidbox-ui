@@ -1,7 +1,7 @@
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
-import { useBlocker } from "@tanstack/react-router";
 import React from "react";
+import { useUnsavedChangesBlocker } from "../../hooks/useUnsavedChangesBlocker";
 
 export interface AccessPolicyContextProps {
 	accessPolicyId: string | undefined;
@@ -32,32 +32,8 @@ export const AccessPolicyProvider = ({
 	const [accessPolicy, setAccessPolicy] =
 		React.useState<Resource>(initialResource);
 
-	const [isDirty, _setIsDirty] = React.useState(false);
-	const isDirtyRef = React.useRef(false);
-	const setIsDirty = React.useCallback(
-		(value: boolean | ((prev: boolean) => boolean)) => {
-			_setIsDirty((prev) => {
-				const next = typeof value === "function" ? value(prev) : value;
-				isDirtyRef.current = next;
-				return next;
-			});
-		},
-		[],
-	);
-
-	const { proceed, reset, status } = useBlocker({
-		shouldBlockFn: ({ current, next }) => {
-			if (!isDirtyRef.current) return false;
-			const currentTab = (current.search as Record<string, unknown>).tab;
-			const nextTab = (next.search as Record<string, unknown>).tab;
-			if (current.pathname === next.pathname && currentTab === nextTab) {
-				return false;
-			}
-			return true;
-		},
-		enableBeforeUnload: () => isDirtyRef.current,
-		withResolver: true,
-	});
+	const { isDirty, setIsDirty, proceed, reset, status } =
+		useUnsavedChangesBlocker();
 
 	return (
 		<AccessPolicyContext.Provider
