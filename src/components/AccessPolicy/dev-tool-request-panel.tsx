@@ -7,6 +7,7 @@ import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import type { Header } from "../rest/active-tabs";
 import HeadersEditor from "../rest/headers-editor";
+import { UrlAutocomplete } from "../rest/url-autocomplete";
 import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
 import { AccessPolicyContext } from "./page";
 
@@ -602,21 +603,11 @@ export function DevToolRequestPanel() {
 
 			{/* Request line: method + URL + send */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
-				{/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcut */}
-				<div
-					className="w-full"
-					onKeyDown={(e) => {
-						if (
-							e.key === "Enter" &&
-							!e.ctrlKey &&
-							!e.shiftKey &&
-							!e.metaKey &&
-							!e.altKey
-						) {
-							e.preventDefault();
-							doSend();
-						}
-					}}
+				<UrlAutocomplete
+					path={selectedTab.path}
+					method={selectedTab.method}
+					onSelectSuggestion={(path) => handlePathChange(path)}
+					onSubmit={doSend}
 				>
 					<HSComp.RequestLineEditor
 						key={`rl-${selectedTab.id}`}
@@ -627,7 +618,7 @@ export function DevToolRequestPanel() {
 						onMethodChange={handleMethodChange}
 						onPathChange={(e) => handlePathChange(e.target.value)}
 					/>
-				</div>
+				</UrlAutocomplete>
 				<HSComp.Tooltip delayDuration={600}>
 					<HSComp.TooltipTrigger asChild>
 						<HSComp.Button
