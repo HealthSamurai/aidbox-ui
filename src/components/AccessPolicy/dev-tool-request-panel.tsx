@@ -5,8 +5,10 @@ import * as Lucide from "lucide-react";
 import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
+import { parseHttpRequest } from "../../utils";
 import type { Header } from "../rest/active-tabs";
 import HeadersEditor from "../rest/headers-editor";
+import ParamsEditor from "../rest/params-editor";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
 import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
 import { AccessPolicyContext } from "./page";
@@ -35,14 +37,17 @@ interface ResponseData {
 	debugData?: DebugData;
 }
 
+type RequestSubTab = "params" | "headers" | "body" | "raw";
+
 interface RequestTab {
 	id: string;
 	method: Method;
 	path: string;
 	headers: Header[];
+	params: Header[];
 	body: string;
 	selected: boolean;
-	activeRequestSubTab: "headers" | "body";
+	activeRequestSubTab: RequestSubTab;
 	response: ResponseData | null;
 	activeResponseTab: "policy-eval" | "request-context" | "headers";
 }
@@ -53,15 +58,49 @@ const DEFAULT_HEADERS: Header[] = [
 	{ id: "3", name: "", value: "", enabled: true },
 ];
 
+function parsePathParams(path: string): Header[] {
+	const queryParams = path.split("?")[1];
+	const params =
+		queryParams?.split("&").map((param, index) => {
+			const [name, value] = param.split("=");
+			return {
+				id: `${index}`,
+				name: name ?? "",
+				value: value ?? "",
+				enabled: true,
+			};
+		}) || [];
+	if (!params.some((h) => h.name === "" && h.value === "")) {
+		params.push({
+			id: crypto.randomUUID(),
+			name: "",
+			value: "",
+			enabled: true,
+		});
+	}
+	return params;
+}
+
+function syncPathFromParams(params: Header[], path: string): string {
+	const location = path.split("?")[0];
+	const queryString = params
+		.filter((p) => (p.enabled ?? true) && p.name)
+		.map((p) => `${p.name}=${p.value}`)
+		.join("&");
+	return queryString ? `${location}?${queryString}` : (location ?? "");
+}
+
 function createTab(): RequestTab {
+	const path = "/Patient";
 	return {
 		id: crypto.randomUUID(),
 		method: "GET",
-		path: "/Patient",
+		path,
 		headers: DEFAULT_HEADERS.map((h) => ({ ...h, id: crypto.randomUUID() })),
+		params: parsePathParams(path),
 		body: "",
 		selected: true,
-		activeRequestSubTab: "headers",
+		activeRequestSubTab: "raw",
 		response: null,
 		activeResponseTab: "policy-eval",
 	};
@@ -206,12 +245,29 @@ function StatusBar({ response }: { response: ResponseData }) {
 
 // ── Request body editor ────────────────────────────────────────────────
 
+function updateHeaderValue(
+	headers: Header[],
+	name: string,
+	value: string,
+): Header[] {
+	const result = [...headers];
+	const idx = result.findIndex(
+		(h) => h.name?.toLowerCase() === name.toLowerCase(),
+	);
+	if (idx >= 0 && result[idx]) {
+		result[idx] = { ...result[idx], value };
+	}
+	return result;
+}
+
 function RequestBodyEditor({
 	tab,
 	onBodyChange,
+	onHeadersUpdate,
 }: {
 	tab: RequestTab;
 	onBodyChange: (body: string) => void;
+	onHeadersUpdate: (headers: Header[]) => void;
 }) {
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
 		key: "access-policy-devtool-body-mode",
@@ -228,6 +284,27 @@ function RequestBodyEditor({
 	const handleChange = (value: string) => {
 		setBodyValue(value);
 		onBodyChange(value);
+	};
+
+	const handleModeChange = (newMode: "json" | "yaml") => {
+		try {
+			const parsed =
+				bodyMode === "json" ? JSON.parse(bodyValue) : yaml.load(bodyValue);
+			const converted =
+				newMode === "yaml"
+					? yaml.dump(parsed, { indent: 2 })
+					: JSON.stringify(parsed, null, 2);
+			setBodyValue(converted);
+			onBodyChange(converted);
+		} catch {
+			// If parsing fails, just switch mode without converting
+		}
+		setBodyMode(newMode);
+
+		const contentType = newMode === "yaml" ? "text/yaml" : "application/json";
+		let headers = updateHeaderValue(tab.headers, "Content-Type", contentType);
+		headers = updateHeaderValue(headers, "Accept", contentType);
+		onHeadersUpdate(headers);
 	};
 
 	const handleFormat = () => {
@@ -252,7 +329,7 @@ function RequestBodyEditor({
 			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
 				<CodeEditorMenubar
 					mode={bodyMode}
-					onModeChange={setBodyMode}
+					onModeChange={handleModeChange}
 					textToCopy={bodyValue}
 					onFormat={handleFormat}
 				/>
@@ -264,6 +341,33 @@ function RequestBodyEditor({
 				onChange={handleChange}
 			/>
 		</div>
+	);
+}
+
+// ── Raw editor ────────────────────────────────────────────────────────
+
+function RawEditor({
+	selectedTab,
+	onRawChange,
+}: {
+	selectedTab: RequestTab;
+	onRawChange: (rawText: string) => void;
+}) {
+	const requestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
+	const headersText =
+		selectedTab.headers
+			?.filter((h) => h.name && h.value && (h.enabled ?? true))
+			.map((h) => `${h.name}: ${h.value}`)
+			.join("\n") || "";
+	const currentValue = `${requestLine}\n${headersText}\n\n${selectedTab.body || ""}`;
+
+	return (
+		<HSComp.CodeEditor
+			key={`raw-${selectedTab.id}`}
+			defaultValue={currentValue}
+			mode="http"
+			onChange={onRawChange}
+		/>
 	);
 }
 
@@ -421,10 +525,13 @@ export function DevToolRequestPanel() {
 		defaultValue: [createTab()],
 	});
 
-	const selectedTab = React.useMemo(
-		() => tabs.find((t) => t.selected) || tabs[0] || createTab(),
-		[tabs],
-	);
+	const selectedTab = React.useMemo(() => {
+		const tab = tabs.find((t) => t.selected) || tabs[0] || createTab();
+		if (!tab.params) {
+			tab.params = parsePathParams(tab.path);
+		}
+		return tab;
+	}, [tabs]);
 
 	const [isLoading, setIsLoading] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
@@ -469,7 +576,8 @@ export function DevToolRequestPanel() {
 	const handleMethodChange = (method: string) =>
 		updateSelected(() => ({ method: method as Method }));
 
-	const handlePathChange = (path: string) => updateSelected(() => ({ path }));
+	const handlePathChange = (path: string) =>
+		updateSelected(() => ({ path, params: parsePathParams(path) }));
 
 	const handleBodyChange = (body: string) => updateSelected(() => ({ body }));
 
@@ -505,7 +613,54 @@ export function DevToolRequestPanel() {
 		});
 	};
 
-	const handleRequestSubTabChange = (subTab: "headers" | "body") =>
+	const handleParamChange = (paramIndex: number, param: Header) => {
+		updateSelected((tab) => {
+			const params = [...tab.params];
+			params[paramIndex] = { ...params[paramIndex], ...param };
+			if (!params.some((h) => h.name === "" && h.value === "")) {
+				params.push({
+					id: crypto.randomUUID(),
+					name: "",
+					value: "",
+					enabled: true,
+				});
+			}
+			return { params, path: syncPathFromParams(params, tab.path) };
+		});
+	};
+
+	const handleParamRemove = (paramIndex: number) => {
+		updateSelected((tab) => {
+			const params = [...tab.params];
+			params.splice(paramIndex, 1);
+			if (!params.some((h) => h.name === "" && h.value === "")) {
+				params.push({
+					id: crypto.randomUUID(),
+					name: "",
+					value: "",
+					enabled: true,
+				});
+			}
+			return { params, path: syncPathFromParams(params, tab.path) };
+		});
+	};
+
+	const handleRawChange = (rawText: string) => {
+		try {
+			const parsed = parseHttpRequest(rawText);
+			updateSelected(() => ({
+				method: parsed.method as Method,
+				path: parsed.path,
+				headers: parsed.headers,
+				params: parsePathParams(parsed.path),
+				body: parsed.body,
+			}));
+		} catch {
+			// ignore parse errors while typing
+		}
+	};
+
+	const handleRequestSubTabChange = (subTab: RequestSubTab) =>
 		updateSelected(() => ({ activeRequestSubTab: subTab }));
 
 	const handleResponseTabChange = (
@@ -649,13 +804,11 @@ export function DevToolRequestPanel() {
 				autoSaveId="access-policy-devtool-req-resp"
 				className="grow min-h-0"
 			>
-				{/* Request sub-tabs: Headers, Body */}
+				{/* Request sub-tabs: Params, Headers, Body, Raw */}
 				<HSComp.ResizablePanel defaultSize={40} minSize={15}>
 					<HSComp.Tabs
 						value={selectedTab.activeRequestSubTab}
-						onValueChange={(v) =>
-							handleRequestSubTabChange(v as "headers" | "body")
-						}
+						onValueChange={(v) => handleRequestSubTabChange(v as RequestSubTab)}
 						className="flex flex-col h-full"
 					>
 						<div className="flex items-center bg-bg-secondary px-4 border-b h-10 shrink-0">
@@ -663,10 +816,19 @@ export function DevToolRequestPanel() {
 								Request:
 							</span>
 							<HSComp.TabsList>
+								<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
 								<HSComp.TabsTrigger value="headers">Headers</HSComp.TabsTrigger>
 								<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
+								<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
 							</HSComp.TabsList>
 						</div>
+						<HSComp.TabsContent value="params" className="grow min-h-0">
+							<ParamsEditor
+								params={selectedTab.params}
+								onParamChange={handleParamChange}
+								onParamRemove={handleParamRemove}
+							/>
+						</HSComp.TabsContent>
 						<HSComp.TabsContent value="headers" className="grow min-h-0">
 							<HeadersEditor
 								headers={selectedTab.headers}
@@ -678,6 +840,15 @@ export function DevToolRequestPanel() {
 							<RequestBodyEditor
 								tab={selectedTab}
 								onBodyChange={handleBodyChange}
+								onHeadersUpdate={(headers) =>
+									updateSelected(() => ({ headers }))
+								}
+							/>
+						</HSComp.TabsContent>
+						<HSComp.TabsContent value="raw" className="relative grow min-h-0">
+							<RawEditor
+								selectedTab={selectedTab}
+								onRawChange={handleRawChange}
 							/>
 						</HSComp.TabsContent>
 					</HSComp.Tabs>
