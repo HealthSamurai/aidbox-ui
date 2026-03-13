@@ -171,9 +171,13 @@ export default function claudeChat(): Plugin {
 					let prompt = content;
 					if (contexts && contexts.length > 0) {
 						const allLines: string[] = [];
-						for (const context of contexts) {
+						for (let i = 0; i < contexts.length; i++) {
+							const context = contexts[i];
+							const rect = context["rect"] as
+								| { top: number; left: number; width: number; height: number }
+								| undefined;
 							const lines = [
-								"[UI Element Context]",
+								`[UI Element ${String(i + 1)} of ${String(contexts.length)}]`,
 								`Page: ${context["pageUrl"]}`,
 								`Route: ${context["routePath"]}`,
 								`Tag: <${context["tagName"]}>`,
@@ -184,6 +188,9 @@ export default function claudeChat(): Plugin {
 								`Text: "${context["textContent"]}"`,
 								`Attributes: ${JSON.stringify(context["attributes"])}`,
 							];
+							if (rect) {
+								lines.push(`Position: top=${String(Math.round(rect.top))} left=${String(Math.round(rect.left))} size=${String(Math.round(rect.width))}×${String(Math.round(rect.height))}`);
+							}
 							const props = context["props"] as
 								| Record<string, unknown>
 								| undefined;

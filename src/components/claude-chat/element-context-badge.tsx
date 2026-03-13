@@ -1,6 +1,7 @@
 import { Badge } from "@health-samurai/react-components";
-import { X } from "lucide-react";
+import { Copy, X } from "lucide-react";
 import { useChatDispatch, useChatState } from "./chat-context";
+import { formatElementContexts } from "./types";
 
 export function ElementContextBadge() {
 	const { elementContexts } = useChatState();
@@ -9,7 +10,7 @@ export function ElementContextBadge() {
 	if (elementContexts.length === 0) return null;
 
 	return (
-		<div className="flex flex-wrap gap-1">
+		<div className="flex flex-wrap items-center gap-1">
 			{elementContexts.map((ctx, i) => (
 				<Badge
 					key={`${ctx.selector}-${String(i)}`}
@@ -32,6 +33,15 @@ export function ElementContextBadge() {
 					</button>
 				</Badge>
 			))}
+			<button
+				type="button"
+				className="text-text-secondary hover:text-text-primary shrink-0"
+				onClick={() =>
+					navigator.clipboard.writeText(formatElementContexts(elementContexts))
+				}
+			>
+				<Copy className="size-3.5" />
+			</button>
 			{elementContexts.length > 1 && (
 				<button
 					type="button"

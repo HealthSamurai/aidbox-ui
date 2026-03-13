@@ -196,14 +196,18 @@ function getElementUnderOverlay(
 	y: number,
 	overlayRef: React.RefObject<HTMLDivElement | null>,
 	highlightRef: React.RefObject<HTMLDivElement | null>,
+	labelRef: React.RefObject<HTMLDivElement | null>,
 ): Element | null {
 	const overlay = overlayRef.current;
 	const highlight = highlightRef.current;
+	const label = labelRef.current;
 	if (overlay) overlay.style.display = "none";
 	if (highlight) highlight.style.display = "none";
+	if (label) label.style.display = "none";
 	const el = document.elementFromPoint(x, y);
 	if (overlay) overlay.style.display = "";
 	if (highlight) highlight.style.display = "";
+	if (label) label.style.display = "";
 	return el;
 }
 
@@ -211,6 +215,7 @@ export function ElementPicker() {
 	const { pickerActive } = useChatState();
 	const dispatch = useChatDispatch();
 	const highlightRef = useRef<HTMLDivElement | null>(null);
+	const labelRef = useRef<HTMLDivElement | null>(null);
 	const overlayRef = useRef<HTMLDivElement | null>(null);
 
 	const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -219,9 +224,11 @@ export function ElementPicker() {
 			e.clientY,
 			overlayRef,
 			highlightRef,
+			labelRef,
 		);
 		if (!el || el.closest(`#${CHAT_WIDGET_ID}`)) {
 			if (highlightRef.current) highlightRef.current.style.display = "none";
+			if (labelRef.current) labelRef.current.style.display = "none";
 			return;
 		}
 		const rect = el.getBoundingClientRect();
@@ -232,6 +239,26 @@ export function ElementPicker() {
 			h.style.left = `${rect.left}px`;
 			h.style.width = `${rect.width}px`;
 			h.style.height = `${rect.height}px`;
+		}
+		if (labelRef.current) {
+			const name = getReactComponentName(el);
+			if (name !== "unknown") {
+				const l = labelRef.current;
+				l.textContent = name;
+				l.style.display = "block";
+				l.style.left = `${rect.left}px`;
+				const labelHeight = l.offsetHeight;
+				const fitsAbove = rect.top >= labelHeight;
+				if (fitsAbove) {
+					l.style.top = `${rect.top - labelHeight}px`;
+					l.style.borderRadius = "3px 3px 0 0";
+				} else {
+					l.style.top = `${rect.bottom}px`;
+					l.style.borderRadius = "0 0 3px 3px";
+				}
+			} else {
+				labelRef.current.style.display = "none";
+			}
 		}
 	}, []);
 
@@ -244,6 +271,7 @@ export function ElementPicker() {
 				e.clientY,
 				overlayRef,
 				highlightRef,
+				labelRef,
 			);
 			if (!el || el.closest(`#${CHAT_WIDGET_ID}`)) return;
 			try {
@@ -265,6 +293,17 @@ export function ElementPicker() {
 		},
 		[dispatch],
 	);
+
+	useEffect(() => {
+		function handleHotkey(e: KeyboardEvent) {
+			if ((e.metaKey || e.ctrlKey) && e.key === "e") {
+				e.preventDefault();
+				dispatch({ type: "set_picker", active: !pickerActive });
+			}
+		}
+		document.addEventListener("keydown", handleHotkey);
+		return () => document.removeEventListener("keydown", handleHotkey);
+	}, [dispatch, pickerActive]);
 
 	useEffect(() => {
 		if (!pickerActive) return;
@@ -291,6 +330,22 @@ export function ElementPicker() {
 				pointerEvents: "auto",
 			}}
 		>
+			<div
+				ref={labelRef}
+				style={{
+					position: "fixed",
+					display: "none",
+					background: "#3b82f6",
+					color: "white",
+					padding: "2px 6px",
+					borderRadius: "3px 3px 0 0",
+					fontSize: "11px",
+					fontFamily: "monospace",
+					lineHeight: "1.4",
+					whiteSpace: "nowrap",
+					pointerEvents: "none",
+				}}
+			/>
 			<div
 				ref={highlightRef}
 				style={{
