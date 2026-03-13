@@ -2,6 +2,38 @@ import type { TreeViewItem } from "@health-samurai/react-components";
 import type { Header, Tab } from "./components/rest/active-tabs";
 import type { Meta, Snapshot } from "./components/ViewDefinition/types";
 
+export function parsePathParams(path: string): Header[] {
+	const queryParams = path.split("?")[1];
+	const params =
+		queryParams?.split("&").map((param, index) => {
+			const [name, value] = param.split("=");
+			return {
+				id: `${index}`,
+				name: name ?? "",
+				value: value ?? "",
+				enabled: true,
+			};
+		}) || [];
+	if (!params.some((h) => h.name === "" && h.value === "")) {
+		params.push({
+			id: crypto.randomUUID(),
+			name: "",
+			value: "",
+			enabled: true,
+		});
+	}
+	return params;
+}
+
+export function syncPathFromParams(params: Header[], path: string): string {
+	const location = path.split("?")[0];
+	const queryString = params
+		.filter((p) => (p.enabled ?? true) && p.name)
+		.map((p) => `${p.name}=${p.value}`)
+		.join("&");
+	return queryString ? `${location}?${queryString}` : (location ?? "");
+}
+
 export function getAidboxBaseURL(): string {
 	return (
 		import.meta.env.VITE_AIDBOX_BASE_URL ||

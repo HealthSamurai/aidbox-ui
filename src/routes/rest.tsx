@@ -66,7 +66,7 @@ import { SplitButton, type SplitDirection } from "../components/Split";
 import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menubar";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
-import { parseHttpRequest } from "../utils";
+import { parseHttpRequest, parsePathParams } from "../utils";
 import { responseStorage } from "../utils/response-storage";
 import { useWebMCPRestConsole } from "../webmcp/rest-console";
 import type { RestConsoleActions } from "../webmcp/rest-console-context";
@@ -901,34 +901,6 @@ function ResponsePane({
 			</div>
 		</Tabs>
 	);
-}
-
-function requestParamsHasEmpty(params: Header[]): boolean {
-	return params.some((param) => param.name === "" && param.value === "");
-}
-
-function parsePathParams(path: string): Header[] {
-	const queryParams = path.split("?")[1];
-	const params =
-		queryParams?.split("&").map((param, index) => {
-			const [name, value] = param.split("=");
-			return {
-				id: `${index}`,
-				name: name ?? "",
-				value: value ?? "",
-				enabled: true,
-			};
-		}) || [];
-
-	if (!requestParamsHasEmpty(params)) {
-		params.push({
-			id: crypto.randomUUID(),
-			name: "",
-			value: "",
-			enabled: true,
-		});
-	}
-	return params;
 }
 
 function handleTabRequestPathChange(
