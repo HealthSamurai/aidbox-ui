@@ -32,7 +32,6 @@ interface Suggestion {
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const INTERNAL_KEYS = new Set([...HTTP_METHODS, "route-map/enum"]);
 const HIDDEN_RESOURCE_TYPES = new Set(["FHIRSchema"]);
-const MAX_SUGGESTIONS = 30;
 
 const COMMON_SEARCH_PARAMS = [
 	"_id",
@@ -180,7 +179,7 @@ function computePathSuggestions(
 		return diff !== 0 ? diff : a.label.localeCompare(b.label);
 	});
 
-	return suggestions.slice(0, MAX_SUGGESTIONS);
+	return suggestions;
 }
 
 function detectResourceType(tree: RoutesTree, path: string): string | null {
@@ -264,7 +263,7 @@ function computeSearchParamSuggestions(
 	}
 
 	suggestions.sort((a, b) => a.label.localeCompare(b.label));
-	return suggestions.slice(0, MAX_SUGGESTIONS);
+	return suggestions;
 }
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
@@ -287,14 +286,17 @@ function useRoutes() {
 	});
 }
 
+const INHERITED_BASES = ["DomainResource", "Resource", "Base"];
+
 function useSearchParams(resourceType: string | null) {
 	const client = useAidboxClient();
 	return useQuery({
 		queryKey: ["search-params", resourceType],
 		queryFn: async () => {
+			const bases = [resourceType, ...INHERITED_BASES].join(",");
 			const response = await client.rawRequest({
 				method: "GET",
-				url: `/fhir/SearchParameter?base=${resourceType}&_count=500&_elements=code,type,expression`,
+				url: `/fhir/SearchParameter?base=${bases}&_count=500&_elements=code,type,expression`,
 				headers: { "Content-Type": "application/json" },
 			});
 			const data = (await response.response.json()) as {
@@ -480,7 +482,7 @@ export function UrlAutocomplete({
 								aria-selected={index === selectedIndex}
 								key={suggestion.value}
 								className={cn(
-									"flex flex-col px-2 py-1.5 rounded-sm cursor-pointer",
+									"flex items-baseline px-2 py-1.5 gap-2 rounded-sm cursor-pointer text-xs",
 									index === selectedIndex
 										? "bg-bg-tertiary text-text-primary"
 										: "text-text-secondary hover:bg-bg-secondary",
@@ -491,17 +493,15 @@ export function UrlAutocomplete({
 								}}
 								onMouseEnter={() => setSelectedIndex(index)}
 							>
-								<span className="flex items-baseline gap-2 text-xs">
-									<span className="truncate text-text-primary">
-										{suggestion.label}
-									</span>
-									<SuggestionBadge
-										type={suggestion.type}
-										description={suggestion.description}
-									/>
+								<span className="shrink-0 text-text-primary">
+									{suggestion.label}
 								</span>
+								<SuggestionBadge
+									type={suggestion.type}
+									description={suggestion.description}
+								/>
 								{suggestion.expression && (
-									<span className="truncate text-text-tertiary text-xs leading-normal">
+									<span className="truncate font-mono text-text-tertiary ml-auto">
 										{suggestion.expression}
 									</span>
 								)}
