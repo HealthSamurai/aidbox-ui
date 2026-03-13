@@ -89,7 +89,6 @@ export function EditTabContent({
 							issueLineNumbers={issueLineNumbers}
 							trailingActions={
 								<>
-									<HSComp.Separator orientation="vertical" className="h-6!" />
 									<HSComp.Toggle
 										variant="outline"
 										pressed={isProfileOpen}

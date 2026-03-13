@@ -94,6 +94,7 @@ const PageComponent = () => {
 	const navigate = useNavigate();
 
 	const isViewDefinition = resourceType === "ViewDefinition";
+	const isAccessPolicy = resourceType === "AccessPolicy";
 
 	const initialResource = isViewDefinition
 		? {
@@ -102,9 +103,15 @@ const PageComponent = () => {
 				status: "draft",
 				select: [],
 			}
-		: { resourceType: resourceType };
+		: isAccessPolicy
+			? {
+					resourceType: "AccessPolicy",
+					engine: "matcho",
+				}
+			: { resourceType: resourceType };
 
-	const effectiveTab = isViewDefinition && tab === "edit" ? "builder" : tab;
+	const effectiveTab =
+		(isViewDefinition || isAccessPolicy) && tab === "edit" ? "builder" : tab;
 
 	return (
 		<ResourceEditorPage

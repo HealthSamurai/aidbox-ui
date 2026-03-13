@@ -12,7 +12,7 @@ EOF
 }
 
 case "$1" in
-  init)
+  (init)
     git -C "$ROOT" submodule update --init
     git -C "$ROOT/aidbox-ts-sdk" fetch --depth 1 origin development:development
     git -C "$ROOT/aidbox-ts-sdk" checkout development
@@ -21,8 +21,8 @@ case "$1" in
     write_workspace_override
     pnpm --dir "$ROOT" install
     ;;
-  update)
-    git -C "$ROOT/aidbox-ts-sdk" pull origin development
+  (update)
+    git -C "$ROOT/aidbox-ts-sdk" pull --rebase origin development
     pnpm --dir "$SDK" install
     pnpm --dir "$SDK" build
     pnpm --dir "$ROOT" install

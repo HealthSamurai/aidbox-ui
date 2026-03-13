@@ -13,6 +13,7 @@ import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { useUnsavedChangesBlocker } from "../../hooks/useUnsavedChangesBlocker";
 import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
 import {
 	findJsonPathOffset,
@@ -21,6 +22,8 @@ import {
 } from "../../utils/json-path-offset";
 import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
+import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
+import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
@@ -92,7 +95,17 @@ export const ResourceEditorPageWithLoader = (
 			/>
 		);
 
-	return <ResourceEditorPage initialResource={resourceData} {...props} />;
+	const meta = (resourceData as Record<string, unknown>).meta as
+		| Record<string, unknown>
+		| undefined;
+
+	return (
+		<ResourceEditorPage
+			key={String(meta?.versionId ?? "")}
+			initialResource={resourceData}
+			{...props}
+		/>
+	);
 };
 
 export const ResourceEditorPage = ({
@@ -107,12 +120,14 @@ export const ResourceEditorPage = ({
 	const client = useAidboxClient();
 
 	const [resource, setResource] = React.useState<Resource>(initialResource);
-	const [resourceText, setResourceText] = React.useState<string>(() => {
-		if (mode === "yaml") {
-			return YAML.dump(initialResource, { indent });
-		}
-		return JSON.stringify(initialResource, undefined, indent);
-	});
+	const initialTextRef = React.useRef(
+		mode === "yaml"
+			? YAML.dump(initialResource, { indent })
+			: JSON.stringify(initialResource, undefined, indent),
+	);
+	const [resourceText, setResourceText] = React.useState<string>(
+		initialTextRef.current,
+	);
 
 	const triggerFormat = () => {
 		let text: string;
@@ -133,6 +148,7 @@ export const ResourceEditorPage = ({
 					? YAML.dump(parsed, { indent })
 					: JSON.stringify(parsed, null, indent);
 			setResourceText(newText);
+			initialTextRef.current = newText;
 			setResource(parsed);
 		} catch {
 			// If parsing fails, we keep the current value
@@ -145,9 +161,18 @@ export const ResourceEditorPage = ({
 		});
 	};
 
+	const {
+		setIsDirty: setEditDirty,
+		proceed: editProceed,
+		reset: editReset,
+		status: editBlockerStatus,
+	} = useUnsavedChangesBlocker();
+	const editDismissedRef = React.useRef(false);
+
 	const handleTextChange = (text: string) => {
 		setResourceText(text);
 		setSaveError(null);
+		setEditDirty(text !== initialTextRef.current);
 		try {
 			const parsed = mode === "yaml" ? YAML.load(text) : JSON.parse(text);
 			setResource(parsed);
@@ -212,6 +237,18 @@ export const ResourceEditorPage = ({
 	}, [saveError, resourceText, mode]);
 
 	const handleOnTabSelect = (value: ResourceEditorTab) => {
+		if (editDismissedRef.current) {
+			editDismissedRef.current = false;
+			const text =
+				mode === "yaml"
+					? YAML.dump(initialResource, { indent })
+					: JSON.stringify(initialResource, null, indent);
+			setResourceText(text);
+			initialTextRef.current = text;
+			setResource(initialResource);
+			setEditDirty(false);
+			setSaveError(null);
+		}
 		storeSelectedTab(value);
 		navigate({
 			search: (prev: Record<string, unknown>) => ({ ...prev, tab: value }),
@@ -296,6 +333,7 @@ export const ResourceEditorPage = ({
 	useWebMCPResourceEditor(actionsRef);
 
 	const isViewDefinition = resourceType === "ViewDefinition";
+	const isAccessPolicy = resourceType === "AccessPolicy";
 
 	const tabs = [];
 
@@ -330,6 +368,19 @@ export const ResourceEditorPage = ({
 			/>
 		</>
 	);
+
+	if (isAccessPolicy) {
+		tabs.push({
+			trigger: (
+				<HSComp.TabsTrigger value="builder">Dev Tool</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<AccessPolicyBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
 
 	tabs.push({
 		trigger: <HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>,
@@ -374,18 +425,49 @@ export const ResourceEditorPage = ({
 	}
 
 	const content = (
-		<HSComp.Tabs
-			value={tab}
-			onValueChange={handleOnTabSelect}
-			className="grow min-h-0"
-		>
-			{tabs.length > 1 && (
-				<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
-					<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-				</div>
-			)}
-			{tabs.map((t) => t.content)}
-		</HSComp.Tabs>
+		<>
+			<HSComp.Tabs
+				value={tab}
+				onValueChange={handleOnTabSelect}
+				className="grow min-h-0"
+			>
+				{tabs.length > 1 && (
+					<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
+						<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
+					</div>
+				)}
+				{tabs.map((t) => t.content)}
+			</HSComp.Tabs>
+
+			<HSComp.AlertDialog open={editBlockerStatus === "blocked"}>
+				<HSComp.AlertDialogContent>
+					<HSComp.AlertDialogHeader>
+						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>
+					</HSComp.AlertDialogHeader>
+					<HSComp.AlertDialogDescription>
+						You have unsaved changes. Are you sure you want to leave this page?
+						Your changes will be lost.
+					</HSComp.AlertDialogDescription>
+					<HSComp.AlertDialogFooter>
+						<HSComp.AlertDialogCancel onClick={editReset}>
+							Cancel
+						</HSComp.AlertDialogCancel>
+						<HSComp.AlertDialogAction
+							variant="primary"
+							danger
+							onClick={() => {
+								setEditDirty(false);
+								editDismissedRef.current = true;
+								setSaveError(null);
+								editProceed?.();
+							}}
+						>
+							Leave
+						</HSComp.AlertDialogAction>
+					</HSComp.AlertDialogFooter>
+				</HSComp.AlertDialogContent>
+			</HSComp.AlertDialog>
+		</>
 	);
 
 	if (isViewDefinition) {
@@ -393,6 +475,14 @@ export const ResourceEditorPage = ({
 			<ViewDefinitionProvider id={id} initialResource={initialResource}>
 				{content}
 			</ViewDefinitionProvider>
+		);
+	}
+
+	if (isAccessPolicy) {
+		return (
+			<AccessPolicyProvider id={id} initialResource={initialResource}>
+				{content}
+			</AccessPolicyProvider>
 		);
 	}
 
