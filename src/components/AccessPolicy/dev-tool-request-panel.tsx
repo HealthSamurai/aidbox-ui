@@ -4,6 +4,7 @@ import * as yaml from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import { parseHttpRequest } from "../../utils";
@@ -50,7 +51,7 @@ interface RequestTab {
 	selected: boolean;
 	activeRequestSubTab: RequestSubTab;
 	response: ResponseData | null;
-	activeResponseTab: "policy-eval" | "request-context" | "headers";
+	activeResponseTab: "policy-eval" | "request-context" | "headers" | "sql";
 }
 
 const DEFAULT_HEADERS: Header[] = [
@@ -514,11 +515,109 @@ function ResponseHeadersView({ response }: { response: ResponseData | null }) {
 	);
 }
 
+function resolveTemplatePath(
+	obj: Record<string, unknown>,
+	path: string,
+): unknown {
+	const parts = path.split(".");
+	let current: unknown = obj;
+	for (const part of parts) {
+		if (current == null || typeof current !== "object") return undefined;
+		current = (current as Record<string, unknown>)[part];
+	}
+	return current;
+}
+
+function substituteTemplates(
+	query: string,
+	request: Record<string, unknown>,
+): { result: string; unresolved: string[] } {
+	const unresolved: string[] = [];
+	const result = query.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
+		const trimmed = path.trim();
+		const value = resolveTemplatePath(request, trimmed);
+		if (value === undefined || value === null) {
+			unresolved.push(trimmed);
+			return `{{${path}}}`;
+		}
+		if (typeof value === "string") return `'${value}'`;
+		return String(value);
+	});
+	return { result, unresolved };
+}
+
+function SqlQueryView({
+	response,
+	accessPolicy,
+}: {
+	response: ResponseData | null;
+	accessPolicy: Record<string, unknown> | undefined;
+}) {
+	const sqlQuery = (accessPolicy?.sql as Record<string, unknown>)?.query as
+		| string
+		| undefined;
+
+	if (!response || !sqlQuery) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No response yet</div>
+					<div className="text-sm">
+						Send a request to see the substituted SQL query
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	const request = response.debugData?.request;
+	const { result: substituted, unresolved } = request
+		? substituteTemplates(sqlQuery, request)
+		: { result: sqlQuery, unresolved: [] as string[] };
+
+	let formatted: string;
+	try {
+		formatted = formatSQL(substituted, {
+			language: "postgresql",
+			keywordCase: "upper",
+			indentStyle: "tabularRight",
+			linesBetweenQueries: 2,
+		});
+	} catch {
+		formatted = substituted;
+	}
+
+	return (
+		<div className="flex flex-col h-full">
+			{unresolved.length > 0 && (
+				<div className="flex items-center gap-2 px-4 py-2 border-b bg-bg-warning-secondary text-text-warning-primary typo-default">
+					<Lucide.TriangleAlert className="size-4 shrink-0" />
+					<span>
+						Unresolved template variables:{" "}
+						{unresolved.map((v) => `{{${v}}}`).join(", ")}
+					</span>
+				</div>
+			)}
+			<div className="grow min-h-0">
+				<HSComp.CodeEditor
+					readOnly
+					key={`sql-${response.status}`}
+					currentValue={formatted}
+					mode="sql"
+				/>
+			</div>
+		</div>
+	);
+}
+
 // ── Main component ─────────────────────────────────────────────────────
 
 export function DevToolRequestPanel() {
 	const client = useAidboxClient();
-	const { accessPolicyId } = React.useContext(AccessPolicyContext);
+	const { accessPolicyId, accessPolicy } =
+		React.useContext(AccessPolicyContext);
+	const isSqlEngine =
+		(accessPolicy as Record<string, unknown> | undefined)?.engine === "sql";
 
 	const [tabs, setTabs] = useLocalStorage<RequestTab[]>({
 		key: "access-policy-devtool-tabs",
@@ -531,8 +630,11 @@ export function DevToolRequestPanel() {
 		if (!tab.params) {
 			tab.params = parsePathParams(tab.path);
 		}
+		if (tab.activeResponseTab === "sql" && !isSqlEngine) {
+			tab.activeResponseTab = "policy-eval";
+		}
 		return tab;
-	}, [tabs]);
+	}, [tabs, isSqlEngine]);
 
 	const [isLoading, setIsLoading] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
@@ -667,7 +769,7 @@ export function DevToolRequestPanel() {
 		updateSelected(() => ({ activeRequestSubTab: subTab }));
 
 	const handleResponseTabChange = (
-		tab: "policy-eval" | "request-context" | "headers",
+		tab: "policy-eval" | "request-context" | "headers" | "sql",
 	) => updateSelected(() => ({ activeResponseTab: tab }));
 
 	// ── Send with debug ──
@@ -885,7 +987,7 @@ export function DevToolRequestPanel() {
 							value={selectedTab.activeResponseTab}
 							onValueChange={(v) =>
 								handleResponseTabChange(
-									v as "policy-eval" | "request-context" | "headers",
+									v as "policy-eval" | "request-context" | "headers" | "sql",
 								)
 							}
 							className="flex flex-col grow min-h-0"
@@ -905,6 +1007,9 @@ export function DevToolRequestPanel() {
 										<HSComp.TabsTrigger value="headers">
 											Headers
 										</HSComp.TabsTrigger>
+										{isSqlEngine && (
+											<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
+										)}
 									</HSComp.TabsList>
 								</div>
 								{requestCollapsed && (
@@ -944,6 +1049,20 @@ export function DevToolRequestPanel() {
 									<ResponseHeadersView response={selectedTab.response} />
 								)}
 							</HSComp.TabsContent>
+							{isSqlEngine && (
+								<HSComp.TabsContent value="sql" className="grow min-h-0">
+									{isLoading ? (
+										loadingView
+									) : (
+										<SqlQueryView
+											response={selectedTab.response}
+											accessPolicy={
+												accessPolicy as Record<string, unknown> | undefined
+											}
+										/>
+									)}
+								</HSComp.TabsContent>
+							)}
 						</HSComp.Tabs>
 
 						{/* Status bar */}
