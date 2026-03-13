@@ -501,19 +501,14 @@ function resolveTemplatePath(
 function substituteTemplates(
 	query: string,
 	request: Record<string, unknown>,
-): { result: string; unresolved: string[] } {
-	const unresolved: string[] = [];
-	const result = query.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
+): string {
+	return query.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
 		const trimmed = path.trim();
 		const value = resolveTemplatePath(request, trimmed);
-		if (value === undefined || value === null) {
-			unresolved.push(trimmed);
-			return `{{${path}}}`;
-		}
+		if (value === undefined || value === null) return "null";
 		if (typeof value === "string") return `'${value}'`;
 		return String(value);
 	});
-	return { result, unresolved };
 }
 
 function SqlQueryView({
@@ -529,25 +524,21 @@ function SqlQueryView({
 
 	const request = response?.debugData?.request;
 
-	const { formatted, unresolved } = React.useMemo(() => {
-		if (!response || !sqlQuery) {
-			return { formatted: "", unresolved: [] as string[] };
-		}
-		const { result: substituted, unresolved } = request
+	const formatted = React.useMemo(() => {
+		if (!response || !sqlQuery) return "";
+		const substituted = request
 			? substituteTemplates(sqlQuery, request)
-			: { result: sqlQuery, unresolved: [] as string[] };
-		let fmt: string;
+			: sqlQuery;
 		try {
-			fmt = formatSQL(substituted, {
+			return formatSQL(substituted, {
 				language: "postgresql",
 				keywordCase: "upper",
 				indentStyle: "tabularRight",
 				linesBetweenQueries: 2,
 			});
 		} catch {
-			fmt = substituted;
+			return substituted;
 		}
-		return { formatted: fmt, unresolved };
 	}, [response, sqlQuery, request]);
 
 	if (!response || !sqlQuery) {
@@ -559,25 +550,12 @@ function SqlQueryView({
 	}
 
 	return (
-		<div className="flex flex-col h-full">
-			{unresolved.length > 0 && (
-				<div className="flex items-center gap-2 px-4 py-2 border-b bg-bg-warning-secondary text-text-warning-primary typo-default">
-					<Lucide.TriangleAlert className="size-4 shrink-0" />
-					<span>
-						Unresolved template variables:{" "}
-						{unresolved.map((v) => `{{${v}}}`).join(", ")}
-					</span>
-				</div>
-			)}
-			<div className="grow min-h-0">
-				<HSComp.CodeEditor
-					readOnly
-					key={`sql-${response.status}`}
-					currentValue={formatted}
-					mode="sql"
-				/>
-			</div>
-		</div>
+		<HSComp.CodeEditor
+			readOnly
+			key={`sql-${response.status}`}
+			currentValue={formatted}
+			mode="sql"
+		/>
 	);
 }
 
