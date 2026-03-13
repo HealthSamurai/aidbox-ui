@@ -3,6 +3,7 @@ import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import { parseHttpRequest } from "../../utils";
@@ -536,6 +537,8 @@ export function DevToolRequestPanel() {
 	const [isLoading, setIsLoading] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
 	const debugTokenRef = React.useRef<string | null>(null);
+	const requestPanelRef = React.useRef<ImperativePanelHandle>(null);
+	const [requestCollapsed, setRequestCollapsed] = React.useState(false);
 
 	// ── Tab management ──
 
@@ -805,22 +808,41 @@ export function DevToolRequestPanel() {
 				className="grow min-h-0"
 			>
 				{/* Request sub-tabs: Params, Headers, Body, Raw */}
-				<HSComp.ResizablePanel defaultSize={40} minSize={15}>
+				<HSComp.ResizablePanel
+					ref={requestPanelRef}
+					defaultSize={40}
+					minSize={15}
+					collapsible
+					collapsedSize={0}
+					onCollapse={() => setRequestCollapsed(true)}
+					onExpand={() => setRequestCollapsed(false)}
+				>
 					<HSComp.Tabs
 						value={selectedTab.activeRequestSubTab}
 						onValueChange={(v) => handleRequestSubTabChange(v as RequestSubTab)}
 						className="flex flex-col h-full"
 					>
-						<div className="flex items-center bg-bg-secondary px-4 border-b h-10 shrink-0">
-							<span className="typo-label text-text-secondary pr-3">
-								Request:
-							</span>
-							<HSComp.TabsList>
-								<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
-								<HSComp.TabsTrigger value="headers">Headers</HSComp.TabsTrigger>
-								<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
-								<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
-							</HSComp.TabsList>
+						<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10 shrink-0">
+							<div className="flex items-center">
+								<span className="typo-label text-text-secondary pr-3">
+									Request:
+								</span>
+								<HSComp.TabsList>
+									<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
+									<HSComp.TabsTrigger value="headers">
+										Headers
+									</HSComp.TabsTrigger>
+									<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
+									<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
+								</HSComp.TabsList>
+							</div>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								onClick={() => requestPanelRef.current?.collapse()}
+							>
+								<Lucide.PanelBottomOpen className="size-4" />
+							</HSComp.Button>
 						</div>
 						<HSComp.TabsContent value="params" className="grow min-h-0">
 							<ParamsEditor
@@ -854,7 +876,7 @@ export function DevToolRequestPanel() {
 					</HSComp.Tabs>
 				</HSComp.ResizablePanel>
 
-				<HSComp.ResizableHandle />
+				<HSComp.ResizableHandle className={requestCollapsed ? "hidden!" : ""} />
 
 				{/* Response: Policy eval, RequestContext, Headers */}
 				<HSComp.ResizablePanel defaultSize={60} minSize={15}>
@@ -868,21 +890,32 @@ export function DevToolRequestPanel() {
 							}
 							className="flex flex-col grow min-h-0"
 						>
-							<div className="flex items-center bg-bg-secondary px-4 border-b h-10 shrink-0">
-								<span className="typo-label text-text-secondary pr-3">
-									Response:
-								</span>
-								<HSComp.TabsList>
-									<HSComp.TabsTrigger value="policy-eval">
-										Policy eval
-									</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="request-context">
-										RequestContext
-									</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="headers">
-										Headers
-									</HSComp.TabsTrigger>
-								</HSComp.TabsList>
+							<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10 shrink-0">
+								<div className="flex items-center">
+									<span className="typo-label text-text-secondary pr-3">
+										Response:
+									</span>
+									<HSComp.TabsList>
+										<HSComp.TabsTrigger value="policy-eval">
+											Policy eval
+										</HSComp.TabsTrigger>
+										<HSComp.TabsTrigger value="request-context">
+											RequestContext
+										</HSComp.TabsTrigger>
+										<HSComp.TabsTrigger value="headers">
+											Headers
+										</HSComp.TabsTrigger>
+									</HSComp.TabsList>
+								</div>
+								{requestCollapsed && (
+									<HSComp.Button
+										variant="ghost"
+										size="small"
+										onClick={() => requestPanelRef.current?.expand()}
+									>
+										<Lucide.PanelTopOpen className="size-4" />
+									</HSComp.Button>
+								)}
 							</div>
 							<HSComp.TabsContent value="policy-eval" className="grow min-h-0">
 								{isLoading ? (
