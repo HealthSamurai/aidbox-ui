@@ -25,7 +25,7 @@ importers:
         version: file:aidbox-ts-sdk/packages/react-components(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
       '@mcp-b/global':
         specifier: ^2.1.0
-        version: 2.2.0(zod@4.3.6)
+        version: 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.90.21(react@19.2.4)
@@ -39,8 +39,8 @@ importers:
         specifier: ^4.1.1
         version: 4.1.1
       lucide-react:
-        specifier: ^0.539.0
-        version: 0.539.0(react@19.2.4)
+        specifier: ^0.577.0
+        version: 0.577.0(react@19.2.4)
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -2373,11 +2373,6 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@0.539.0:
-    resolution: {integrity: sha512-VVISr+VF2krO91FeuCrm1rSOLACQUYVy7NQkzrOty52Y8TlTPcXcMdQFj9bYzBgXbWCiywlwSZ3Z8u6a+6bMlg==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
   lucide-react@0.577.0:
     resolution: {integrity: sha512-4LjoFv2eEPwYDPg/CUdBJQSDfPyzXCRrVW1X7jrx/trgxnxkHFjnVZINbzvzxjN70dxychOfg+FTYwBiS3pQ5A==}
     peerDependencies:
@@ -2831,6 +2826,11 @@ packages:
   yargs@18.0.0:
     resolution: {integrity: sha512-4UEqdc2RYGHZc7Doyqkrqiln3p9X2DZVxaGbwhn2pi7MrRagKaOcIKe8L3OxYcbhXLgLFUS3zAYuQjKBQgmuNg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=23}
+
+  zod-to-json-schema@3.25.1:
+    resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
+    peerDependencies:
+      zod: ^3.25 || ^4
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
@@ -3498,19 +3498,19 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
-  '@mcp-b/global@2.2.0(zod@4.3.6)':
+  '@mcp-b/global@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)':
     dependencies:
-      '@mcp-b/transports': 2.2.0
+      '@mcp-b/transports': 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))
       '@mcp-b/webmcp-polyfill': 2.2.0
-      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod@4.3.6)
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
       '@mcp-b/webmcp-types': 2.2.0
     transitivePeerDependencies:
       - zod
       - zod-to-json-schema
 
-  '@mcp-b/transports@2.2.0':
+  '@mcp-b/transports@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))':
     dependencies:
-      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod@3.25.76)
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - zod-to-json-schema
@@ -3521,19 +3521,21 @@ snapshots:
       '@mcp-b/webmcp-types': 2.2.0
       '@standard-schema/spec': 1.1.0
 
-  '@mcp-b/webmcp-ts-sdk@2.2.0(zod@3.25.76)':
+  '@mcp-b/webmcp-ts-sdk@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@3.25.76)':
     dependencies:
       '@mcp-b/webmcp-polyfill': 2.2.0
       '@mcp-b/webmcp-types': 2.2.0
     optionalDependencies:
       zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
 
-  '@mcp-b/webmcp-ts-sdk@2.2.0(zod@4.3.6)':
+  '@mcp-b/webmcp-ts-sdk@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)':
     dependencies:
       '@mcp-b/webmcp-polyfill': 2.2.0
       '@mcp-b/webmcp-types': 2.2.0
     optionalDependencies:
       zod: 4.3.6
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
 
   '@mcp-b/webmcp-types@2.2.0': {}
 
@@ -5091,10 +5093,6 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
-
-  lucide-react@0.539.0(react@19.2.4):
-    dependencies:
-      react: 19.2.4
 
   lucide-react@0.577.0(react@19.2.4):
     dependencies:

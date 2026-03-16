@@ -3,7 +3,6 @@ import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
-import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useUserInfo } from "../../api/auth";
@@ -367,13 +366,23 @@ function NoResponsePlaceholder({ children }: { children: string }) {
 
 // ── Policy eval list ───────────────────────────────────────────────────
 
-function PolicyEvalRow({ policy }: { policy: DebugPolicy }) {
+function PolicyEvalRow({
+	policy,
+	allExpanded,
+}: {
+	policy: DebugPolicy;
+	allExpanded: boolean | null;
+}) {
 	const { accessPolicyId } = React.useContext(AccessPolicyContext);
 	const [expanded, setExpanded] = React.useState(policy.id === accessPolicyId);
 	const passed = !!policy["eval-result"];
 
+	React.useEffect(() => {
+		if (allExpanded !== null) setExpanded(allExpanded);
+	}, [allExpanded]);
+
 	return (
-		<div className="border-b border-border-primary">
+		<div className="border-b border-border-tertiary">
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: collapsible row */}
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: collapsible row */}
 			<div
@@ -382,31 +391,30 @@ function PolicyEvalRow({ policy }: { policy: DebugPolicy }) {
 			>
 				<div className="flex items-center gap-2">
 					{expanded ? (
-						<Lucide.ChevronDown
-							className={`size-4 shrink-0 ${passed ? "text-green-600" : "text-critical-default"}`}
-						/>
+						<Lucide.ChevronDown className="size-4 shrink-0 text-text-tertiary" />
 					) : (
-						<Lucide.ChevronRight
-							className={`size-4 shrink-0 ${passed ? "text-green-600" : "text-critical-default"}`}
-						/>
+						<Lucide.ChevronRight className="size-4 shrink-0 text-text-tertiary" />
 					)}
 					<span
-						className={`typo-body-xs ${policy.id === accessPolicyId ? "font-bold" : ""}`}
+						className={`typo-body-xs ${passed ? "text-green-600" : "text-critical-default"} ${policy.id === accessPolicyId ? "font-bold" : ""}`}
 					>
 						{policy.id}
 					</span>
 				</div>
-				<span
-					className={`typo-label-xs shrink-0 ${passed ? "text-green-600" : "text-critical-default"}`}
-				>
-					{passed ? "passed" : "denied"}
-				</span>
 			</div>
 			{expanded && (
 				<div className="px-4 pb-2">
 					<HSComp.CodeEditor
 						readOnly
-						currentValue={yaml.dump(policy, { indent: 2 })}
+						currentValue={yaml.dump(
+							Object.fromEntries(
+								Object.entries(policy).filter(
+									([k]) =>
+										k !== "eval-result" && k !== "id" && k !== "policy-id",
+								),
+							),
+							{ indent: 2 },
+						)}
 						mode="yaml"
 						lineNumbers={false}
 						foldGutter={false}
@@ -420,9 +428,11 @@ function PolicyEvalRow({ policy }: { policy: DebugPolicy }) {
 function PolicyEvalView({
 	response,
 	currentPolicyId,
+	allExpanded,
 }: {
 	response: ResponseData | null;
 	currentPolicyId: string | undefined;
+	allExpanded: boolean | null;
 }) {
 	if (!response) {
 		return (
@@ -467,7 +477,11 @@ function PolicyEvalView({
 	return (
 		<div className="h-full overflow-auto">
 			{sorted.map((policy) => (
-				<PolicyEvalRow key={policy.id} policy={policy} />
+				<PolicyEvalRow
+					key={policy.id}
+					policy={policy}
+					allExpanded={allExpanded}
+				/>
 			))}
 		</div>
 	);
@@ -763,8 +777,12 @@ export function DevToolRequestPanel() {
 
 	const [isLoading, setIsLoading] = React.useState(false);
 	const debugTokenRef = React.useRef<string | null>(null);
-	const requestPanelRef = React.useRef<ImperativePanelHandle>(null);
-	const [requestCollapsed, setRequestCollapsed] = React.useState(false);
+	const [maximized, setMaximized] = React.useState<
+		"request" | "response" | null
+	>(null);
+	const [allPoliciesExpanded, setAllPoliciesExpanded] = React.useState<
+		boolean | null
+	>(null);
 
 	// ── Tab management ──
 
@@ -1066,94 +1084,112 @@ export function DevToolRequestPanel() {
 			<HSComp.ResizablePanelGroup
 				direction="vertical"
 				autoSaveId="access-policy-devtool-req-resp"
-				className="grow min-h-0"
+				className="grow min-h-0 relative"
 			>
 				{/* Request sub-tabs: Params, Headers, Body, Raw */}
-				<HSComp.ResizablePanel
-					ref={requestPanelRef}
-					defaultSize={40}
-					minSize={15}
-					collapsible
-					collapsedSize={0}
-					onCollapse={() => setRequestCollapsed(true)}
-					onExpand={() => setRequestCollapsed(false)}
-				>
-					<HSComp.Tabs
-						value={selectedTab.activeRequestSubTab}
-						onValueChange={(v) => handleRequestSubTabChange(v as RequestSubTab)}
-						className="flex flex-col h-full"
+				<HSComp.ResizablePanel defaultSize={40} minSize={15}>
+					<div
+						className={`flex flex-col h-full ${maximized === "request" ? "absolute top-0 left-0 w-full h-full z-30 bg-bg-primary" : ""}`}
 					>
-						<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10 shrink-0">
-							<div className="flex items-center">
-								<span className="typo-label text-text-secondary pr-3">
-									Request:
-								</span>
-								<HSComp.TabsList>
-									<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="headers">
-										Headers
-									</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
-									<HSComp.TabsTrigger value="auth">Auth</HSComp.TabsTrigger>
-								</HSComp.TabsList>
-							</div>
-							<HSComp.Button
-								variant="ghost"
-								size="small"
-								onClick={() => requestPanelRef.current?.collapse()}
-							>
-								<Lucide.PanelBottomOpen className="size-4" />
-							</HSComp.Button>
-						</div>
-						<HSComp.TabsContent value="params" className="grow min-h-0">
-							<ParamsEditor
-								params={selectedTab.params}
-								onParamChange={handleParamChange}
-								onParamRemove={handleParamRemove}
-							/>
-						</HSComp.TabsContent>
-						<HSComp.TabsContent value="headers" className="grow min-h-0">
-							<HeadersEditor
-								headers={selectedTab.headers}
-								onHeaderChange={handleHeaderChange}
-								onHeaderRemove={handleHeaderRemove}
-							/>
-						</HSComp.TabsContent>
-						<HSComp.TabsContent value="body" className="relative grow min-h-0">
-							<RequestBodyEditor
-								tab={selectedTab}
-								onBodyChange={handleBodyChange}
-								onHeadersUpdate={(headers) =>
-									updateSelected(() => ({ headers }))
-								}
-							/>
-						</HSComp.TabsContent>
-						<HSComp.TabsContent value="raw" className="relative grow min-h-0">
-							<RawEditor
-								selectedTab={selectedTab}
-								onRawChange={handleRawChange}
-							/>
-						</HSComp.TabsContent>
-						<HSComp.TabsContent
-							value="auth"
-							className="grow min-h-0 overflow-auto"
+						<HSComp.Tabs
+							value={selectedTab.activeRequestSubTab}
+							onValueChange={(v) =>
+								handleRequestSubTabChange(v as RequestSubTab)
+							}
+							className="flex flex-col h-full"
 						>
-							<AuthTab
-								suUserId={selectedTab.suUserId}
-								onSuUserChange={(userId) =>
-									updateSelected(() => ({ suUserId: userId }))
-								}
-							/>
-						</HSComp.TabsContent>
-					</HSComp.Tabs>
+							<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10 shrink-0">
+								<div className="flex items-center">
+									<span className="typo-label text-text-secondary pr-3">
+										Request:
+									</span>
+									<HSComp.TabsList>
+										<HSComp.TabsTrigger value="params">
+											Params
+										</HSComp.TabsTrigger>
+										<HSComp.TabsTrigger value="headers">
+											Headers
+										</HSComp.TabsTrigger>
+										<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
+										<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
+										<HSComp.TabsTrigger value="auth">Auth</HSComp.TabsTrigger>
+									</HSComp.TabsList>
+								</div>
+								<HSComp.Tooltip>
+									<HSComp.TooltipTrigger asChild>
+										<HSComp.Button
+											variant="ghost"
+											size="small"
+											onClick={() =>
+												setMaximized(maximized === "request" ? null : "request")
+											}
+										>
+											{maximized === "request" ? (
+												<Lucide.Minimize2 className="size-4" />
+											) : (
+												<Lucide.Maximize2 className="size-4" />
+											)}
+										</HSComp.Button>
+									</HSComp.TooltipTrigger>
+									<HSComp.TooltipContent align="end">
+										{maximized === "request" ? "Minimize" : "Maximize"}
+									</HSComp.TooltipContent>
+								</HSComp.Tooltip>
+							</div>
+							<HSComp.TabsContent value="params" className="grow min-h-0">
+								<ParamsEditor
+									params={selectedTab.params}
+									onParamChange={handleParamChange}
+									onParamRemove={handleParamRemove}
+								/>
+							</HSComp.TabsContent>
+							<HSComp.TabsContent value="headers" className="grow min-h-0">
+								<HeadersEditor
+									headers={selectedTab.headers}
+									onHeaderChange={handleHeaderChange}
+									onHeaderRemove={handleHeaderRemove}
+								/>
+							</HSComp.TabsContent>
+							<HSComp.TabsContent
+								value="body"
+								className="relative grow min-h-0"
+							>
+								<RequestBodyEditor
+									tab={selectedTab}
+									onBodyChange={handleBodyChange}
+									onHeadersUpdate={(headers) =>
+										updateSelected(() => ({ headers }))
+									}
+								/>
+							</HSComp.TabsContent>
+							<HSComp.TabsContent value="raw" className="relative grow min-h-0">
+								<RawEditor
+									selectedTab={selectedTab}
+									onRawChange={handleRawChange}
+								/>
+							</HSComp.TabsContent>
+							<HSComp.TabsContent
+								value="auth"
+								className="grow min-h-0 overflow-auto"
+							>
+								<AuthTab
+									suUserId={selectedTab.suUserId}
+									onSuUserChange={(userId) =>
+										updateSelected(() => ({ suUserId: userId }))
+									}
+								/>
+							</HSComp.TabsContent>
+						</HSComp.Tabs>
+					</div>
 				</HSComp.ResizablePanel>
 
-				<HSComp.ResizableHandle className={requestCollapsed ? "hidden!" : ""} />
+				<HSComp.ResizableHandle />
 
 				{/* Response: Policy eval, RequestContext, Headers */}
 				<HSComp.ResizablePanel defaultSize={60} minSize={15}>
-					<div className="flex flex-col h-full">
+					<div
+						className={`flex flex-col h-full ${maximized === "response" ? "absolute top-0 left-0 w-full h-full z-30 bg-bg-primary" : ""}`}
+					>
 						<HSComp.Tabs
 							value={selectedTab.activeResponseTab}
 							onValueChange={(v) =>
@@ -1187,15 +1223,52 @@ export function DevToolRequestPanel() {
 									{selectedTab.response && (
 										<ResponseInfo response={selectedTab.response} />
 									)}
-									{requestCollapsed && (
-										<HSComp.Button
-											variant="ghost"
-											size="small"
-											onClick={() => requestPanelRef.current?.expand()}
-										>
-											<Lucide.PanelTopOpen className="size-4" />
-										</HSComp.Button>
+									{selectedTab.activeResponseTab === "policy-eval" && (
+										<HSComp.Tooltip>
+											<HSComp.TooltipTrigger asChild>
+												<HSComp.Button
+													variant="ghost"
+													size="small"
+													onClick={() =>
+														setAllPoliciesExpanded((prev) =>
+															prev === null ? true : !prev,
+														)
+													}
+												>
+													{allPoliciesExpanded ? (
+														<Lucide.ListChevronsDownUp className="size-4" />
+													) : (
+														<Lucide.ListChevronsUpDown className="size-4" />
+													)}
+												</HSComp.Button>
+											</HSComp.TooltipTrigger>
+											<HSComp.TooltipContent align="end">
+												{allPoliciesExpanded ? "Collapse all" : "Expand all"}
+											</HSComp.TooltipContent>
+										</HSComp.Tooltip>
 									)}
+									<HSComp.Tooltip>
+										<HSComp.TooltipTrigger asChild>
+											<HSComp.Button
+												variant="ghost"
+												size="small"
+												onClick={() =>
+													setMaximized(
+														maximized === "response" ? null : "response",
+													)
+												}
+											>
+												{maximized === "response" ? (
+													<Lucide.Minimize2 className="size-4" />
+												) : (
+													<Lucide.Maximize2 className="size-4" />
+												)}
+											</HSComp.Button>
+										</HSComp.TooltipTrigger>
+										<HSComp.TooltipContent align="end">
+											{maximized === "response" ? "Minimize" : "Maximize"}
+										</HSComp.TooltipContent>
+									</HSComp.Tooltip>
 								</div>
 							</div>
 							<HSComp.TabsContent value="policy-eval" className="grow min-h-0">
@@ -1205,6 +1278,7 @@ export function DevToolRequestPanel() {
 									<PolicyEvalView
 										response={selectedTab.response}
 										currentPolicyId={accessPolicyId}
+										allExpanded={allPoliciesExpanded}
 									/>
 								)}
 							</HSComp.TabsContent>
