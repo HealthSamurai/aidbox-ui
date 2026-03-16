@@ -50,6 +50,9 @@ importers:
       sql-formatter:
         specifier: ^15.7.2
         version: 15.7.2
+      zod-to-json-schema:
+        specifier: ^3.25.1
+        version: 3.25.1(zod@4.3.6)
     devDependencies:
       '@agentclientprotocol/sdk':
         specifier: ^0.14.1
@@ -5571,7 +5574,6 @@ snapshots:
   zod-to-json-schema@3.25.1(zod@4.3.6):
     dependencies:
       zod: 4.3.6
-    optional: true
 
   zod@3.25.76: {}
 
