@@ -5,6 +5,7 @@
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
+		"preinstall": "cd aidbox-ts-sdk/packages/react-components && pnpm install && pnpm build",
 		"dev": "vite",
 		"typecheck": "pnpm tsc --noEmit --project tsconfig.app.json",
 		"build": "pnpm exec vite build",
@@ -16,9 +17,7 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"all": "pnpm format && pnpm typecheck && biome check --write --diagnostic-level=error",
 		"hooks": "cp .hooks/* .git/hooks/",
-		"generate-types": "pnpm exec tsx scripts/generate-types.ts",
-		"ts-sdk:init": "sh scripts/ts-sdk.sh init",
-		"ts-sdk:update": "sh scripts/ts-sdk.sh update"
+		"generate-types": "pnpm exec tsx scripts/generate-types.ts"
 	},
 	"keywords": [],
 	"author": "Health Samurai",
