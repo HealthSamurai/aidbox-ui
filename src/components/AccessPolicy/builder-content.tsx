@@ -145,7 +145,7 @@ export const AccessPolicyBuilderContent = () => {
 				/>
 			</HSComp.ResizablePanel>
 			<HSComp.ResizableHandle />
-			<HSComp.ResizablePanel minSize={20}>
+			<HSComp.ResizablePanel minSize={30}>
 				<DevToolRequestPanel />
 			</HSComp.ResizablePanel>
 		</HSComp.ResizablePanelGroup>

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { BoolSetting } from "./setting-controls/bool-setting";
 import { EnumSetting } from "./setting-controls/enum-setting";
 import { TextSetting } from "./setting-controls/text-setting";
@@ -83,5 +84,20 @@ export function SettingCard({
 			);
 	}
 
-	return content;
+	const settingId = `setting-${setting.name}`;
+
+	const scrollRef = useCallback(
+		(node: HTMLDivElement | null) => {
+			if (node && window.location.hash === `#${settingId}`) {
+				node.scrollIntoView({ behavior: "instant" });
+			}
+		},
+		[settingId],
+	);
+
+	return (
+		<div ref={scrollRef} id={settingId}>
+			{content}
+		</div>
+	);
 }
