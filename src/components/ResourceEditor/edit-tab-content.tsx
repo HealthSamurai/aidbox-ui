@@ -7,6 +7,7 @@ import * as HSComp from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import { useLocalStorage } from "../../hooks";
+import { useGetStructureDefinition } from "../../hooks/useGetStructureDefinition";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { EditorTab } from "./editor-tab";
 import { ProfilePanel } from "./profile-panel";
@@ -46,6 +47,8 @@ export function EditTabContent({
 	autoSaveId,
 	actionsRef,
 }: EditTabContentProps) {
+	const getStructureDefinition = useGetStructureDefinition();
+
 	const [isProfileOpen, setIsProfileOpen] = useLocalStorage<boolean>({
 		key: storageKey,
 		defaultValue: false,
@@ -87,6 +90,7 @@ export function EditTabContent({
 							viewCallback={viewCallback}
 							actions={actions}
 							issueLineNumbers={issueLineNumbers}
+							getStructureDefinition={getStructureDefinition}
 							trailingActions={
 								<>
 									<HSComp.Separator orientation="vertical" className="h-6!" />
