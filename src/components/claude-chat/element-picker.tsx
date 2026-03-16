@@ -277,6 +277,7 @@ export function ElementPicker() {
 			try {
 				const context = extractElementContext(el);
 				dispatch({ type: "add_element_context", context });
+				navigator.clipboard.writeText(JSON.stringify(context, null, 2));
 			} catch (err) {
 				console.error("[element-picker] extraction failed:", err);
 			}
