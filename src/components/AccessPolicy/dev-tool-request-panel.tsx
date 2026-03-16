@@ -701,7 +701,7 @@ function AuthTab({
 		<div className="p-4 space-y-3">
 			<div className="space-y-1">
 				<div className="flex items-center gap-1">
-					<span className="typo-label text-text-secondary">User</span>
+					<span className="typo-label text-text-secondary">Requester</span>
 					<HSComp.Tooltip>
 						<HSComp.TooltipTrigger asChild>
 							<Lucide.Info className="size-3.5 text-text-tertiary" />
@@ -1223,30 +1223,6 @@ export function DevToolRequestPanel() {
 									{selectedTab.response && (
 										<ResponseInfo response={selectedTab.response} />
 									)}
-									{selectedTab.activeResponseTab === "policy-eval" && (
-										<HSComp.Tooltip>
-											<HSComp.TooltipTrigger asChild>
-												<HSComp.Button
-													variant="ghost"
-													size="small"
-													onClick={() =>
-														setAllPoliciesExpanded((prev) =>
-															prev === null ? true : !prev,
-														)
-													}
-												>
-													{allPoliciesExpanded ? (
-														<Lucide.ListChevronsDownUp className="size-4" />
-													) : (
-														<Lucide.ListChevronsUpDown className="size-4" />
-													)}
-												</HSComp.Button>
-											</HSComp.TooltipTrigger>
-											<HSComp.TooltipContent align="end">
-												{allPoliciesExpanded ? "Collapse all" : "Expand all"}
-											</HSComp.TooltipContent>
-										</HSComp.Tooltip>
-									)}
 									<HSComp.Tooltip>
 										<HSComp.TooltipTrigger asChild>
 											<HSComp.Button
@@ -1271,7 +1247,10 @@ export function DevToolRequestPanel() {
 									</HSComp.Tooltip>
 								</div>
 							</div>
-							<HSComp.TabsContent value="policy-eval" className="grow min-h-0">
+							<HSComp.TabsContent
+								value="policy-eval"
+								className="grow min-h-0 relative"
+							>
 								{isLoading ? (
 									loadingView
 								) : (
@@ -1280,6 +1259,32 @@ export function DevToolRequestPanel() {
 										currentPolicyId={accessPolicyId}
 										allExpanded={allPoliciesExpanded}
 									/>
+								)}
+								{!isLoading && selectedTab.response && (
+									<div className="absolute top-2 right-4 flex items-center border rounded-full p-1 border-border-secondary bg-bg-primary shadow-sm">
+										<HSComp.Tooltip>
+											<HSComp.TooltipTrigger asChild>
+												<HSComp.Button
+													variant="ghost"
+													size="small"
+													onClick={() =>
+														setAllPoliciesExpanded((prev) =>
+															prev === null ? true : !prev,
+														)
+													}
+												>
+													{allPoliciesExpanded ? (
+														<Lucide.ListChevronsDownUp className="size-4" />
+													) : (
+														<Lucide.ListChevronsUpDown className="size-4" />
+													)}
+												</HSComp.Button>
+											</HSComp.TooltipTrigger>
+											<HSComp.TooltipContent>
+												{allPoliciesExpanded ? "Collapse all" : "Expand all"}
+											</HSComp.TooltipContent>
+										</HSComp.Tooltip>
+									</div>
 								)}
 							</HSComp.TabsContent>
 							<HSComp.TabsContent
