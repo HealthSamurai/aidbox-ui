@@ -335,10 +335,15 @@ export const ResourceEditorPage = ({
 	const isViewDefinition = resourceType === "ViewDefinition";
 	const isAccessPolicy = resourceType === "AccessPolicy";
 
-	const tabs = [];
+	const tabs: {
+		value: string;
+		trigger: React.ReactNode;
+		content: React.ReactNode;
+	}[] = [];
 
 	if (isViewDefinition) {
 		tabs.push({
+			value: "builder",
 			trigger: (
 				<HSComp.TabsTrigger value="builder">
 					ViewDefinition Builder
@@ -371,6 +376,7 @@ export const ResourceEditorPage = ({
 
 	if (isAccessPolicy) {
 		tabs.push({
+			value: "builder",
 			trigger: (
 				<HSComp.TabsTrigger value="builder">Dev Tool</HSComp.TabsTrigger>
 			),
@@ -383,6 +389,7 @@ export const ResourceEditorPage = ({
 	}
 
 	tabs.push({
+		value: "edit",
 		trigger: <HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>,
 		content: (
 			<HSComp.TabsContent value={"edit"}>
@@ -411,6 +418,7 @@ export const ResourceEditorPage = ({
 
 	if (id) {
 		tabs.push({
+			value: "history",
 			trigger: <HSComp.TabsTrigger value="history">History</HSComp.TabsTrigger>,
 			content: (
 				<HSComp.TabsContent value={"history"}>
@@ -424,10 +432,13 @@ export const ResourceEditorPage = ({
 		});
 	}
 
+	const availableTabs = tabs.map((t) => t.value);
+	const effectiveTab = availableTabs.includes(tab) ? tab : "edit";
+
 	const content = (
 		<>
 			<HSComp.Tabs
-				value={tab}
+				value={effectiveTab}
 				onValueChange={handleOnTabSelect}
 				className="grow min-h-0"
 			>
