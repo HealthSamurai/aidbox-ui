@@ -1,7 +1,7 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import * as Lucide from "lucide-react";
@@ -10,6 +10,7 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { createResource, deleteResource, updateResource } from "./api";
 import type { EditorMode } from "./types";
+import { pageId } from "./types";
 
 export interface SaveHandle {
 	save: () => Promise<Resource>;
@@ -33,6 +34,7 @@ export const SaveButton = ({
 	saveRef?: React.RefObject<SaveHandle>;
 }) => {
 	const navigate = Router.useNavigate();
+	const queryClient = useQueryClient();
 	const mutation = useMutation({
 		mutationFn: async (value: string) => {
 			const resource = (
@@ -46,6 +48,9 @@ export const SaveButton = ({
 			: Utils.onMutationError,
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
+			queryClient.invalidateQueries({
+				queryKey: [pageId, resourceType, id],
+			});
 			if (!resource.id)
 				return Utils.toastError(
 					"Failed to open saved resource",

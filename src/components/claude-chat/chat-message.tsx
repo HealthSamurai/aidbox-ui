@@ -130,7 +130,7 @@ function MarkdownContent({ content }: { content: string }) {
 
 		// Paragraph
 		blocks.push(
-			<p key={`b${String(blocks.length)}`} className="my-0.5">
+			<p key={`b${String(blocks.length)}`} className="my-2">
 				{renderInline(line)}
 			</p>,
 		);

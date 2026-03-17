@@ -124,7 +124,6 @@ export const ResourcesTabCreateButton = () => {
 		<Router.Link
 			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
-			search={{ tab: "code", mode: "json" }}
 		>
 			<HSComp.Button variant="secondary">
 				<Lucide.PlusIcon className="text-fg-link" />
@@ -373,7 +372,6 @@ export const ResourcesTabTable = ({
 								<Router.Link
 									className="text-text-link hover:underline"
 									to="/resource/$resourceType/edit/$id"
-									search={{ tab: "code", mode: "json" }}
 									params={{
 										resourceType: resourcesPageContext.resourceType,
 										id,
@@ -1198,7 +1196,6 @@ const SearchParametersTabContent = ({
 								<Router.Link
 									className="text-text-link hover:underline"
 									to="/resource/$resourceType/edit/$id"
-									search={{ tab: "code", mode: "json" }}
 									params={{
 										resourceType: "SearchParameter",
 										id: param.id,
@@ -1307,14 +1304,12 @@ export const ResourcesPage = ({
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType, id },
-				search: { tab: "code", mode: "json" },
 			});
 		},
 		instancesOpenCreatePage: () => {
 			navigate({
 				to: "/resource/$resourceType/create",
 				params: { resourceType },
-				search: { tab: "code", mode: "json" },
 			});
 		},
 		profilesList: async () => {
