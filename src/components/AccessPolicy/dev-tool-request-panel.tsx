@@ -1148,14 +1148,16 @@ export function DevToolRequestPanel() {
 											}
 										>
 											{maximized === "request" ? (
-												<Lucide.Minimize2 className="size-4" />
+												<Lucide.PanelTopClose className="size-4" />
 											) : (
-												<Lucide.Maximize2 className="size-4" />
+												<Lucide.PanelTopOpen className="size-4" />
 											)}
 										</HSComp.Button>
 									</HSComp.TooltipTrigger>
 									<HSComp.TooltipContent align="end">
-										{maximized === "request" ? "Minimize" : "Maximize"}
+										{maximized === "request"
+											? "Show response panel"
+											: "Hide response panel"}
 									</HSComp.TooltipContent>
 								</HSComp.Tooltip>
 							</div>
@@ -1247,14 +1249,16 @@ export function DevToolRequestPanel() {
 												}
 											>
 												{maximized === "response" ? (
-													<Lucide.Minimize2 className="size-4" />
+													<Lucide.PanelBottomClose className="size-4" />
 												) : (
-													<Lucide.Maximize2 className="size-4" />
+													<Lucide.PanelBottomOpen className="size-4" />
 												)}
 											</HSComp.Button>
 										</HSComp.TooltipTrigger>
 										<HSComp.TooltipContent align="end">
-											{maximized === "response" ? "Minimize" : "Maximize"}
+											{maximized === "response"
+												? "Show request panel"
+												: "Hide request panel"}
 										</HSComp.TooltipContent>
 									</HSComp.Tooltip>
 								</div>
