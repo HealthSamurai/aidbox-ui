@@ -1,5 +1,5 @@
 import { Prec } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { type EditorView, keymap } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
@@ -61,9 +61,14 @@ import {
 	parseHttpCommand,
 } from "../components/rest/left-menu";
 import ParamsEditor from "../components/rest/params-editor";
-import { UrlAutocomplete } from "../components/rest/url-autocomplete";
+import {
+	computePathSuggestions,
+	UrlAutocomplete,
+	useRoutes,
+} from "../components/rest/url-autocomplete";
 import { SplitButton, type SplitDirection } from "../components/Split";
 import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menubar";
+import { useGetStructureDefinitions } from "../hooks/useGetStructureDefinition";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { parseHttpRequest, parsePathParams } from "../utils";
@@ -85,14 +90,78 @@ export const Route = createFileRoute("/rest")({
 	loader: () => ({ breadCrumb: TITLE }),
 });
 
+function splitRaw(raw: string): { head: string; body: string } {
+	const idx = raw.indexOf("\n\n");
+	if (idx === -1) return { head: raw, body: "" };
+	return { head: raw.slice(0, idx), body: raw.slice(idx + 2) };
+}
+
+function convertBody(
+	body: string,
+	fromMode: "json" | "yaml",
+	toMode: "json" | "yaml",
+): string {
+	if (!body.trim() || fromMode === toMode) return body;
+	try {
+		const parsed = fromMode === "yaml" ? yaml.load(body) : JSON.parse(body);
+		return toMode === "yaml"
+			? yaml.dump(parsed, { indent: 2 })
+			: JSON.stringify(parsed, null, 2);
+	} catch {
+		return body;
+	}
+}
+
+function formatBody(body: string, mode: "json" | "yaml"): string {
+	if (!body.trim()) return body;
+	try {
+		if (mode === "yaml") {
+			return yaml.dump(yaml.load(body), { indent: 2 });
+		}
+		return JSON.stringify(JSON.parse(body), null, 2);
+	} catch {
+		return body;
+	}
+}
+
+function updateHeadersForMode(head: string, mode: "json" | "yaml"): string {
+	const ct = mode === "yaml" ? "text/yaml" : "application/json";
+	const lines = head.split("\n");
+	let foundCt = false;
+	let foundAccept = false;
+	const updated = lines.map((line) => {
+		if (/^content-type\s*:/i.test(line)) {
+			foundCt = true;
+			return `Content-Type: ${ct}`;
+		}
+		if (/^accept\s*:/i.test(line)) {
+			foundAccept = true;
+			return `Accept: ${ct}`;
+		}
+		return line;
+	});
+	if (!foundCt) updated.push(`Content-Type: ${ct}`);
+	if (!foundAccept) updated.push(`Accept: ${ct}`);
+	return updated.join("\n");
+}
+
 function RawEditor({
 	selectedTab,
 	requestLineVersion,
 	onRawChange,
+	getStructureDefinitions,
+	getUrlSuggestions,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
 	onRawChange?: (rawText: string) => void;
+	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	getUrlSuggestions?: (
+		path: string,
+		method: string,
+	) =>
+		| { label: string; value: string; type?: string }[]
+		| Promise<{ label: string; value: string; type?: string }[]>;
 }) {
 	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const defaultHeaders =
@@ -103,16 +172,80 @@ function RawEditor({
 			.map((header) => `${header.name}: ${header.value}`)
 			.join("\n") || "";
 
-	const currentValue = `${defaultRequestLine}\n${defaultHeaders}\n\n${selectedTab.body || ""}`;
+	const initialValue = `${defaultRequestLine}\n${defaultHeaders}\n\n${selectedTab.body || ""}`;
+	const [rawValue, setRawValue] = useState(initialValue);
+	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
+		key: `rest-console-raw-body-mode-${selectedTab.id}`,
+		getInitialValueInEffect: false,
+		defaultValue: "json",
+	});
+	const viewRef = useRef<EditorView | null>(null);
+
+	const bodyModeRef = useRef(bodyMode);
+	bodyModeRef.current = bodyMode;
+
+	const handleChange = (value: string) => {
+		setRawValue(value);
+		onRawChange?.(value);
+	};
+
+	const replaceBody = (newBody: string, newHead?: string) => {
+		const view = viewRef.current;
+		if (!view) return;
+		const doc = view.state.doc.toString();
+		const sepIdx = doc.indexOf("\n\n");
+		if (sepIdx === -1) return;
+		const bodyStart = sepIdx + 2;
+		const head = doc.slice(0, sepIdx);
+		const finalHead = newHead ?? head;
+		const newDoc = `${finalHead}\n\n${newBody}`;
+		// Keep cursor at same relative position, clamped to new doc length
+		const cursor = Math.min(view.state.selection.main.head, newDoc.length);
+		view.dispatch({
+			changes: { from: 0, to: doc.length, insert: newDoc },
+			selection: { anchor: cursor },
+		});
+		setRawValue(newDoc);
+		onRawChange?.(newDoc);
+	};
+
+	const handleModeChange = (newMode: "json" | "yaml") => {
+		const { head, body } = splitRaw(rawValue);
+		const converted = convertBody(body, bodyMode, newMode);
+		const updatedHead = updateHeadersForMode(head, newMode);
+		setBodyMode(newMode);
+		replaceBody(converted, updatedHead);
+	};
+
+	const handleFormat = () => {
+		const { body } = splitRaw(rawValue);
+		const formatted = formatBody(body, bodyMode);
+		replaceBody(formatted);
+	};
 
 	return (
-		<CodeEditor
-			key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
-			defaultValue={currentValue}
-			mode="http"
-			additionalExtensions={preventNewlineOnModEnter}
-			{...(onRawChange ? { onChange: onRawChange } : {})}
-		/>
+		<div className="relative h-full">
+			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
+				<CodeEditorMenubar
+					mode={bodyMode}
+					onModeChange={handleModeChange}
+					textToCopy={rawValue}
+					onFormat={handleFormat}
+				/>
+			</div>
+			<CodeEditor
+				key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
+				defaultValue={initialValue}
+				mode="http"
+				additionalExtensions={preventNewlineOnModEnter}
+				getStructureDefinitions={getStructureDefinitions}
+				getUrlSuggestions={getUrlSuggestions}
+				viewCallback={(v) => {
+					viewRef.current = v;
+				}}
+				onChange={handleChange}
+			/>
+		</div>
 	);
 }
 
@@ -131,6 +264,8 @@ function RequestView({
 	onBodyModeChange,
 	onHeadersUpdate,
 	webmcpActionsRef,
+	getStructureDefinitions,
+	getUrlSuggestions,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
@@ -146,6 +281,13 @@ function RequestView({
 	onBodyModeChange: (mode: "json" | "yaml") => void;
 	onHeadersUpdate: (headers: Header[]) => void;
 	webmcpActionsRef: React.RefObject<RestConsoleActions>;
+	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	getUrlSuggestions?: (
+		path: string,
+		method: string,
+	) =>
+		| { label: string; value: string; type?: string }[]
+		| Promise<{ label: string; value: string; type?: string }[]>;
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
@@ -457,6 +599,8 @@ function RequestView({
 						requestLineVersion={requestLineVersion}
 						selectedTab={selectedTab}
 						onRawChange={onRawChange}
+						getStructureDefinitions={getStructureDefinitions}
+						getUrlSuggestions={getUrlSuggestions}
 					/>
 				</TabsContent>
 			</Tabs>
@@ -1073,6 +1217,66 @@ function stripResponsesFromTabs(tabs: Tab[]): Tab[] {
 
 function RouteComponent() {
 	const client = useAidboxClient();
+	const getStructureDefinitions = useGetStructureDefinitions();
+	const { data: routesTree } = useRoutes();
+	const routesTreeRef = useRef(routesTree);
+	routesTreeRef.current = routesTree;
+	const clientRef = useRef(client);
+	clientRef.current = client;
+	const searchParamsCache = useRef<
+		Record<string, { code: string; type?: string; expression?: string }[]>
+	>({});
+
+	const getUrlSuggestions = useCallback(
+		async (path: string, method: string) => {
+			const tree = routesTreeRef.current;
+			if (!tree) return [];
+
+			if (path.includes("?")) {
+				const pathPart = path.split("?")[0];
+				const segments = pathPart.split("/").filter(Boolean);
+				const resourceType =
+					segments.find((s) => s[0] >= "A" && s[0] <= "Z") ?? null;
+
+				let searchParams = searchParamsCache.current[resourceType ?? ""] ?? [];
+				if (resourceType && !searchParamsCache.current[resourceType]) {
+					try {
+						const bases = [
+							resourceType,
+							"DomainResource",
+							"Resource",
+							"Base",
+						].join(",");
+						const resp = await clientRef.current.rawRequest({
+							method: "GET",
+							url: `/fhir/SearchParameter?base=${bases}&_count=500&_elements=code,type,expression`,
+							headers: { Accept: "application/json" },
+						});
+						const data = await resp.response.json();
+						searchParams = (data.entry || []).map(
+							(e: {
+								resource: { code: string; type?: string; expression?: string };
+							}) => e.resource,
+						);
+						searchParamsCache.current[resourceType] = searchParams;
+					} catch {
+						searchParams = [];
+					}
+				}
+
+				return computePathSuggestions(
+					tree,
+					path,
+					method,
+					searchParams,
+					resourceType,
+				);
+			}
+
+			return computePathSuggestions(tree, path, method);
+		},
+		[],
+	);
 	const queryClient = useQueryClient();
 
 	// Responses are stored in IndexedDB, subscribed via useSyncExternalStore
@@ -1930,6 +2134,8 @@ function RouteComponent() {
 										onBodyModeChange={handleBodyModeChange}
 										onHeadersUpdate={handleHeadersUpdate}
 										webmcpActionsRef={webmcpActionsRef}
+										getStructureDefinitions={getStructureDefinitions}
+										getUrlSuggestions={getUrlSuggestions}
 									/>
 								</ResizablePanel>
 								<ResizableHandle />

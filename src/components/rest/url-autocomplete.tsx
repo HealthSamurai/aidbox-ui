@@ -106,12 +106,20 @@ function nodeSupportsMethod(node: RoutesTree, method: string): boolean {
 
 // ─── Suggestion computation ─────────────────────────────────────────────────
 
-function computePathSuggestions(
+export function computePathSuggestions(
 	tree: RoutesTree,
 	input: string,
 	method: string,
+	searchParams?: { code: string; type?: string; expression?: string }[],
+	resourceType?: string | null,
 ): Suggestion[] {
-	if (input.includes("?")) return [];
+	if (input.includes("?")) {
+		return computeSearchParamSuggestions(
+			input,
+			searchParams ?? [],
+			resourceType ?? null,
+		);
+	}
 
 	const normalized = input.startsWith("/") ? input : `/${input}`;
 	const segments = normalized.split("/").slice(1);
@@ -268,7 +276,7 @@ function computeSearchParamSuggestions(
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
-function useRoutes() {
+export function useRoutes() {
 	const client = useAidboxClient();
 	return useQuery({
 		queryKey: ["$routes"],
@@ -430,7 +438,10 @@ export function UrlAutocomplete({
 					className="w-full"
 					onKeyDown={handleKeyDown}
 					onInputCapture={() => setSuppressed(false)}
-					onFocusCapture={() => {
+					onFocusCapture={(e) => {
+						// Only open autocomplete when the URL input is focused, not the method selector
+						const target = e.target as HTMLElement;
+						if (target.getAttribute("data-slot") !== "input") return;
 						clearTimeout(blurTimerRef.current);
 						setFocused(true);
 					}}

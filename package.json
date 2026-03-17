@@ -7,6 +7,7 @@
 	"scripts": {
 		"preinstall": "cd aidbox-ts-sdk/packages/react-components && pnpm install && pnpm build",
 		"dev": "vite",
+		"rc:build": "cd aidbox-ts-sdk/packages/react-components && pnpm build && cd ../../.. && pnpm install && rm -rf node_modules/.vite",
 		"typecheck": "pnpm tsc --noEmit --project tsconfig.app.json",
 		"build": "pnpm exec vite build",
 		"format": "biome format --write",

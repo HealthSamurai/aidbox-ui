@@ -1,7 +1,7 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type {
 	CodeEditorView,
-	GetStructureDefinition,
+	GetStructureDefinitions,
 } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
@@ -18,7 +18,7 @@ type EditorTabProps = {
 	trailingActions?: React.ReactNode;
 	viewCallback?: (view: CodeEditorView) => void;
 	issueLineNumbers?: { line: number; message?: string }[];
-	getStructureDefinition?: GetStructureDefinition;
+	getStructureDefinitions?: GetStructureDefinitions;
 };
 
 export const EditorTab = ({
@@ -32,7 +32,7 @@ export const EditorTab = ({
 	trailingActions,
 	viewCallback,
 	issueLineNumbers,
-	getStructureDefinition,
+	getStructureDefinitions,
 }: EditorTabProps) => {
 	return (
 		<div className="flex flex-col h-full">
@@ -48,7 +48,7 @@ export const EditorTab = ({
 				</div>
 			)}
 			<div className="relative grow min-h-0">
-				<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
+				<div className="sticky min-h-0 h-0 flex justify-end pr-3 top-0 right-0 z-10">
 					<CodeEditorMenubar
 						mode={mode}
 						onModeChange={setMode}
@@ -73,7 +73,7 @@ export const EditorTab = ({
 					onChange={setResourceText}
 					viewCallback={viewCallback}
 					issueLineNumbers={issueLineNumbers}
-					getStructureDefinition={getStructureDefinition}
+					getStructureDefinitions={getStructureDefinitions}
 				/>
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="yaml" className="relative grow min-h-0">
@@ -84,7 +84,7 @@ export const EditorTab = ({
 					onChange={setResourceText}
 					viewCallback={viewCallback}
 					issueLineNumbers={issueLineNumbers}
-					getStructureDefinition={getStructureDefinition}
+					getStructureDefinitions={getStructureDefinitions}
 				/>
 			</HSComp.TabsContent>
 		</div>

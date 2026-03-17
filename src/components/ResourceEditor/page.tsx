@@ -433,7 +433,7 @@ export const ResourceEditorPage = ({
 	}
 
 	const availableTabs = tabs.map((t) => t.value);
-	const effectiveTab = availableTabs.includes(tab) ? tab : "edit";
+	const effectiveTab = availableTabs.includes(tab) ? tab : availableTabs[0];
 
 	const content = (
 		<>

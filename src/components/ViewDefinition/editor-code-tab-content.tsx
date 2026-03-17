@@ -6,6 +6,7 @@ import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
+import { useGetStructureDefinitions } from "../../hooks/useGetStructureDefinition";
 import {
 	findJsonPathOffset,
 	findYamlPathOffset,
@@ -73,6 +74,8 @@ export const ViewDefinitionCodeEditor = ({
 		} catch (_error) {}
 	};
 
+	const getStructureDefinitions = useGetStructureDefinitions();
+
 	return (
 		<HSComp.CodeEditor
 			currentValue={editorValue}
@@ -80,6 +83,7 @@ export const ViewDefinitionCodeEditor = ({
 			onChange={handleEditorValueChange}
 			viewCallback={viewCallback}
 			issueLineNumbers={issueLineNumbers}
+			getStructureDefinitions={getStructureDefinitions}
 		/>
 	);
 };

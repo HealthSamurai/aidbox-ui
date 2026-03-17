@@ -110,14 +110,11 @@ const PageComponent = () => {
 				}
 			: { resourceType: resourceType };
 
-	const effectiveTab =
-		(isViewDefinition || isAccessPolicy) && tab === "edit" ? "builder" : tab;
-
 	return (
 		<ResourceEditorPage
 			initialResource={initialResource}
 			resourceType={resourceType}
-			tab={effectiveTab}
+			tab={tab}
 			mode={mode}
 			navigate={navigate}
 		/>

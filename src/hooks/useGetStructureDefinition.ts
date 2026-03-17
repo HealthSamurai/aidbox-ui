@@ -12,46 +12,21 @@ interface Bundle {
 	entry?: { resource: StructureDefinition }[];
 }
 
-const SD_ELEMENTS = "differential,type,name,baseDefinition";
-
-async function fetchSD(
-	client: AidboxClientR5,
-	params: [string, string][],
-): Promise<StructureDefinition | null> {
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: "/fhir/StructureDefinition",
-		params: [...params, ["_elements", SD_ELEMENTS], ["_count", "1"]],
-	});
-	if (result.isErr()) return null;
-	return result.value.resource.entry?.[0]?.resource ?? null;
-}
-
-export function useGetStructureDefinition() {
+export function useGetStructureDefinitions() {
 	const client = useAidboxClient();
 
 	return useCallback(
-		async (type: string): Promise<StructureDefinition | null> => {
+		async (params: Record<string, string>): Promise<StructureDefinition[]> => {
 			try {
-				// If type is a URL (baseDefinition), search by url
-				if (type.includes("/")) {
-					return await fetchSD(client, [["url", type]]);
-				}
-
-				// Try specialization first
-				const sd = await fetchSD(client, [
-					["type", type],
-					["derivation", "specialization"],
-				]);
-				if (sd) return sd;
-
-				// Base types (Resource, Element, etc.) have no derivation
-				return await fetchSD(client, [
-					["type", type],
-					["derivation:missing", "true"],
-				]);
+				const result = await client.request<Bundle>({
+					method: "GET",
+					url: "/fhir/StructureDefinition",
+					params: Object.entries(params),
+				});
+				if (result.isErr()) return [];
+				return result.value.resource.entry?.map((e) => e.resource) ?? [];
 			} catch {
-				return null;
+				return [];
 			}
 		},
 		[client],
