@@ -63,30 +63,9 @@ export const EditorTab = ({
 					onChange={setResourceText}
 					viewCallback={viewCallback}
 					issueLineNumbers={issueLineNumbers}
+					getStructureDefinitions={getStructureDefinitions}
 				/>
 			</div>
-			<HSComp.TabsContent value="json" className="relative grow min-h-0">
-				<HSComp.CodeEditor
-					mode="json"
-					defaultValue={defaultResourceText}
-					currentValue={resourceText}
-					onChange={setResourceText}
-					viewCallback={viewCallback}
-					issueLineNumbers={issueLineNumbers}
-					getStructureDefinitions={getStructureDefinitions}
-				/>
-			</HSComp.TabsContent>
-			<HSComp.TabsContent value="yaml" className="relative grow min-h-0">
-				<HSComp.CodeEditor
-					mode="yaml"
-					defaultValue={defaultResourceText}
-					currentValue={resourceText}
-					onChange={setResourceText}
-					viewCallback={viewCallback}
-					issueLineNumbers={issueLineNumbers}
-					getStructureDefinitions={getStructureDefinitions}
-				/>
-			</HSComp.TabsContent>
 		</div>
 	);
 };

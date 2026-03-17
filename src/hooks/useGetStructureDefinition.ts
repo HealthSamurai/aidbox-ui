@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 
 interface StructureDefinition {
@@ -14,11 +14,13 @@ interface Bundle {
 
 export function useGetStructureDefinitions() {
 	const client = useAidboxClient();
+	const clientRef = useRef<AidboxClientR5>(client);
+	clientRef.current = client;
 
 	return useCallback(
 		async (params: Record<string, string>): Promise<StructureDefinition[]> => {
 			try {
-				const result = await client.request<Bundle>({
+				const result = await clientRef.current.request<Bundle>({
 					method: "GET",
 					url: "/fhir/StructureDefinition",
 					params: Object.entries(params),
@@ -29,6 +31,6 @@ export function useGetStructureDefinitions() {
 				return [];
 			}
 		},
-		[client],
+		[],
 	);
 }
