@@ -87,6 +87,6 @@ export const EditorTab = ({
 					getStructureDefinition={getStructureDefinition}
 				/>
 			</HSComp.TabsContent>
-		</HSComp.Tabs>
+		</div>
 	);
 };
