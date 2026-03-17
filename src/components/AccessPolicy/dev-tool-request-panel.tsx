@@ -331,9 +331,11 @@ function RequestBodyEditor({
 function RawEditor({
 	selectedTab,
 	onRawChange,
+	requestLineVersion,
 }: {
 	selectedTab: RequestTab;
 	onRawChange: (rawText: string) => void;
+	requestLineVersion: string;
 }) {
 	const requestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const headersText =
@@ -341,12 +343,12 @@ function RawEditor({
 			?.filter((h) => h.name && h.value && (h.enabled ?? true))
 			.map((h) => `${h.name}: ${h.value}`)
 			.join("\n") || "";
-	const currentValue = `${requestLine}\n${headersText}\n\n${selectedTab.body || ""}`;
+	const defaultValue = `${requestLine}\n${headersText}\n\n${selectedTab.body || ""}`;
 
 	return (
 		<HSComp.CodeEditor
-			key={`raw-${selectedTab.id}`}
-			defaultValue={currentValue}
+			key={`raw-${selectedTab.id}-${requestLineVersion}`}
+			defaultValue={defaultValue}
 			mode="http"
 			onChange={onRawChange}
 		/>
@@ -519,10 +521,10 @@ function RequestContextView({ response }: { response: ResponseData | null }) {
 				<div className="absolute top-2 right-4 flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary shadow-sm">
 					<HSComp.SegmentControl
 						value={mode}
-						onValueChange={(v) => setMode(v as "json" | "yaml")}
+						onValueChange={setMode}
 						items={[
-							{ value: "json", label: "JSON" },
-							{ value: "yaml", label: "YAML" },
+							{ value: "json" as const, label: "JSON" },
+							{ value: "yaml" as const, label: "YAML" },
 						]}
 					/>
 					<HSComp.Button variant="ghost" size="small" asChild>
@@ -807,6 +809,9 @@ export function DevToolRequestPanel() {
 	const [allPoliciesExpanded, setAllPoliciesExpanded] = React.useState<
 		boolean | null
 	>(null);
+	const [requestLineVersion, setRequestLineVersion] = React.useState(
+		crypto.randomUUID(),
+	);
 
 	// ── Tab management ──
 
@@ -844,15 +849,23 @@ export function DevToolRequestPanel() {
 		);
 	};
 
-	const handleMethodChange = (method: string) =>
+	const handleMethodChange = (method: string) => {
+		setRequestLineVersion(crypto.randomUUID());
 		updateSelected(() => ({ method: method as Method }));
+	};
 
-	const handlePathChange = (path: string) =>
+	const handlePathChange = (path: string) => {
+		setRequestLineVersion(crypto.randomUUID());
 		updateSelected(() => ({ path, params: parsePathParams(path) }));
+	};
 
-	const handleBodyChange = (body: string) => updateSelected(() => ({ body }));
+	const handleBodyChange = (body: string) => {
+		setRequestLineVersion(crypto.randomUUID());
+		updateSelected(() => ({ body }));
+	};
 
 	const handleHeaderChange = (headerIndex: number, header: Header) => {
+		setRequestLineVersion(crypto.randomUUID());
 		updateSelected((tab) => {
 			const headers = [...tab.headers];
 			headers[headerIndex] = { ...headers[headerIndex], ...header };
@@ -862,6 +875,7 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleHeaderRemove = (headerIndex: number) => {
+		setRequestLineVersion(crypto.randomUUID());
 		updateSelected((tab) => {
 			const headers = [...tab.headers];
 			headers.splice(headerIndex, 1);
@@ -871,6 +885,7 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleParamChange = (paramIndex: number, param: Header) => {
+		setRequestLineVersion(crypto.randomUUID());
 		updateSelected((tab) => {
 			const params = [...tab.params];
 			params[paramIndex] = { ...params[paramIndex], ...param };
@@ -880,6 +895,7 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleParamRemove = (paramIndex: number) => {
+		setRequestLineVersion(crypto.randomUUID());
 		updateSelected((tab) => {
 			const params = [...tab.params];
 			params.splice(paramIndex, 1);
@@ -1191,6 +1207,7 @@ export function DevToolRequestPanel() {
 								<RawEditor
 									selectedTab={selectedTab}
 									onRawChange={handleRawChange}
+									requestLineVersion={requestLineVersion}
 								/>
 							</HSComp.TabsContent>
 						</HSComp.Tabs>
