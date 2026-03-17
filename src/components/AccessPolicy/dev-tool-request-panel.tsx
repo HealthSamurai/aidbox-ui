@@ -490,6 +490,8 @@ function PolicyEvalView({
 // ── Response views for other tabs ──────────────────────────────────────
 
 function RequestContextView({ response }: { response: ResponseData | null }) {
+	const [mode, setMode] = React.useState<"json" | "yaml">("yaml");
+
 	if (!response) {
 		return (
 			<NoResponsePlaceholder>
@@ -499,15 +501,36 @@ function RequestContextView({ response }: { response: ResponseData | null }) {
 	}
 
 	const request = response.debugData?.request;
-	const content = request ? yaml.dump(request, { indent: 2 }) : response.body;
+	const content = request
+		? mode === "yaml"
+			? yaml.dump(request, { indent: 2 })
+			: JSON.stringify(request, null, 2)
+		: response.body;
 
 	return (
-		<HSComp.CodeEditor
-			readOnly
-			key={`request-context-${response.status}`}
-			currentValue={content}
-			mode={request ? "yaml" : "json"}
-		/>
+		<div className="relative size-full">
+			<HSComp.CodeEditor
+				readOnly
+				key={`request-context-${response.status}-${mode}`}
+				currentValue={content}
+				mode={request ? mode : "json"}
+			/>
+			{request && (
+				<div className="absolute top-2 right-4 flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary shadow-sm">
+					<HSComp.SegmentControl
+						value={mode}
+						onValueChange={(v) => setMode(v as "json" | "yaml")}
+						items={[
+							{ value: "json", label: "JSON" },
+							{ value: "yaml", label: "YAML" },
+						]}
+					/>
+					<HSComp.Button variant="ghost" size="small" asChild>
+						<HSComp.CopyIcon text={content} />
+					</HSComp.Button>
+				</div>
+			)}
+		</div>
 	);
 }
 
@@ -1250,7 +1273,7 @@ export function DevToolRequestPanel() {
 									/>
 								)}
 								{!isLoading && selectedTab.response && (
-									<div className="absolute top-2 right-4 flex items-center border rounded-full p-1 border-border-secondary bg-bg-primary shadow-sm">
+									<div className="absolute top-2 right-4 flex items-center border rounded-full p-2 border-border-secondary bg-bg-primary shadow-sm">
 										<HSComp.Tooltip>
 											<HSComp.TooltipTrigger asChild>
 												<HSComp.Button
