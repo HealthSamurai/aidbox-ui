@@ -37,11 +37,14 @@ export const EditorTab = ({
 	return (
 		<div className="flex flex-col h-full">
 			{(actions || trailingActions) && (
-				<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b px-4">
-					<div className="flex items-center gap-4">{actions}</div>
-					{trailingActions && (
-						<div className="flex items-center gap-4">{trailingActions}</div>
-					)}
+				<div className="flex items-center justify-end bg-bg-secondary flex-none h-10 border-b px-4">
+					<div className="flex items-center gap-4">
+						{actions}
+						{actions && trailingActions && (
+							<HSComp.Separator orientation="vertical" className="h-6!" />
+						)}
+						{trailingActions}
+					</div>
 				</div>
 			)}
 			<div className="relative grow min-h-0">
