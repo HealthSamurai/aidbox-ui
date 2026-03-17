@@ -674,6 +674,7 @@ function useSuEnabled(client: AidboxClientR5) {
 	return enabled;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: hidden tab, will be re-enabled
 function AuthTab({
 	suUserId,
 	onSuUserChange,
@@ -1112,7 +1113,6 @@ export function DevToolRequestPanel() {
 										</HSComp.TabsTrigger>
 										<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
 										<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
-										<HSComp.TabsTrigger value="auth">Auth</HSComp.TabsTrigger>
 									</HSComp.TabsList>
 								</div>
 								<HSComp.Tooltip>
@@ -1166,17 +1166,6 @@ export function DevToolRequestPanel() {
 								<RawEditor
 									selectedTab={selectedTab}
 									onRawChange={handleRawChange}
-								/>
-							</HSComp.TabsContent>
-							<HSComp.TabsContent
-								value="auth"
-								className="grow min-h-0 overflow-auto"
-							>
-								<AuthTab
-									suUserId={selectedTab.suUserId}
-									onSuUserChange={(userId) =>
-										updateSelected(() => ({ suUserId: userId }))
-									}
 								/>
 							</HSComp.TabsContent>
 						</HSComp.Tabs>
