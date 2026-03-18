@@ -111,6 +111,107 @@ function parseExpressionPath(expr: string): (string | number)[] {
 	return segments;
 }
 
+function findPathPositionInYaml(
+	text: string,
+	segments: (string | number)[],
+): { line: number; from: number; to: number } | null {
+	const lines = text.split("\n");
+
+	// Find a key at a given nesting level
+	function findSegment(
+		startLine: number,
+		segIdx: number,
+		parentIndent: number,
+	): { line: number; from: number; to: number } | null {
+		const seg = segments[segIdx];
+		let arrayIndex = 0;
+
+		for (let i = startLine; i < lines.length; i++) {
+			const line = lines[i];
+			const trimmed = line.trimStart();
+			if (!trimmed || trimmed.startsWith("#")) continue;
+
+			const indent = line.length - trimmed.length;
+
+			// If we've gone back to parent level or above, stop
+			if (indent < parentIndent && i > startLine) return null;
+			// Skip deeper nested lines
+			if (indent > parentIndent) continue;
+
+			// Handle array items at this level
+			const isArrayItem = trimmed.startsWith("- ");
+			if (typeof seg === "number") {
+				if (isArrayItem && indent === parentIndent) {
+					if (arrayIndex === seg) {
+						if (segIdx === segments.length - 1) {
+							const lineFrom = textOffsetOfLine(lines, i);
+							return {
+								line: i + 1,
+								from: lineFrom,
+								to: lineFrom + line.length,
+							};
+						}
+						// Next segment should be a key inside this array item
+						const content = trimmed.slice(2);
+						const colonIdx = content.indexOf(":");
+						if (colonIdx > 0 && segIdx + 1 < segments.length) {
+							const key = content.slice(0, colonIdx).trim();
+							if (key === segments[segIdx + 1]) {
+								if (segIdx + 1 === segments.length - 1) {
+									const lineFrom = textOffsetOfLine(lines, i);
+									const keyStart = lineFrom + indent + 2; // after "- "
+									return {
+										line: i + 1,
+										from: keyStart,
+										to: keyStart + key.length,
+									};
+								}
+								return findSegment(i + 1, segIdx + 2, indent + 2);
+							}
+						}
+						// Key is on a subsequent line inside this array item
+						return findSegment(i + 1, segIdx + 1, indent + 2);
+					}
+					arrayIndex++;
+				}
+				continue;
+			}
+
+			// Handle regular key: value
+			const content = isArrayItem ? trimmed.slice(2) : trimmed;
+			const colonIdx = content.indexOf(":");
+			if (colonIdx <= 0) continue;
+
+			const key = content.slice(0, colonIdx).trim();
+			if (key === seg) {
+				const keyOffset = isArrayItem ? indent + 2 : indent;
+				const lineFrom = textOffsetOfLine(lines, i);
+				if (segIdx === segments.length - 1) {
+					return {
+						line: i + 1,
+						from: lineFrom + keyOffset,
+						to: lineFrom + keyOffset + key.length,
+					};
+				}
+				// Next segment: look for children at deeper indent
+				return findSegment(i + 1, segIdx + 1, keyOffset + 2);
+			}
+		}
+		return null;
+	}
+
+	function textOffsetOfLine(ls: string[], lineIdx: number): number {
+		let offset = 0;
+		for (let i = 0; i < lineIdx; i++) {
+			offset += ls[i].length + 1; // +1 for \n
+		}
+		return offset;
+	}
+
+	if (segments.length === 0) return null;
+	return findSegment(0, 0, 0);
+}
+
 function findPathPositionInJson(
 	text: string,
 	segments: (string | number)[],
@@ -251,12 +352,21 @@ function findPathPositionInJson(
 	}
 }
 
+function parseResponseBody(responseBody: string): unknown {
+	try {
+		return JSON.parse(responseBody);
+	} catch {
+		return yaml.load(responseBody);
+	}
+}
+
 function operationOutcomeToIssueLines(
 	bodyText: string,
 	responseBody: string,
+	mode: "json" | "yaml" = "json",
 ): { line: number; message?: string }[] {
 	try {
-		const outcome = JSON.parse(responseBody);
+		const outcome = parseResponseBody(responseBody) as Record<string, unknown>;
 		if (outcome?.resourceType !== "OperationOutcome" || !outcome.issue) {
 			return [];
 		}
@@ -280,7 +390,10 @@ function operationOutcomeToIssueLines(
 					addLine(1, message);
 					continue;
 				}
-				const found = findPathPositionInJson(bodyText, segments);
+				const found =
+					mode === "yaml"
+						? findPathPositionInYaml(bodyText, segments)
+						: findPathPositionInJson(bodyText, segments);
 				if (found) {
 					addLine(found.line, message);
 				} else {
@@ -554,14 +667,28 @@ function RequestView({
 		if (bodyEditedSinceResponse) return undefined;
 		const responseBody = selectedTab.response?.body;
 		if (!responseBody || !bodyEditorValue) return undefined;
-		const lines = operationOutcomeToIssueLines(bodyEditorValue, responseBody);
+		const lines = operationOutcomeToIssueLines(
+			bodyEditorValue,
+			responseBody,
+			bodyMode,
+		);
 		return lines.length > 0 ? lines : undefined;
-	}, [selectedTab.response?.body, bodyEditorValue, bodyEditedSinceResponse]);
+	}, [
+		selectedTab.response?.body,
+		bodyEditorValue,
+		bodyEditedSinceResponse,
+		bodyMode,
+	]);
 
 	const isUpdatingHeadersRef = useRef(false);
 
 	useEffect(() => {
-		setBodyEditorValue(selectedTab.body || "");
+		setBodyEditorValue((prev) => {
+			const next = selectedTab.body || "";
+			// Mark as edited when body changes from external source (e.g. Raw tab)
+			if (prev !== next) setBodyEditedSinceResponse(true);
+			return next;
+		});
 	}, [selectedTab.body]);
 
 	// Sync body mode when Content-Type or Accept header changes (from external sources like Raw/Headers tab)
