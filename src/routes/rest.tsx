@@ -90,6 +90,220 @@ export const Route = createFileRoute("/rest")({
 	loader: () => ({ breadCrumb: TITLE }),
 });
 
+// ── OperationOutcome → issue line numbers ─────────────────────────────
+
+function parseExpressionPath(expr: string): (string | number)[] {
+	// "Patient.identifier[0].assgner" → ["identifier", 0, "assgner"]
+	// "Organization." → [] (resource root)
+	const parts = expr.split(".");
+	const segments: (string | number)[] = [];
+	for (let i = 1; i < parts.length; i++) {
+		const part = parts[i];
+		if (!part) continue; // trailing dot → resource root
+		const m = part.match(/^(\w+)\[(\d+)\]$/);
+		if (m) {
+			segments.push(m[1]);
+			segments.push(Number.parseInt(m[2], 10));
+		} else {
+			segments.push(part);
+		}
+	}
+	return segments;
+}
+
+function findPathPositionInJson(
+	text: string,
+	segments: (string | number)[],
+): { line: number; from: number; to: number } | null {
+	let pos = 0;
+
+	function skipWS() {
+		while (pos < text.length && /\s/.test(text[pos])) pos++;
+	}
+
+	function readString(): string {
+		if (text[pos] !== '"') throw new Error("bad");
+		pos++;
+		let s = "";
+		while (pos < text.length && text[pos] !== '"') {
+			if (text[pos] === "\\") {
+				pos++;
+				s += text[pos];
+			} else {
+				s += text[pos];
+			}
+			pos++;
+		}
+		pos++; // closing "
+		return s;
+	}
+
+	function skipString() {
+		pos++; // opening "
+		while (pos < text.length && text[pos] !== '"') {
+			if (text[pos] === "\\") pos++;
+			pos++;
+		}
+		pos++; // closing "
+	}
+
+	function skipValue() {
+		skipWS();
+		if (text[pos] === '"') skipString();
+		else if (text[pos] === "{") skipObject();
+		else if (text[pos] === "[") skipArray();
+		else while (pos < text.length && /[^,\]}\s]/.test(text[pos])) pos++;
+	}
+
+	function skipObject() {
+		pos++; // {
+		skipWS();
+		while (pos < text.length && text[pos] !== "}") {
+			skipString();
+			skipWS();
+			pos++; // :
+			skipValue();
+			skipWS();
+			if (text[pos] === ",") pos++;
+			skipWS();
+		}
+		pos++; // }
+	}
+
+	function skipArray() {
+		pos++; // [
+		skipWS();
+		while (pos < text.length && text[pos] !== "]") {
+			skipValue();
+			skipWS();
+			if (text[pos] === ",") pos++;
+			skipWS();
+		}
+		pos++; // ]
+	}
+
+	function findInObject(segIdx: number): { from: number; to: number } | null {
+		pos++; // {
+		skipWS();
+		while (pos < text.length && text[pos] !== "}") {
+			const keyFrom = pos;
+			const key = readString();
+			const keyTo = pos;
+			skipWS();
+			pos++; // :
+			skipWS();
+
+			if (key === segments[segIdx]) {
+				if (segIdx === segments.length - 1) {
+					skipValue();
+					return { from: keyFrom, to: keyTo };
+				}
+				const next = segments[segIdx + 1];
+				if (typeof next === "number") {
+					return findInArray(segIdx + 1);
+				}
+				if (text[pos] === "{") return findInObject(segIdx + 1);
+				return null;
+			}
+
+			skipValue();
+			skipWS();
+			if (text[pos] === ",") pos++;
+			skipWS();
+		}
+		pos++;
+		return null;
+	}
+
+	function findInArray(segIdx: number): { from: number; to: number } | null {
+		const targetIdx = segments[segIdx] as number;
+		pos++; // [
+		skipWS();
+		let idx = 0;
+		while (pos < text.length && text[pos] !== "]") {
+			if (idx === targetIdx) {
+				if (segIdx === segments.length - 1) return null;
+				if (text[pos] === "{") return findInObject(segIdx + 1);
+				return null;
+			}
+			skipValue();
+			skipWS();
+			if (text[pos] === ",") pos++;
+			skipWS();
+			idx++;
+		}
+		pos++;
+		return null;
+	}
+
+	try {
+		skipWS();
+		if (text[pos] !== "{") return null;
+		const result = findInObject(0);
+		if (!result) return null;
+		let line = 1;
+		for (let i = 0; i < result.from; i++) {
+			if (text[i] === "\n") line++;
+		}
+		return { line, from: result.from, to: result.to };
+	} catch {
+		return null;
+	}
+}
+
+function operationOutcomeToIssueLines(
+	bodyText: string,
+	responseBody: string,
+): { line: number; message?: string }[] {
+	try {
+		const outcome = JSON.parse(responseBody);
+		if (outcome?.resourceType !== "OperationOutcome" || !outcome.issue) {
+			return [];
+		}
+		const lineMessages = new Map<number, string[]>();
+
+		function addLine(line: number, message: string) {
+			const existing = lineMessages.get(line);
+			if (existing) {
+				if (!existing.includes(message)) existing.push(message);
+			} else {
+				lineMessages.set(line, [message]);
+			}
+		}
+
+		for (const issue of outcome.issue) {
+			const expressions: string[] = issue.expression ?? [];
+			const message = issue.diagnostics ?? issue.details?.text ?? "Error";
+			for (const expr of expressions) {
+				const segments = parseExpressionPath(expr);
+				if (segments.length === 0) {
+					addLine(1, message);
+					continue;
+				}
+				const found = findPathPositionInJson(bodyText, segments);
+				if (found) {
+					addLine(found.line, message);
+				} else {
+					addLine(1, message);
+				}
+			}
+			if (expressions.length === 0) {
+				addLine(1, message);
+			}
+		}
+
+		const issues: { line: number; message?: string }[] = [];
+		for (const [line, msgs] of lineMessages) {
+			const message =
+				msgs.length === 1 ? msgs[0] : msgs.map((m) => `• ${m}`).join("\n");
+			issues.push({ line, message });
+		}
+		return issues;
+	} catch {
+		return [];
+	}
+}
+
 function splitRaw(raw: string): { head: string; body: string } {
 	const idx = raw.indexOf("\n\n");
 	if (idx === -1) return { head: raw, body: "" };
@@ -150,18 +364,22 @@ function RawEditor({
 	requestLineVersion,
 	onRawChange,
 	getStructureDefinitions,
+	resourceTypeHint,
 	getUrlSuggestions,
+	issueLineNumbers,
 }: {
 	selectedTab: Tab;
 	requestLineVersion: string;
 	onRawChange?: (rawText: string) => void;
 	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	resourceTypeHint?: string;
 	getUrlSuggestions?: (
 		path: string,
 		method: string,
 	) =>
 		| { label: string; value: string; type?: string }[]
 		| Promise<{ label: string; value: string; type?: string }[]>;
+	issueLineNumbers?: { line: number; message?: string }[];
 }) {
 	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const defaultHeaders =
@@ -183,6 +401,22 @@ function RawEditor({
 
 	const bodyModeRef = useRef(bodyMode);
 	bodyModeRef.current = bodyMode;
+
+	// Shift issue line numbers to account for headers in raw mode
+	const rawIssueLines = useMemo(() => {
+		if (!issueLineNumbers) return undefined;
+		const sepIdx = rawValue.indexOf("\n\n");
+		if (sepIdx === -1) return undefined;
+		let headerLines = 0;
+		for (let i = 0; i < sepIdx; i++) {
+			if (rawValue[i] === "\n") headerLines++;
+		}
+		const offset = headerLines + 2; // +2 for the blank line
+		return issueLineNumbers.map((il) => ({
+			line: il.line + offset,
+			message: il.message,
+		}));
+	}, [issueLineNumbers, rawValue]);
 
 	const handleChange = (value: string) => {
 		setRawValue(value);
@@ -239,7 +473,9 @@ function RawEditor({
 				mode="http"
 				additionalExtensions={preventNewlineOnModEnter}
 				getStructureDefinitions={getStructureDefinitions}
+				resourceTypeHint={resourceTypeHint}
 				getUrlSuggestions={getUrlSuggestions}
+				issueLineNumbers={rawIssueLines}
 				viewCallback={(v) => {
 					viewRef.current = v;
 				}}
@@ -291,6 +527,11 @@ function RequestView({
 }) {
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
+	const resourceTypeHint = useMemo(() => {
+		const segments = (selectedTab.path || "").split("/").filter(Boolean);
+		return segments.find((s) => s[0] >= "A" && s[0] <= "Z") ?? undefined;
+	}, [selectedTab.path]);
+
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
 		key: `rest-console-body-mode-${selectedTab.id}`,
 		getInitialValueInEffect: false,
@@ -300,6 +541,22 @@ function RequestView({
 	const [bodyEditorValue, setBodyEditorValue] = useState(
 		selectedTab.body || "",
 	);
+
+	// Track whether body was edited after last response
+	const [bodyEditedSinceResponse, setBodyEditedSinceResponse] = useState(false);
+	const prevResponseRef = useRef(selectedTab.response);
+	if (selectedTab.response !== prevResponseRef.current) {
+		prevResponseRef.current = selectedTab.response;
+		setBodyEditedSinceResponse(false);
+	}
+
+	const responseIssueLines = useMemo(() => {
+		if (bodyEditedSinceResponse) return undefined;
+		const responseBody = selectedTab.response?.body;
+		if (!responseBody || !bodyEditorValue) return undefined;
+		const lines = operationOutcomeToIssueLines(bodyEditorValue, responseBody);
+		return lines.length > 0 ? lines : undefined;
+	}, [selectedTab.response?.body, bodyEditorValue, bodyEditedSinceResponse]);
 
 	const isUpdatingHeadersRef = useRef(false);
 
@@ -530,6 +787,7 @@ function RequestView({
 	const handleBodyEditorChange = (value: string) => {
 		setBodyEditorValue(value);
 		onBodyChange(value);
+		setBodyEditedSinceResponse(true);
 	};
 
 	// Override WebMCP stubs with real implementations
@@ -592,6 +850,9 @@ function RequestView({
 						mode={bodyMode}
 						onChange={handleBodyEditorChange}
 						additionalExtensions={preventNewlineOnModEnter}
+						getStructureDefinitions={getStructureDefinitions}
+						resourceTypeHint={resourceTypeHint}
+						issueLineNumbers={responseIssueLines}
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
@@ -600,7 +861,9 @@ function RequestView({
 						selectedTab={selectedTab}
 						onRawChange={onRawChange}
 						getStructureDefinitions={getStructureDefinitions}
+						resourceTypeHint={resourceTypeHint}
 						getUrlSuggestions={getUrlSuggestions}
+						issueLineNumbers={responseIssueLines}
 					/>
 				</TabsContent>
 			</Tabs>
@@ -620,10 +883,13 @@ function ResponseStatus({
 	const messageColor =
 		status >= 400 ? "text-critical-default" : "text-green-500";
 	return (
-		<span className="flex font-medium items-center text-text-secondary text-sm">
-			<span>Status:</span>
-			<span className={`ml-1 ${messageColor}`}>
-				{status} {statusText || HTTP_STATUS_CODES[status]}
+		<span className="flex font-medium items-center text-text-secondary text-sm min-w-0 shrink">
+			<span className="shrink-0">Status:</span>
+			<span className={`ml-1 ${messageColor} truncate`}>
+				{status}{" "}
+				<span className="hidden sm:inline">
+					{statusText || HTTP_STATUS_CODES[status]}
+				</span>
 			</span>
 		</span>
 	);
@@ -1075,12 +1341,13 @@ async function executeRequest(
 		acceptHeader?.value?.toLowerCase().trim() === "text/yaml" ? "yaml" : "json";
 
 	try {
+		const hasBody = tab.method !== "GET" && tab.method !== "DELETE";
 		const response: AidboxTypes.ResponseWithMeta =
 			await aidboxClient.rawRequest({
 				method: tab.method,
 				url: tab.path || "/",
 				headers,
-				body: tab.body || "",
+				...(hasBody && tab.body ? { body: tab.body } : {}),
 			});
 		return {
 			status: response.response.status,
@@ -1091,16 +1358,25 @@ async function executeRequest(
 			mode: responseMode,
 		};
 	} catch (error) {
-		const cause = (error as AidboxTypes.ErrorResponse).responseWithMeta;
+		const cause = (error as AidboxTypes.ErrorResponse)?.responseWithMeta;
+		if (!cause?.response) {
+			return {
+				status: 0,
+				statusText: error instanceof Error ? error.message : "Unknown error",
+				headers: {},
+				body: "",
+				duration: 0,
+			};
+		}
 		const errorMode =
-			cause.responseHeaders["content-type"]?.toLowerCase().trim() ===
+			cause.responseHeaders?.["content-type"]?.toLowerCase().trim() ===
 			"text/yaml"
 				? "yaml"
 				: "json";
 		return {
 			status: cause.response.status,
 			statusText: cause.response.statusText,
-			headers: cause.responseHeaders,
+			headers: cause.responseHeaders ?? {},
 			body: (await cause.response.text()) as string,
 			duration: cause.duration,
 			mode: errorMode,
@@ -2111,6 +2387,7 @@ function RouteComponent() {
 							>
 								<ResizablePanel
 									defaultSize={50}
+									minSize={panelsMode === "horizontal" ? 20 : undefined}
 									className={`min-h-10 ${fullscreenPanel === "request" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "response" ? "hidden" : ""}`}
 								>
 									<RequestView
@@ -2141,6 +2418,7 @@ function RouteComponent() {
 								<ResizableHandle />
 								<ResizablePanel
 									defaultSize={50}
+									minSize={panelsMode === "horizontal" ? 20 : undefined}
 									className={`min-h-10 ${fullscreenPanel === "response" ? "absolute top-0 bottom-0 h-full w-full left-0 z-100 overflow-auto" : fullscreenPanel === "request" ? "hidden" : ""}`}
 								>
 									<ResponsePane

@@ -386,7 +386,11 @@ export function UrlAutocomplete({
 	const applySuggestion = useCallback(
 		(suggestion: Suggestion) => {
 			setSuppressed(true);
-			onSelectSuggestion(suggestion.value);
+			const value =
+				suggestion.type === "path" && suggestion.label === "fhir"
+					? `${suggestion.value}/`
+					: suggestion.value;
+			onSelectSuggestion(value);
 		},
 		[onSelectSuggestion],
 	);

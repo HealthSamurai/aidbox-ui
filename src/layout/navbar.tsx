@@ -17,10 +17,10 @@ import {
 import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
+	ImagePlus,
 	LogOut,
 	MessageCircleQuestionMark,
 	Moon,
-	Sparkles,
 	UserRound,
 } from "lucide-react";
 import React, { lazy, Suspense, useEffect } from "react";
@@ -97,6 +97,22 @@ function NavbarButtons() {
 		<div className="flex items-center gap-2">
 			<Tooltip>
 				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						className="rounded-full p-2"
+						onClick={() => {
+							localStorage.setItem(PREFERRED_UI_KEY, "old");
+							window.location.href = getAidboxBaseURL();
+						}}
+					>
+						<ImagePlus />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side="bottom">Switch to old UI</TooltipContent>
+			</Tooltip>
+
+			<Tooltip>
+				<TooltipTrigger asChild>
 					<Button variant="ghost" className="rounded-full p-2" asChild>
 						<a
 							href="https://health-samurai.io/docs/aidbox"
@@ -150,23 +166,6 @@ function NavbarButtons() {
 								Manage your account
 							</a>
 						</Button>
-					</div>
-					<div className="flex items-center justify-between gap-2 px-3 py-2 border-b mb-1">
-						<div className="flex items-center gap-2">
-							<Sparkles size={16} />
-							<label htmlFor="new-ui-toggle" className="text-sm cursor-pointer">
-								New UI
-							</label>
-						</div>
-						<Switch
-							id="new-ui-toggle"
-							size="small"
-							checked={true}
-							onCheckedChange={() => {
-								localStorage.setItem(PREFERRED_UI_KEY, "old");
-								window.location.href = getAidboxBaseURL();
-							}}
-						/>
 					</div>
 					<div className="flex items-center justify-between gap-2 px-3 py-2 border-b mb-1">
 						<div className="flex items-center gap-2">

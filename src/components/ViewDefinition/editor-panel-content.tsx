@@ -14,16 +14,14 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
-import { storeSelectedBuilderTab } from "../../routes/resource.$resourceType.create";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
-import { CodeTabContent } from "./editor-code-tab-content";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
 import {
@@ -31,7 +29,6 @@ import {
 	ViewDefinitionResourceTypeContext,
 } from "./page";
 import { ResultPanel } from "./result-panel-content";
-import { SQLTab } from "./sql-tab-content";
 import type * as Types from "./types";
 
 const cleanEmptyValues = <T,>(obj: T): T => {
@@ -118,12 +115,6 @@ export const EditorHeaderMenu = ({
 			ref={containerRef}
 			className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b"
 		>
-			<HSComp.TabsList className="py-0! border-b-0! pr-0!">
-				<HSComp.TabsTrigger value="form">Builder</HSComp.TabsTrigger>
-				<HSComp.TabsTrigger value="code">Code</HSComp.TabsTrigger>
-				<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
-			</HSComp.TabsList>
-
 			{mode === "collapsed" ? (
 				<div className="flex items-center gap-1 px-2">
 					<DropdownMenu>
@@ -134,7 +125,7 @@ export const EditorHeaderMenu = ({
 								icon={<Lucide.EllipsisIcon className="w-4 h-4" />}
 							/>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
+						<DropdownMenuContent align="start">
 							<DropdownMenuItem onSelect={onRun} className="text-text-link!">
 								RUN
 								<DropdownMenuIcon>
@@ -165,42 +156,22 @@ export const EditorHeaderMenu = ({
 							</DropdownMenuSub>
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<HSComp.Toggle
-						variant="outline"
-						pressed={isPreviewOpen}
-						onPressedChange={onTogglePreview}
-					>
-						<Lucide.PanelRightIcon className="w-4 h-4" />
-					</HSComp.Toggle>
 				</div>
 			) : (
 				<div className="flex items-center gap-4 px-4">
 					<Tooltip disableHoverableContent={mode === "full"}>
-						<DropdownMenu>
-							<TooltipTrigger asChild>
-								<DropdownMenuTrigger asChild>
-									<HSComp.Button variant="link" size="small" className="px-0!">
-										<Lucide.DatabaseIcon className="w-4 h-4" />
-										{mode === "full" && "Materialize"}
-										<Lucide.ChevronDownIcon className="w-4 h-4" />
-									</HSComp.Button>
-								</DropdownMenuTrigger>
-							</TooltipTrigger>
-							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem onSelect={() => onMaterialize("view")}>
-									View
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onSelect={() => onMaterialize("materialized-view")}
-								>
-									Materialized View
-								</DropdownMenuItem>
-								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
-									Table
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<TooltipTrigger asChild>
+							<HSComp.Button
+								variant="link"
+								size="small"
+								className="px-0! text-text-link! hover:text-text-link/80!"
+								onClick={onRun}
+							>
+								<Lucide.PlayIcon className="w-4 h-4 fill-current" />
+								{mode === "full" && "RUN"}
+							</HSComp.Button>
+						</TooltipTrigger>
+						{mode !== "full" && <TooltipContent>Run</TooltipContent>}
 					</Tooltip>
 					<HSComp.Separator orientation="vertical" className="h-6!" />
 					<Tooltip disableHoverableContent={mode === "full"}>
@@ -219,21 +190,37 @@ export const EditorHeaderMenu = ({
 					</Tooltip>
 					<HSComp.Separator orientation="vertical" className="h-6!" />
 					<Tooltip disableHoverableContent={mode === "full"}>
-						<TooltipTrigger asChild>
-							<HSComp.Button
-								variant="link"
-								size="small"
-								className="px-0! text-text-link! hover:text-text-link/80!"
-								onClick={onRun}
-							>
-								<Lucide.PlayIcon className="w-4 h-4 fill-current" />
-								{mode === "full" && "RUN"}
-							</HSComp.Button>
-						</TooltipTrigger>
-						{mode !== "full" && <TooltipContent>Run</TooltipContent>}
+						<DropdownMenu>
+							<TooltipTrigger asChild>
+								<DropdownMenuTrigger asChild>
+									<HSComp.Button variant="link" size="small" className="px-0!">
+										<Lucide.DatabaseIcon className="w-4 h-4" />
+										{mode === "full" && "Materialize"}
+										<Lucide.ChevronDownIcon className="w-4 h-4" />
+									</HSComp.Button>
+								</DropdownMenuTrigger>
+							</TooltipTrigger>
+							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
+							<DropdownMenuContent align="start">
+								<DropdownMenuItem onSelect={() => onMaterialize("view")}>
+									View
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onSelect={() => onMaterialize("materialized-view")}
+								>
+									Materialized View
+								</DropdownMenuItem>
+								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
+									Table
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</Tooltip>
-					<HSComp.Separator orientation="vertical" className="h-6!" />
-					<Tooltip disableHoverableContent={mode === "full"}>
+				</div>
+			)}
+			{!isPreviewOpen && (
+				<div className="flex items-center gap-1 px-2">
+					<Tooltip>
 						<TooltipTrigger asChild>
 							<HSComp.Toggle
 								variant="outline"
@@ -636,14 +623,8 @@ export const EditorPanelContent = ({
 		getRunResults: () => viewDefinitionContext.runResult,
 		getRunError: () => viewDefinitionContext.runError,
 		isDirty: () => viewDefinitionContext.isDirty,
-		switchBuilderTab: (tab: Types.ViewDefinitionEditorTab) => {
-			storeSelectedBuilderTab(tab);
-			const url = new URL(window.location.href);
-			url.searchParams.set("builderTab", tab);
-			window.history.pushState(window.history.state, "", url);
-			window.dispatchEvent(new PopStateEvent("popstate"));
-		},
-		getBuilderTab: () => selectedTab,
+		switchBuilderTab: () => {},
+		getBuilderTab: () => "form" as Types.ViewDefinitionEditorTab,
 
 		// Instances panel
 		toggleInstancesPanel: onTogglePreview,
@@ -686,46 +667,10 @@ export const EditorPanelContent = ({
 	};
 	useWebMCPViewDefinition(actionsRef);
 
-	const navigate = useNavigate();
-
-	const createSearch = useSearch({
-		from: "/resource/$resourceType/create",
-		shouldThrow: false,
-	});
-	const editSearch = useSearch({
-		from: "/resource/$resourceType/edit/$id",
-		shouldThrow: false,
-	});
-	const search = createSearch || editSearch;
-	if (search === undefined) {
-		console.error("createSearch and editSearch are undefined");
-		return <div>FAILED DUE TO UNDEFINED SEARCH</div>;
-	}
-	const { builderTab: selectedTab } = search;
-
-	const handleOnTabSelect = (value: Types.ViewDefinitionEditorTab) => {
-		storeSelectedBuilderTab(value);
-		navigate({
-			from:
-				createSearch !== undefined
-					? "/resource/$resourceType/create"
-					: "/resource/$resourceType/edit/$id",
-			search: (prev: Record<string, unknown>) => ({
-				...prev,
-				builderTab: value,
-			}),
-		});
-	};
-
 	return (
 		<HSComp.ResizablePanelGroup direction="vertical" className="grow min-h-0">
 			<HSComp.ResizablePanel minSize={20}>
-				<HSComp.Tabs
-					variant="tertiary"
-					value={selectedTab}
-					onValueChange={handleOnTabSelect}
-					className="h-full"
-				>
+				<div className="flex flex-col h-full">
 					<EditorHeaderMenu
 						onSave={handleSave}
 						onRun={handleRun}
@@ -733,10 +678,8 @@ export const EditorPanelContent = ({
 						onTogglePreview={onTogglePreview}
 						isPreviewOpen={isPreviewOpen}
 					/>
-					<HSComp.TabsContent
-						value={"form"}
-						className={`data-[state=inactive]:hidden ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
-						forceMount
+					<div
+						className={`flex-1 min-h-0 overflow-auto ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
 					>
 						{isPreviewOpen ? (
 							<div className="px-2.5 py-1">
@@ -747,14 +690,8 @@ export const EditorPanelContent = ({
 								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						)}
-					</HSComp.TabsContent>
-					<HSComp.TabsContent value={"code"} className="overflow-hidden!">
-						<CodeTabContent />
-					</HSComp.TabsContent>
-					<HSComp.TabsContent value={"sql"}>
-						<SQLTab />
-					</HSComp.TabsContent>
-				</HSComp.Tabs>
+					</div>
+				</div>
 			</HSComp.ResizablePanel>
 			{viewDefinitionContext.runError && (
 				<>

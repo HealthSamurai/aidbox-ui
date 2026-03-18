@@ -48,18 +48,18 @@ function SidebarItem({
 					}
 					scrollToSection(sectionId);
 				}}
-				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-text-secondary hover:bg-bg-secondary"
+				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-text-primary hover:bg-bg-secondary"
 			>
 				{Icon && <Icon size={16} className="shrink-0" />}
 				<span className="flex-1 truncate">{label}</span>
-				{hasSubcategories && (
-					<ChevronRight
-						size={16}
-						className={`shrink-0 text-text-secondary transition-transform ${
-							expanded ? "rotate-90" : ""
-						}`}
-					/>
-				)}
+				<ChevronRight
+					size={16}
+					className={`shrink-0 transition-transform ${
+						hasSubcategories
+							? `text-text-secondary ${expanded ? "rotate-90" : ""}`
+							: "invisible"
+					}`}
+				/>
 			</button>
 			{hasSubcategories && expanded && (
 				<ul className="mt-0.5">
@@ -73,7 +73,7 @@ function SidebarItem({
 								<button
 									type="button"
 									onClick={() => scrollToSection(subSectionId)}
-									className="flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pl-8 pr-2 text-left text-sm text-text-secondary hover:bg-bg-secondary"
+									className="flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pl-8 pr-2 text-left text-sm text-text-primary hover:bg-bg-secondary"
 								>
 									<span className="truncate">{subLabel}</span>
 								</button>

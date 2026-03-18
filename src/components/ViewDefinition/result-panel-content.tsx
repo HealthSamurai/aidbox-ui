@@ -10,6 +10,10 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -30,6 +34,7 @@ import * as Utils from "../../api/utils";
 import { InfiniteScrollSentinel } from "../../utils/infinite-scroll";
 import { EmptyState } from "../empty-state";
 import { ViewDefinitionContext } from "./page";
+import { SQLTab } from "./sql-tab-content";
 
 const SKELETON_MARKER = "__skeleton__";
 
@@ -88,9 +93,12 @@ const ResultHeader = ({
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
 }) => (
-	<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-b h-10">
-		<div className="flex gap-1 items-center">
-			<span className="typo-label text-text-secondary">Result</span>
+	<div className="flex gap-1 items-center justify-between bg-bg-secondary px-4 pr-2 border-b h-10">
+		<div className="flex items-center">
+			<TabsList>
+				<TabsTrigger value="result">Result</TabsTrigger>
+				<TabsTrigger value="sql">SQL</TabsTrigger>
+			</TabsList>
 		</div>
 		<div className="flex items-center gap-1">
 			<Tooltip>
@@ -340,25 +348,32 @@ export function ResultPanel({
 	}, [isMaximized]);
 
 	return (
-		<div
-			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-30 overflow-auto bg-bg-primary" : ""}`}
-		>
-			<ResultHeader
-				isMaximized={isMaximized}
-				onToggleMaximize={toggleMaximize}
-				onToggleCollapse={onToggleCollapse || (() => {})}
-			/>
-			<ResultContent
-				rows={rows}
-				isEmptyArray={isEmptyArray}
-				accumulatedData={accumulatedData}
-				columns={columns}
-				hasMore={hasMore}
-				isLoadingMore={loadMoreMutation.isPending}
-				onLoadMore={handleLoadMore}
-				containerRef={containerRef}
-				pageSize={viewDefinitionContext.runResultPageSize || 30}
-			/>
-		</div>
+		<Tabs defaultValue="result" className="h-full">
+			<div
+				className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-30 overflow-auto bg-bg-primary" : ""}`}
+			>
+				<ResultHeader
+					isMaximized={isMaximized}
+					onToggleMaximize={toggleMaximize}
+					onToggleCollapse={onToggleCollapse || (() => {})}
+				/>
+				<TabsContent value="result" className="flex-1 min-h-0 flex flex-col">
+					<ResultContent
+						rows={rows}
+						isEmptyArray={isEmptyArray}
+						accumulatedData={accumulatedData}
+						columns={columns}
+						hasMore={hasMore}
+						isLoadingMore={loadMoreMutation.isPending}
+						onLoadMore={handleLoadMore}
+						containerRef={containerRef}
+						pageSize={viewDefinitionContext.runResultPageSize || 30}
+					/>
+				</TabsContent>
+				<TabsContent value="sql" className="flex-1 min-h-0">
+					<SQLTab />
+				</TabsContent>
+			</div>
+		</Tabs>
 	);
 }

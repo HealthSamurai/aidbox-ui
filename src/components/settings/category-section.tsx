@@ -44,7 +44,7 @@ export function CategorySection({
 			className="flex flex-col scroll-mt-4 @[900px]:flex-row"
 		>
 			{/* Left pane — section heading */}
-			<div className="sticky top-0 z-10 h-fit w-full shrink-0 bg-bg-primary pt-2 px-8 shadow-[0_10px_10px_0_rgb(255,255,255)] @[900px]:w-[346px] @[900px]:min-w-[346px] @[900px]:pl-16 @[900px]:pr-4">
+			<div className="sticky top-0 z-10 h-fit w-full shrink-0 bg-bg-primary pt-2 px-8 shadow-[0_10px_10px_0_var(--color-bg-primary)] @[900px]:w-[346px] @[900px]:min-w-[346px] @[900px]:pl-16 @[900px]:pr-4">
 				<h2 className="text-lg font-semibold text-text-primary">{title}</h2>
 				{description && (
 					<p className="mt-1 text-sm text-text-secondary">{description}</p>
