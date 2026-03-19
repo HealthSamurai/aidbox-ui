@@ -6,6 +6,7 @@ import { routeTree } from "./routeTree.gen";
 import "./index.css";
 import { AidboxClientProvider } from "./AidboxClient";
 import { PREFERRED_UI_KEY, UI_BASE_PATH } from "./shared/const";
+import { VimModeProvider } from "./shared/vim-mode";
 import { getAidboxBaseURL } from "./utils";
 
 if (!import.meta.env.DEV && localStorage.getItem(PREFERRED_UI_KEY) === "old") {
@@ -33,7 +34,9 @@ if (root) {
 		<StrictMode>
 			<QueryClientProvider client={queryClient}>
 				<AidboxClientProvider baseurl={baseurl}>
-					<RouterProvider router={router} />
+					<VimModeProvider>
+						<RouterProvider router={router} />
+					</VimModeProvider>
 				</AidboxClientProvider>
 			</QueryClientProvider>
 		</StrictMode>,

@@ -3,6 +3,7 @@ export const REST_CONSOLE_TABS_KEY = "aidbox-rest-console-tabs";
 export const UI_BASE_PATH = "/u";
 export const PREFERRED_UI_KEY = "aidbox-preferred-ui";
 export const THEME_KEY = "aidbox-theme";
+export const VIM_MODE_KEY = "aidbox-vim-mode";
 
 export const HTTP_STATUS_CODES: Record<number, string> = {
 	100: "Continue",

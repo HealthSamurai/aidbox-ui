@@ -6,10 +6,13 @@ import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
 import React from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
+import { useExpandValueSet } from "../../hooks/useExpandValueSet";
 import { useGetStructureDefinitions } from "../../hooks/useGetStructureDefinition";
+import { useVimMode } from "../../shared/vim-mode";
 import {
 	findJsonPathOffset,
 	findYamlPathOffset,
+	flattenOutcomeIssues,
 	getIssueLineNumbers,
 } from "../../utils/json-path-offset";
 import { CodeEditorMenubar } from "./code-editor-menubar";
@@ -75,6 +78,8 @@ export const ViewDefinitionCodeEditor = ({
 	};
 
 	const getStructureDefinitions = useGetStructureDefinitions();
+	const expandValueSet = useExpandValueSet();
+	const vimMode = useVimMode();
 
 	return (
 		<HSComp.CodeEditor
@@ -84,6 +89,8 @@ export const ViewDefinitionCodeEditor = ({
 			viewCallback={viewCallback}
 			issueLineNumbers={issueLineNumbers}
 			getStructureDefinitions={getStructureDefinitions}
+			expandValueSet={expandValueSet}
+			vimMode={vimMode}
 		/>
 	);
 };
@@ -229,12 +236,7 @@ export const CodeTabContent = () => {
 	const issueLineNumbers = React.useMemo(() => {
 		const runError = viewDefinitionContext.runError;
 		if (!runError?.issue) return undefined;
-		const issues = runError.issue.flatMap((i) =>
-			(i.expression ?? []).filter(Boolean).map((expr) => ({
-				expression: expr,
-				message: i.diagnostics,
-			})),
-		);
+		const issues = flattenOutcomeIssues(runError.issue);
 		if (issues.length === 0) return undefined;
 		return getIssueLineNumbers(editorValue, issues, codeMode);
 	}, [viewDefinitionContext.runError, editorValue, codeMode]);

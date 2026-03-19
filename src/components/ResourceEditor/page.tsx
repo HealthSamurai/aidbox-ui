@@ -18,6 +18,7 @@ import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
 import {
 	findJsonPathOffset,
 	findYamlPathOffset,
+	flattenOutcomeIssues,
 	getIssueLineNumbers,
 } from "../../utils/json-path-offset";
 import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
@@ -226,12 +227,7 @@ export const ResourceEditorPage = ({
 
 	const issueLineNumbers = React.useMemo(() => {
 		if (!saveError?.issue) return undefined;
-		const issues = saveError.issue.flatMap((i) =>
-			(i.expression ?? []).filter(Boolean).map((expr) => ({
-				expression: expr,
-				message: i.diagnostics,
-			})),
-		);
+		const issues = flattenOutcomeIssues(saveError.issue);
 		if (issues.length === 0) return undefined;
 		return getIssueLineNumbers(resourceText, issues, mode);
 	}, [saveError, resourceText, mode]);

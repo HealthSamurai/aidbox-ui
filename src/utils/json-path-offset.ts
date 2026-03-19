@@ -319,6 +319,29 @@ function offsetToLineNumber(text: string, offset: number): number {
  * Convert FHIR expression paths from OperationOutcome issues to
  * 1-based line numbers with optional messages in editor text (JSON or YAML).
  */
+/**
+ * Convert OperationOutcome issues into a flat list of {expression, message}
+ * with error type from details.coding as a title prefix.
+ */
+export function flattenOutcomeIssues(
+	issues: {
+		expression?: string[];
+		diagnostics?: string;
+		details?: { text?: string; coding?: { code?: string }[] };
+	}[],
+): { expression: string; message?: string }[] {
+	return issues.flatMap((i) => {
+		const errorType = i.details?.coding?.[0]?.code;
+		const diag = i.diagnostics ?? i.details?.text;
+		const message =
+			errorType && diag ? `${errorType}\n${diag}` : (diag ?? errorType);
+		return (i.expression ?? []).filter(Boolean).map((expr) => ({
+			expression: expr,
+			message,
+		}));
+	});
+}
+
 export function getIssueLineNumbers(
 	text: string,
 	issues: { expression: string; message?: string }[],

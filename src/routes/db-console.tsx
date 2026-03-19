@@ -44,6 +44,7 @@ import {
 	splitSqlStatements,
 } from "../components/db-console/utils";
 import { useLocalStorage } from "../hooks";
+import { useVimMode } from "../shared/vim-mode";
 import type {
 	DbConsoleActions,
 	QueryResultItem,
@@ -106,6 +107,7 @@ function DbConsolePage() {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	const { schemas } = useDbConsoleData();
+	const vimMode = useVimMode();
 
 	const sqlConfig = useMemo<SqlConfig>(
 		() => ({
@@ -772,6 +774,7 @@ function DbConsolePage() {
 											foldGutter={false}
 											lintGutter={false}
 											issueLineNumbers={issueLineNumbers}
+											vimMode={vimMode}
 										/>
 									</div>
 								</div>

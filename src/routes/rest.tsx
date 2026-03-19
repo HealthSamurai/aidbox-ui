@@ -68,10 +68,13 @@ import {
 } from "../components/rest/url-autocomplete";
 import { SplitButton, type SplitDirection } from "../components/Split";
 import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menubar";
+import { useExpandValueSet } from "../hooks/useExpandValueSet";
 import { useGetStructureDefinitions } from "../hooks/useGetStructureDefinition";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
+import { useVimMode } from "../shared/vim-mode";
 import { parseHttpRequest, parsePathParams } from "../utils";
+import { flattenOutcomeIssues } from "../utils/json-path-offset";
 import { responseStorage } from "../utils/response-storage";
 import { useWebMCPRestConsole } from "../webmcp/rest-console";
 import type { RestConsoleActions } from "../webmcp/rest-console-context";
@@ -323,7 +326,12 @@ function findPathPositionInJson(
 		let idx = 0;
 		while (pos < text.length && text[pos] !== "]") {
 			if (idx === targetIdx) {
-				if (segIdx === segments.length - 1) return null;
+				const elemFrom = pos;
+				if (segIdx === segments.length - 1) {
+					// Array index is the last segment — return position of the element
+					skipValue();
+					return { from: elemFrom, to: pos };
+				}
 				if (text[pos] === "{") return findInObject(segIdx + 1);
 				return null;
 			}
@@ -382,8 +390,9 @@ function operationOutcomeToIssueLines(
 		}
 
 		for (const issue of outcome.issue) {
+			const flat = flattenOutcomeIssues([issue]);
 			const expressions: string[] = issue.expression ?? [];
-			const message = issue.diagnostics ?? issue.details?.text ?? "Error";
+			const message = flat[0]?.message ?? issue.diagnostics ?? "Error";
 			for (const expr of expressions) {
 				const segments = parseExpressionPath(expr);
 				if (segments.length === 0) {
@@ -407,8 +416,7 @@ function operationOutcomeToIssueLines(
 
 		const issues: { line: number; message?: string }[] = [];
 		for (const [line, msgs] of lineMessages) {
-			const message =
-				msgs.length === 1 ? msgs[0] : msgs.map((m) => `• ${m}`).join("\n");
+			const message = msgs.length === 1 ? msgs[0] : msgs.join("\n\x00\n");
 			issues.push({ line, message });
 		}
 		return issues;
@@ -477,6 +485,7 @@ function RawEditor({
 	requestLineVersion,
 	onRawChange,
 	getStructureDefinitions,
+	expandValueSet,
 	resourceTypeHint,
 	getUrlSuggestions,
 	issueLineNumbers,
@@ -485,6 +494,10 @@ function RawEditor({
 	requestLineVersion: string;
 	onRawChange?: (rawText: string) => void;
 	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	expandValueSet?: (
+		url: string,
+		filter: string,
+	) => Promise<{ code: string; display?: string; system?: string }[]>;
 	resourceTypeHint?: string;
 	getUrlSuggestions?: (
 		path: string,
@@ -494,6 +507,7 @@ function RawEditor({
 		| Promise<{ label: string; value: string; type?: string }[]>;
 	issueLineNumbers?: { line: number; message?: string }[];
 }) {
+	const vimMode = useVimMode();
 	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const defaultHeaders =
 		selectedTab.headers
@@ -586,9 +600,11 @@ function RawEditor({
 				mode="http"
 				additionalExtensions={preventNewlineOnModEnter}
 				getStructureDefinitions={getStructureDefinitions}
+				expandValueSet={expandValueSet}
 				resourceTypeHint={resourceTypeHint}
 				getUrlSuggestions={getUrlSuggestions}
 				issueLineNumbers={rawIssueLines}
+				vimMode={vimMode}
 				viewCallback={(v) => {
 					viewRef.current = v;
 				}}
@@ -614,6 +630,7 @@ function RequestView({
 	onHeadersUpdate,
 	webmcpActionsRef,
 	getStructureDefinitions,
+	expandValueSet,
 	getUrlSuggestions,
 }: {
 	selectedTab: Tab;
@@ -631,6 +648,10 @@ function RequestView({
 	onHeadersUpdate: (headers: Header[]) => void;
 	webmcpActionsRef: React.RefObject<RestConsoleActions>;
 	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	expandValueSet?: (
+		url: string,
+		filter: string,
+	) => Promise<{ code: string; display?: string; system?: string }[]>;
 	getUrlSuggestions?: (
 		path: string,
 		method: string,
@@ -638,6 +659,7 @@ function RequestView({
 		| { label: string; value: string; type?: string }[]
 		| Promise<{ label: string; value: string; type?: string }[]>;
 }) {
+	const vimMode = useVimMode();
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
 	const resourceTypeHint = useMemo(() => {
@@ -978,8 +1000,10 @@ function RequestView({
 						onChange={handleBodyEditorChange}
 						additionalExtensions={preventNewlineOnModEnter}
 						getStructureDefinitions={getStructureDefinitions}
+						expandValueSet={expandValueSet}
 						resourceTypeHint={resourceTypeHint}
 						issueLineNumbers={responseIssueLines}
+						vimMode={vimMode}
 					/>
 				</TabsContent>
 				<TabsContent value="raw">
@@ -988,6 +1012,7 @@ function RequestView({
 						selectedTab={selectedTab}
 						onRawChange={onRawChange}
 						getStructureDefinitions={getStructureDefinitions}
+						expandValueSet={expandValueSet}
 						resourceTypeHint={resourceTypeHint}
 						getUrlSuggestions={getUrlSuggestions}
 						issueLineNumbers={responseIssueLines}
@@ -1621,6 +1646,7 @@ function stripResponsesFromTabs(tabs: Tab[]): Tab[] {
 function RouteComponent() {
 	const client = useAidboxClient();
 	const getStructureDefinitions = useGetStructureDefinitions();
+	const expandValueSet = useExpandValueSet();
 	const { data: routesTree } = useRoutes();
 	const routesTreeRef = useRef(routesTree);
 	routesTreeRef.current = routesTree;
@@ -2539,6 +2565,7 @@ function RouteComponent() {
 										onHeadersUpdate={handleHeadersUpdate}
 										webmcpActionsRef={webmcpActionsRef}
 										getStructureDefinitions={getStructureDefinitions}
+										expandValueSet={expandValueSet}
 										getUrlSuggestions={getUrlSuggestions}
 									/>
 								</ResizablePanel>

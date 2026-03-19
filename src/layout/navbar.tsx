@@ -21,6 +21,7 @@ import {
 	LogOut,
 	MessageCircleQuestionMark,
 	Moon,
+	Terminal,
 	UserRound,
 } from "lucide-react";
 import React, { lazy, Suspense, useEffect } from "react";
@@ -32,7 +33,7 @@ const ClaudeChatToggle = import.meta.env.DEV
 	? lazy(() => import("../components/claude-chat/claude-chat-toggle"))
 	: () => null;
 
-import { PREFERRED_UI_KEY, THEME_KEY } from "../shared/const";
+import { PREFERRED_UI_KEY, THEME_KEY, VIM_MODE_KEY } from "../shared/const";
 import { getAidboxBaseURL } from "../utils";
 
 function Breadcrumbs() {
@@ -87,6 +88,10 @@ function NavbarButtons() {
 	const [theme, setTheme] = useLocalStorage<"light" | "dark">({
 		key: THEME_KEY,
 		defaultValue: "light",
+	});
+	const [vimMode, setVimMode] = useLocalStorage<boolean>({
+		key: VIM_MODE_KEY,
+		defaultValue: false,
 	});
 
 	useEffect(() => {
@@ -184,6 +189,23 @@ function NavbarButtons() {
 							onCheckedChange={(checked) =>
 								setTheme(checked ? "dark" : "light")
 							}
+						/>
+					</div>
+					<div className="flex items-center justify-between gap-2 px-3 py-2 border-b mb-1">
+						<div className="flex items-center gap-2">
+							<Terminal size={16} />
+							<label
+								htmlFor="vim-mode-toggle"
+								className="text-sm cursor-pointer"
+							>
+								Vim mode
+							</label>
+						</div>
+						<Switch
+							id="vim-mode-toggle"
+							size="small"
+							checked={vimMode === true}
+							onCheckedChange={(checked) => setVimMode(checked)}
 						/>
 					</div>
 					<Button

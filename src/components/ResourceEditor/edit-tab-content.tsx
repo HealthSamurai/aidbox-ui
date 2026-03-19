@@ -7,6 +7,7 @@ import * as HSComp from "@health-samurai/react-components";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import { useLocalStorage } from "../../hooks";
+import { useExpandValueSet } from "../../hooks/useExpandValueSet";
 import { useGetStructureDefinitions } from "../../hooks/useGetStructureDefinition";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { EditorTab } from "./editor-tab";
@@ -48,6 +49,7 @@ export function EditTabContent({
 	actionsRef,
 }: EditTabContentProps) {
 	const getStructureDefinitions = useGetStructureDefinitions();
+	const expandValueSet = useExpandValueSet();
 
 	const [isProfileOpen, setIsProfileOpen] = useLocalStorage<boolean>({
 		key: storageKey,
@@ -91,6 +93,7 @@ export function EditTabContent({
 							actions={actions}
 							issueLineNumbers={issueLineNumbers}
 							getStructureDefinitions={getStructureDefinitions}
+							expandValueSet={expandValueSet}
 							trailingActions={
 								<>
 									<HSComp.Toggle

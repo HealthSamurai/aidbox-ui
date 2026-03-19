@@ -1,9 +1,11 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type {
 	CodeEditorView,
+	ExpandValueSet,
 	GetStructureDefinitions,
 } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
+import { useVimMode } from "../../shared/vim-mode";
 import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
 import type { EditorMode } from "./types";
 
@@ -19,6 +21,7 @@ type EditorTabProps = {
 	viewCallback?: (view: CodeEditorView) => void;
 	issueLineNumbers?: { line: number; message?: string }[];
 	getStructureDefinitions?: GetStructureDefinitions;
+	expandValueSet?: ExpandValueSet;
 };
 
 export const EditorTab = ({
@@ -33,7 +36,9 @@ export const EditorTab = ({
 	viewCallback,
 	issueLineNumbers,
 	getStructureDefinitions,
+	expandValueSet,
 }: EditorTabProps) => {
+	const vimMode = useVimMode();
 	return (
 		<div className="flex flex-col h-full">
 			{(actions || trailingActions) && (
@@ -64,6 +69,8 @@ export const EditorTab = ({
 					viewCallback={viewCallback}
 					issueLineNumbers={issueLineNumbers}
 					getStructureDefinitions={getStructureDefinitions}
+					expandValueSet={expandValueSet}
+					vimMode={vimMode}
 				/>
 			</div>
 		</div>
