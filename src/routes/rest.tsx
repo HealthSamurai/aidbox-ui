@@ -663,7 +663,8 @@ function RequestView({
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
 	const resourceTypeHint = useMemo(() => {
-		const segments = (selectedTab.path || "").split("/").filter(Boolean);
+		const pathWithoutQuery = (selectedTab.path || "").split("?")[0] ?? "";
+		const segments = pathWithoutQuery.split("/").filter(Boolean);
 		return segments.find((s) => s[0] >= "A" && s[0] <= "Z") ?? undefined;
 	}, [selectedTab.path]);
 
