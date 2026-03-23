@@ -6,6 +6,7 @@ import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
+	Separator,
 	type SqlConfig,
 	Tooltip,
 	TooltipContent,
@@ -712,24 +713,6 @@ function DbConsolePage() {
 							<ResizablePanel defaultSize={40} minSize={10}>
 								<div className="flex flex-col h-full">
 									<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-										<Tooltip delayDuration={300}>
-											<TooltipTrigger asChild>
-												<Button
-													variant="link"
-													className="h-full! flex-shrink-0 border-b-0 border-r rounded-none! px-4"
-													onClick={formatQuery}
-													disabled={!query.trim()}
-												>
-													<AlignLeft className="w-4 h-4" />
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent>
-												Format{" "}
-												{navigator.platform?.includes("Mac")
-													? "⌘+⇧+F"
-													: "Ctrl+Shift+F"}
-											</TooltipContent>
-										</Tooltip>
 										{showStop ? (
 											<Button
 												variant="link"
@@ -761,6 +744,26 @@ function DbConsolePage() {
 												</TooltipContent>
 											</Tooltip>
 										)}
+										<Separator orientation="vertical" className="h-6!" />
+										<Tooltip delayDuration={300}>
+											<TooltipTrigger asChild>
+												<Button
+													variant="link"
+													className="h-full! flex-shrink-0 border-b-0 rounded-none! px-4"
+													onClick={formatQuery}
+													disabled={!query.trim()}
+												>
+													<AlignLeft className="w-4 h-4" />
+													Format
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												Format{" "}
+												{navigator.platform?.includes("Mac")
+													? "⌘+⇧+F"
+													: "Ctrl+Shift+F"}
+											</TooltipContent>
+										</Tooltip>
 									</div>
 									<div className="flex-1 min-h-0">
 										<CodeEditor
