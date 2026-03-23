@@ -1,9 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import { useCallback, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { formatSearchQuery } from "../../utils";
+import { useAuditLogEnabled } from "./api";
 import { AuditEventsFilters } from "./audit-events-filters";
 import { AuditEventsTable } from "./audit-events-table";
 import {
@@ -17,6 +19,42 @@ import {
 
 export function AuditEventsPage() {
 	const client = useAidboxClient();
+	const { data: auditLogEnabled, isLoading: isCheckingEnabled } =
+		useAuditLogEnabled();
+
+	if (isCheckingEnabled) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				Loading...
+			</div>
+		);
+	}
+
+	if (!auditLogEnabled) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">Audit logging is disabled</div>
+					<div className="text-sm">
+						Enable "FHIR Audit Log" in{" "}
+						<Link to="/settings" className="text-text-link hover:underline">
+							Settings
+						</Link>{" "}
+						to start collecting audit events.
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	return <AuditEventsPageContent client={client} />;
+}
+
+function AuditEventsPageContent({
+	client,
+}: {
+	client: ReturnType<typeof useAidboxClient>;
+}) {
 	const [filters, setFilters] = useState<AuditEventFilters>(emptyFilters);
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(PAGE_SIZE);
