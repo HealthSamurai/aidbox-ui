@@ -1560,6 +1560,10 @@ function handleSendRequest(
 		.finally(() => setIsLoading(false));
 }
 
+function requestParamsHasEmpty(params: Header[]) {
+	return params.some((p) => p.name === "" && p.value === "");
+}
+
 function requestParamsEditorSyncPath(params: Header[], path: string) {
 	const location = path.split("?")[0];
 	const queryParams = params

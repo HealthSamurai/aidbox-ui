@@ -12,6 +12,7 @@ import * as Utils from "../../utils";
 import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
 import { EmptyState } from "../empty-state";
+import { UrlAutocomplete } from "../rest/url-autocomplete";
 import type * as VDTypes from "../ViewDefinition/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
@@ -69,36 +70,56 @@ export const ResourcesTabSarchInput = () => {
 		? atob(search.searchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
 
+	const [queryValue, setQueryValue] = React.useState(decodedSearchQuery);
+
+	React.useEffect(() => {
+		setQueryValue(decodedSearchQuery);
+	}, [decodedSearchQuery]);
+
+	const fullPath = `/fhir/${resourcesPageContext.resourceType}?${queryValue}`;
+
+	const handleSelectSuggestion = (path: string) => {
+		const qIdx = path.indexOf("?");
+		setQueryValue(qIdx >= 0 ? path.substring(qIdx + 1) : path);
+	};
+
+	const handleSubmit = () => {
+		inputRef.current?.closest("form")?.requestSubmit();
+	};
+
 	const handleClear = () => {
-		if (inputRef.current) {
-			inputRef.current.value = Constants.DEFAULT_SEARCH_QUERY;
-			inputRef.current.focus();
-		}
+		setQueryValue(Constants.DEFAULT_SEARCH_QUERY);
+		inputRef.current?.focus();
 	};
 
 	const handleCopy = () => {
-		if (inputRef.current) {
-			navigator.clipboard.writeText(inputRef.current.value);
-		}
+		navigator.clipboard.writeText(queryValue);
 	};
 
 	return (
 		<div className="relative flex-1 min-w-0">
-			<HSComp.Input
-				key={decodedSearchQuery}
-				ref={inputRef}
-				autoFocus
-				type="text"
-				name="searchQuery"
-				className="pr-14!"
-				defaultValue={decodedSearchQuery}
-				prefixValue={
-					<span className="flex gap-1 text-nowrap text-elements-assistive">
-						<span className="font-bold">GET</span>
-						<span>/fhir/{resourcesPageContext.resourceType}?</span>
-					</span>
-				}
-			/>
+			<UrlAutocomplete
+				path={fullPath}
+				method="GET"
+				onSelectSuggestion={handleSelectSuggestion}
+				onSubmit={handleSubmit}
+			>
+				<HSComp.Input
+					ref={inputRef}
+					autoFocus
+					type="text"
+					name="searchQuery"
+					className="pr-14!"
+					value={queryValue}
+					onChange={(e) => setQueryValue(e.target.value)}
+					prefixValue={
+						<span className="flex gap-1 text-nowrap text-elements-assistive">
+							<span className="font-bold">GET</span>
+							<span>/fhir/{resourcesPageContext.resourceType}?</span>
+						</span>
+					}
+				/>
+			</UrlAutocomplete>
 			<div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 items-center">
 				<HSComp.IconButton
 					variant="link"
