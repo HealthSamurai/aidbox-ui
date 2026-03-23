@@ -787,6 +787,12 @@ export function DevToolRequestPanel() {
 		key: "access-policy-devtool-tabs",
 		getInitialValueInEffect: false,
 		defaultValue: [createTab()],
+		serialize: (value) =>
+			JSON.stringify(value.map(({ response, ...rest }) => rest)),
+		deserialize: (value) =>
+			(value ? JSON.parse(value) : []).map(
+				(t: Omit<RequestTab, "response">) => ({ ...t, response: null }),
+			),
 	});
 
 	const selectedTab = React.useMemo(() => {
