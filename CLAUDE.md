@@ -23,7 +23,7 @@ When a Figma link is provided, invoke the `/figma-use` skill to inspect the desi
 
 ## React Components (submodule)
 
-The `@health-samurai/react-components` package lives in `aidbox-ts-sdk/packages/react-components` (git submodule) and is linked via `file:` protocol in `package.json`.
+The `@health-samurai/react-components` package lives in `aidbox-ts-sdk/packages/react-components` (git submodule) and is linked via `file:` protocol in `package.json`. Source code is at `aidbox-ts-sdk/packages/react-components/src/` — always read from there, not from `node_modules`.
 
 ### Setup (fresh clone)
 
@@ -50,6 +50,6 @@ Restart is required because Vite caches pre-bundled deps in memory.
 1. Commit and push inside `aidbox-ts-sdk/`
 2. Then commit the updated submodule ref in `aidbox-ui`
 
-## Linting
+## Linting & Type Checking
 
-Always run `pnpm lint:fix` after making code changes.
+Always run `pnpm lint:fix` and `pnpm typecheck` after making code changes.

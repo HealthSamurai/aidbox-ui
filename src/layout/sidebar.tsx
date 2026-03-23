@@ -18,6 +18,7 @@ import {
 	PanelLeftClose,
 	PanelLeftOpen,
 	Settings,
+	ShieldUser,
 	SquareArrowOutUpRight,
 	SquareTerminal,
 } from "lucide-react";
@@ -77,6 +78,16 @@ const mainMenuItems: { link: React.JSX.Element; url: string; title: string }[] =
 					Aidbox Forms
 					<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
 				</a>
+			),
+		},
+		{
+			url: "/audit-events",
+			title: "Audit events",
+			link: (
+				<Link to="/audit-events">
+					<ShieldUser />
+					Audit events
+				</Link>
 			),
 		},
 		{

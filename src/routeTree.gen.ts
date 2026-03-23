@@ -14,6 +14,7 @@ import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
 import { Route as IgRouteImport } from './routes/ig'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
+import { Route as AuditEventsRouteImport } from './routes/audit-events'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
@@ -49,6 +50,11 @@ const IgRoute = IgRouteImport.update({
 const DbConsoleRoute = DbConsoleRouteImport.update({
   id: '/db-console',
   path: '/db-console',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditEventsRoute = AuditEventsRouteImport.update({
+  id: '/audit-events',
+  path: '/audit-events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -113,6 +119,7 @@ const IgPackageIdResourceResourceTypeResourceIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
@@ -131,6 +138,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/audit-events'
     | '/db-console'
     | '/ig'
     | '/resource'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/audit-events'
     | '/db-console'
     | '/rest'
     | '/settings'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/audit-events'
     | '/db-console'
     | '/ig'
     | '/resource'
@@ -217,6 +229,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditEventsRoute: typeof AuditEventsRoute
   DbConsoleRoute: typeof DbConsoleRoute
   IgRoute: typeof IgRouteWithChildren
   ResourceRoute: typeof ResourceRouteWithChildren
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/db-console'
       fullPath: '/db-console'
       preLoaderRoute: typeof DbConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit-events': {
+      id: '/audit-events'
+      path: '/audit-events'
+      fullPath: '/audit-events'
+      preLoaderRoute: typeof AuditEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -401,6 +421,7 @@ const ResourceRouteWithChildren = ResourceRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditEventsRoute: AuditEventsRoute,
   DbConsoleRoute: DbConsoleRoute,
   IgRoute: IgRouteWithChildren,
   ResourceRoute: ResourceRouteWithChildren,
