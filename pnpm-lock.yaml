@@ -15,11 +15,11 @@ importers:
         specifier: ^0.0.30
         version: 0.0.30(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@health-samurai/aidbox-client':
-        specifier: 0.0.0-alpha.4
-        version: 0.0.0-alpha.4
+        specifier: 0.0.0-alpha.5
+        version: 0.0.0-alpha.5
       '@health-samurai/aidbox-fhirpath-lsp':
-        specifier: 0.0.0-alpha.6
-        version: 0.0.0-alpha.6(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+        specifier: 0.0.0-alpha.7
+        version: 0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       '@health-samurai/react-components':
         specifier: file:aidbox-ts-sdk/packages/react-components
         version: file:aidbox-ts-sdk/packages/react-components(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
@@ -144,11 +144,11 @@ packages:
     peerDependencies:
       typescript: ^5
 
-  '@atomic-ehr/fhirpath-lsp@0.0.5':
-    resolution: {integrity: sha512-qi1aP/sWcavxUuz3YCcFp+qu8/rBFu3Kd/qGmg9tBid0dGFMKCFE/9myrKe4jYHMPPWruNEEcKCQf1RkOaYWyQ==}
+  '@atomic-ehr/fhirpath-lsp@0.0.7':
+    resolution: {integrity: sha512-rhnf/VrTKSa69cOzlFc9Z3bow1YlvJ2/5AZ4uKX9C769muZZKTbu8atN+NOmCOgSD8m+4q8e6xfRvbRSj7lZxg==}
 
-  '@atomic-ehr/fhirpath@0.1.2':
-    resolution: {integrity: sha512-bqf0ah7aE3ZjuA49CQZMxuhC1d1XInMwR7dTocSiAKLGkx2wYcdn6OGbisFHpD7NJCTzXD+psxNcWXLS0K6qIw==}
+  '@atomic-ehr/fhirpath@0.1.4':
+    resolution: {integrity: sha512-A26knB2XGfCiu6vXAfYyusxToxHwdIddRLrkpjrYlI/qZssjspHULQLzANvLVlsQW5uPpOF+bloXIv0r3qOpSQ==}
     peerDependencies:
       typescript: ^5
 
@@ -557,11 +557,11 @@ packages:
       react: '*'
       react-dom: '*'
 
-  '@health-samurai/aidbox-client@0.0.0-alpha.4':
-    resolution: {integrity: sha512-ZZ8asGiBhU8dFFXg2SIQzJSes1AS/TdQCBkbEwGCJjwAUdIOuNEyTL/iiWa2CB+fmbUtXMUMkLymx/SikYG0Ug==}
+  '@health-samurai/aidbox-client@0.0.0-alpha.5':
+    resolution: {integrity: sha512-WYXfTgMAMRRvJPhnSjB7KiOMhgQ7CDEOS7IUJDvPsjWUbIrRVzfjl89UzyDw6Rv/kum3nDIcVZHyHjVoWbms6g==}
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.6':
-    resolution: {integrity: sha512-VqCiPCbd1aAaZ1Bohowi2/9xdRLoK7YNQxwGpIhjZ08YKEfyDg7ZA+5HpD17U4SAi6WLZsXx0BK7ICwb+FAIDg==}
+  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7':
+    resolution: {integrity: sha512-AX3f07EMoZg8OWduVWq6rx5HOk+h7ISj6dIgMmaHLLZJ3wcH+LHjAfPv1H6Q/Hc1kqMx+xyfX68z1AOaqGnANw==}
     peerDependencies:
       '@codemirror/lsp-client': ^6.2.0
       '@codemirror/state': ^6.5.2
@@ -1532,6 +1532,15 @@ packages:
       react-redux:
         optional: true
 
+  '@replit/codemirror-vim@6.3.0':
+    resolution: {integrity: sha512-aTx931ULAMuJx6xLf7KQDOL7CxD+Sa05FktTDrtLaSy53uj01ll3Zf17JdKsriER248oS55GBzg0CfCTjEneAQ==}
+    peerDependencies:
+      '@codemirror/commands': 6.x.x
+      '@codemirror/language': 6.x.x
+      '@codemirror/search': 6.x.x
+      '@codemirror/state': 6.x.x
+      '@codemirror/view': 6.x.x
+
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
 
@@ -2177,11 +2186,8 @@ packages:
   fast-diff@1.3.0:
     resolution: {integrity: sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==}
 
-  fast-xml-builder@1.1.4:
-    resolution: {integrity: sha512-f2jhpN4Eccy0/Uz9csxh3Nu6q4ErKxf0XIsasomfOihuSUa3/xw6w8dnOtCDgEItQFJG8KyXPzQXzcODDrrbOg==}
-
-  fast-xml-parser@5.5.6:
-    resolution: {integrity: sha512-3+fdZyBRVg29n4rXP0joHthhcHdPUHaIC16cuyyd1iLsuaO6Vea36MPrxgAzbZna8lhvZeRL8Bc9GP56/J9xEw==}
+  fast-xml-parser@5.3.9:
+    resolution: {integrity: sha512-zU0KUuO9U+fLGduTDdxQ6qsQLIxRg4EK5AMduwBNGNCSfCGRSbNS7OpH343NFQlLDg1jxoH68JSbOPAGksIGvg==}
     hasBin: true
 
   fdir@6.5.0:
@@ -2420,10 +2426,6 @@ packages:
 
   oauth4webapi@3.8.5:
     resolution: {integrity: sha512-A8jmyUckVhRJj5lspguklcl90Ydqk61H3dcU0oLhH3Yv13KpAliKTt5hknpGGPZSSfOwGyraNEFmofDYH+1kSg==}
-
-  path-expression-matcher@1.1.3:
-    resolution: {integrity: sha512-qdVgY8KXmVdJZRSS1JdEPOKPdTiEK/pi0RkcT2sw1RhXxohdujUlJFPuS1TSkevZ9vzd3ZlL7ULl1MHGTApKzQ==}
-    engines: {node: '>=14.0.0'}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -2878,9 +2880,9 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  '@atomic-ehr/fhirpath-lsp@0.0.5(typescript@5.9.3)':
+  '@atomic-ehr/fhirpath-lsp@0.0.7(typescript@5.9.3)':
     dependencies:
-      '@atomic-ehr/fhirpath': 0.1.2(typescript@5.9.3)
+      '@atomic-ehr/fhirpath': 0.1.4(typescript@5.9.3)
       '@codemirror/autocomplete': 6.20.1
       '@codemirror/commands': 6.10.3
       '@codemirror/language': 6.12.2
@@ -2895,12 +2897,12 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@atomic-ehr/fhirpath@0.1.2(typescript@5.9.3)':
+  '@atomic-ehr/fhirpath@0.1.4(typescript@5.9.3)':
     dependencies:
       '@atomic-ehr/fhir-canonical-manager': 0.0.11(typescript@5.9.3)
       '@atomic-ehr/fhirschema': 0.0.2(typescript@5.9.3)
       '@atomic-ehr/ucum': 0.2.5(typescript@5.9.3)
-      fast-xml-parser: 5.5.6
+      fast-xml-parser: 5.3.9
       typescript: 5.9.3
 
   '@atomic-ehr/fhirschema@0.0.2(typescript@5.9.3)':
@@ -3300,19 +3302,19 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@health-samurai/aidbox-client@0.0.0-alpha.4':
+  '@health-samurai/aidbox-client@0.0.0-alpha.5':
     dependencies:
       '@types/json-patch': 0.0.33
       oauth4webapi: 3.8.5
       yaml: 2.8.2
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.6(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
+  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
-      '@atomic-ehr/fhirpath': 0.1.2(typescript@5.9.3)
-      '@atomic-ehr/fhirpath-lsp': 0.0.5(typescript@5.9.3)
+      '@atomic-ehr/fhirpath': 0.1.4(typescript@5.9.3)
+      '@atomic-ehr/fhirpath-lsp': 0.0.7(typescript@5.9.3)
       '@codemirror/lsp-client': 6.2.2
       '@codemirror/state': 6.6.0
-      '@health-samurai/aidbox-client': 0.0.0-alpha.4
+      '@health-samurai/aidbox-client': 0.0.0-alpha.5
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
     transitivePeerDependencies:
@@ -3362,6 +3364,7 @@ snapshots:
       '@radix-ui/react-toggle': 1.1.10(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@radix-ui/react-toggle-group': 1.1.11(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@radix-ui/react-tooltip': 1.2.8(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@replit/codemirror-vim': 6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)
       '@tanstack/react-table': 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       class-variance-authority: 0.7.1
       clsx: 2.1.1
@@ -4370,6 +4373,14 @@ snapshots:
       react: 19.2.4
       react-redux: 9.2.0(@types/react@19.2.0)(react@19.2.4)(redux@5.0.1)
 
+  '@replit/codemirror-vim@6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)':
+    dependencies:
+      '@codemirror/commands': 6.10.3
+      '@codemirror/language': 6.12.2
+      '@codemirror/search': 6.6.0
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.40.0
+
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
   '@rollup/rollup-android-arm-eabi@4.59.0':
@@ -4955,14 +4966,8 @@ snapshots:
 
   fast-diff@1.3.0: {}
 
-  fast-xml-builder@1.1.4:
+  fast-xml-parser@5.3.9:
     dependencies:
-      path-expression-matcher: 1.1.3
-
-  fast-xml-parser@5.5.6:
-    dependencies:
-      fast-xml-builder: 1.1.4
-      path-expression-matcher: 1.1.3
       strnum: 2.2.0
 
   fdir@6.5.0(picomatch@4.0.3):
@@ -5129,8 +5134,6 @@ snapshots:
   normalize-path@3.0.0: {}
 
   oauth4webapi@3.8.5: {}
-
-  path-expression-matcher@1.1.3: {}
 
   pathe@2.0.3: {}
 

@@ -49,8 +49,8 @@
 	"dependencies": {
 		"@git-diff-view/file": "^0.0.30",
 		"@git-diff-view/react": "^0.0.30",
-		"@health-samurai/aidbox-client": "0.0.0-alpha.4",
-		"@health-samurai/aidbox-fhirpath-lsp": "0.0.0-alpha.6",
+		"@health-samurai/aidbox-client": "0.0.0-alpha.5",
+		"@health-samurai/aidbox-fhirpath-lsp": "0.0.0-alpha.7",
 		"@health-samurai/react-components": "file:aidbox-ts-sdk/packages/react-components",
 		"@mcp-b/global": "^2.1.0",
 		"@tanstack/react-query": "^5.90.21",
