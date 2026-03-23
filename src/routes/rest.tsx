@@ -392,7 +392,9 @@ function operationOutcomeToIssueLines(
 		for (const issue of outcome.issue) {
 			const flat = flattenOutcomeIssues([issue]);
 			const expressions: string[] = issue.expression ?? [];
-			const message = flat[0]?.message ?? issue.diagnostics ?? "Error";
+			const rawMessage = flat[0]?.message ?? issue.diagnostics ?? "Error";
+			const issueCode = issue.code ?? "";
+			const message = issueCode ? `${issueCode}\n${rawMessage}` : rawMessage;
 			for (const expr of expressions) {
 				const segments = parseExpressionPath(expr);
 				if (segments.length === 0) {
@@ -410,7 +412,14 @@ function operationOutcomeToIssueLines(
 				}
 			}
 			if (expressions.length === 0) {
-				addLine(1, message);
+				// Try to extract line number from diagnostics (e.g. "line: 4, column: 1")
+				const diag = issue.diagnostics ?? "";
+				const lineMatch = diag.match(/line:\s*(\d+)/);
+				if (lineMatch) {
+					addLine(Number.parseInt(lineMatch[1], 10), message);
+				} else {
+					addLine(1, message);
+				}
 			}
 		}
 
