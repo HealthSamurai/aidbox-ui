@@ -664,7 +664,7 @@ function DbConsolePage() {
 					collapsedSize={0}
 					onCollapse={() => setLeftMenuOpen(false)}
 					onExpand={() => setLeftMenuOpen(true)}
-					>
+				>
 					<SqlLeftMenu
 						schemas={schemas}
 						onHistoryItemClick={handleHistoryItemClick}
@@ -672,10 +672,7 @@ function DbConsolePage() {
 					/>
 				</ResizablePanel>
 				{leftMenuOpen && <ResizableHandle />}
-				<ResizablePanel
-					defaultSize={80}
-					minSize={40}
-				>
+				<ResizablePanel defaultSize={80} minSize={40}>
 					<div className="flex flex-col h-full min-w-0">
 						<div className="flex h-10 w-full border-b">
 							<SqlLeftMenuToggle

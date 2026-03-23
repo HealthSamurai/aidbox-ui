@@ -301,7 +301,16 @@ export function ActiveTabs({
 
 	return (
 		<Tabs variant="browser" value={selectedTab}>
-			<TabsBrowserList>
+			<TabsBrowserList
+				onReorder={(from, to) => {
+					setTabs((prev) => {
+						const result = [...prev];
+						const [moved] = result.splice(from, 1);
+						result.splice(to, 0, moved);
+						return result;
+					});
+				}}
+			>
 				{tabs.map((tab) => {
 					return (
 						<ContextMenu key={tab.id}>
