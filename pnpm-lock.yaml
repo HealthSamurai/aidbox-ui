@@ -26,6 +26,9 @@ importers:
       '@mcp-b/global':
         specifier: ^2.1.0
         version: 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
+      '@replit/codemirror-vim':
+        specifier: ^6.3.0
+        version: 6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.90.21(react@19.2.4)
