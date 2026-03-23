@@ -362,3 +362,70 @@ export function getIssueLineNumbers(
 	}
 	return result;
 }
+
+/**
+ * Convert OperationOutcome issues into line-number-based issue markers
+ * with error tooltips. Handles missing expressions (falls back to
+ * diagnostics line extraction or line 1) and merges multiple messages
+ * on the same line.
+ */
+export function outcomeToIssueLines(
+	bodyText: string,
+	issues: {
+		expression?: string[];
+		diagnostics?: string;
+		code?: string;
+		details?: { text?: string; coding?: { code?: string }[] };
+	}[],
+	mode: "json" | "yaml",
+): { line: number; message?: string }[] {
+	const lineMessages = new Map<number, string[]>();
+
+	function addLine(line: number, message: string) {
+		const existing = lineMessages.get(line);
+		if (existing) {
+			if (!existing.includes(message)) existing.push(message);
+		} else {
+			lineMessages.set(line, [message]);
+		}
+	}
+
+	for (const issue of issues) {
+		const flat = flattenOutcomeIssues([issue]);
+		const expressions: string[] = issue.expression ?? [];
+		const rawMessage = flat[0]?.message ?? issue.diagnostics ?? "Error";
+		const issueCode = issue.code ?? "";
+		const hasTitle = rawMessage.includes("\n");
+		const message =
+			!hasTitle && issueCode ? `${issueCode}\n${rawMessage}` : rawMessage;
+
+		for (const expr of expressions) {
+			const offset =
+				mode === "yaml"
+					? findYamlPathOffset(bodyText, expr)
+					: findJsonPathOffset(bodyText, expr);
+			if (offset != null) {
+				addLine(offsetToLineNumber(bodyText, offset), message);
+			} else {
+				addLine(1, message);
+			}
+		}
+
+		if (expressions.length === 0) {
+			const diag = issue.diagnostics ?? "";
+			const lineMatch = diag.match(/line:\s*(\d+)/);
+			if (lineMatch) {
+				addLine(Number.parseInt(lineMatch[1], 10), message);
+			} else {
+				addLine(1, message);
+			}
+		}
+	}
+
+	const result: { line: number; message?: string }[] = [];
+	for (const [line, msgs] of lineMessages) {
+		const message = msgs.length === 1 ? msgs[0] : msgs.join("\n\x00\n");
+		result.push({ line, message });
+	}
+	return result;
+}

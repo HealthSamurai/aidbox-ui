@@ -23,6 +23,7 @@ export const SaveButton = ({
 	mode,
 	client,
 	onError,
+	onSuccess,
 	saveRef,
 }: {
 	resourceType: string;
@@ -31,6 +32,7 @@ export const SaveButton = ({
 	mode: EditorMode;
 	client: AidboxClientR5;
 	onError?: (error: Error) => void;
+	onSuccess?: () => void;
 	saveRef?: React.RefObject<SaveHandle>;
 }) => {
 	const navigate = Router.useNavigate();
@@ -48,6 +50,7 @@ export const SaveButton = ({
 			: Utils.onMutationError,
 		onSuccess: (resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
+			onSuccess?.();
 			queryClient.invalidateQueries({
 				queryKey: [pageId, resourceType, id],
 			});

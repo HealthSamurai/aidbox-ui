@@ -18,8 +18,7 @@ import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
 import {
 	findJsonPathOffset,
 	findYamlPathOffset,
-	flattenOutcomeIssues,
-	getIssueLineNumbers,
+	outcomeToIssueLines,
 } from "../../utils/json-path-offset";
 import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
@@ -227,9 +226,8 @@ export const ResourceEditorPage = ({
 
 	const issueLineNumbers = React.useMemo(() => {
 		if (!saveError?.issue) return undefined;
-		const issues = flattenOutcomeIssues(saveError.issue);
-		if (issues.length === 0) return undefined;
-		return getIssueLineNumbers(resourceText, issues, mode);
+		const lines = outcomeToIssueLines(resourceText, saveError.issue, mode);
+		return lines.length > 0 ? lines : undefined;
 	}, [saveError, resourceText, mode]);
 
 	const handleOnTabSelect = (value: ResourceEditorTab) => {
@@ -365,6 +363,7 @@ export const ResourceEditorPage = ({
 				mode={mode}
 				client={client}
 				onError={handleSaveError}
+				onSuccess={() => setEditDirty(false)}
 				saveRef={saveRef}
 			/>
 		</>

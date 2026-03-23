@@ -12,8 +12,7 @@ import { useVimMode } from "../../shared/vim-mode";
 import {
 	findJsonPathOffset,
 	findYamlPathOffset,
-	flattenOutcomeIssues,
-	getIssueLineNumbers,
+	outcomeToIssueLines,
 } from "../../utils/json-path-offset";
 import { CodeEditorMenubar } from "./code-editor-menubar";
 import {
@@ -236,9 +235,8 @@ export const CodeTabContent = () => {
 	const issueLineNumbers = React.useMemo(() => {
 		const runError = viewDefinitionContext.runError;
 		if (!runError?.issue) return undefined;
-		const issues = flattenOutcomeIssues(runError.issue);
-		if (issues.length === 0) return undefined;
-		return getIssueLineNumbers(editorValue, issues, codeMode);
+		const lines = outcomeToIssueLines(editorValue, runError.issue, codeMode);
+		return lines.length > 0 ? lines : undefined;
 	}, [viewDefinitionContext.runError, editorValue, codeMode]);
 
 	viewDefinitionContext.issueClickRef.current = (issue) => {
