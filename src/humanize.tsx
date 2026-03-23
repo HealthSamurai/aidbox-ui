@@ -840,20 +840,7 @@ function humanizeValue_(
 		if (typeof value === "string") return value;
 
 		const unknownHumanized = humanizeUnknown(value);
-		return unknownHumanized === "" ? (
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<span className="cursor-default">[...]</span>
-				</TooltipTrigger>
-				<TooltipContent side="bottom" className="max-w-md">
-					<pre className="text-xs whitespace-pre-wrap break-all font-mono">
-						{JSON.stringify(value, null, 2)}
-					</pre>
-				</TooltipContent>
-			</Tooltip>
-		) : (
-			unknownHumanized
-		);
+		return unknownHumanized === "" ? "[...]" : unknownHumanized;
 	} catch (_error) {
 		return null;
 	}
@@ -874,8 +861,11 @@ export function humanizeValue(
 
 		if (humanized.length === 1) return humanized[0];
 
-		if (humanized.every((h) => typeof h === "string"))
-			return humanized.filter((h) => h.trim()).join(", ");
+		if (humanized.every((h) => typeof h === "string")) {
+			const filtered = humanized.filter((h) => h.trim());
+			if (filtered.every((h) => h === "[...]")) return "[...]";
+			return filtered.join(", ");
+		}
 
 		return humanized[0];
 	}

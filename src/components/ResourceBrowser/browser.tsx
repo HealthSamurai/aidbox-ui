@@ -108,13 +108,18 @@ function ResourceList({
 										zebra
 										index={index}
 										className={HSComp.cn(
+											"cursor-pointer",
 											isLastFavorite && "border-b border-border-secondary",
 											index === focusedIndex && "bg-bg-hover",
 										)}
+										onClick={() => goToResource(row.resourceType)}
 									>
 										<HSComp.TableCell
-											className="w-8 px-1 align-middle text-center cursor-pointer"
-											onClick={() => onToggleFavorite(row.resourceType)}
+											className="w-8 px-1 align-middle text-center"
+											onClick={(e) => {
+												e.stopPropagation();
+												onToggleFavorite(row.resourceType);
+											}}
 										>
 											<span
 												className="pin-button flex items-center justify-center transition-opacity"
@@ -130,19 +135,13 @@ function ResourceList({
 												href={`/u/resource/${row.resourceType}`}
 												onClick={(e) => {
 													e.preventDefault();
-													goToResource(row.resourceType);
 												}}
 												className="text-text-link hover:underline"
 											>
 												{row.resourceType}
 											</a>
 										</HSComp.TableCell>
-										<HSComp.TableCell
-											onClick={() => goToResource(row.resourceType)}
-											className="cursor-pointer"
-										>
-											{row.url}
-										</HSComp.TableCell>
+										<HSComp.TableCell>{row.url}</HSComp.TableCell>
 									</HSComp.TableRow>
 								);
 							})

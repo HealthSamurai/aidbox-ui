@@ -393,7 +393,8 @@ export const ResourcesTabTable = ({
 								return (
 									<HSComp.TableCell key={k} className="max-w-[300px]">
 										<HSComp.Tooltip
-											delayDuration={500}
+											delayDuration={250}
+											disableHoverableContent
 											open={hasValue ? undefined : false}
 										>
 											<HSComp.TooltipTrigger asChild>
@@ -402,8 +403,8 @@ export const ResourcesTabTable = ({
 												</span>
 											</HSComp.TooltipTrigger>
 											<HSComp.TooltipContent
-												side="bottom"
-												className="max-w-[500px] typo-code"
+												collisionPadding={8}
+												className="max-w-[500px] typo-code pointer-events-none"
 											>
 												<pre className="whitespace-pre-wrap break-all text-xs">
 													{typeof v === "object"
