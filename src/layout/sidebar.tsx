@@ -23,84 +23,90 @@ import {
 	SquareTerminal,
 } from "lucide-react";
 import { useEffect } from "react";
+import { useAuditLogEnabled } from "../components/AuditEvents/api";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 import { getAidboxBaseURL } from "../utils";
 
-const mainMenuItems: { link: React.JSX.Element; url: string; title: string }[] =
-	[
-		{
-			url: "/resource",
-			title: "Resource browser",
-			link: (
-				<Link to="/resource">
-					<Columns3Cog />
-					Resource browser
-				</Link>
-			),
-		},
-		{
-			url: "/rest",
-			title: "REST Console",
-			link: (
-				<Link to="/rest">
-					<SquareTerminal />
-					REST Console
-				</Link>
-			),
-		},
-		{
-			url: "/db-console",
-			title: "DB Console",
-			link: (
-				<Link to="/db-console">
-					<Database />
-					DB Console
-				</Link>
-			),
-		},
-		{
-			url: "/ig",
-			title: "FHIR Packages",
-			link: (
-				<Link to="/ig">
-					<Package />
-					FHIR Packages
-				</Link>
-			),
-		},
-		{
-			url: `${getAidboxBaseURL()}/ui/sdc`,
-			title: "Aidbox Forms",
-			link: (
-				<a href={`${getAidboxBaseURL()}/ui/sdc`}>
-					<ClipboardList />
-					Aidbox Forms
-					<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
-				</a>
-			),
-		},
-		{
-			url: "/audit-events",
-			title: "Audit events",
-			link: (
-				<Link to="/audit-events">
-					<ShieldUser />
-					Audit events
-				</Link>
-			),
-		},
-		{
-			url: "/settings",
-			title: "Settings",
-			link: (
-				<Link to="/settings">
-					<Settings />
-					Settings
-				</Link>
-			),
-		},
-	];
+const mainMenuItems: {
+	link: React.JSX.Element;
+	url: string;
+	title: string;
+	key?: string;
+}[] = [
+	{
+		url: "/resource",
+		title: "Resource browser",
+		link: (
+			<Link to="/resource">
+				<Columns3Cog />
+				Resource browser
+			</Link>
+		),
+	},
+	{
+		url: "/rest",
+		title: "REST Console",
+		link: (
+			<Link to="/rest">
+				<SquareTerminal />
+				REST Console
+			</Link>
+		),
+	},
+	{
+		url: "/db-console",
+		title: "DB Console",
+		link: (
+			<Link to="/db-console">
+				<Database />
+				DB Console
+			</Link>
+		),
+	},
+	{
+		url: "/ig",
+		title: "FHIR Packages",
+		link: (
+			<Link to="/ig">
+				<Package />
+				FHIR Packages
+			</Link>
+		),
+	},
+	{
+		url: `${getAidboxBaseURL()}/ui/sdc`,
+		title: "Aidbox Forms",
+		link: (
+			<a href={`${getAidboxBaseURL()}/ui/sdc`}>
+				<ClipboardList />
+				Aidbox Forms
+				<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
+			</a>
+		),
+	},
+	{
+		url: "/audit-events",
+		title: "Audit events",
+		key: "audit-events",
+		link: (
+			<Link to="/audit-events">
+				<ShieldUser />
+				Audit events
+			</Link>
+		),
+	},
+	{
+		url: "/settings",
+		title: "Settings",
+		link: (
+			<Link to="/settings">
+				<Settings />
+				Settings
+			</Link>
+		),
+	},
+];
 
 const isActiveNavItem = (
 	item: (typeof mainMenuItems)[number],
@@ -123,6 +129,11 @@ export function AidboxSidebar({
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
 	const sidebar = useSidebar();
+	const { data: auditLogEnabled } = useAuditLogEnabled();
+
+	const visibleMenuItems = mainMenuItems.filter(
+		(item) => item.key !== "audit-events" || auditLogEnabled,
+	);
 
 	useEffect(() => {
 		sidebar.setOpen(sidebarMode === "expanded");
@@ -138,7 +149,7 @@ export function AidboxSidebar({
 				<SidebarGroup>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{mainMenuItems.map((item) => (
+							{visibleMenuItems.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton
 										asChild
