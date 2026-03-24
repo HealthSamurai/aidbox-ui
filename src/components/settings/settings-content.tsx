@@ -72,14 +72,13 @@ export function SettingsContent({
 
 	return (
 		<div className="relative flex h-full flex-col">
-			<div className="bg-bg-primary px-16 py-4">
-				<div className="mx-auto w-1/2">
+			<div className="relative z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
+				<div className="@container mx-auto max-w-[990px] px-8">
 					<Input
 						value={search}
 						onChange={(e) => onSearchChange(e.target.value)}
 						placeholder="Search Settings"
 						leftSlot={<Search size={16} />}
-						className="rounded-full"
 					/>
 				</div>
 			</div>
