@@ -1411,18 +1411,20 @@ export const FormTabContent = ({
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
 							<TextQuote size={12} />
 						</span>
-						<InputView
-							placeholder="Column name"
-							value={columnData.name}
-							onChange={(value) =>
-								updateSelectColumn(
-									selectItemId,
-									columnData.nodeId,
-									"name",
-									value,
-								)
-							}
-						/>
+						<div className="w-[300px] shrink-0">
+							<InputView
+								placeholder="Column name"
+								value={columnData.name}
+								onChange={(value) =>
+									updateSelectColumn(
+										selectItemId,
+										columnData.nodeId,
+										"name",
+										value,
+									)
+								}
+							/>
+						</div>
 						<FhirPathInput
 							id={`fhirpath-${columnData.nodeId}`}
 							placeholder="Path"

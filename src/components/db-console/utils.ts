@@ -1,6 +1,7 @@
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 
-export type SchemaMap = Record<string, string[]>;
+export type TableEntry = { name: string; type: "table" | "view" };
+export type SchemaMap = Record<string, TableEntry[]>;
 
 export const LIMIT_PRESETS = [10, 100, 1000];
 

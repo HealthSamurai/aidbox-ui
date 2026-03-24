@@ -59,7 +59,7 @@ const parseResponse = (
 	}
 };
 
-const extractColumns = (data: unknown[]): string[] => {
+const extractColumnsFromData = (data: unknown[]): string[] => {
 	const allKeys = new Set<string>();
 	for (const row of data) {
 		if (typeof row === "object" && row !== null) {
@@ -69,7 +69,43 @@ const extractColumns = (data: unknown[]): string[] => {
 	return Array.from(allKeys);
 };
 
-const processTableData = (response: string | undefined): ProcessedTableData => {
+const extractColumnOrder = (
+	selectItems: ViewDefinition["select"] | undefined,
+): string[] => {
+	if (!selectItems) return [];
+	const names: string[] = [];
+	for (const item of selectItems) {
+		if (item.column) {
+			for (const col of item.column) {
+				if (col.name) names.push(col.name);
+			}
+		}
+		if (item.select) {
+			names.push(...extractColumnOrder(item.select));
+		}
+		if (item.unionAll) {
+			names.push(...extractColumnOrder(item.unionAll));
+		}
+	}
+	return names;
+};
+
+const sortColumnsByDefinition = (
+	columns: string[],
+	definitionOrder: string[],
+): string[] => {
+	const orderMap = new Map(definitionOrder.map((name, i) => [name, i]));
+	return [...columns].sort((a, b) => {
+		const ai = orderMap.get(a) ?? Number.MAX_SAFE_INTEGER;
+		const bi = orderMap.get(b) ?? Number.MAX_SAFE_INTEGER;
+		return ai - bi;
+	});
+};
+
+const processTableData = (
+	response: string | undefined,
+	viewDefinition?: ViewDefinition,
+): ProcessedTableData => {
 	const parsedData = parseResponse(response);
 
 	if (!parsedData) {
@@ -80,8 +116,13 @@ const processTableData = (response: string | undefined): ProcessedTableData => {
 		return { tableData: [], columns: [], isEmptyArray: true };
 	}
 
-	const columns = extractColumns(parsedData);
-	return { tableData: parsedData, columns, isEmptyArray: false };
+	const columns = extractColumnsFromData(parsedData);
+	const definitionOrder = extractColumnOrder(viewDefinition?.select);
+	const sortedColumns =
+		definitionOrder.length > 0
+			? sortColumnsByDefinition(columns, definitionOrder)
+			: columns;
+	return { tableData: parsedData, columns: sortedColumns, isEmptyArray: false };
 };
 
 const ResultHeader = ({
@@ -191,7 +232,7 @@ const ResultContent = ({
 									key={key}
 									className={`px-6 hover:bg-transparent ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
 								>
-									{key.charAt(0).toUpperCase() + key.slice(1)}
+									{key}
 								</TableHead>
 							))}
 						</TableRow>
@@ -248,7 +289,10 @@ export function ResultPanel({
 		tableData,
 		columns: initialColumns,
 		isEmptyArray,
-	} = useMemo(() => processTableData(rows), [rows]);
+	} = useMemo(
+		() => processTableData(rows, viewDefinitionContext.runViewDefinition),
+		[rows, viewDefinitionContext.runViewDefinition],
+	);
 
 	const [accumulatedData, setAccumulatedData] = useState<
 		Record<string, unknown>[]

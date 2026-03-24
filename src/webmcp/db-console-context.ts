@@ -1,4 +1,5 @@
 import { createContext, use } from "react";
+import type { SchemaMap } from "../components/db-console/utils";
 
 export interface DbConsoleTab {
 	id: string;
@@ -71,7 +72,7 @@ export interface DbConsoleActions {
 	setRowLimit: (limit: number | null) => void;
 	getHistory: (search?: string, limit?: number) => HistoryEntry[];
 	openHistoryEntry: (query: string) => void;
-	getSchemas: () => Record<string, string[]>;
+	getSchemas: () => SchemaMap;
 }
 
 export const DbConsoleActionsContext = createContext<DbConsoleActions | null>(

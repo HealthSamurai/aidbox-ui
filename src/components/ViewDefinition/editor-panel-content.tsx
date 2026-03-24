@@ -244,7 +244,10 @@ type RunResult = {
 	data: string;
 };
 
-export const useViewDefinitionActions = (client: AidboxClientR5) => {
+export const useViewDefinitionActions = (
+	client: AidboxClientR5,
+	options?: { onRunSuccess?: () => void },
+) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
@@ -382,6 +385,7 @@ export const useViewDefinitionActions = (client: AidboxClientR5) => {
 				const { data } = result.value.resource;
 				const decodedData = atob(data);
 				viewDefinitionContext.setRunResult(decodedData);
+				options?.onRunSuccess?.();
 				HSComp.toast.success("ViewDefinition run successfully", {
 					position: "bottom-right",
 					style: { margin: "1rem" },
@@ -574,11 +578,13 @@ export const EditorPanelContent = ({
 	onTogglePreview,
 	actionsRef,
 	onInstancesQueryChange,
+	onExpandResult,
 }: {
 	isPreviewOpen: boolean;
 	onTogglePreview: () => void;
 	actionsRef: React.RefObject<ViewDefinitionBuilderActions>;
 	onInstancesQueryChange: (query: string) => void;
+	onExpandResult?: () => void;
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
@@ -593,7 +599,9 @@ export const EditorPanelContent = ({
 		handleSaveAsync,
 		handleMaterializeAsync,
 		handleDeleteAsync,
-	} = useViewDefinitionActions(aidboxClient);
+	} = useViewDefinitionActions(aidboxClient, {
+		onRunSuccess: onExpandResult,
+	});
 
 	actionsRef.current = {
 		getViewDefinition: () => viewDefinitionContext.viewDefinition,
@@ -686,7 +694,7 @@ export const EditorPanelContent = ({
 								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						) : (
-							<div className="mx-auto max-w-[687px] min-h-full bg-bg-primary border-x border-border-secondary px-2.5 py-3">
+							<div className="min-h-full bg-bg-primary px-2.5 py-3">
 								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						)}
@@ -759,6 +767,10 @@ export const BuilderContent = () => {
 		setIsResultCollapsed((prev) => !prev);
 	};
 
+	const handleExpandResult = () => {
+		setIsResultCollapsed(false);
+	};
+
 	if (isResultCollapsed) {
 		return (
 			<div className="relative h-full flex flex-col">
@@ -773,6 +785,7 @@ export const BuilderContent = () => {
 								onTogglePreview={handleTogglePreview}
 								actionsRef={actionsRef}
 								onInstancesQueryChange={setInstancesQuery}
+								onExpandResult={handleExpandResult}
 							/>
 						</HSComp.ResizablePanel>
 						{isPreviewOpen && (
@@ -826,6 +839,7 @@ export const BuilderContent = () => {
 								onTogglePreview={handleTogglePreview}
 								actionsRef={actionsRef}
 								onInstancesQueryChange={setInstancesQuery}
+								onExpandResult={handleExpandResult}
 							/>
 						</HSComp.ResizablePanel>
 						{isPreviewOpen && (

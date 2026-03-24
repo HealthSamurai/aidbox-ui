@@ -14,12 +14,13 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Table2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
+import type { SchemaMap } from "./utils";
 
 // Types
 
@@ -166,19 +167,21 @@ function formatRowCount(count: number): string {
 
 // Tables list
 
-const PAGE_SIZE = 50;
-
 function TablesListView({
 	schemas,
 	onSelect,
 	isActive,
 }: {
-	schemas: Record<string, string[]>;
+	schemas: SchemaMap;
 	onSelect: (table: TableId) => void;
 	isActive: boolean;
 }) {
 	const [search, setSearch] = useState("");
-	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+	const [expanded, setExpanded] = useLocalStorage<Record<string, boolean>>({
+		key: "db-console-schema-expanded",
+		defaultValue: {},
+		getInitialValueInEffect: false,
+	});
 	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 
@@ -195,18 +198,28 @@ function TablesListView({
 			return a.localeCompare(b);
 		});
 
-		const items: { schema: string; name: string; key: string }[] = [];
+		const items: {
+			schema: string;
+			name: string;
+			type: "table" | "view";
+			key: string;
+		}[] = [];
 		for (const schema of schemaKeys) {
-			const tables = schemas[schema];
-			if (!tables) continue;
-			const sorted = [...tables].sort((a, b) => {
-				const aSystem = a.startsWith("_");
-				const bSystem = b.startsWith("_");
+			const entries = schemas[schema];
+			if (!entries) continue;
+			const sorted = [...entries].sort((a, b) => {
+				const aSystem = a.name.startsWith("_");
+				const bSystem = b.name.startsWith("_");
 				if (aSystem !== bSystem) return aSystem ? 1 : -1;
-				return a.localeCompare(b);
+				return a.name.localeCompare(b.name);
 			});
-			for (const name of sorted) {
-				items.push({ schema, name, key: `${schema}.${name}` });
+			for (const entry of sorted) {
+				items.push({
+					schema,
+					name: entry.name,
+					type: entry.type,
+					key: `${schema}.${entry.name}`,
+				});
 			}
 		}
 		return items;
@@ -218,29 +231,18 @@ function TablesListView({
 		return allItems.filter((t) => t.key.toLowerCase().includes(lower));
 	}, [allItems, search]);
 
-	const visible = filtered.slice(0, visibleCount);
-
-	const handleScroll = useCallback(() => {
-		const el = listRef.current;
-		if (!el) return;
-		if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
-			setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
-		}
-	}, [filtered.length]);
-
 	const handleSearchChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
 			setSearch(e.target.value);
-			setVisibleCount(PAGE_SIZE);
 			if (listRef.current) listRef.current.scrollTop = 0;
 		},
 		[],
 	);
 
-	// Group visible items by schema for display
+	// Group filtered items by schema for display
 	const groups = useMemo(() => {
-		const map = new Map<string, typeof visible>();
-		for (const item of visible) {
+		const map = new Map<string, typeof filtered>();
+		for (const item of filtered) {
 			let group = map.get(item.schema);
 			if (!group) {
 				group = [];
@@ -249,7 +251,7 @@ function TablesListView({
 			group.push(item);
 		}
 		return map;
-	}, [visible]);
+	}, [filtered]);
 
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
@@ -262,11 +264,7 @@ function TablesListView({
 					className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 				/>
 			</div>
-			<div
-				ref={listRef}
-				className="flex-1 min-h-0 overflow-auto pt-1"
-				onScroll={handleScroll}
-			>
+			<div ref={listRef} className="flex-1 min-h-0 overflow-auto pt-1">
 				{filtered.length === 0 && (
 					<div className="p-4 text-center typo-body-xs text-text-tertiary">
 						No tables found.
@@ -274,23 +272,41 @@ function TablesListView({
 				)}
 				{Array.from(groups).map(([schema, items]) => (
 					<div key={schema} className="pl-1 pr-3">
-						<div className="pl-2 pt-3 pb-2 typo-label-xs text-text-tertiary uppercase">
+						<button
+							type="button"
+							className="flex w-full items-center gap-1 pl-1 pt-3 pb-2 typo-label-xs text-text-tertiary uppercase cursor-pointer hover:text-text-secondary"
+							onClick={() =>
+								setExpanded((prev) => ({
+									...prev,
+									[schema]: !prev[schema],
+								}))
+							}
+						>
+							<ChevronRight
+								className={`size-3 transition-transform duration-150 ${search || expanded[schema] ? "rotate-90" : ""}`}
+							/>
 							{schema}
-						</div>
-						{items.map((item) => (
-							<button
-								type="button"
-								key={item.key}
-								onClick={() =>
-									onSelect({ schema: item.schema, name: item.name })
-								}
-								className={`${tableItem} w-full`}
-							>
-								<span className="typo-code text-text-body truncate">
-									{item.name}
-								</span>
-							</button>
-						))}
+						</button>
+						{(search || expanded[schema]) &&
+							items.map((item) => (
+								<button
+									type="button"
+									key={item.key}
+									onClick={() =>
+										onSelect({ schema: item.schema, name: item.name })
+									}
+									className={`${tableItem} w-full`}
+								>
+									{item.type === "view" ? (
+										<Eye className="size-3.5 shrink-0 text-text-tertiary" />
+									) : (
+										<Table2 className="size-3.5 shrink-0 text-text-tertiary" />
+									)}
+									<span className="typo-code text-text-body truncate">
+										{item.name}
+									</span>
+								</button>
+							))}
 					</div>
 				))}
 			</div>
@@ -593,7 +609,7 @@ export function SqlTablesCommand({
 	onTableClick,
 	isActive,
 }: {
-	schemas: Record<string, string[]>;
+	schemas: SchemaMap;
 	onTableClick: (query: string) => void;
 	isActive: boolean;
 }) {

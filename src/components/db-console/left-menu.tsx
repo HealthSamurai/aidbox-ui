@@ -21,6 +21,7 @@ import { useSqlHistory } from "../../api/sql-history";
 import { useLocalStorage } from "../../hooks";
 import { ActiveQueriesView } from "./active-queries-view";
 import { SqlTablesCommand } from "./tables-view";
+import type { SchemaMap } from "./utils";
 
 // Types
 
@@ -267,7 +268,7 @@ export function SqlLeftMenu({
 	onHistoryItemClick,
 	onTableClick,
 }: {
-	schemas: Record<string, string[]>;
+	schemas: SchemaMap;
 	onHistoryItemClick: (command: string) => void;
 	onTableClick: (query: string) => void;
 }) {

@@ -54,7 +54,7 @@ import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "SQL console";
 
-const TABLES_QUERY = `SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type = 'BASE TABLE' ORDER BY table_schema, table_name`;
+const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
 
 export const Route = createFileRoute("/db-console")({
 	component: DbConsolePage,
@@ -84,13 +84,21 @@ function useDbConsoleData() {
 			.then(async (res) => {
 				if (cancelled || !res.response.ok) return;
 				const data = await res.response.json();
-				const rows: { table_schema: string; table_name: string }[] =
-					Array.isArray(data) ? (data[0]?.result ?? []) : (data.result ?? []);
+				const rows: {
+					table_schema: string;
+					table_name: string;
+					table_type: string;
+				}[] = Array.isArray(data)
+					? (data[0]?.result ?? [])
+					: (data.result ?? []);
 				const map: SchemaMap = {};
 				for (const row of rows) {
 					const s = row.table_schema;
 					if (!map[s]) map[s] = [];
-					map[s].push(row.table_name);
+					map[s].push({
+						name: row.table_name,
+						type: row.table_type === "VIEW" ? "view" : "table",
+					});
 				}
 				setSchemas(map);
 			})
@@ -219,7 +227,8 @@ function DbConsolePage() {
 				if (rowLimitRef.current !== null) {
 					q = statements
 						.map((s) =>
-							/\bLIMIT\s+\d+/i.test(s)
+							/\bLIMIT\s+\d+/i.test(s) ||
+							!/^\s*SELECT\b/i.test(s)
 								? s
 								: `${s} LIMIT ${rowLimitRef.current}`,
 						)
