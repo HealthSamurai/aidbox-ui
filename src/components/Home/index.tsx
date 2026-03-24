@@ -6,9 +6,11 @@ import {
 	Check,
 	Database,
 	Github,
+	Play,
 	SquareTerminal,
 	TableProperties,
 } from "lucide-react";
+import { useRef, useState } from "react";
 
 function GifPlaceholder({ label }: { label: string }) {
 	return (
@@ -90,17 +92,54 @@ function FeatureSection({
 		</div>
 	);
 
+	const videoRef = useRef<HTMLVideoElement>(null);
+	const [playing, setPlaying] = useState(false);
+
+	const handlePlay = () => {
+		if (videoRef.current) {
+			videoRef.current.play();
+			setPlaying(true);
+		}
+	};
+
+	const handlePause = () => {
+		if (videoRef.current) {
+			videoRef.current.pause();
+			setPlaying(false);
+		}
+	};
+
 	const gifBlock = (
-		<div className="md:pt-15">
+		<div className={`lg:pt-15 ${reverse ? "lg:-order-1" : ""}`}>
 			{video ? (
-				<video
-					className="w-full rounded-xl border border-border-primary"
-					src={video}
-					autoPlay
-					loop
-					muted
-					playsInline
-				/>
+				<div
+					className="group relative cursor-pointer overflow-hidden"
+					onClick={playing ? handlePause : handlePlay}
+				>
+					<video
+						ref={videoRef}
+						className="w-full"
+						src={video}
+						loop
+						muted
+						playsInline
+						onEnded={() => setPlaying(false)}
+					/>
+					<div
+						className={`absolute inset-0 flex items-center justify-center bg-black/10 transition-opacity duration-300 ${playing ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
+					>
+						<div className="flex size-14 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-transform duration-200 group-hover:scale-110">
+							{playing ? (
+								<div className="flex gap-1">
+									<div className="h-5 w-1.5 rounded-sm bg-text-primary" />
+									<div className="h-5 w-1.5 rounded-sm bg-text-primary" />
+								</div>
+							) : (
+								<Play className="ml-1 size-6 fill-text-primary text-text-primary" />
+							)}
+						</div>
+					</div>
+				</div>
 			) : (
 				<GifPlaceholder label={gifLabel} />
 			)}
@@ -108,18 +147,9 @@ function FeatureSection({
 	);
 
 	return (
-		<section className="grid grid-cols-1 items-start gap-12 md:grid-cols-2 md:gap-16">
-			{reverse ? (
-				<>
-					{gifBlock}
-					{textBlock}
-				</>
-			) : (
-				<>
-					{textBlock}
-					{gifBlock}
-				</>
-			)}
+		<section className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
+			{textBlock}
+			{gifBlock}
 		</section>
 	);
 }
@@ -136,8 +166,8 @@ export function HomePage() {
 					<p className="mx-auto mt-5 text-lg leading-relaxed text-text-secondary">
 						A modern, open-source developer console for Aidbox.
 						<br />
-						Explore FHIR resources, run queries, and build views — all from
-						your browser.
+						Explore FHIR resources, run queries, and build views — all from your
+						browser.
 					</p>
 				</div>
 
@@ -164,7 +194,7 @@ export function HomePage() {
 					<FeatureSection
 						icon={<SquareTerminal className="size-5" />}
 						title="REST Console"
-						description="Postman-style REST client with deep FHIR integration. Test APIs, explore endpoints, and debug requests without leaving Aidbox."
+						description="New REST client with deep FHIR integration. Test APIs, explore endpoints, and debug requests without leaving Aidbox."
 						features={[
 							"Multiple tabs for parallel requests",
 							"Autocomplete for URLs, parameters, and headers",
