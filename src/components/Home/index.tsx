@@ -1,4 +1,7 @@
 import { Button } from "@health-samurai/react-components";
+import { restConsoleImage } from "./rest-image";
+import { sqlConsoleImage } from "./sql-image";
+import { vdBuilderImage } from "./vd-image";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -6,16 +9,111 @@ import {
 	Check,
 	Database,
 	Github,
-	Play,
 	SquareTerminal,
 	TableProperties,
 } from "lucide-react";
-import { useRef, useState } from "react";
 
-function GifPlaceholder({ label }: { label: string }) {
+const cardShadow =
+	"shadow-[0px_56px_34px_0px_rgba(0,0,0,0.03),0px_25px_25px_0px_rgba(0,0,0,0.04),0px_6px_14px_0px_rgba(0,0,0,0.05)]";
+
+function RestIllustration() {
 	return (
-		<div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border-primary bg-bg-secondary text-sm text-text-tertiary">
-			{label} — gif placeholder
+		<div
+			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
+		>
+			<img
+				src={restConsoleImage}
+				alt="REST Console"
+				className="w-full"
+			/>
+		</div>
+	);
+}
+
+function SqlIllustration() {
+	return (
+		<div
+			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
+		>
+			<img
+				src={sqlConsoleImage}
+				alt="SQL Console"
+				className="w-full"
+			/>
+		</div>
+	);
+}
+
+function VdIllustration() {
+	return (
+		<div
+			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
+		>
+			<img
+				src={vdBuilderImage}
+				alt="ViewDefinition Builder"
+				className="w-full"
+			/>
+		</div>
+	);
+}
+
+const storybookUrl =
+	"https://healthsamurai.github.io/aidbox-ts-sdk/react-components/?path=/docs/component-button--docs";
+
+function OpenSourceIllustration() {
+	return (
+		<div
+			className={`overflow-hidden rounded-xl border border-border-primary bg-bg-primary ${cardShadow}`}
+		>
+			<div className="flex items-center gap-2 border-b border-border-primary bg-bg-secondary px-4 py-2.5">
+				<div className="size-3 rounded-full bg-red-400" />
+				<div className="size-3 rounded-full bg-yellow-400" />
+				<div className="size-3 rounded-full bg-green-400" />
+				<span className="ml-2 font-mono text-[11px] text-text-tertiary">
+					App.tsx
+				</span>
+			</div>
+			<pre className="px-4 py-3 font-mono text-[11px] leading-[1.7]">
+				<span className="text-purple-600">import</span>
+				{" { "}
+				<span className="text-blue-600">Button</span>
+				{", "}
+				<span className="text-blue-600">Input</span>
+				{" } "}
+				<span className="text-purple-600">from</span>
+				{" "}
+				<span className="text-green-600">
+					{"'@health-samurai/react-components'"}
+				</span>
+				{";\n\n"}
+				<span className="text-purple-600">function</span>
+				{" "}
+				<span className="text-blue-600">App</span>
+				{"() {\n  "}
+				<span className="text-purple-600">return</span>
+				{" (\n    <"}
+				<span className="text-blue-600">div</span>
+				{">\n      <"}
+				<span className="text-blue-600">Input</span>
+				{" "}
+				<span className="text-text-tertiary">placeholder</span>
+				{"="}
+				<span className="text-green-600">"Search..."</span>
+				{" />\n      <"}
+				<span className="text-blue-600">Button</span>
+				{" "}
+				<span className="text-text-tertiary">onClick</span>
+				{"={() => console."}
+				<span className="text-blue-600">log</span>
+				{"("}
+				<span className="text-green-600">{"'clicked'"}</span>
+				{")}>\n        Submit\n      </"}
+				<span className="text-blue-600">Button</span>
+				{">\n    </"}
+				<span className="text-blue-600">div</span>
+				{">\n  );\n}"}
+			</pre>
 		</div>
 	);
 }
@@ -30,8 +128,7 @@ function FeatureSection({
 	cta,
 	secondaryTo,
 	secondaryCta,
-	gifLabel,
-	video,
+	illustration,
 	reverse,
 }: {
 	icon: React.ReactNode;
@@ -43,8 +140,7 @@ function FeatureSection({
 	cta: string;
 	secondaryTo?: string;
 	secondaryCta?: string;
-	gifLabel: string;
-	video?: string;
+	illustration?: React.ReactNode;
 	reverse?: boolean;
 }) {
 	const textBlock = (
@@ -92,64 +188,23 @@ function FeatureSection({
 		</div>
 	);
 
-	const videoRef = useRef<HTMLVideoElement>(null);
-	const [playing, setPlaying] = useState(false);
-
-	const handlePlay = () => {
-		if (videoRef.current) {
-			videoRef.current.play();
-			setPlaying(true);
-		}
-	};
-
-	const handlePause = () => {
-		if (videoRef.current) {
-			videoRef.current.pause();
-			setPlaying(false);
-		}
-	};
-
-	const gifBlock = (
-		<div className={`lg:pt-15 ${reverse ? "lg:-order-1" : ""}`}>
-			{video ? (
-				<div
-					className="group relative cursor-pointer overflow-hidden"
-					onClick={playing ? handlePause : handlePlay}
-				>
-					<video
-						ref={videoRef}
-						className="w-full"
-						src={video}
-						loop
-						muted
-						playsInline
-						onEnded={() => setPlaying(false)}
-					/>
-					<div
-						className={`absolute inset-0 flex items-center justify-center bg-black/10 transition-opacity duration-300 ${playing ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
-					>
-						<div className="flex size-14 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-transform duration-200 group-hover:scale-110">
-							{playing ? (
-								<div className="flex gap-1">
-									<div className="h-5 w-1.5 rounded-sm bg-text-primary" />
-									<div className="h-5 w-1.5 rounded-sm bg-text-primary" />
-								</div>
-							) : (
-								<Play className="ml-1 size-6 fill-text-primary text-text-primary" />
-							)}
-						</div>
-					</div>
-				</div>
-			) : (
-				<GifPlaceholder label={gifLabel} />
-			)}
-		</div>
+	const illustrationBlock = (
+		<div className="md:pt-15">{illustration}</div>
 	);
 
 	return (
-		<section className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
-			{textBlock}
-			{gifBlock}
+		<section className="grid grid-cols-1 items-start gap-12 md:grid-cols-2 md:gap-16">
+			{reverse ? (
+				<>
+					{illustrationBlock}
+					{textBlock}
+				</>
+			) : (
+				<>
+					{textBlock}
+					{illustrationBlock}
+				</>
+			)}
 		</section>
 	);
 }
@@ -179,16 +234,15 @@ export function HomePage() {
 						description="Aidbox UI is fully open source. Fork it, extend it, contribute back. Built with React, TypeScript, and a shared component library."
 						features={[
 							"Full source code on GitHub",
-							"Reusable FHIR component library",
-							"Community contributions welcome",
+							"Reusable React component library",
+							"Storybook with live examples",
 						]}
 						to="https://github.com/HealthSamurai/aidbox-ui"
 						external
 						cta="View on GitHub"
 						secondaryTo="https://github.com/HealthSamurai/aidbox-ts-sdk/tree/master/packages/react-components"
 						secondaryCta="React Components"
-						gifLabel="GitHub repository"
-						video="/videos/open-source.mp4"
+						illustration={<OpenSourceIllustration />}
 					/>
 
 					<FeatureSection
@@ -202,8 +256,7 @@ export function HomePage() {
 						]}
 						to="/rest"
 						cta="Try REST console"
-						gifLabel="REST console"
-						video="/videos/rest-console.mp4"
+						illustration={<RestIllustration />}
 						reverse
 					/>
 
@@ -220,8 +273,7 @@ export function HomePage() {
 						]}
 						to="/db-console"
 						cta="Try SQL console"
-						gifLabel="SQL console"
-						video="/videos/sql-console.mp4"
+						illustration={<SqlIllustration />}
 					/>
 
 					<FeatureSection
@@ -235,8 +287,7 @@ export function HomePage() {
 						]}
 						to="/resource/ViewDefinition"
 						cta="Try ViewDefinition builder"
-						gifLabel="ViewDefinition builder"
-						video="/videos/vd-builder.mp4"
+						illustration={<VdIllustration />}
 						reverse
 					/>
 				</div>
