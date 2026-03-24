@@ -128,7 +128,7 @@ export function TextSetting({
 	return (
 		<div className="group/setting">
 			<div
-				className={`rounded-md border px-8 py-3 @[900px]:px-0 ${isEditing ? "border-border-secondary" : "border-transparent"}`}
+				className={`rounded-md border border-transparent px-8 py-3 @[900px]:px-0`}
 			>
 				<div className="space-y-1">
 					<Label className="select-text text-sm">

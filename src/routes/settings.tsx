@@ -1,9 +1,4 @@
-import {
-	ResizableHandle,
-	ResizablePanel,
-	ResizablePanelGroup,
-	Skeleton,
-} from "@health-samurai/react-components";
+import { Skeleton } from "@health-samurai/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { onError } from "../api/utils";
@@ -172,13 +167,8 @@ function SettingsPage() {
 
 	if (isLoading) {
 		return (
-			<ResizablePanelGroup direction="horizontal" className="h-full">
-				<ResizablePanel
-					defaultSize={15}
-					minSize={10}
-					maxSize={25}
-					className="border-r border-border-secondary"
-				>
+			<div className="flex h-full">
+				<div className="w-[272px] shrink-0 border-r border-border-secondary">
 					<div className="p-3">
 						<div className="space-y-2">
 							{Array.from({ length: 8 }).map((_, i) => (
@@ -189,31 +179,27 @@ function SettingsPage() {
 							))}
 						</div>
 					</div>
-				</ResizablePanel>
-				<ResizableHandle />
-				<ResizablePanel defaultSize={85}>
-					<div className="flex-1 p-6">
-						<div className="space-y-4">
-							{Array.from({ length: 6 }).map((_, i) => (
-								<Skeleton
-									key={`content-${i.toString()}`}
-									className="h-12 w-full rounded"
-								/>
-							))}
-						</div>
+				</div>
+				<div className="flex-1 p-6">
+					<div className="space-y-4">
+						{Array.from({ length: 6 }).map((_, i) => (
+							<Skeleton
+								key={`content-${i.toString()}`}
+								className="h-12 w-full rounded"
+							/>
+						))}
 					</div>
-				</ResizablePanel>
-			</ResizablePanelGroup>
+				</div>
+			</div>
 		);
 	}
 
 	return (
-		<ResizablePanelGroup direction="horizontal" className="h-full">
-			<ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
+		<div className="flex h-full">
+			<div className="w-[272px] shrink-0 border-r border-border-secondary">
 				<SettingsSidebar visibleCategories={computedVisibleCategories} />
-			</ResizablePanel>
-			<ResizableHandle />
-			<ResizablePanel defaultSize={85}>
+			</div>
+			<div className="min-w-0 flex-1">
 				<SettingsContent
 					allSettings={allSettings ?? []}
 					search={search}
@@ -231,7 +217,7 @@ function SettingsPage() {
 					deprecatedCapabilities={deprecatedCapabilities}
 					searchFn={searchFn}
 				/>
-			</ResizablePanel>
-		</ResizablePanelGroup>
+			</div>
+		</div>
 	);
 }
