@@ -1,4 +1,4 @@
-import { Badge, Button } from "@health-samurai/react-components";
+import { Button } from "@health-samurai/react-components";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -21,37 +21,36 @@ function GifPlaceholder({ label }: { label: string }) {
 function FeatureSection({
 	icon,
 	title,
-	badge,
 	description,
 	features,
 	to,
 	external,
 	cta,
+	secondaryTo,
+	secondaryCta,
 	gifLabel,
+	video,
 	reverse,
 }: {
 	icon: React.ReactNode;
 	title: string;
-	badge?: string;
 	description: string;
 	features: string[];
 	to: string;
 	external?: boolean;
 	cta: string;
+	secondaryTo?: string;
+	secondaryCta?: string;
 	gifLabel: string;
+	video?: string;
 	reverse?: boolean;
 }) {
 	const textBlock = (
-		<div className="flex flex-col justify-center">
+		<div className="flex flex-col justify-start">
 			<div className="mb-4 flex items-center gap-3">
 				<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-bg-brand-secondary text-text-brand-primary">
 					{icon}
 				</div>
-				{badge && (
-					<Badge variant="secondary" className="text-xs">
-						{badge}
-					</Badge>
-				)}
 			</div>
 			<h2 className="text-2xl font-semibold text-text-primary">{title}</h2>
 			<p className="mt-3 leading-relaxed text-text-secondary">{description}</p>
@@ -63,7 +62,7 @@ function FeatureSection({
 					</li>
 				))}
 			</ul>
-			<div className="mt-8">
+			<div className="mt-8 flex gap-3">
 				{external ? (
 					<a href={to} target="_blank" rel="noopener noreferrer">
 						<Button variant="secondary">
@@ -79,14 +78,37 @@ function FeatureSection({
 						</Button>
 					</Link>
 				)}
+				{secondaryTo && secondaryCta && (
+					<a href={secondaryTo} target="_blank" rel="noopener noreferrer">
+						<Button variant="secondary">
+							{secondaryCta}
+							<ArrowUpRight className="size-4" />
+						</Button>
+					</a>
+				)}
 			</div>
 		</div>
 	);
 
-	const gifBlock = <GifPlaceholder label={gifLabel} />;
+	const gifBlock = (
+		<div className="md:pt-15">
+			{video ? (
+				<video
+					className="w-full rounded-xl border border-border-primary"
+					src={video}
+					autoPlay
+					loop
+					muted
+					playsInline
+				/>
+			) : (
+				<GifPlaceholder label={gifLabel} />
+			)}
+		</div>
+	);
 
 	return (
-		<section className="grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-16">
+		<section className="grid grid-cols-1 items-start gap-12 md:grid-cols-2 md:gap-16">
 			{reverse ? (
 				<>
 					{gifBlock}
@@ -111,9 +133,11 @@ export function HomePage() {
 					<h1 className="text-4xl font-bold tracking-tight text-text-primary md:text-5xl">
 						The new Aidbox UI
 					</h1>
-					<p className="mx-auto mt-5 max-w-[640px] text-lg leading-relaxed text-text-secondary">
-						A modern, open-source developer console for Aidbox. Explore FHIR
-						resources, run queries, and build views — all from your browser.
+					<p className="mx-auto mt-5 text-lg leading-relaxed text-text-secondary">
+						A modern, open-source developer console for Aidbox.
+						<br />
+						Explore FHIR resources, run queries, and build views — all from
+						your browser.
 					</p>
 				</div>
 
@@ -131,13 +155,15 @@ export function HomePage() {
 						to="https://github.com/HealthSamurai/aidbox-ui"
 						external
 						cta="View on GitHub"
+						secondaryTo="https://github.com/HealthSamurai/aidbox-ts-sdk/tree/master/packages/react-components"
+						secondaryCta="React Components"
 						gifLabel="GitHub repository"
+						video="/videos/open-source.mp4"
 					/>
 
 					<FeatureSection
 						icon={<SquareTerminal className="size-5" />}
-						title="REST console"
-						badge="New"
+						title="REST Console"
 						description="Postman-style REST client with deep FHIR integration. Test APIs, explore endpoints, and debug requests without leaving Aidbox."
 						features={[
 							"Multiple tabs for parallel requests",
@@ -147,7 +173,25 @@ export function HomePage() {
 						to="/rest"
 						cta="Try REST console"
 						gifLabel="REST console"
+						video="/videos/rest-console.mp4"
 						reverse
+					/>
+
+					<FeatureSection
+						icon={<Database className="size-5" />}
+						title="SQL Console"
+						description="Powerful SQL editor for direct database access. Query your data, explore schema, and monitor performance."
+						features={[
+							"Multiple tabs for parallel queries",
+							"Autocomplete for tables, columns, and functions",
+							"Built-in database structure explorer",
+							"Running queries monitor",
+							"Table and index information",
+						]}
+						to="/db-console"
+						cta="Try SQL console"
+						gifLabel="SQL console"
+						video="/videos/sql-console.mp4"
 					/>
 
 					<FeatureSection
@@ -162,23 +206,7 @@ export function HomePage() {
 						to="/resource/ViewDefinition"
 						cta="Try ViewDefinition builder"
 						gifLabel="ViewDefinition builder"
-					/>
-
-					<FeatureSection
-						icon={<Database className="size-5" />}
-						title="SQL console"
-						badge="New"
-						description="Powerful SQL editor for direct database access. Query your data, explore schema, and monitor performance."
-						features={[
-							"Multiple tabs for parallel queries",
-							"Autocomplete for tables, columns, and functions",
-							"Built-in database structure explorer",
-							"Running queries monitor",
-							"Table and index information",
-						]}
-						to="/db-console"
-						cta="Try SQL console"
-						gifLabel="SQL console"
+						video="/videos/vd-builder.mp4"
 						reverse
 					/>
 				</div>
