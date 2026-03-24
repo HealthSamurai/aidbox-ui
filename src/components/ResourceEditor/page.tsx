@@ -353,9 +353,6 @@ export const ResourceEditorPage = ({
 
 	const editActions = (
 		<>
-			{id && (
-				<DeleteButton client={client} resourceType={resourceType} id={id} />
-			)}
 			<SaveButton
 				resourceType={resourceType}
 				id={id}
@@ -366,6 +363,9 @@ export const ResourceEditorPage = ({
 				onSuccess={() => setEditDirty(false)}
 				saveRef={saveRef}
 			/>
+			{id && (
+				<DeleteButton client={client} resourceType={resourceType} id={id} />
+			)}
 		</>
 	);
 

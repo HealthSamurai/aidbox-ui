@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
-const TITLE = "FHIR Packages";
+const TITLE = "FHIR packages";
 
 export const Route = createFileRoute("/ig")({
 	component: () => <Outlet />,

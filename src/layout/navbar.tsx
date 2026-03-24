@@ -230,7 +230,10 @@ function NavbarButtons() {
 export function Navbar() {
 	return (
 		<div className="flex-none h-15 flex items-center border-b bg-bg-primary">
-			<div className="h-full shrink-0 border-r flex items-center justify-center w-[3.125rem] box-content">
+			<Link
+				to="/"
+				className="h-full shrink-0 border-r flex items-center justify-center w-[3.125rem] box-content hover:bg-bg-secondary transition-colors"
+			>
 				<img
 					src={AidboxLogo}
 					alt="Aidbox"
@@ -238,7 +241,7 @@ export function Navbar() {
 					height="24"
 					width="24"
 				/>
-			</div>
+			</Link>
 			<div className="pl-4 pr-4 w-full flex items-center">
 				<Breadcrumbs />
 				<div

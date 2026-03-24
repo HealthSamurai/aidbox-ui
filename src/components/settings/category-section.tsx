@@ -44,7 +44,7 @@ export function CategorySection({
 			className="flex flex-col scroll-mt-4 @[900px]:flex-row"
 		>
 			{/* Left pane — section heading */}
-			<div className="sticky top-0 z-10 h-fit w-full shrink-0 bg-bg-primary pt-2 px-8 shadow-[0_10px_10px_0_var(--color-bg-primary)] @[900px]:w-[346px] @[900px]:min-w-[346px] @[900px]:pl-16 @[900px]:pr-4">
+			<div className="sticky top-0 z-10 h-fit w-full shrink-0 bg-bg-primary px-8 pt-2 shadow-[0_10px_10px_0_var(--color-bg-primary)] @[900px]:w-[346px] @[900px]:min-w-[346px]">
 				<h2 className="text-lg font-semibold text-text-primary">{title}</h2>
 				{description && (
 					<p className="mt-1 text-sm text-text-secondary">{description}</p>
@@ -52,7 +52,7 @@ export function CategorySection({
 			</div>
 
 			{/* Right pane — form fields */}
-			<div className="min-w-0 max-w-[644px] flex-1 px-8 pt-2 @[900px]:px-4">
+			<div className="min-w-0 flex-1 pt-2 @[900px]:max-w-[644px] @[900px]:px-8">
 				{isGeneral && (
 					<div className="mb-6">
 						<BoxInfoDisplay boxInfo={boxInfo} />

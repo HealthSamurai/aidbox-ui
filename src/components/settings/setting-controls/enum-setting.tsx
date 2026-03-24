@@ -56,7 +56,7 @@ export function EnumSetting({
 
 	return (
 		<div className="group/setting">
-			<div className="space-y-1 px-3 py-3">
+			<div className="space-y-1 px-8 py-3 @[900px]:px-0">
 				<Label className="text-sm">
 					<SettingLabel setting={setting} />
 				</Label>

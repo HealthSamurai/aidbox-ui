@@ -95,7 +95,7 @@ export function EditTabContent({
 							getStructureDefinitions={getStructureDefinitions}
 							expandValueSet={expandValueSet}
 							trailingActions={
-								<>
+								!isProfileOpen && (
 									<HSComp.Toggle
 										variant="outline"
 										pressed={isProfileOpen}
@@ -104,7 +104,7 @@ export function EditTabContent({
 										<Lucide.PanelRightIcon className="w-4 h-4" />
 										Profile
 									</HSComp.Toggle>
-								</>
+								)
 							}
 						/>
 					</HSComp.ResizablePanel>

@@ -54,7 +54,7 @@ export function BoolSetting({
 
 	return (
 		<div className="group/setting">
-			<div className="px-3 py-3">
+			<div className="px-8 py-3 @[900px]:px-0">
 				<div className="flex gap-3">
 					<div className="shrink-0 pt-0.5">{toggle}</div>
 					<div className="min-w-0 flex-1 space-y-1.5">

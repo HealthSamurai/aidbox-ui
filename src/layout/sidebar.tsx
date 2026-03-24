@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { useAuditLogEnabled } from "../components/AuditEvents/api";
+import { useBoxInfo } from "../components/settings/api";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 import { getAidboxBaseURL } from "../utils";
@@ -46,31 +47,31 @@ const mainMenuItems: {
 	},
 	{
 		url: "/rest",
-		title: "REST Console",
+		title: "REST console",
 		link: (
 			<Link to="/rest">
 				<SquareTerminal />
-				REST Console
+				REST console
 			</Link>
 		),
 	},
 	{
 		url: "/db-console",
-		title: "DB Console",
+		title: "SQL console",
 		link: (
 			<Link to="/db-console">
 				<Database />
-				DB Console
+				SQL console
 			</Link>
 		),
 	},
 	{
 		url: "/ig",
-		title: "FHIR Packages",
+		title: "FHIR packages",
 		link: (
 			<Link to="/ig">
 				<Package />
-				FHIR Packages
+				FHIR packages
 			</Link>
 		),
 	},
@@ -78,7 +79,11 @@ const mainMenuItems: {
 		url: `${getAidboxBaseURL()}/ui/sdc`,
 		title: "Aidbox Forms",
 		link: (
-			<a href={`${getAidboxBaseURL()}/ui/sdc`}>
+			<a
+				href={`${getAidboxBaseURL()}/ui/sdc`}
+				target="_blank"
+				rel="noopener noreferrer"
+			>
 				<ClipboardList />
 				Aidbox Forms
 				<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
@@ -93,16 +98,6 @@ const mainMenuItems: {
 			<Link to="/audit-events">
 				<ShieldUser />
 				Audit events
-			</Link>
-		),
-	},
-	{
-		url: "/settings",
-		title: "Settings",
-		link: (
-			<Link to="/settings">
-				<Settings />
-				Settings
 			</Link>
 		),
 	},
@@ -130,6 +125,7 @@ export function AidboxSidebar({
 	const currentPath = routerState.location.pathname;
 	const sidebar = useSidebar();
 	const { data: auditLogEnabled } = useAuditLogEnabled();
+	const { data: boxInfo } = useBoxInfo();
 
 	const visibleMenuItems = mainMenuItems.filter(
 		(item) => item.key !== "audit-events" || auditLogEnabled,
@@ -171,6 +167,22 @@ export function AidboxSidebar({
 						<SidebarMenu>
 							<SidebarMenuItem>
 								<SidebarMenuButton
+									asChild
+									isActive={isActiveNavItem(
+										{ url: "/settings", title: "Settings" },
+										currentPath,
+									)}
+									tooltip={{ sideOffset: 16, children: "Settings" }}
+									className="text-nowrap"
+								>
+									<Link to="/settings">
+										<Settings />
+										Settings
+									</Link>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton
 									onClick={() =>
 										sidebarMode === "expanded"
 											? setSidebarMode("collapsed")
@@ -182,7 +194,7 @@ export function AidboxSidebar({
 									) : (
 										<PanelLeftOpen />
 									)}
-									edge:d8c83455a0
+									{boxInfo?.about?.version ?? ""}
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 						</SidebarMenu>

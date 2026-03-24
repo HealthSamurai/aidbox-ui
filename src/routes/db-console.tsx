@@ -52,7 +52,7 @@ import type {
 } from "../webmcp/db-console-context";
 import { useWebMCPSql } from "../webmcp/sql";
 
-const TITLE = "DB Console";
+const TITLE = "SQL console";
 
 const TABLES_QUERY = `SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type = 'BASE TABLE' ORDER BY table_schema, table_name`;
 

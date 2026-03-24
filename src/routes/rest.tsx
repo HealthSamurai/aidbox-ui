@@ -79,7 +79,7 @@ import { responseStorage } from "../utils/response-storage";
 import { useWebMCPRestConsole } from "../webmcp/rest-console";
 import type { RestConsoleActions } from "../webmcp/rest-console-context";
 
-const TITLE = "REST Console";
+const TITLE = "REST console";
 
 const preventNewlineOnModEnter = Prec.highest(
 	keymap.of([{ key: "Mod-Enter", run: () => true }]),
