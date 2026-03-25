@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
-import { fetchSchemas } from "../../api/schemas";
+import { fetchProfileElements, fetchSchemas } from "../../api/schemas";
 import { transformSnapshotToTree } from "../../utils";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { pageId } from "./types";
@@ -44,7 +44,7 @@ export function ProfilePanel({
 				([, schema]) => schema["default?"] === true,
 			);
 			setSelectedProfileKey(
-				defaultEntry ? defaultEntry[0] : profileEntries[0][0],
+				defaultEntry ? defaultEntry[0] : profileEntries[0]?.[0],
 			);
 		}
 	}, [profileEntries, selectedProfileKey]);
@@ -52,6 +52,27 @@ export function ProfilePanel({
 	const selectedProfile = selectedProfileKey
 		? data?.[selectedProfileKey]
 		: undefined;
+
+	const { data: snapshotElements, isLoading: snapshotLoading } = useQuery({
+		queryKey: [
+			pageId,
+			"profile-snapshot",
+			selectedProfile?.["package-coordinate"],
+			selectedProfile?.entity?.url,
+		],
+		queryFn: () =>
+			fetchProfileElements(
+				client,
+				"aidbox.introspector/get-profile-snapshot",
+				selectedProfile!["package-coordinate"],
+				selectedProfile!.entity.url,
+			),
+		enabled:
+			!!selectedProfile?.["package-coordinate"] &&
+			!!selectedProfile?.entity?.url,
+		retry: false,
+		refetchOnWindowFocus: false,
+	});
 
 	const dropdownOptions = React.useMemo(
 		() =>
@@ -98,7 +119,7 @@ export function ProfilePanel({
 				/>
 			</div>
 			<div className="flex-1 overflow-auto px-2">
-				{isLoading && (
+				{(isLoading || snapshotLoading) && (
 					<div className="flex items-center justify-center h-full text-text-secondary">
 						<div className="text-lg">Loading profiles...</div>
 					</div>
@@ -113,9 +134,9 @@ export function ProfilePanel({
 						<div className="text-lg">No profiles found</div>
 					</div>
 				)}
-				{selectedProfile && (
+				{snapshotElements && (
 					<HSComp.FhirStructureView
-						tree={transformSnapshotToTree(selectedProfile.snapshot)}
+						tree={transformSnapshotToTree(snapshotElements)}
 					/>
 				)}
 			</div>

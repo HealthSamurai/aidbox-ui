@@ -1,7 +1,4 @@
 import { Button } from "@health-samurai/react-components";
-import { restConsoleImage } from "./rest-image";
-import { sqlConsoleImage } from "./sql-image";
-import { vdBuilderImage } from "./vd-image";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -12,6 +9,9 @@ import {
 	SquareTerminal,
 	TableProperties,
 } from "lucide-react";
+import { restConsoleImage } from "./rest-image";
+import { sqlConsoleImage } from "./sql-image";
+import { vdBuilderImage } from "./vd-image";
 
 const cardShadow =
 	"shadow-[0px_56px_34px_0px_rgba(0,0,0,0.03),0px_25px_25px_0px_rgba(0,0,0,0.04),0px_6px_14px_0px_rgba(0,0,0,0.05)]";
@@ -21,11 +21,7 @@ function RestIllustration() {
 		<div
 			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
-			<img
-				src={restConsoleImage}
-				alt="REST Console"
-				className="w-full"
-			/>
+			<img src={restConsoleImage} alt="REST Console" className="w-full" />
 		</div>
 	);
 }
@@ -35,11 +31,7 @@ function SqlIllustration() {
 		<div
 			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
-			<img
-				src={sqlConsoleImage}
-				alt="SQL Console"
-				className="w-full"
-			/>
+			<img src={sqlConsoleImage} alt="SQL Console" className="w-full" />
 		</div>
 	);
 }
@@ -81,28 +73,24 @@ function OpenSourceIllustration() {
 				{", "}
 				<span className="text-blue-600">Input</span>
 				{" } "}
-				<span className="text-purple-600">from</span>
-				{" "}
+				<span className="text-purple-600">from</span>{" "}
 				<span className="text-green-600">
 					{"'@health-samurai/react-components'"}
 				</span>
 				{";\n\n"}
-				<span className="text-purple-600">function</span>
-				{" "}
+				<span className="text-purple-600">function</span>{" "}
 				<span className="text-blue-600">App</span>
 				{"() {\n  "}
 				<span className="text-purple-600">return</span>
 				{" (\n    <"}
 				<span className="text-blue-600">div</span>
 				{">\n      <"}
-				<span className="text-blue-600">Input</span>
-				{" "}
+				<span className="text-blue-600">Input</span>{" "}
 				<span className="text-text-tertiary">placeholder</span>
 				{"="}
 				<span className="text-green-600">"Search..."</span>
 				{" />\n      <"}
-				<span className="text-blue-600">Button</span>
-				{" "}
+				<span className="text-blue-600">Button</span>{" "}
 				<span className="text-text-tertiary">onClick</span>
 				{"={() => console."}
 				<span className="text-blue-600">log</span>
@@ -188,9 +176,7 @@ function FeatureSection({
 		</div>
 	);
 
-	const illustrationBlock = (
-		<div className="md:pt-15">{illustration}</div>
-	);
+	const illustrationBlock = <div className="md:pt-15">{illustration}</div>;
 
 	return (
 		<section className="grid grid-cols-1 items-start gap-12 md:grid-cols-2 md:gap-16">

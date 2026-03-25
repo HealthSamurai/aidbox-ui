@@ -227,8 +227,7 @@ function DbConsolePage() {
 				if (rowLimitRef.current !== null) {
 					q = statements
 						.map((s) =>
-							/\bLIMIT\s+\d+/i.test(s) ||
-							!/^\s*SELECT\b/i.test(s)
+							/\bLIMIT\s+\d+/i.test(s) || !/^\s*SELECT\b/i.test(s)
 								? s
 								: `${s} LIMIT ${rowLimitRef.current}`,
 						)

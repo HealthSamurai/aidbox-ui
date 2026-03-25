@@ -4,48 +4,11 @@ import {
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
-import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import { useAidboxClient } from "../../AidboxClient";
+import { fetchProfileElements, fetchSchemas } from "../../api/schemas";
 import { transformSnapshotToTree } from "../../utils";
 import * as Constants from "./constants";
 import { ViewDefinitionResourceTypeContext } from "./page";
-import type { Snapshot } from "./types";
-
-interface Schema {
-	differential: Array<Snapshot>;
-	snapshot: Array<Snapshot>;
-	"default?": boolean;
-}
-
-interface SchemaData {
-	result: Record<string, Schema>;
-}
-
-const fetchSchema = async (
-	client: AidboxClientR5,
-	resourceType: string,
-): Promise<Array<Snapshot> | undefined> => {
-	const response = await client.rawRequest({
-		method: "POST",
-		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			method: "aidbox.introspector/get-schemas-by-resource-type",
-			params: { "resource-type": resourceType },
-		}),
-	});
-
-	const data: SchemaData = await response.response.json();
-
-	if (!data?.result) return undefined;
-
-	const defaultSchema = Object.values(data.result).find(
-		(schema: Schema) => schema["default?"] === true,
-	);
-
-	return defaultSchema?.snapshot;
-};
 
 export function SchemaTabContent() {
 	const client = useAidboxClient();
@@ -56,12 +19,37 @@ export function SchemaTabContent() {
 	const viewDefinitionResourceType =
 		viewDefinitionTypeContext.viewDefinitionResourceType;
 
-	const { isLoading, data, status, error } = useQuery({
-		queryKey: [viewDefinitionResourceType, Constants.PageID],
+	const { data: schemas } = useQuery({
+		queryKey: [viewDefinitionResourceType, Constants.PageID, "schemas"],
 		queryFn: () => {
-			if (!viewDefinitionResourceType) return;
-			return fetchSchema(client, viewDefinitionResourceType);
+			if (!viewDefinitionResourceType) return undefined;
+			return fetchSchemas(client, viewDefinitionResourceType);
 		},
+		retry: false,
+		refetchOnWindowFocus: false,
+	});
+
+	const defaultSchema = schemas
+		? Object.values(schemas).find((s) => s["default?"] === true)
+		: undefined;
+
+	const { isLoading, data, status, error } = useQuery({
+		queryKey: [
+			viewDefinitionResourceType,
+			Constants.PageID,
+			"snapshot",
+			defaultSchema?.["package-coordinate"],
+			defaultSchema?.entity?.url,
+		],
+		queryFn: () =>
+			fetchProfileElements(
+				client,
+				"aidbox.introspector/get-profile-snapshot",
+				defaultSchema!["package-coordinate"],
+				defaultSchema!.entity.url,
+			),
+		enabled:
+			!!defaultSchema?.["package-coordinate"] && !!defaultSchema?.entity?.url,
 		retry: false,
 		refetchOnWindowFocus: false,
 	});

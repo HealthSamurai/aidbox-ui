@@ -6,6 +6,11 @@ import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
+import {
+	fetchProfileElements,
+	fetchSchemas as fetchSchemasApi,
+	type Schema,
+} from "../../api/schemas";
 import * as ApiUtils from "../../api/utils";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
@@ -13,27 +18,8 @@ import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
 import { EmptyState } from "../empty-state";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
-import type * as VDTypes from "../ViewDefinition/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
-
-type FhirSchema = {
-	elements: Record<string, unknown>;
-	url: string;
-	name: string;
-	version: string;
-};
-
-interface Schema {
-	differential: Array<VDTypes.Snapshot>;
-	snapshot: Array<VDTypes.Snapshot>;
-	entity: FhirSchema;
-	"default?": boolean;
-}
-
-interface SchemaData {
-	result: Record<string, Schema>;
-}
 
 const ResourcesPageContext = React.createContext<Types.ResourcesPageContext>({
 	resourceType: "",
@@ -185,34 +171,11 @@ export const ResourcesTabHeader = ({
 	);
 };
 
-const fetchSchemas = async (
-	client: AidboxClientR5,
-	resourceType: string,
-): Promise<Record<string, Schema> | undefined> => {
-	const response = await client.rawRequest({
-		method: "POST",
-		url: "/rpc?_m=aidbox.introspector/get-schemas-by-resource-type",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			method: "aidbox.introspector/get-schemas-by-resource-type",
-			params: { "resource-type": resourceType },
-		}),
-	});
-
-	const data: SchemaData = await response.response.json();
-
-	if (!data?.result) return undefined;
-
-	return data.result;
-};
-
 const fetchDefaultSchema = async (
 	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Schema | undefined> => {
-	const schemas = await fetchSchemas(client, resourceType);
+	const schemas = await fetchSchemasApi(client, resourceType);
 
 	if (!schemas) return undefined;
 
@@ -946,6 +909,39 @@ const StructureDefinitionTab = ({
 	);
 };
 
+const ProfileElementsView = ({
+	client,
+	method,
+	packageCoordinate,
+	url,
+}: {
+	client: AidboxClientR5;
+	method: string;
+	packageCoordinate: string;
+	url: string;
+}) => {
+	const { data, isLoading } = ReactQuery.useQuery({
+		queryKey: [
+			Constants.PageID,
+			"profile-elements",
+			method,
+			packageCoordinate,
+			url,
+		],
+		queryFn: () => fetchProfileElements(client, method, packageCoordinate, url),
+		enabled: !!packageCoordinate && !!url,
+		retry: false,
+	});
+
+	if (isLoading) {
+		return <div className="text-text-secondary p-4">Loading...</div>;
+	}
+
+	return (
+		<HSComp.FhirStructureView tree={Utils.transformSnapshotToTree(data)} />
+	);
+};
+
 const ProfilesTabContent = ({
 	client,
 	resourceType,
@@ -983,11 +979,8 @@ const ProfilesTabContent = ({
 	};
 
 	const { data, isLoading } = ReactQuery.useQuery({
-		queryKey: [Constants.PageID, "resource-profiles-list"],
-		queryFn: async () => {
-			const schema = await fetchSchemas(client, resourceType);
-			return schema;
-		},
+		queryKey: [Constants.PageID, "resource-profiles-list", resourceType],
+		queryFn: () => fetchSchemasApi(client, resourceType),
 		retry: false,
 	});
 
@@ -1106,15 +1099,19 @@ const ProfilesTabContent = ({
 							value="differential"
 							className="overflow-auto p-4"
 						>
-							<HSComp.FhirStructureView
-								tree={Utils.transformSnapshotToTree(
-									selectedProfile.differential,
-								)}
+							<ProfileElementsView
+								client={client}
+								method="aidbox.introspector/get-profile-differential"
+								packageCoordinate={selectedProfile["package-coordinate"]}
+								url={selectedProfile.entity.url}
 							/>
 						</HSComp.TabsContent>
 						<HSComp.TabsContent value="snapshot" className="overflow-auto p-4">
-							<HSComp.FhirStructureView
-								tree={Utils.transformSnapshotToTree(selectedProfile.snapshot)}
+							<ProfileElementsView
+								client={client}
+								method="aidbox.introspector/get-profile-snapshot"
+								packageCoordinate={selectedProfile["package-coordinate"]}
+								url={selectedProfile.entity.url}
 							/>
 						</HSComp.TabsContent>
 						<HSComp.TabsContent
@@ -1337,7 +1334,7 @@ export const ResourcesPage = ({
 		profilesList: async () => {
 			const schemas = await queryClient.fetchQuery({
 				queryKey: [Constants.PageID, "resource-profiles-list"],
-				queryFn: () => fetchSchemas(client, resourceType),
+				queryFn: () => fetchSchemasApi(client, resourceType),
 			});
 			if (!schemas) return [];
 			return Object.values(schemas).map((s) => ({
