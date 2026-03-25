@@ -1,0 +1,13 @@
+version: 2
+
+# npm security updates are handled automatically by GitHub Dependabot security alerts
+# (enabled at the repository level). No version updates config is needed — this avoids
+# noisy PRs for routine version bumps that carry no security fixes.
+# The CI audit job (`pnpm audit --audit-level=high`) provides an additional safety net.
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "master"

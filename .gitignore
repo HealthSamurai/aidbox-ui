@@ -5,3 +5,8 @@
 /tmp
 /.codegen-cache/
 /pnpm-workspace.yaml
+
+# Secrets
+.env
+.env.*
+!.env.development
