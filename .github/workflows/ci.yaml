@@ -1,0 +1,86 @@
+name: Aidbox UI
+
+on:
+  push:
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+      - name: Build react-components submodule
+        working-directory: aidbox-ts-sdk
+        run: pnpm install && pnpm -r run build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Lint
+        run: pnpm lint:check
+
+  typecheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+      - name: Build react-components submodule
+        working-directory: aidbox-ts-sdk
+        run: pnpm install && pnpm -r run build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Type check
+        run: pnpm typecheck
+
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Audit
+        run: pnpm audit --audit-level=high
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+      - name: Build react-components submodule
+        working-directory: aidbox-ts-sdk
+        run: pnpm install && pnpm -r run build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build
+        run: pnpm build
