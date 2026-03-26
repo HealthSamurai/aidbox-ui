@@ -19,9 +19,9 @@ const cardShadow =
 function RestIllustration() {
 	return (
 		<div
-			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
+			className={`h-[417px] w-[476px] overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
-			<img src={restConsoleImage} alt="REST Console" className="w-full" />
+			<img src={restConsoleImage} alt="REST Console" className="size-full object-cover" />
 		</div>
 	);
 }
@@ -29,9 +29,9 @@ function RestIllustration() {
 function SqlIllustration() {
 	return (
 		<div
-			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
+			className={`h-[357px] w-[476px] overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
-			<img src={sqlConsoleImage} alt="SQL Console" className="w-full" />
+			<img src={sqlConsoleImage} alt="SQL Console" className="size-full object-cover" />
 		</div>
 	);
 }
@@ -39,12 +39,12 @@ function SqlIllustration() {
 function VdIllustration() {
 	return (
 		<div
-			className={`overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
+			className={`h-[361px] w-[476px] overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
 			<img
 				src={vdBuilderImage}
 				alt="ViewDefinition Builder"
-				className="w-full"
+				className="size-full object-cover"
 			/>
 		</div>
 	);
@@ -133,53 +133,61 @@ function FeatureSection({
 }) {
 	const textBlock = (
 		<div className="flex flex-col justify-start">
-			<div className="mb-4 flex items-center gap-3">
+			<div className="flex items-center gap-3 p-2">
 				<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-bg-brand-secondary text-text-brand-primary">
 					{icon}
 				</div>
+				<h2 className="text-2xl font-semibold leading-8 text-text-primary">{title}</h2>
 			</div>
-			<h2 className="text-2xl font-semibold text-text-primary">{title}</h2>
-			<p className="mt-3 leading-relaxed text-text-secondary">{description}</p>
-			<ul className="mt-6 space-y-2.5 text-sm text-text-secondary">
-				{features.map((feature) => (
-					<li key={feature} className="flex items-start gap-2.5">
-						<Check className="mt-0.5 size-4 shrink-0 text-text-brand-primary" />
-						<span>{feature}</span>
-					</li>
-				))}
-			</ul>
-			<div className="mt-8 flex gap-3">
-				{external ? (
-					<a href={to} target="_blank" rel="noopener noreferrer">
-						<Button variant="secondary">
-							{cta}
-							<ArrowUpRight className="size-4" />
-						</Button>
-					</a>
-				) : (
-					<Link to={to}>
-						<Button variant="secondary">
-							{cta}
-							<ArrowRight className="size-4" />
-						</Button>
-					</Link>
-				)}
-				{secondaryTo && secondaryCta && (
-					<a href={secondaryTo} target="_blank" rel="noopener noreferrer">
-						<Button variant="secondary">
-							{secondaryCta}
-							<ArrowUpRight className="size-4" />
-						</Button>
-					</a>
-				)}
+			<div className="pl-2 pt-3">
+				<p className="text-base leading-[26px] text-text-secondary">{description}</p>
+				<ul className="mt-7 space-y-2.5 text-sm leading-5 text-text-secondary">
+					{features.map((feature) => (
+						<li key={feature} className="flex items-start gap-2.5">
+							<Check className="mt-0.5 size-4 shrink-0 text-text-brand-primary" />
+							<span>{feature}</span>
+						</li>
+					))}
+				</ul>
+				<div className="mt-8 flex gap-3">
+					{external ? (
+						<a href={to} target="_blank" rel="noopener noreferrer">
+							<Button variant="secondary">
+								{cta}
+								<ArrowUpRight className="size-4" />
+							</Button>
+						</a>
+					) : (
+						<Link to={to}>
+							<Button variant="secondary">
+								{cta}
+								<ArrowRight className="size-4" />
+							</Button>
+						</Link>
+					)}
+					{secondaryTo && secondaryCta && (
+						<a href={secondaryTo} target="_blank" rel="noopener noreferrer">
+							<Button variant="secondary">
+								{secondaryCta}
+								<ArrowUpRight className="size-4" />
+							</Button>
+						</a>
+					)}
+				</div>
 			</div>
 		</div>
 	);
 
-	const illustrationBlock = <div className="md:pt-15">{illustration}</div>;
+	const illustrationBlock = <div className="shrink-0 py-[31px]">{illustration}</div>;
+
+	const gridCols = reverse
+		? "md:grid-cols-[476px_1fr]"
+		: "md:grid-cols-[1fr_476px]";
 
 	return (
-		<section className="grid grid-cols-1 items-start gap-12 md:grid-cols-2 md:gap-16">
+		<section
+			className={`grid grid-cols-1 items-center gap-12 ${gridCols} md:gap-16`}
+		>
 			{reverse ? (
 				<>
 					{illustrationBlock}
@@ -197,14 +205,14 @@ function FeatureSection({
 
 export function HomePage() {
 	return (
-		<div className="h-full overflow-auto">
-			<div className="mx-auto max-w-[1080px] px-8 py-20">
+		<div className="h-full overflow-auto px-8">
+			<div className="mx-auto max-w-[1016px] py-20">
 				{/* Hero */}
-				<div className="mb-24 text-center">
+				<div className="mb-[116px] text-center">
 					<h1 className="text-4xl font-bold tracking-tight text-text-primary md:text-5xl">
 						The new Aidbox UI
 					</h1>
-					<p className="mx-auto mt-5 text-lg leading-relaxed text-text-secondary">
+					<p className="mx-auto mt-6 text-lg leading-relaxed text-text-secondary">
 						A modern, open-source developer console for Aidbox.
 						<br />
 						Explore FHIR resources, run queries, and build views — all from your
@@ -213,7 +221,7 @@ export function HomePage() {
 				</div>
 
 				{/* Feature sections */}
-				<div className="space-y-32">
+				<div className="flex flex-col gap-[121px]">
 					<FeatureSection
 						icon={<Github className="size-5" />}
 						title="Open Source"
