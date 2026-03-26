@@ -16,9 +16,11 @@
 
 ```bash
 # requires pnpm 10+ and Node.js 18+
-git clone --recursive git@github.com:HealthSamurai/aidbox-ui.git
+git clone git@github.com:HealthSamurai/aidbox-ui.git
 cd aidbox-ui
+git submodule update --init --recursive
 pnpm install   # preinstall auto-builds the react-components submodule
+pnpm rc:build  # rebuild react-components + clear Vite cache
 pnpm dev
 ```
 
