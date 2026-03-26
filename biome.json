@@ -1,57 +1,68 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
-	"vcs": {
-		"enabled": false,
-		"clientKind": "git",
-		"useIgnoreFile": false
-	},
-	"files": {
-		"experimentalScannerIgnores": ["aidbox-ts-sdk"],
-		"includes": [
-			"src/**",
-			".vscode/**",
-			"biome.json",
-			"index.html",
-			"package.json",
-			"tsconfig.app.json",
-			"tsconfig.json",
-			"tsconfig.node.json",
-			"vite.config.ts",
-			"!src/**/routeTree.gen.ts",
-			"scripts/**"
-		],
-		"ignoreUnknown": false
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "tab"
-	},
-	"linter": {
-		"enabled": true,
-		"domains": {
-			"project": "recommended",
-			"react": "recommended",
-			"test": "recommended"
-		},
-		"rules": {
-			"a11y": {
-				"useKeyWithClickEvents": "warn",
-				"noStaticElementInteractions": "warn"
-			},
-			"recommended": true
-		}
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "double"
-		}
-	},
-	"assist": {
-		"enabled": true,
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
-	}
+  "$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": false
+  },
+  "files": {
+    "experimentalScannerIgnores": ["aidbox-ts-sdk"],
+    "includes": [
+      "src/**",
+      ".vscode/**",
+      "biome.json",
+      "index.html",
+      "package.json",
+      "tsconfig.app.json",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "vite.config.ts",
+      "!src/**/routeTree.gen.ts",
+      "scripts/**"
+    ],
+    "ignoreUnknown": false
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "tab"
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "project": "recommended",
+      "react": "recommended",
+      "test": "recommended"
+    },
+    "rules": {
+      "a11y": {
+        "useKeyWithClickEvents": "warn",
+        "noStaticElementInteractions": "warn"
+      },
+      "style": {
+        "noNonNullAssertion": "error"
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 30
+          }
+        }
+      },
+      "recommended": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
 }
