@@ -46,6 +46,15 @@
 		"ws": "^8.19.0",
 		"zod": "^4.3.6"
 	},
+	"pnpm": {
+		"overrides": {
+			"fast-xml-parser": "^5.5.7",
+			"picomatch@<3": "^2.3.2",
+			"picomatch@>=4": "^4.0.4",
+			"yaml": "^2.8.3",
+			"diff": "^8.0.3"
+		}
+	},
 	"dependencies": {
 		"@git-diff-view/file": "^0.0.30",
 		"@git-diff-view/react": "^0.0.30",
