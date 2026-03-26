@@ -8,6 +8,7 @@ import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useUserInfo } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
 import {
+	generateId,
 	parseHttpRequest,
 	parsePathParams,
 	syncPathFromParams,
@@ -67,17 +68,17 @@ const DEFAULT_HEADERS: Header[] = [
 
 function ensureEmptyRow(rows: Header[]): void {
 	if (!rows.some((h) => h.name === "" && h.value === "")) {
-		rows.push({ id: crypto.randomUUID(), name: "", value: "", enabled: true });
+		rows.push({ id: generateId(), name: "", value: "", enabled: true });
 	}
 }
 
 function createTab(): RequestTab {
 	const path = "/Patient";
 	return {
-		id: crypto.randomUUID(),
+		id: generateId(),
 		method: "GET",
 		path,
-		headers: DEFAULT_HEADERS.map((h) => ({ ...h, id: crypto.randomUUID() })),
+		headers: DEFAULT_HEADERS.map((h) => ({ ...h, id: generateId() })),
 		params: parsePathParams(path),
 		body: "",
 		suUserId: "",
@@ -816,7 +817,7 @@ export function DevToolRequestPanel() {
 		boolean | null
 	>(null);
 	const [requestLineVersion, setRequestLineVersion] = React.useState(
-		crypto.randomUUID(),
+		generateId(),
 	);
 
 	// ── Tab management ──
@@ -856,22 +857,22 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleMethodChange = (method: string) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected(() => ({ method: method as Method }));
 	};
 
 	const handlePathChange = (path: string) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected(() => ({ path, params: parsePathParams(path) }));
 	};
 
 	const handleBodyChange = (body: string) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected(() => ({ body }));
 	};
 
 	const handleHeaderChange = (headerIndex: number, header: Header) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected((tab) => {
 			const headers = [...tab.headers];
 			headers[headerIndex] = { ...headers[headerIndex], ...header };
@@ -881,7 +882,7 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleHeaderRemove = (headerIndex: number) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected((tab) => {
 			const headers = [...tab.headers];
 			headers.splice(headerIndex, 1);
@@ -891,7 +892,7 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleParamChange = (paramIndex: number, param: Header) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected((tab) => {
 			const params = [...tab.params];
 			params[paramIndex] = { ...params[paramIndex], ...param };
@@ -901,7 +902,7 @@ export function DevToolRequestPanel() {
 	};
 
 	const handleParamRemove = (paramIndex: number) => {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		updateSelected((tab) => {
 			const params = [...tab.params];
 			params.splice(paramIndex, 1);
@@ -1028,7 +1029,7 @@ export function DevToolRequestPanel() {
 									onClick={() => {
 										const newTab = {
 											...tab,
-											id: crypto.randomUUID(),
+											id: generateId(),
 											selected: true,
 										};
 										setTabs((prev) => [

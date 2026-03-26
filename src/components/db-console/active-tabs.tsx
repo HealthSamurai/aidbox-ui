@@ -10,6 +10,7 @@ import {
 	TabsListDropdown,
 	TabsTrigger,
 } from "@health-samurai/react-components";
+import { generateId } from "../../utils";
 
 export type SqlTabId = string;
 
@@ -34,7 +35,7 @@ export function addSqlTab(
 	setTabs: (val: SqlTab[] | ((prev: SqlTab[]) => SqlTab[])) => void,
 ) {
 	const newTab: SqlTab = {
-		id: crypto.randomUUID(),
+		id: generateId(),
 		query: DEFAULT_QUERY,
 		selected: true,
 	};
@@ -62,7 +63,7 @@ function removeSqlTab(
 ) {
 	const newTabs = tabs.filter((tab) => tab.id !== tabId);
 	if (newTabs.length === 0) {
-		setTabs([{ ...DEFAULT_SQL_TAB, id: crypto.randomUUID() }]);
+		setTabs([{ ...DEFAULT_SQL_TAB, id: generateId() }]);
 	} else {
 		const hasSelected = newTabs.some((tab) => tab.selected);
 		let updatedTabs = newTabs;
@@ -119,7 +120,7 @@ function TabContextMenuContent({
 	const tabIndex = tabs.findIndex((t) => t.id === tab.id);
 
 	const handleDuplicateTab = () => {
-		const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
+		const newTab = { ...tab, id: generateId(), selected: true };
 		setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 	};
 

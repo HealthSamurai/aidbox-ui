@@ -10,6 +10,7 @@ import {
 	TabsListDropdown,
 	TabsTrigger,
 } from "@health-samurai/react-components";
+import { generateId } from "../../utils";
 
 // Styles
 export const methodColors = {
@@ -77,7 +78,7 @@ export function addTab(
 ) {
 	const newTab: Tab = {
 		...DEFAULT_TAB,
-		id: crypto.randomUUID(),
+		id: generateId(),
 	};
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 	return newTab;
@@ -108,7 +109,7 @@ export function addTabFromHistory(
 
 	const newTab: Tab = {
 		...DEFAULT_TAB,
-		id: crypto.randomUUID(),
+		id: generateId(),
 		method: historyData.method as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
 		path: historyData.path,
 		name: `${historyData.method} ${historyData.path}`,
@@ -119,10 +120,10 @@ export function addTabFromHistory(
 			// Add empty header if not exists
 			...(historyData.headers.some((h) => h.name === "" && h.value === "")
 				? []
-				: [{ id: crypto.randomUUID(), name: "", value: "", enabled: true }]),
+				: [{ id: generateId(), name: "", value: "", enabled: true }]),
 		],
 		params: historyData.params || [
-			{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
+			{ id: generateId(), name: "", value: "", enabled: true },
 		],
 	};
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
@@ -240,7 +241,7 @@ function TabContextMenuContent({
 	onTabsRemoved?: (tabIds: TabId[]) => void;
 }) {
 	const handleDuplicateTab = () => {
-		const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
+		const newTab = { ...tab, id: generateId(), selected: true };
 		setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 	};
 

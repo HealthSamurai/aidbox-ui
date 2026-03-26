@@ -23,6 +23,7 @@ import type { QueryObserverResult } from "@tanstack/react-query";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React from "react";
 import { useUIHistory } from "../../api/auth";
+import { generateId } from "../../utils";
 import { addTabFromHistory, removeTab, type Tab } from "./active-tabs";
 import { type CollectionEntry, CollectionsView } from "./collections";
 
@@ -399,7 +400,7 @@ export function LeftMenu({
 		// Add empty param if needed
 		if (!params.some((p) => p.name === "" && p.value === "")) {
 			params.push({
-				id: crypto.randomUUID(),
+				id: generateId(),
 				name: "",
 				value: "",
 				enabled: true,
@@ -415,7 +416,7 @@ export function LeftMenu({
 			method,
 			path,
 			headers: headers.map((h) => ({
-				id: crypto.randomUUID(),
+				id: generateId(),
 				name: h.key,
 				value: h.value,
 				enabled: true,

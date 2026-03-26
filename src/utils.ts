@@ -2,6 +2,20 @@ import type { TreeViewItem } from "@health-samurai/react-components";
 import type { Header, Tab } from "./components/rest/active-tabs";
 import type { Meta, Snapshot } from "./components/ViewDefinition/types";
 
+export function generateId(): string {
+	if (
+		typeof crypto !== "undefined" &&
+		typeof crypto.randomUUID === "function"
+	) {
+		return crypto.randomUUID();
+	}
+	return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+		const r = (Math.random() * 16) | 0;
+		const v = c === "x" ? r : (r & 0x3) | 0x8;
+		return v.toString(16);
+	});
+}
+
 export function parsePathParams(path: string): Header[] {
 	const queryParams = path.split("?")[1];
 	const params =
@@ -16,7 +30,7 @@ export function parsePathParams(path: string): Header[] {
 		}) || [];
 	if (!params.some((h) => h.name === "" && h.value === "")) {
 		params.push({
-			id: crypto.randomUUID(),
+			id: generateId(),
 			name: "",
 			value: "",
 			enabled: true,
@@ -82,7 +96,7 @@ export function parseHttpRequest(rawText: string): {
 			const headerName = line.substring(0, colonIndex).trim();
 			const headerValue = line.substring(colonIndex + 1).trim();
 			headers.push({
-				id: crypto.randomUUID(),
+				id: generateId(),
 				name: headerName,
 				value: headerValue,
 				enabled: true,
@@ -92,7 +106,7 @@ export function parseHttpRequest(rawText: string): {
 
 	if (!headers.some((h) => h.name === "" && h.value === "")) {
 		headers.push({
-			id: crypto.randomUUID(),
+			id: generateId(),
 			name: "",
 			value: "",
 			enabled: true,
