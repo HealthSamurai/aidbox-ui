@@ -24,10 +24,13 @@ export function FhirPathLspProvider({
 		ViewDefinitionResourceTypeContext,
 	);
 
-	const { setContextType, createPlugin } = useCodeMirrorLsp(client as any, {
-		contextType: viewDefinitionResourceType ?? undefined,
-		debug: false,
-	});
+	const { setContextType, createPlugin } = useCodeMirrorLsp(
+		client as unknown as Parameters<typeof useCodeMirrorLsp>[0],
+		{
+			contextType: viewDefinitionResourceType ?? undefined,
+			debug: false,
+		},
+	);
 
 	// Update context type when resource type changes
 	React.useEffect(() => {

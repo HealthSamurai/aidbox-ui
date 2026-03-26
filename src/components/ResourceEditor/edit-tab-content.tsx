@@ -28,7 +28,7 @@ interface EditTabContentProps {
 	resourceType: string;
 	storageKey: string;
 	autoSaveId: string;
-	actionsRef?: React.RefObject<ResourceEditorActions>;
+	actionsRef?: React.RefObject<ResourceEditorActions | null>;
 }
 
 export function EditTabContent({
@@ -61,7 +61,7 @@ export function EditTabContent({
 		setIsProfileOpen((prev) => !prev);
 	};
 
-	if (actionsRef) {
+	if (actionsRef?.current) {
 		actionsRef.current.editorToggleProfilePanel = () => {
 			setIsProfileOpen((prev) => !prev);
 		};
@@ -113,8 +113,10 @@ export function EditTabContent({
 							<HSComp.ResizableHandle />
 							<HSComp.ResizablePanel defaultSize={30} minSize={10}>
 								<HSComp.OperationOutcomeView
-									resource={saveError as any}
-									onIssueClick={onIssueClick as any}
+									resource={saveError as unknown as HSComp.OperationOutcome}
+									onIssueClick={
+										onIssueClick as unknown as HSComp.OperationOutcomeViewProps["onIssueClick"]
+									}
 									className="h-full overflow-auto"
 								/>
 							</HSComp.ResizablePanel>

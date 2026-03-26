@@ -5,10 +5,9 @@ import {
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { Wand2 } from "lucide-react";
-import { useChatDispatch, useChatState } from "./chat-context";
+import { useChatDispatch } from "./chat-context";
 
 export default function ClaudeChatToggle() {
-	const { isOpen } = useChatState();
 	const dispatch = useChatDispatch();
 	return (
 		<Tooltip>

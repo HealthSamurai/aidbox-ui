@@ -18,7 +18,7 @@ export function BoxInfoDisplay({ boxInfo }: { boxInfo: BoxInfo | undefined }) {
 
 	const licenseLine = [
 		licenseType
-			? `${licenseType[0]!.toUpperCase()}${licenseType.slice(1)}`
+			? `${licenseType[0]?.toUpperCase()}${licenseType.slice(1)}`
 			: null,
 		licenseExpiration ? `valid until ${licenseExpiration}` : null,
 	]

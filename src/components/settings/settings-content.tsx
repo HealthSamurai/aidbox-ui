@@ -94,7 +94,7 @@ export function SettingsContent({
 					) : (
 						<div className="mt-6 space-y-10">
 							{sorted.map(([catKey, settings]) => {
-								const category = settings[0]!.category;
+								const category = settings[0]?.category ?? [];
 								return (
 									<CategorySection
 										key={catKey}

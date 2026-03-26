@@ -21,7 +21,11 @@ function RestIllustration() {
 		<div
 			className={`h-[417px] w-[476px] overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
-			<img src={restConsoleImage} alt="REST Console" className="size-full object-cover" />
+			<img
+				src={restConsoleImage}
+				alt="REST Console"
+				className="size-full object-cover"
+			/>
 		</div>
 	);
 }
@@ -31,7 +35,11 @@ function SqlIllustration() {
 		<div
 			className={`h-[357px] w-[476px] overflow-hidden rounded-xl border border-border-primary ${cardShadow}`}
 		>
-			<img src={sqlConsoleImage} alt="SQL Console" className="size-full object-cover" />
+			<img
+				src={sqlConsoleImage}
+				alt="SQL Console"
+				className="size-full object-cover"
+			/>
 		</div>
 	);
 }
@@ -50,7 +58,7 @@ function VdIllustration() {
 	);
 }
 
-const storybookUrl =
+const _storybookUrl =
 	"https://healthsamurai.github.io/aidbox-ts-sdk/react-components/?path=/docs/component-button--docs";
 
 function OpenSourceIllustration() {
@@ -137,10 +145,14 @@ function FeatureSection({
 				<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-bg-brand-secondary text-text-brand-primary">
 					{icon}
 				</div>
-				<h2 className="text-2xl font-semibold leading-8 text-text-primary">{title}</h2>
+				<h2 className="text-2xl font-semibold leading-8 text-text-primary">
+					{title}
+				</h2>
 			</div>
 			<div className="pl-2 pt-3">
-				<p className="text-base leading-[26px] text-text-secondary">{description}</p>
+				<p className="text-base leading-[26px] text-text-secondary">
+					{description}
+				</p>
 				<ul className="mt-7 space-y-2.5 text-sm leading-5 text-text-secondary">
 					{features.map((feature) => (
 						<li key={feature} className="flex items-start gap-2.5">
@@ -178,7 +190,9 @@ function FeatureSection({
 		</div>
 	);
 
-	const illustrationBlock = <div className="shrink-0 py-[31px]">{illustration}</div>;
+	const illustrationBlock = (
+		<div className="shrink-0 py-[31px]">{illustration}</div>
+	);
 
 	const gridCols = reverse
 		? "md:grid-cols-[476px_1fr]"

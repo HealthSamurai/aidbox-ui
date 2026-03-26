@@ -672,7 +672,7 @@ export function ResultContent({
 			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 				<div className="flex-1 min-h-0">
 					<QueryResult
-						result={results[0]!}
+						result={results[0] as (typeof results)[number]}
 						index={0}
 						totalCount={1}
 						isMaximized={false}

@@ -52,7 +52,7 @@ function ProgressInline({ entries }: { entries: ProgressEntry[] }) {
 
 	if (entries.length === 0) return null;
 
-	const lastMsg = entries[entries.length - 1]!.msg;
+	const lastMsg = entries[entries.length - 1]?.msg;
 
 	return (
 		<>

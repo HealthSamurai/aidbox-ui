@@ -122,7 +122,7 @@ export function ExampleTabContent({
 	instancesQuery,
 	onInstancesQueryChange,
 }: {
-	actionsRef: RefObject<ViewDefinitionBuilderActions>;
+	actionsRef: RefObject<ViewDefinitionBuilderActions | null>;
 	instancesQuery: string;
 	onInstancesQueryChange: (query: string) => void;
 }) {
@@ -184,25 +184,27 @@ export function ExampleTabContent({
 	const exampleResource = data ? data[currentResultIndex] : null;
 
 	// Populate instances panel actions on actionsRef
-	actionsRef.current.instancesSearch = (q: string) => {
-		setQuery(q);
-		queryClient.invalidateQueries({
-			queryKey: [viewDefinitionResourceType, Constants.PageID, q],
-		});
-	};
-	actionsRef.current.instancesGetCurrent = () => {
-		if (!exampleResource) return null;
-		return JSON.stringify(exampleResource, null, 2);
-	};
-	actionsRef.current.instancesGetCount = () => data?.length ?? 0;
-	actionsRef.current.instancesGetIndex = () => currentResultIndex;
-	actionsRef.current.instancesNext = handleNext;
-	actionsRef.current.instancesPrevious = handlePrevious;
-	actionsRef.current.instancesGoToIndex = (index: number) => {
-		if (data && index >= 0 && index < data.length) {
-			setCurrentResultIndex(index);
-		}
-	};
+	if (actionsRef.current) {
+		actionsRef.current.instancesSearch = (q: string) => {
+			setQuery(q);
+			queryClient.invalidateQueries({
+				queryKey: [viewDefinitionResourceType, Constants.PageID, q],
+			});
+		};
+		actionsRef.current.instancesGetCurrent = () => {
+			if (!exampleResource) return null;
+			return JSON.stringify(exampleResource, null, 2);
+		};
+		actionsRef.current.instancesGetCount = () => data?.length ?? 0;
+		actionsRef.current.instancesGetIndex = () => currentResultIndex;
+		actionsRef.current.instancesNext = handleNext;
+		actionsRef.current.instancesPrevious = handlePrevious;
+		actionsRef.current.instancesGoToIndex = (index: number) => {
+			if (data && index >= 0 && index < data.length) {
+				setCurrentResultIndex(index);
+			}
+		};
+	}
 
 	const getCopyText = () => {
 		return exampleMode === "yaml"

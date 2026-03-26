@@ -619,7 +619,7 @@ const ResourcesTabContent = ({
 	resourceType,
 	actionsRef,
 }: Types.ResourcesPageProps & {
-	actionsRef: React.RefObject<ResourceInstancesActions>;
+	actionsRef: React.RefObject<ResourceInstancesActions | null>;
 }) => {
 	const resourcesPageContext = React.useContext(ResourcesPageContext);
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -806,44 +806,46 @@ const ResourcesTabContent = ({
 		});
 	};
 
-	actionsRef.current.instancesGetSelected = () => Array.from(selectedIds);
+	if (actionsRef.current) {
+		actionsRef.current.instancesGetSelected = () => Array.from(selectedIds);
 
-	actionsRef.current.instancesSelect = (ids, selected) => {
-		if (ids.length === 1 && ids[0] === "*") {
-			const allIds = (data?.resources ?? [])
-				.map((r) => r.id)
-				.filter(Boolean) as string[];
-			setSelectedIds(selected ? new Set(allIds) : new Set());
-		} else {
-			setSelectedIds((prev) => {
-				const next = new Set(prev);
-				for (const id of ids) {
-					if (selected) next.add(id);
-					else next.delete(id);
-				}
-				return next;
-			});
-		}
-	};
-
-	actionsRef.current.instancesDeleteSelected = async () => {
-		const ids = Array.from(selectedIds);
-		if (ids.length === 0) throw new Error("No resources selected");
-		await deleteMutation.mutateAsync();
-		return ids;
-	};
-
-	actionsRef.current.instancesExportSelected = () => {
-		const selected = (data?.resources ?? []).filter(
-			(r) => r.id && selectedIds.has(r.id),
-		);
-		if (selected.length === 0) return null;
-		return {
-			resourceType: "Bundle",
-			type: "collection",
-			entry: selected.map((resource) => ({ resource })),
+		actionsRef.current.instancesSelect = (ids, selected) => {
+			if (ids.length === 1 && ids[0] === "*") {
+				const allIds = (data?.resources ?? [])
+					.map((r) => r.id)
+					.filter(Boolean) as string[];
+				setSelectedIds(selected ? new Set(allIds) : new Set());
+			} else {
+				setSelectedIds((prev) => {
+					const next = new Set(prev);
+					for (const id of ids) {
+						if (selected) next.add(id);
+						else next.delete(id);
+					}
+					return next;
+				});
+			}
 		};
-	};
+
+		actionsRef.current.instancesDeleteSelected = async () => {
+			const ids = Array.from(selectedIds);
+			if (ids.length === 0) throw new Error("No resources selected");
+			await deleteMutation.mutateAsync();
+			return ids;
+		};
+
+		actionsRef.current.instancesExportSelected = () => {
+			const selected = (data?.resources ?? []).filter(
+				(r) => r.id && selectedIds.has(r.id),
+			);
+			if (selected.length === 0) return null;
+			return {
+				resourceType: "Bundle",
+				type: "collection",
+				entry: selected.map((resource) => ({ resource })),
+			};
+		};
+	}
 
 	return (
 		<ResourcesTabContentContext.Provider
@@ -1271,7 +1273,7 @@ export const ResourcesPage = ({
 		? atob(encodedSearchQuery)
 		: Constants.DEFAULT_SEARCH_QUERY;
 
-	const actionsRef = React.useRef<ResourceInstancesActions>(null!);
+	const actionsRef = React.useRef<ResourceInstancesActions>(null);
 
 	actionsRef.current = {
 		switchTab: (tab) => {

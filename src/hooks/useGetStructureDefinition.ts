@@ -8,7 +8,7 @@ interface Bundle {
 			type: string;
 			name?: string;
 			baseDefinition?: string;
-			differential?: { element: any[] };
+			differential?: { element: unknown[] };
 		};
 	}[];
 }
@@ -29,7 +29,8 @@ export function useGetStructureDefinitions(): GetStructureDefinitions {
 				params: entries,
 			});
 			if (result.isErr()) return [];
-			return result.value.resource.entry?.map((e) => e.resource) ?? [];
+			return (result.value.resource.entry?.map((e) => e.resource) ??
+				[]) as Awaited<ReturnType<GetStructureDefinitions>>;
 		} catch {
 			return [];
 		}

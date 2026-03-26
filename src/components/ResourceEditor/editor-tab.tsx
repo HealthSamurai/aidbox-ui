@@ -1,4 +1,3 @@
-import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type {
 	CodeEditorView,
 	ExpandValueSet,

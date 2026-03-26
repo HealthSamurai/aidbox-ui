@@ -6,6 +6,12 @@ function textResult(text: string) {
 	return { content: [{ type: "text" as const, text }] };
 }
 
+function getActions(ref: RefObject<ResourceEditorActions | null>) {
+	const actions = ref.current;
+	if (!actions) throw new Error("Resource editor actions not available");
+	return actions;
+}
+
 const TOOL_NAMES = [
 	"editor_switch_tab",
 	"editor_get_tab",
@@ -32,7 +38,7 @@ const TOOL_NAMES = [
 ] as const;
 
 export function useWebMCPResourceEditor(
-	actionsRef: RefObject<ResourceEditorActions>,
+	actionsRef: RefObject<ResourceEditorActions | null>,
 ) {
 	useEffect(() => {
 		if (!navigator.modelContext) return;
@@ -54,7 +60,7 @@ export function useWebMCPResourceEditor(
 				required: ["tab"],
 			},
 			execute: async (args: { tab: "edit" | "history" | "builder" }) => {
-				actionsRef.current.switchTab(args.tab);
+				getActions(actionsRef).switchTab(args.tab);
 				return textResult(`Switched to ${args.tab} tab`);
 			},
 		});
@@ -64,7 +70,7 @@ export function useWebMCPResourceEditor(
 			description: "[Resource Editor] Get the currently active tab.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				return textResult(actionsRef.current.getTab());
+				return textResult(getActions(actionsRef).getTab());
 			},
 		});
 
@@ -84,7 +90,7 @@ export function useWebMCPResourceEditor(
 				required: ["mode"],
 			},
 			execute: async (args: { mode: "json" | "yaml" }) => {
-				actionsRef.current.editorSwitchMode(args.mode);
+				getActions(actionsRef).editorSwitchMode(args.mode);
 				return textResult(`Switched to ${args.mode} mode`);
 			},
 		});
@@ -95,7 +101,7 @@ export function useWebMCPResourceEditor(
 				"[Resource Editor] Get the current editor mode (json or yaml).",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				return textResult(actionsRef.current.editorGetMode());
+				return textResult(getActions(actionsRef).editorGetMode());
 			},
 		});
 
@@ -105,7 +111,7 @@ export function useWebMCPResourceEditor(
 				"[Resource Editor] Get the current text content of the editor.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				return textResult(actionsRef.current.editorGetValue());
+				return textResult(getActions(actionsRef).editorGetValue());
 			},
 		});
 
@@ -125,7 +131,7 @@ export function useWebMCPResourceEditor(
 				required: ["value"],
 			},
 			execute: async (args: { value: string }) => {
-				actionsRef.current.editorSetValue(args.value);
+				getActions(actionsRef).editorSetValue(args.value);
 				return textResult("Editor value updated");
 			},
 		});
@@ -136,7 +142,7 @@ export function useWebMCPResourceEditor(
 				"[Resource Editor] Format (pretty-print) the current editor content.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				actionsRef.current.editorFormat();
+				getActions(actionsRef).editorFormat();
 				return textResult("Formatted");
 			},
 		});
@@ -149,7 +155,7 @@ export function useWebMCPResourceEditor(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				try {
-					const result = await actionsRef.current.editorSave();
+					const result = await getActions(actionsRef).editorSave();
 					if (result.status === "ok") {
 						return textResult(`Saved successfully. ID: ${result.id}`);
 					}
@@ -170,7 +176,7 @@ export function useWebMCPResourceEditor(
 				"[Resource Editor] Get validation errors from the last save attempt.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const issues = actionsRef.current.editorGetValidationErrors();
+				const issues = getActions(actionsRef).editorGetValidationErrors();
 				if (!issues || issues.length === 0)
 					return textResult("No validation errors");
 				return textResult(JSON.stringify(issues, null, 2));
@@ -182,7 +188,7 @@ export function useWebMCPResourceEditor(
 			description: "[Resource Editor] Toggle the profile panel open or closed.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				actionsRef.current.editorToggleProfilePanel();
+				getActions(actionsRef).editorToggleProfilePanel();
 				return textResult("Profile panel toggled");
 			},
 		});
@@ -194,7 +200,7 @@ export function useWebMCPResourceEditor(
 				"and whether the profile panel is open.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const info = actionsRef.current.editorGetProfile();
+				const info = getActions(actionsRef).editorGetProfile();
 				return textResult(JSON.stringify(info, null, 2));
 			},
 		});
@@ -215,7 +221,7 @@ export function useWebMCPResourceEditor(
 				required: ["key"],
 			},
 			execute: async (args: { key: string }) => {
-				actionsRef.current.editorChooseProfile(args.key);
+				getActions(actionsRef).editorChooseProfile(args.key);
 				return textResult(`Selected profile: ${args.key}`);
 			},
 		});
@@ -228,7 +234,7 @@ export function useWebMCPResourceEditor(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				try {
-					const result = await actionsRef.current.editorDelete();
+					const result = await getActions(actionsRef).editorDelete();
 					if (result.status === "ok") return textResult("Resource deleted");
 					return textResult(`Error: ${result.message}`);
 				} catch (e) {
@@ -246,7 +252,7 @@ export function useWebMCPResourceEditor(
 				"Returns version IDs and dates. Requires the History tab to be active.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const versions = actionsRef.current.historyListVersions();
+				const versions = getActions(actionsRef).historyListVersions();
 				if (!versions) return textResult("History is not available");
 				return textResult(JSON.stringify(versions, null, 2));
 			},
@@ -267,7 +273,7 @@ export function useWebMCPResourceEditor(
 				required: ["versionId"],
 			},
 			execute: async (args: { versionId: string }) => {
-				actionsRef.current.historySelectVersion(args.versionId);
+				getActions(actionsRef).historySelectVersion(args.versionId);
 				return textResult(`Selected version: ${args.versionId}`);
 			},
 		});
@@ -279,7 +285,7 @@ export function useWebMCPResourceEditor(
 				"including version ID, date, and resource content.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const selected = actionsRef.current.historyGetSelected();
+				const selected = getActions(actionsRef).historyGetSelected();
 				if (!selected) return textResult("No version selected");
 				return textResult(JSON.stringify(selected, null, 2));
 			},
@@ -291,7 +297,7 @@ export function useWebMCPResourceEditor(
 				"[Resource Editor] Get the current history view mode (raw or diff).",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				return textResult(actionsRef.current.historyGetViewMode());
+				return textResult(getActions(actionsRef).historyGetViewMode());
 			},
 		});
 
@@ -311,7 +317,7 @@ export function useWebMCPResourceEditor(
 				required: ["mode"],
 			},
 			execute: async (args: { mode: "raw" | "diff" }) => {
-				actionsRef.current.historySwitchViewMode(args.mode);
+				getActions(actionsRef).historySwitchViewMode(args.mode);
 				return textResult(`Switched to ${args.mode} view`);
 			},
 		});
@@ -322,7 +328,7 @@ export function useWebMCPResourceEditor(
 				"[Resource Editor] Get the raw view editor mode (json or yaml).",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				return textResult(actionsRef.current.historyGetRawMode());
+				return textResult(getActions(actionsRef).historyGetRawMode());
 			},
 		});
 
@@ -342,7 +348,7 @@ export function useWebMCPResourceEditor(
 				required: ["mode"],
 			},
 			execute: async (args: { mode: "json" | "yaml" }) => {
-				actionsRef.current.historySwitchRawMode(args.mode);
+				getActions(actionsRef).historySwitchRawMode(args.mode);
 				return textResult(`Switched raw view to ${args.mode}`);
 			},
 		});
@@ -355,7 +361,7 @@ export function useWebMCPResourceEditor(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				try {
-					const result = await actionsRef.current.historyRestore();
+					const result = await getActions(actionsRef).historyRestore();
 					if (result.status === "ok")
 						return textResult("Version restored successfully");
 					return textResult(`Error: ${result.message}`);
@@ -374,8 +380,8 @@ export function useWebMCPResourceEditor(
 				"and its previous version. Switches to Diff view mode. Requires the History tab to be active.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				actionsRef.current.historySwitchViewMode("diff");
-				const diff = actionsRef.current.historyGetSelectedDiff();
+				getActions(actionsRef).historySwitchViewMode("diff");
+				const diff = getActions(actionsRef).historyGetSelectedDiff();
 				if (!diff)
 					return textResult(
 						"No diff available (first version or History tab not active)",

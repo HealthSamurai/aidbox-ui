@@ -11,7 +11,7 @@ import { pageId } from "./types";
 interface ProfilePanelProps {
 	resourceType: string;
 	onClose: () => void;
-	actionsRef?: React.RefObject<ResourceEditorActions>;
+	actionsRef?: React.RefObject<ResourceEditorActions | null>;
 	onOpenPanel?: () => void;
 }
 
@@ -64,8 +64,8 @@ export function ProfilePanel({
 			fetchProfileElements(
 				client,
 				"aidbox.introspector/get-profile-snapshot",
-				selectedProfile!["package-coordinate"],
-				selectedProfile!.entity.url,
+				selectedProfile?.["package-coordinate"] as string,
+				selectedProfile?.entity.url as string,
 			),
 		enabled:
 			!!selectedProfile?.["package-coordinate"] &&
@@ -83,7 +83,7 @@ export function ProfilePanel({
 		[profileEntries],
 	);
 
-	if (actionsRef) {
+	if (actionsRef?.current) {
 		const profile = selectedProfileKey ? data?.[selectedProfileKey] : undefined;
 		actionsRef.current.editorGetProfile = () => ({
 			open: true,

@@ -324,7 +324,11 @@ export function Browser() {
 			e.preventDefault();
 			navigate({
 				to: "/ig/$packageId",
-				params: { packageId: filteredData[focusedIndex]!.id },
+				params: {
+					packageId: (
+						filteredData[focusedIndex] as (typeof filteredData)[number]
+					).id,
+				},
 				search: {
 					tab: undefined,
 					view: undefined,

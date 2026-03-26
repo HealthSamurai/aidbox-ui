@@ -217,7 +217,7 @@ function DbConsolePage() {
 			const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
 
 			if (allHaveLimit && statements.length === 1) {
-				const limitMatch = statements[0]!.match(/\bLIMIT\s+(\d+)/i);
+				const limitMatch = statements[0]?.match(/\bLIMIT\s+(\d+)/i);
 				if (limitMatch) setRowLimit(Number(limitMatch[1]));
 				setHasExplicitLimit(true);
 			} else if (allHaveLimit) {
@@ -388,7 +388,7 @@ function DbConsolePage() {
 		const parseError = (err: string, charOffset: number) => {
 			const posMatch = err.match(/Position:\s*(\d+)/);
 			if (!posMatch) return;
-			const charPos = Number.parseInt(posMatch[1]!, 10);
+			const charPos = Number.parseInt(posMatch[1] as string, 10);
 			if (Number.isNaN(charPos) || charPos < 1) return;
 			const absPos = charOffset + charPos;
 			let line = 1;
@@ -396,7 +396,7 @@ function DbConsolePage() {
 				if (query[i] === "\n") line++;
 			}
 			const msgMatch = err.match(/^ERROR:\s*(.+?)(?:\n|$)/);
-			issues.push({ line, message: msgMatch ? msgMatch[1]! : err });
+			issues.push({ line, message: msgMatch ? (msgMatch[1] as string) : err });
 		};
 
 		if (error) parseError(error, 0);
@@ -413,7 +413,7 @@ function DbConsolePage() {
 			}
 
 			for (let i = 0; i < results.length; i++) {
-				const r = results[i]!;
+				const r = results[i] as (typeof results)[number];
 				if (r.error) {
 					parseError(r.error, statementOffsets[i] ?? 0);
 				}

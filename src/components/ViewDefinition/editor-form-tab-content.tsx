@@ -272,7 +272,7 @@ const InputView = ({
 export const FormTabContent = ({
 	actionsRef,
 }: {
-	actionsRef: React.RefObject<ViewDefinitionBuilderActions>;
+	actionsRef: React.RefObject<ViewDefinitionBuilderActions | null>;
 }) => {
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinition = viewDefinitionContext.viewDefinition;
@@ -1609,41 +1609,43 @@ export const FormTabContent = ({
 		[],
 	);
 
-	actionsRef.current.getFormTree = () => ({
-		name: viewDefinition?.name,
-		status: viewDefinition?.status,
-		resourceType: viewDefinitionResourceType,
-		constants: constants.map((c) => ({
-			nodeId: c.nodeId,
-			name: c.name,
-			value: c.valueString ?? "",
-		})),
-		where: whereConditions.map((w) => ({
-			nodeId: w.nodeId,
-			path: w.path,
-		})),
-		select: serializeSelectItems(selectItems),
-	});
-	actionsRef.current.setName = updateName;
-	actionsRef.current.setStatus = updateStatus as (status: string) => void;
-	actionsRef.current.addConstant = addConstant;
-	actionsRef.current.updateConstant = updateConstant;
-	actionsRef.current.removeConstant = removeConstant;
-	actionsRef.current.addWhere = addWhereCondition;
-	actionsRef.current.updateWhere = updateWhereCondition;
-	actionsRef.current.removeWhere = removeWhereCondition;
-	actionsRef.current.addSelect = (type, parentNodeId?) => {
-		if (parentNodeId) {
-			const path = findPath(selectItems, parentNodeId) ?? [];
-			return addSelectItem(type, [...path, parentNodeId]);
-		}
-		return addSelectItem(type);
-	};
-	actionsRef.current.removeSelect = removeSelectItem;
-	actionsRef.current.updateSelectExpression = updateSelectExpression;
-	actionsRef.current.addColumn = addColumnToSelectItem;
-	actionsRef.current.updateColumn = updateSelectColumn;
-	actionsRef.current.removeColumn = removeSelectColumn;
+	if (actionsRef.current) {
+		actionsRef.current.getFormTree = () => ({
+			name: viewDefinition?.name,
+			status: viewDefinition?.status,
+			resourceType: viewDefinitionResourceType,
+			constants: constants.map((c) => ({
+				nodeId: c.nodeId,
+				name: c.name,
+				value: c.valueString ?? "",
+			})),
+			where: whereConditions.map((w) => ({
+				nodeId: w.nodeId,
+				path: w.path,
+			})),
+			select: serializeSelectItems(selectItems),
+		});
+		actionsRef.current.setName = updateName;
+		actionsRef.current.setStatus = updateStatus as (status: string) => void;
+		actionsRef.current.addConstant = addConstant;
+		actionsRef.current.updateConstant = updateConstant;
+		actionsRef.current.removeConstant = removeConstant;
+		actionsRef.current.addWhere = addWhereCondition;
+		actionsRef.current.updateWhere = updateWhereCondition;
+		actionsRef.current.removeWhere = removeWhereCondition;
+		actionsRef.current.addSelect = (type, parentNodeId?) => {
+			if (parentNodeId) {
+				const path = findPath(selectItems, parentNodeId) ?? [];
+				return addSelectItem(type, [...path, parentNodeId]);
+			}
+			return addSelectItem(type);
+		};
+		actionsRef.current.removeSelect = removeSelectItem;
+		actionsRef.current.updateSelectExpression = updateSelectExpression;
+		actionsRef.current.addColumn = addColumnToSelectItem;
+		actionsRef.current.updateColumn = updateSelectColumn;
+		actionsRef.current.removeColumn = removeSelectColumn;
+	}
 
 	if (!viewDefinition) {
 		return null;

@@ -6,6 +6,12 @@ function textResult(text: string) {
 	return { content: [{ type: "text" as const, text }] };
 }
 
+function getActions(ref: RefObject<ResourceBrowserActions | null>) {
+	const actions = ref.current;
+	if (!actions) throw new Error("Resource browser actions not available");
+	return actions;
+}
+
 const TOOL_NAMES = [
 	"list_resource_types",
 	"get_favorites",
@@ -14,7 +20,7 @@ const TOOL_NAMES = [
 ] as const;
 
 export function useWebMCPResourceBrowser(
-	actionsRef: RefObject<ResourceBrowserActions>,
+	actionsRef: RefObject<ResourceBrowserActions | null>,
 ) {
 	useEffect(() => {
 		if (!navigator.modelContext) return;
@@ -38,7 +44,7 @@ export function useWebMCPResourceBrowser(
 				const filter = (args.filter ?? args.query ?? args.search) as
 					| string
 					| undefined;
-				const types = actionsRef.current.listResourceTypes(filter);
+				const types = getActions(actionsRef).listResourceTypes(filter);
 				return textResult(
 					JSON.stringify(
 						{ total: types.length, resourceTypes: types },
@@ -55,7 +61,7 @@ export function useWebMCPResourceBrowser(
 				"[Resource Browser] Get the list of favorite (pinned) resource types.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const favorites = actionsRef.current.getFavorites();
+				const favorites = getActions(actionsRef).getFavorites();
 				return textResult(JSON.stringify(favorites, null, 2));
 			},
 		});
@@ -76,10 +82,10 @@ export function useWebMCPResourceBrowser(
 				required: ["resourceType"],
 			},
 			execute: async (args: { resourceType: string }) => {
-				const wasFav = actionsRef.current
+				const wasFav = getActions(actionsRef)
 					.getFavorites()
 					.includes(args.resourceType);
-				actionsRef.current.toggleFavorite(args.resourceType);
+				getActions(actionsRef).toggleFavorite(args.resourceType);
 				return textResult(
 					`${args.resourceType} ${wasFav ? "removed from" : "added to"} favorites`,
 				);
@@ -102,7 +108,7 @@ export function useWebMCPResourceBrowser(
 				required: ["resourceType"],
 			},
 			execute: async (args: { resourceType: string }) => {
-				actionsRef.current.navigateToResourceType(args.resourceType);
+				getActions(actionsRef).navigateToResourceType(args.resourceType);
 				return textResult(`Navigated to ${args.resourceType}`);
 			},
 		});

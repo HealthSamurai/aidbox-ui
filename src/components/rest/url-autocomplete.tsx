@@ -126,12 +126,12 @@ export function computePathSuggestions(
 	let currentNode = tree;
 
 	for (let i = 0; i < segments.length - 1; i++) {
-		const match = matchSegment(currentNode, segments[i]!);
+		const match = matchSegment(currentNode, segments[i] as string);
 		if (!match) return [];
 		currentNode = match.next;
 	}
 
-	const partial = segments[segments.length - 1]!.toLowerCase();
+	const partial = (segments[segments.length - 1] as string).toLowerCase();
 	const basePath = `/${segments.slice(0, -1).join("/")}`;
 	const prefix = basePath === "/" ? "/" : `${basePath}/`;
 	const suggestions: Suggestion[] = [];
@@ -160,7 +160,8 @@ export function computePathSuggestions(
 			}
 		} else {
 			if (!key.toLowerCase().startsWith(partial)) continue;
-			if (isRootLevel && key[0]! >= "A" && key[0]! <= "Z") continue;
+			if (isRootLevel && (key[0] as string) >= "A" && (key[0] as string) <= "Z")
+				continue;
 			const child = getNode(currentNode, key);
 			if (child && !nodeSupportsMethod(child, method)) continue;
 			if (seen.has(key)) continue;
@@ -192,7 +193,7 @@ export function computePathSuggestions(
 
 function detectResourceType(tree: RoutesTree, path: string): string | null {
 	const normalized = path.startsWith("/") ? path : `/${path}`;
-	const pathPart = normalized.split("?")[0]!;
+	const pathPart = normalized.split("?")[0] as string;
 	const segments = pathPart.split("/").filter(Boolean);
 	let node = tree;
 	let lastResourceType: string | null = null;
@@ -238,11 +239,11 @@ function computeSearchParamSuggestions(
 	const params = queryPart.split("&");
 	const lastParam = params[params.length - 1];
 
-	if (lastParam!.includes("=")) return [];
+	if (lastParam?.includes("=")) return [];
 
-	const partial = lastParam!.toLowerCase();
+	const partial = lastParam?.toLowerCase() ?? "";
 	const usedParams = new Set(
-		params.slice(0, -1).map((p) => p.split("=")[0]!.toLowerCase()),
+		params.slice(0, -1).map((p) => p.split("=")[0]?.toLowerCase()),
 	);
 
 	const allParams: { code: string; type?: string; expression?: string }[] = [
@@ -410,7 +411,7 @@ export function UrlAutocomplete({
 					case "Enter":
 					case "Tab":
 						event.preventDefault();
-						applySuggestion(suggestions[selectedIndex]!);
+						applySuggestion(suggestions[selectedIndex] as Suggestion);
 						return;
 					case "Escape":
 						event.preventDefault();
