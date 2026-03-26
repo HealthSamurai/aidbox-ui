@@ -58,9 +58,6 @@ function VdIllustration() {
 	);
 }
 
-const _storybookUrl =
-	"https://healthsamurai.github.io/aidbox-ts-sdk/react-components/?path=/docs/component-button--docs";
-
 function OpenSourceIllustration() {
 	return (
 		<div
