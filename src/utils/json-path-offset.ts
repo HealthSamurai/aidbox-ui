@@ -179,6 +179,137 @@ export function findJsonPathOffset(
 	return lastKeyOffset;
 }
 
+/** Internal mutable state used while walking the YAML structure. */
+interface YamlWalkState {
+	startLine: number;
+	contentIndent: number;
+	inlineOffset: number | null;
+	lastKeyOffset: number;
+}
+
+/** Precomputed data derived from the raw YAML text. */
+interface YamlLineInfo {
+	lines: string[];
+	lineStarts: number[];
+	yamlText: string;
+}
+
+function getIndent(lines: string[], lineIdx: number): number {
+	const line = lines[lineIdx] as string;
+	let i = 0;
+	while (i < line.length && line[i] === " ") i++;
+	return i;
+}
+
+/** Resolve which line a character offset falls on. */
+function findLineForOffset(
+	lineStarts: number[],
+	startLine: number,
+	offset: number,
+): number {
+	for (let i = startLine; i < lineStarts.length; i++) {
+		const isLastLine = i + 1 >= lineStarts.length;
+		if (isLastLine || offset < (lineStarts[i + 1] as number)) {
+			return i;
+		}
+	}
+	return startLine;
+}
+
+/**
+ * Try to match a string segment against inline content that follows a `- `
+ * on the same line. Returns `true` if matched (and updates `state`).
+ */
+function tryMatchInlineSegment(
+	info: YamlLineInfo,
+	state: YamlWalkState,
+	segment: string,
+): boolean {
+	if (state.inlineOffset === null) return false;
+
+	const rest = info.yamlText.substring(state.inlineOffset);
+	if (!rest.startsWith(`${segment}:`)) {
+		state.inlineOffset = null;
+		return false;
+	}
+
+	state.lastKeyOffset = state.inlineOffset;
+	state.contentIndent += 2;
+	const lineIdx = findLineForOffset(
+		info.lineStarts,
+		state.startLine,
+		state.inlineOffset,
+	);
+	state.startLine = lineIdx + 1;
+	state.inlineOffset = null;
+	return true;
+}
+
+/**
+ * Scan subsequent lines for a YAML key matching `segment` at the current
+ * indent level. Returns `true` if found (and updates `state`).
+ */
+function scanLinesForKey(
+	info: YamlLineInfo,
+	state: YamlWalkState,
+	segment: string,
+): boolean {
+	for (let i = state.startLine; i < info.lines.length; i++) {
+		const line = info.lines[i] as string;
+		if (line.trim().length === 0) continue;
+		const indent = getIndent(info.lines, i);
+		if (indent < state.contentIndent) break;
+		if (indent !== state.contentIndent) continue;
+
+		const content = line.substring(state.contentIndent);
+		if (content.startsWith(`${segment}:`)) {
+			state.lastKeyOffset =
+				(info.lineStarts[i] as number) + state.contentIndent;
+			state.contentIndent += 2;
+			state.startLine = i + 1;
+			state.inlineOffset = null;
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Navigate to the n-th array item (`segment`) at the current indent level.
+ * Returns `true` if found (and updates `state`).
+ */
+function scanLinesForArrayIndex(
+	info: YamlLineInfo,
+	state: YamlWalkState,
+	segment: number,
+): boolean {
+	let count = 0;
+	for (let i = state.startLine; i < info.lines.length; i++) {
+		const line = info.lines[i] as string;
+		if (line.trim().length === 0) continue;
+		const indent = getIndent(info.lines, i);
+		if (indent < state.contentIndent) break;
+		if (indent !== state.contentIndent) continue;
+
+		const content = line.substring(state.contentIndent);
+		if (!content.startsWith("- ") && content !== "-") continue;
+		if (count !== segment) {
+			count++;
+			continue;
+		}
+
+		const afterDash = content.substring(2).trim();
+		state.inlineOffset =
+			afterDash.length > 0
+				? (info.lineStarts[i] as number) + state.contentIndent + 2
+				: null;
+		state.contentIndent += 2;
+		state.startLine = i + 1;
+		return true;
+	}
+	return false;
+}
+
 /**
  * Find the character offset in a YAML string that corresponds to a given
  * FHIR expression path like "ViewDefinition.select[0].column[0].name".
@@ -203,105 +334,26 @@ export function findYamlPathOffset(
 		off += line.length + 1;
 	}
 
-	function getIndent(lineIdx: number): number {
-		const line = lines[lineIdx] as string;
-		let i = 0;
-		while (i < line.length && line[i] === " ") i++;
-		return i;
-	}
-
-	let startLine = 0;
-	let contentIndent = 0;
-	// After entering an array item, inline content (on the same `- ` line) offset
-	let inlineOffset: number | null = null;
-	let lastKeyOffset = 0;
+	const info: YamlLineInfo = { lines, lineStarts, yamlText };
+	const state: YamlWalkState = {
+		startLine: 0,
+		contentIndent: 0,
+		inlineOffset: null,
+		lastKeyOffset: 0,
+	};
 
 	for (const segment of segments) {
 		if (typeof segment === "string") {
-			let found = false;
-
-			// Check inline content first (key on the same line as `- `)
-			if (inlineOffset !== null) {
-				const rest = yamlText.substring(inlineOffset);
-				if (rest.startsWith(`${segment}:`)) {
-					lastKeyOffset = inlineOffset;
-					contentIndent += 2;
-					// Find which line this offset is on
-					let lineIdx = startLine;
-					for (let i = startLine; i < lineStarts.length; i++) {
-						if (
-							i + 1 < lineStarts.length
-								? inlineOffset < (lineStarts[i + 1] as number)
-								: true
-						) {
-							lineIdx = i;
-							break;
-						}
-					}
-					startLine = lineIdx + 1;
-					inlineOffset = null;
-					found = true;
-				} else {
-					inlineOffset = null;
-				}
-			}
-
-			if (!found) {
-				for (let i = startLine; i < lines.length; i++) {
-					const line = lines[i] as string;
-					if (line.trim().length === 0) continue;
-					const indent = getIndent(i);
-					if (indent < contentIndent) break;
-					if (indent !== contentIndent) continue;
-
-					const content = line.substring(contentIndent);
-					if (content.startsWith(`${segment}:`)) {
-						lastKeyOffset = (lineStarts[i] as number) + contentIndent;
-						contentIndent += 2;
-						startLine = i + 1;
-						inlineOffset = null;
-						found = true;
-						break;
-					}
-				}
-			}
-
+			const found =
+				tryMatchInlineSegment(info, state, segment) ||
+				scanLinesForKey(info, state, segment);
 			if (!found) return null;
 		} else {
-			// Array index
-			let count = 0;
-			let found = false;
-
-			for (let i = startLine; i < lines.length; i++) {
-				const line = lines[i] as string;
-				if (line.trim().length === 0) continue;
-				const indent = getIndent(i);
-				if (indent < contentIndent) break;
-				if (indent !== contentIndent) continue;
-
-				const content = line.substring(contentIndent);
-				if (content.startsWith("- ") || content === "-") {
-					if (count === segment) {
-						const afterDash = content.substring(2).trim();
-						if (afterDash.length > 0) {
-							inlineOffset = (lineStarts[i] as number) + contentIndent + 2;
-						} else {
-							inlineOffset = null;
-						}
-						contentIndent += 2;
-						startLine = i + 1;
-						found = true;
-						break;
-					}
-					count++;
-				}
-			}
-
-			if (!found) return null;
+			if (!scanLinesForArrayIndex(info, state, segment)) return null;
 		}
 	}
 
-	return lastKeyOffset;
+	return state.lastKeyOffset;
 }
 
 /**

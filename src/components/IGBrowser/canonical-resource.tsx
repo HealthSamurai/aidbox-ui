@@ -136,6 +136,32 @@ function addChild(
 	if (!map[parent].includes(child)) map[parent].push(child);
 }
 
+function findDirectChildren(
+	tree: Record<string, TreeViewItem<FhirStructure>>,
+	data: SnapshotElement[],
+	resourceType: string,
+): string[] {
+	const directChildren: string[] = [];
+	for (const path of Object.keys(tree)) {
+		const parts = path.split(".");
+		if (parts.length !== 2 || parts[0] !== resourceType) continue;
+		const elName = parts[1];
+		if (!elName) continue;
+		const isUnionChild = data.some((el) => {
+			if (!el["union?"] || !el.path) return false;
+			const unionName = el.path.split(".").pop();
+			return (
+				unionName &&
+				elName.startsWith(unionName) &&
+				elName !== unionName &&
+				el.path === `${resourceType}.${unionName}`
+			);
+		});
+		if (!isUnionChild) directChildren.push(path);
+	}
+	return directChildren;
+}
+
 function transformElementsToTree(
 	data: SnapshotElement[] | undefined,
 ): Record<string, TreeViewItem<FhirStructure>> {
@@ -192,36 +218,16 @@ function transformElementsToTree(
 	if (!rootElement?.name) return tree;
 
 	const resourceType = rootElement.name;
-
-	// Direct children of the resource type
-	const directChildren: string[] = [];
-	for (const path of Object.keys(tree)) {
-		const parts = path.split(".");
-		if (parts.length !== 2 || parts[0] !== resourceType) continue;
-		const elName = parts[1];
-		if (!elName) continue;
-		const isUnionChild = data.some((el) => {
-			if (!el["union?"] || !el.path) return false;
-			const unionName = el.path.split(".").pop();
-			return (
-				unionName &&
-				elName.startsWith(unionName) &&
-				elName !== unionName &&
-				el.path === `${resourceType}.${unionName}`
-			);
-		});
-		if (!isUnionChild) directChildren.push(path);
-	}
+	const directChildren = findDirectChildren(tree, data, resourceType);
 
 	// Ensure resource node exists
-	if (tree[resourceType]) {
-		if (
-			!tree[resourceType].children ||
-			tree[resourceType].children?.length === 0
-		) {
-			tree[resourceType].children = directChildren;
-		}
-	} else {
+	const existingNode = tree[resourceType];
+	if (
+		existingNode &&
+		(!existingNode.children || existingNode.children.length === 0)
+	) {
+		existingNode.children = directChildren;
+	} else if (!existingNode) {
 		tree[resourceType] = {
 			name: resourceType,
 			meta: {

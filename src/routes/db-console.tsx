@@ -68,6 +68,47 @@ type TabResultData = {
 	error: string | null;
 };
 
+/** Process SQL statements to handle LIMIT logic. Returns updated query and limit state. */
+function processQueryLimits(
+	statements: string[],
+	rowLimit: number | null,
+): { query: string; hasExplicit: boolean; singleLimit?: number } {
+	const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
+
+	if (allHaveLimit) {
+		const singleLimit =
+			statements.length === 1
+				? (statements[0]?.match(/\bLIMIT\s+(\d+)/i)?.[1] ?? undefined)
+				: undefined;
+		return {
+			query: statements.join("\n----\n"),
+			hasExplicit: true,
+			singleLimit: singleLimit ? Number(singleLimit) : undefined,
+		};
+	}
+
+	if (rowLimit !== null) {
+		const withLimits = statements
+			.map((s) =>
+				/\bLIMIT\s+\d+/i.test(s) || !/^\s*SELECT\b/i.test(s)
+					? s
+					: `${s} LIMIT ${rowLimit}`,
+			)
+			.join("\n----\n");
+		return { query: withLimits, hasExplicit: false };
+	}
+
+	return { query: statements.join("\n----\n"), hasExplicit: false };
+}
+
+/** Extract a human-readable error message from a caught error. */
+async function extractErrorMessage(err: unknown): Promise<string> {
+	if (isAidboxError(err)) {
+		return err.response.text();
+	}
+	return err instanceof Error ? err.message : String(err);
+}
+
 function useDbConsoleData() {
 	const client = useAidboxClient();
 	const [schemas, setSchemas] = useState<SchemaMap>({});
@@ -208,33 +249,19 @@ function DbConsolePage() {
 			if (overrideQuery !== undefined) {
 				handleQueryChange(overrideQuery);
 			}
-			let q = overrideQuery ?? queryRef.current;
-			if (!q.trim()) return;
+			const rawQuery = overrideQuery ?? queryRef.current;
+			if (!rawQuery.trim()) return;
 
 			const tabId = selectedTabRef.current?.id;
 			if (!tabId) return;
 
-			const statements = splitSqlStatements(q);
-			const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
-
-			if (allHaveLimit && statements.length === 1) {
-				const limitMatch = statements[0]?.match(/\bLIMIT\s+(\d+)/i);
-				if (limitMatch) setRowLimit(Number(limitMatch[1]));
-				setHasExplicitLimit(true);
-			} else if (allHaveLimit) {
-				setHasExplicitLimit(true);
-			} else {
-				setHasExplicitLimit(false);
-				if (rowLimitRef.current !== null) {
-					q = statements
-						.map((s) =>
-							/\bLIMIT\s+\d+/i.test(s) || !/^\s*SELECT\b/i.test(s)
-								? s
-								: `${s} LIMIT ${rowLimitRef.current}`,
-						)
-						.join("\n----\n");
-				}
+			const statements = splitSqlStatements(rawQuery);
+			const limitResult = processQueryLimits(statements, rowLimitRef.current);
+			if (limitResult.singleLimit !== undefined) {
+				setRowLimit(limitResult.singleLimit);
 			}
+			setHasExplicitLimit(limitResult.hasExplicit);
+			const q = limitResult.query;
 
 			cancelledTabRef.current = null;
 			runningQueryRef.current = queryRef.current;
@@ -273,29 +300,19 @@ function DbConsolePage() {
 				if (cancelledTabRef.current === tabId) return;
 
 				const items: QueryResultItem[] = Array.isArray(data) ? data : [data];
-				const hasError = items.some((item) => item.error);
-
-				if (!hasError) {
+				if (!items.some((item) => item.error)) {
 					saveSqlHistory(queryToSave, queryClient, client);
 				}
 
 				setTabResults((prev) => {
 					const next = new Map(prev);
-					next.set(tabId, {
-						results: items,
-						error: null,
-					});
+					next.set(tabId, { results: items, error: null });
 					return next;
 				});
 			} catch (err) {
 				if (cancelledTabRef.current === tabId) return;
 
-				let errorMsg: string;
-				if (isAidboxError(err)) {
-					errorMsg = await err.response.text();
-				} else {
-					errorMsg = err instanceof Error ? err.message : String(err);
-				}
+				const errorMsg = await extractErrorMessage(err);
 				setTabResults((prev) => {
 					const next = new Map(prev);
 					next.set(tabId, { results: null, error: errorMsg });
@@ -397,7 +414,7 @@ function DbConsolePage() {
 				if (query[i] === "\n") line++;
 			}
 			const msgMatch = err.match(/^ERROR:\s*(.+?)(?:\n|$)/);
-			issues.push({ line, message: msgMatch ? (msgMatch[1] as string) : err });
+			issues.push({ line, message: msgMatch ? (msgMatch[1] ?? err) : err });
 		};
 
 		if (error) parseError(error, 0);
@@ -414,7 +431,8 @@ function DbConsolePage() {
 			}
 
 			for (let i = 0; i < results.length; i++) {
-				const r = results[i] as (typeof results)[number];
+				const r = results[i];
+				if (!r) continue;
 				if (r.error) {
 					parseError(r.error, statementOffsets[i] ?? 0);
 				}

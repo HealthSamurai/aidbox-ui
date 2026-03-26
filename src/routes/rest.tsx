@@ -255,7 +255,6 @@ function RawEditor({
 		const doc = view.state.doc.toString();
 		const sepIdx = doc.indexOf("\n\n");
 		if (sepIdx === -1) return;
-		const _bodyStart = sepIdx + 2;
 		const head = doc.slice(0, sepIdx);
 		const finalHead = newHead ?? head;
 		const newDoc = `${finalHead}\n\n${newBody}`;
@@ -313,6 +312,93 @@ function RawEditor({
 	);
 }
 
+function detectBodyModeFromHeaders(
+	headers: Header[],
+	currentBodyMode: "json" | "yaml",
+): "json" | "yaml" | null {
+	const contentTypeHeader = headers.find(
+		(h) => h.name?.toLowerCase() === "content-type" && (h.enabled ?? true),
+	);
+	const acceptHeader = headers.find(
+		(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
+	);
+	const headerToCheck = contentTypeHeader || acceptHeader;
+	if (!headerToCheck?.value) return null;
+
+	const value = headerToCheck.value.toLowerCase().trim();
+	if (value === "text/yaml" || value === "application/x-yaml") {
+		return currentBodyMode !== "yaml" ? "yaml" : null;
+	}
+	if (value === "application/json") {
+		return currentBodyMode !== "json" ? "json" : null;
+	}
+	return null;
+}
+
+/** Upsert a header by name (case-insensitive). Inserts before the empty row if possible. */
+function upsertHeader(
+	headers: Header[],
+	headerName: string,
+	value: string,
+): void {
+	const index = headers.findIndex(
+		(h) => h.name?.toLowerCase() === headerName.toLowerCase(),
+	);
+	if (index >= 0 && headers[index]) {
+		const existing = headers[index];
+		headers[index] = {
+			id: existing.id,
+			name: existing.name,
+			value,
+			...(existing.enabled !== undefined && { enabled: existing.enabled }),
+		};
+		return;
+	}
+	const newHeader = {
+		id: crypto.randomUUID(),
+		name: headerName,
+		value,
+		enabled: true,
+	};
+	const emptyRowIndex = headers.findIndex(
+		(h) => h.name === "" && h.value === "",
+	);
+	if (emptyRowIndex >= 0) {
+		headers.splice(emptyRowIndex, 0, newHeader);
+	} else {
+		headers.push(newHeader);
+	}
+}
+
+/** Build updated headers list when body mode changes. Returns null if no update needed. */
+function buildHeadersForBodyMode(
+	selectedHeaders: Header[] | undefined,
+	bodyMode: "json" | "yaml",
+): Header[] | null {
+	const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
+	const headers = Array.isArray(selectedHeaders) ? [...selectedHeaders] : [];
+
+	const contentTypeIndex = headers.findIndex(
+		(h) => h.name?.toLowerCase() === "content-type",
+	);
+	const acceptIndex = headers.findIndex(
+		(h) => h.name?.toLowerCase() === "accept",
+	);
+
+	const needsContentTypeUpdate =
+		contentTypeIndex < 0 || headers[contentTypeIndex]?.value !== contentType;
+	const needsAcceptUpdate =
+		acceptIndex < 0 || headers[acceptIndex]?.value !== contentType;
+
+	if (!needsContentTypeUpdate && !needsAcceptUpdate) return null;
+
+	if (needsContentTypeUpdate)
+		upsertHeader(headers, "Content-Type", contentType);
+	if (needsAcceptUpdate) upsertHeader(headers, "Accept", contentType);
+
+	return headers;
+}
+
 function RequestView({
 	selectedTab,
 	requestLineVersion,
@@ -364,11 +450,7 @@ function RequestView({
 	const resourceTypeHint = useMemo(() => {
 		const pathWithoutQuery = (selectedTab.path || "").split("?")[0] ?? "";
 		const segments = pathWithoutQuery.split("/").filter(Boolean);
-		return (
-			segments.find(
-				(s) => (s[0] as string) >= "A" && (s[0] as string) <= "Z",
-			) ?? undefined
-		);
+		return segments.find((s) => /^[A-Z]/.test(s)) ?? undefined;
 	}, [selectedTab.path]);
 
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
@@ -424,37 +506,12 @@ function RequestView({
 
 	if (selectedTab.headers !== prevSelectedTabHeaders) {
 		setPrevSelectedTabHeaders(selectedTab.headers);
-
-		// Skip if we're the ones updating the headers
-		if (isUpdatingHeadersRef.current) {
-			// Do nothing
-		} else {
+		if (!isUpdatingHeadersRef.current) {
 			const headers = Array.isArray(selectedTab.headers)
 				? selectedTab.headers
 				: [];
-			const contentTypeHeader = headers.find(
-				(h) => h.name?.toLowerCase() === "content-type" && (h.enabled ?? true),
-			);
-			const acceptHeader = headers.find(
-				(h) => h.name?.toLowerCase() === "accept" && (h.enabled ?? true),
-			);
-
-			// Check Content-Type header first, then Accept header as fallback
-			const headerToCheck = contentTypeHeader || acceptHeader;
-
-			if (headerToCheck?.value) {
-				const value = headerToCheck.value.toLowerCase().trim();
-				if (value === "text/yaml" || value === "application/x-yaml") {
-					if (bodyMode !== "yaml") {
-						setBodyMode("yaml");
-					}
-				} else if (value === "application/json") {
-					if (bodyMode !== "json") {
-						setBodyMode("json");
-					}
-				}
-				// If it's any other value, don't change the mode
-			}
+			const newMode = detectBodyModeFromHeaders(headers, bodyMode);
+			if (newMode) setBodyMode(newMode);
 		}
 	}
 
@@ -466,109 +523,13 @@ function RequestView({
 	if (bodyMode !== prevBodyMode) {
 		setPrevBodyMode(bodyMode);
 
-		const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
-
-		const headers = Array.isArray(selectedTab.headers)
-			? [...selectedTab.headers]
-			: [];
-		const contentTypeIndex = headers.findIndex(
-			(h) => h.name?.toLowerCase() === "content-type",
+		const updatedHeaders = buildHeadersForBodyMode(
+			selectedTab.headers,
+			bodyMode,
 		);
-		const acceptIndex = headers.findIndex(
-			(h) => h.name?.toLowerCase() === "accept",
-		);
-
-		// Check if we need to update
-		const needsContentTypeUpdate =
-			contentTypeIndex < 0 || headers[contentTypeIndex]?.value !== contentType;
-		const needsAcceptUpdate =
-			acceptIndex < 0 || headers[acceptIndex]?.value !== contentType;
-
-		if (needsContentTypeUpdate || needsAcceptUpdate) {
+		if (updatedHeaders) {
 			isUpdatingHeadersRef.current = true;
-
-			// Update or add Content-Type header
-			if (needsContentTypeUpdate) {
-				if (contentTypeIndex >= 0 && headers[contentTypeIndex]) {
-					// Update existing Content-Type header
-					const existingHeader = headers[contentTypeIndex];
-					headers[contentTypeIndex] = {
-						id: existingHeader.id,
-						name: existingHeader.name,
-						value: contentType,
-						...(existingHeader.enabled !== undefined && {
-							enabled: existingHeader.enabled,
-						}),
-					};
-				} else {
-					// Add Content-Type header if it doesn't exist (before the empty row)
-					const emptyRowIndex = headers.findIndex(
-						(h) => h.name === "" && h.value === "",
-					);
-
-					if (emptyRowIndex >= 0) {
-						headers.splice(emptyRowIndex, 0, {
-							id: generateId(),
-							name: "Content-Type",
-							value: contentType,
-							enabled: true,
-						});
-					} else {
-						headers.push({
-							id: generateId(),
-							name: "Content-Type",
-							value: contentType,
-							enabled: true,
-						});
-					}
-				}
-			}
-
-			// Update or add Accept header
-			if (needsAcceptUpdate) {
-				// Re-find acceptIndex since we may have modified the array
-				const currentAcceptIndex = headers.findIndex(
-					(h) => h.name?.toLowerCase() === "accept",
-				);
-
-				if (currentAcceptIndex >= 0 && headers[currentAcceptIndex]) {
-					// Update existing Accept header
-					const existingHeader = headers[currentAcceptIndex];
-					headers[currentAcceptIndex] = {
-						id: existingHeader.id,
-						name: existingHeader.name,
-						value: contentType,
-						...(existingHeader.enabled !== undefined && {
-							enabled: existingHeader.enabled,
-						}),
-					};
-				} else {
-					// Add Accept header if it doesn't exist (before the empty row)
-					const emptyRowIndex = headers.findIndex(
-						(h) => h.name === "" && h.value === "",
-					);
-
-					if (emptyRowIndex >= 0) {
-						headers.splice(emptyRowIndex, 0, {
-							id: generateId(),
-							name: "Accept",
-							value: contentType,
-							enabled: true,
-						});
-					} else {
-						headers.push({
-							id: generateId(),
-							name: "Accept",
-							value: contentType,
-							enabled: true,
-						});
-					}
-				}
-			}
-
-			onHeadersUpdate(headers);
-
-			// Reset the flag after a short delay
+			onHeadersUpdate(updatedHeaders);
 			setTimeout(() => {
 				isUpdatingHeadersRef.current = false;
 			}, 0);
@@ -580,61 +541,47 @@ function RequestView({
 	};
 
 	const handleBodyModeChange = (newMode: "json" | "yaml") => {
-		try {
-			const currentBody = bodyEditorValue.trim();
-			if (!currentBody) {
-				setBodyMode(newMode);
-				onBodyModeChange(newMode);
-				return;
-			}
-
-			let convertedBody: string;
-			if (newMode === "yaml") {
-				const parsed = JSON.parse(currentBody);
-				convertedBody = yaml.dump(parsed, { indent: 2 });
-			} else {
-				const parsed = yaml.load(currentBody) as object;
-				convertedBody = JSON.stringify(parsed, null, 2);
-			}
-
-			setBodyEditorValue(convertedBody);
-			onBodyChange(convertedBody);
+		const currentBody = bodyEditorValue.trim();
+		if (!currentBody) {
 			setBodyMode(newMode);
 			onBodyModeChange(newMode);
-		} catch (_error) {
+			return;
+		}
+
+		const convertedBody = convertBody(currentBody, bodyMode, newMode);
+		if (convertedBody === currentBody) {
 			toast.error(`Failed to convert to ${newMode.toUpperCase()}`, {
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
+			return;
 		}
+
+		setBodyEditorValue(convertedBody);
+		onBodyChange(convertedBody);
+		setBodyMode(newMode);
+		onBodyModeChange(newMode);
 	};
 
 	const handleFormatBody = () => {
-		try {
-			const currentBody = bodyEditorValue.trim();
-			if (!currentBody) return;
+		const currentBody = bodyEditorValue.trim();
+		if (!currentBody) return;
 
-			let formattedBody: string;
-			if (bodyMode === "yaml") {
-				const parsed = yaml.load(currentBody);
-				formattedBody = yaml.dump(parsed, { indent: 2 });
-			} else {
-				const parsed = JSON.parse(currentBody);
-				formattedBody = JSON.stringify(parsed, null, 2);
-			}
-
-			setBodyEditorValue(formattedBody);
-			onBodyChange(formattedBody);
-			toast.success("Code formatted", {
-				position: "bottom-right",
-				style: { margin: "1rem" },
-			});
-		} catch (_error) {
+		const formattedBody = formatBody(currentBody, bodyMode);
+		if (formattedBody === currentBody) {
 			toast.error("Failed to format code", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
+			return;
 		}
+
+		setBodyEditorValue(formattedBody);
+		onBodyChange(formattedBody);
+		toast.success("Code formatted", {
+			position: "bottom-right",
+			style: { margin: "1rem" },
+		});
 	};
 
 	const handleBodyEditorChange = (value: string) => {
@@ -1372,10 +1319,7 @@ function RouteComponent() {
 			if (path.includes("?")) {
 				const pathPart = path.split("?")[0] as string;
 				const segments = pathPart.split("/").filter(Boolean);
-				const resourceType =
-					segments.find(
-						(s) => (s[0] as string) >= "A" && (s[0] as string) <= "Z",
-					) ?? null;
+				const resourceType = segments.find((s) => /^[A-Z]/.test(s)) ?? null;
 
 				let searchParams = searchParamsCache.current[resourceType ?? ""] ?? [];
 				if (resourceType && !searchParamsCache.current[resourceType]) {
