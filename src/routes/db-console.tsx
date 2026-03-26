@@ -46,6 +46,7 @@ import {
 } from "../components/db-console/utils";
 import { useLocalStorage } from "../hooks";
 import { useVimMode } from "../shared/vim-mode";
+import { generateId } from "../utils";
 import type {
 	DbConsoleActions,
 	QueryResultItem,
@@ -351,7 +352,7 @@ function DbConsolePage() {
 					return prev.map((t) => ({ ...t, selected: t.id === existing.id }));
 				}
 				const newTab: SqlTab = {
-					id: crypto.randomUUID(),
+					id: generateId(),
 					query: command,
 					selected: true,
 				};
@@ -525,13 +526,13 @@ function DbConsolePage() {
 		duplicateTab: (tabId) => {
 			const tab = tabs.find((t) => t.id === tabId);
 			if (!tab) return;
-			const newTab = { ...tab, id: crypto.randomUUID(), selected: true };
+			const newTab = { ...tab, id: generateId(), selected: true };
 			setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 		},
 		closeTab: (tabId) => {
 			const newTabs = tabs.filter((t) => t.id !== tabId);
 			if (newTabs.length === 0) {
-				setTabs([{ ...DEFAULT_SQL_TAB, id: crypto.randomUUID() }]);
+				setTabs([{ ...DEFAULT_SQL_TAB, id: generateId() }]);
 			} else {
 				const removedIndex = tabs.findIndex((t) => t.id === tabId);
 				const needsSelect = tabs.find((t) => t.id === tabId)?.selected;

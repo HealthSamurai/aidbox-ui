@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
+import { generateId } from "../../utils";
 import type {
 	FormTreeSelectItem,
 	ViewDefinitionBuilderActions,
@@ -105,7 +106,7 @@ const parseColumn = (id: string, column: ViewDefinitionSelectColumn[]) => {
 		nodeId: id,
 		type: "column" as const,
 		column: column.map((c, idx) => ({
-			nodeId: `${id}-col-${idx}-${crypto.randomUUID()}`,
+			nodeId: `${id}-col-${idx}-${generateId()}`,
 			name: c.name || "",
 			path: c.path || "",
 		})),
@@ -154,7 +155,7 @@ const parseSelectItems = (
 	parentId = "",
 ): SelectItemInternal[] => {
 	return items.flatMap((item, index) => {
-		const id = `${parentId}select-${index}-${crypto.randomUUID()}`;
+		const id = `${parentId}select-${index}-${generateId()}`;
 		if (item.column) return parseColumn(id, item.column);
 		else if (item.forEach) return parseForEach(id, item.forEach, item.select);
 		else if (item.forEachOrNull)
@@ -311,7 +312,7 @@ export const FormTabContent = ({
 		) {
 			const constantsWithIds = viewDefinition.constant.map(
 				(c, index: number) => ({
-					nodeId: `constant-${index}-${crypto.randomUUID()}`,
+					nodeId: `constant-${index}-${generateId()}`,
 					name: c.name || "",
 					valueString: c.valueString || "",
 				}),
@@ -328,7 +329,7 @@ export const FormTabContent = ({
 			viewDefinition.where.length > 0
 		) {
 			const whereWithIds = viewDefinition.where.map((w, index: number) => ({
-				nodeId: `where-${index}-${crypto.randomUUID()}`,
+				nodeId: `where-${index}-${generateId()}`,
 				path: w.path || "",
 			}));
 			setWhereConditions(whereWithIds);
@@ -399,7 +400,7 @@ export const FormTabContent = ({
 	// Function to add a new constant
 	const addConstant = (name?: string, valueString?: string) => {
 		const newConstant = {
-			nodeId: `constant-${constants.length}-${crypto.randomUUID()}`,
+			nodeId: `constant-${constants.length}-${generateId()}`,
 			name: name ?? "",
 			valueString: valueString ?? "",
 		};
@@ -438,7 +439,7 @@ export const FormTabContent = ({
 	// Function to add a new where condition
 	const addWhereCondition = (path?: string) => {
 		const newWhere = {
-			nodeId: `where-${whereConditions.length}-${crypto.randomUUID()}`,
+			nodeId: `where-${whereConditions.length}-${generateId()}`,
 			path: path ?? "",
 		};
 		const updatedWhere = [...whereConditions, newWhere];
@@ -491,14 +492,14 @@ export const FormTabContent = ({
 		parentPath?: string[],
 	) => {
 		const newItem: SelectItemInternal = {
-			nodeId: `${type}-${Date.now()}-${crypto.randomUUID()}`,
+			nodeId: `${type}-${Date.now()}-${generateId()}`,
 			type,
 		};
 
 		if (type === "column") {
 			newItem.column = [
 				{
-					nodeId: `col-${Date.now()}-${crypto.randomUUID()}`,
+					nodeId: `col-${Date.now()}-${generateId()}`,
 					name: "",
 					path: "",
 				},
@@ -561,7 +562,7 @@ export const FormTabContent = ({
 		name?: string,
 		path?: string,
 	) => {
-		const newColumnId = `col-${Date.now()}-${crypto.randomUUID()}`;
+		const newColumnId = `col-${Date.now()}-${generateId()}`;
 
 		const parentPath = findPath(selectItems, selectItemId);
 

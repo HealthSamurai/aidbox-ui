@@ -74,7 +74,7 @@ import { useGetStructureDefinitions } from "../hooks/useGetStructureDefinition";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { HTTP_STATUS_CODES, REST_CONSOLE_TABS_KEY } from "../shared/const";
 import { useVimMode } from "../shared/vim-mode";
-import { parseHttpRequest, parsePathParams } from "../utils";
+import { generateId, parseHttpRequest, parsePathParams } from "../utils";
 import { outcomeToIssueLines } from "../utils/json-path-offset";
 import { responseStorage } from "../utils/response-storage";
 import { useWebMCPRestConsole } from "../webmcp/rest-console";
@@ -508,14 +508,14 @@ function RequestView({
 
 					if (emptyRowIndex >= 0) {
 						headers.splice(emptyRowIndex, 0, {
-							id: crypto.randomUUID(),
+							id: generateId(),
 							name: "Content-Type",
 							value: contentType,
 							enabled: true,
 						});
 					} else {
 						headers.push({
-							id: crypto.randomUUID(),
+							id: generateId(),
 							name: "Content-Type",
 							value: contentType,
 							enabled: true,
@@ -550,14 +550,14 @@ function RequestView({
 
 					if (emptyRowIndex >= 0) {
 						headers.splice(emptyRowIndex, 0, {
-							id: crypto.randomUUID(),
+							id: generateId(),
 							name: "Accept",
 							value: contentType,
 							enabled: true,
 						});
 					} else {
 						headers.push({
-							id: crypto.randomUUID(),
+							id: generateId(),
 							name: "Accept",
 							value: contentType,
 							enabled: true,
@@ -1304,7 +1304,7 @@ async function saveToUIHistory(
 	aidboxClient: AidboxClientR5,
 ): Promise<void> {
 	try {
-		const historyId = crypto.randomUUID();
+		const historyId = generateId();
 		const command = formatRequestAsHttpCommand(tab);
 
 		queryClient.invalidateQueries({ queryKey: ["uiHistory"] });
@@ -1654,7 +1654,7 @@ function RouteComponent() {
 		getRawRequest: () => formatRequestAsHttpCommand(selectedTab),
 		setRawRequest: (raw) => {
 			const parsed = parseHttpRequest(raw);
-			setRequestLineVersion(crypto.randomUUID());
+			setRequestLineVersion(generateId());
 			setTabs((current) =>
 				current.map((tab) => {
 					if (!tab.selected) return tab;
@@ -1674,7 +1674,7 @@ function RouteComponent() {
 		formatBody: () => {},
 		getRequestBody: () => selectedTab.body ?? "",
 		setRequestBody: (body) => {
-			setRequestLineVersion(crypto.randomUUID());
+			setRequestLineVersion(generateId());
 			setTabs((current) =>
 				current.map((tab) => (tab.selected ? { ...tab, body } : tab)),
 			);
@@ -1688,7 +1688,7 @@ function RouteComponent() {
 					enabled: h.enabled ?? true,
 				})),
 		setRequestHeaders: (headers) => {
-			setRequestLineVersion(crypto.randomUUID());
+			setRequestLineVersion(generateId());
 			setTabs((current) =>
 				current.map((tab) => {
 					if (!tab.selected) return tab;
@@ -1696,19 +1696,19 @@ function RouteComponent() {
 						...tab,
 						headers: [
 							...headers.map((h) => ({
-								id: crypto.randomUUID(),
+								id: generateId(),
 								name: h.name,
 								value: h.value,
 								enabled: h.enabled ?? true,
 							})),
-							{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
+							{ id: generateId(), name: "", value: "", enabled: true },
 						],
 					};
 				}),
 			);
 		},
 		toggleRequestHeader: (name, enabled) => {
-			setRequestLineVersion(crypto.randomUUID());
+			setRequestLineVersion(generateId());
 			setTabs((current) =>
 				current.map((tab) => {
 					if (!tab.selected) return tab;
@@ -1732,18 +1732,18 @@ function RouteComponent() {
 					enabled: p.enabled ?? true,
 				})),
 		setRequestParams: (params) => {
-			setRequestLineVersion(crypto.randomUUID());
+			setRequestLineVersion(generateId());
 			setTabs((current) =>
 				current.map((tab) => {
 					if (!tab.selected) return tab;
 					const newParams = [
 						...params.map((p) => ({
-							id: crypto.randomUUID(),
+							id: generateId(),
 							name: p.name,
 							value: p.value,
 							enabled: p.enabled ?? true,
 						})),
-						{ id: crypto.randomUUID(), name: "", value: "", enabled: true },
+						{ id: generateId(), name: "", value: "", enabled: true },
 					];
 					return {
 						...tab,
@@ -1754,7 +1754,7 @@ function RouteComponent() {
 			);
 		},
 		toggleRequestParam: (name, enabled) => {
-			setRequestLineVersion(crypto.randomUUID());
+			setRequestLineVersion(generateId());
 			setTabs((current) =>
 				current.map((tab) => {
 					if (!tab.selected) return tab;
@@ -1842,7 +1842,7 @@ function RouteComponent() {
 					}) || [];
 				if (!params.some((p) => p.name === "" && p.value === "")) {
 					params.push({
-						id: crypto.randomUUID(),
+						id: generateId(),
 						name: "",
 						value: "",
 						enabled: true,
@@ -1852,7 +1852,7 @@ function RouteComponent() {
 					method,
 					path,
 					headers: headers.map((h) => ({
-						id: crypto.randomUUID(),
+						id: generateId(),
 						name: h.key,
 						value: h.value,
 						enabled: true,
@@ -1883,7 +1883,7 @@ function RouteComponent() {
 	const response = selectedTab.response || null;
 
 	const [requestLineVersion, setRequestLineVersion] = useState<string>(
-		crypto.randomUUID(),
+		generateId(),
 	);
 
 	const [fullscreenPanel, setFullscreenPanel] = useState<
@@ -1916,7 +1916,7 @@ function RouteComponent() {
 	}, [doSendRequest]);
 
 	function handleTabMethodChange(method: string) {
-		setRequestLineVersion(crypto.randomUUID());
+		setRequestLineVersion(generateId());
 		setTabs((currentTabs) =>
 			currentTabs.map((tab) =>
 				tab.selected
@@ -1943,7 +1943,7 @@ function RouteComponent() {
 
 				if (!hasEmptyHeader) {
 					headers.push({
-						id: crypto.randomUUID(),
+						id: generateId(),
 						name: "",
 						value: "",
 						enabled: true,
@@ -1970,7 +1970,7 @@ function RouteComponent() {
 
 				if (!hasEmptyParam) {
 					params.push({
-						id: crypto.randomUUID(),
+						id: generateId(),
 						name: "",
 						value: "",
 						enabled: true,
@@ -2050,7 +2050,7 @@ function RouteComponent() {
 				// If not, add an empty header row
 				if (!hasEmptyHeader) {
 					headers.push({
-						id: crypto.randomUUID(),
+						id: generateId(),
 						name: "",
 						value: "",
 						enabled: true,
@@ -2079,7 +2079,7 @@ function RouteComponent() {
 				// If not, add an empty param row
 				if (!hasEmptyParam) {
 					params.push({
-						id: crypto.randomUUID(),
+						id: generateId(),
 						name: "",
 						value: "",
 						enabled: true,
@@ -2192,7 +2192,7 @@ function RouteComponent() {
 									path={selectedTab.path || ""}
 									method={selectedTab.method}
 									onSelectSuggestion={(path) => {
-										setRequestLineVersion(crypto.randomUUID());
+										setRequestLineVersion(generateId());
 										handleTabRequestPathChange(path, tabs, setTabs);
 									}}
 									onSubmit={() =>
@@ -2214,7 +2214,7 @@ function RouteComponent() {
 										path={selectedTab.path || ""}
 										onMethodChange={(method) => handleTabMethodChange(method)}
 										onPathChange={(event) => {
-											setRequestLineVersion(crypto.randomUUID());
+											setRequestLineVersion(generateId());
 											handleTabRequestPathChange(
 												event.target.value,
 												tabs,

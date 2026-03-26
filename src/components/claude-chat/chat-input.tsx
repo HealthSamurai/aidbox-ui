@@ -1,6 +1,7 @@
 import { IconButton, Textarea } from "@health-samurai/react-components";
 import { Crosshair, Send } from "lucide-react";
 import { useRef, useState } from "react";
+import { generateId } from "../../utils";
 import { useChatDispatch, useChatState } from "./chat-context";
 import { ElementContextBadge } from "./element-context-badge";
 import type { ElementContext } from "./types";
@@ -20,7 +21,7 @@ export function ChatInput({
 
 	function handleSend() {
 		if (!canSend) return;
-		const id = crypto.randomUUID();
+		const id = generateId();
 		const contexts = elementContexts.length > 0 ? elementContexts : undefined;
 		dispatch({
 			type: "add_user_message",

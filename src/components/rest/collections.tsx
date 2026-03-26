@@ -11,7 +11,7 @@ import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { onError } from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
-import { parseHttpRequest } from "../../utils";
+import { generateId, parseHttpRequest } from "../../utils";
 import * as ActiveTabs from "./active-tabs";
 import { methodColors, type Tab } from "./active-tabs";
 
@@ -71,7 +71,7 @@ export async function SaveRequest(
 	}
 
 	if (currentSnippet && createNewCollection) {
-		snippetId = crypto.randomUUID();
+		snippetId = generateId();
 		setTabs([
 			...tabs.map((t) => ({ ...t, selected: false })),
 			{ ...tab, id: snippetId, selected: true },
