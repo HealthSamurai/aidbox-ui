@@ -540,8 +540,8 @@ function humanizeValue_(
 				return (
 					<Link
 						to="/resource/$resourceType/edit/$id"
-						params={{ resourceType, id }}
-						search={{ tab: "code", mode: "json" }}
+						params={{ resourceType: resourceType!, id: id! }}
+						search={{ tab: "edit", mode: "json", builderTab: "form" }}
 						onClick={stopPropagation}
 						className="text-text-link hover:underline"
 					>
@@ -599,8 +599,8 @@ function humanizeValue_(
 				return (
 					<Link
 						to="/resource/$resourceType/edit/$id"
-						params={{ resourceType, id }}
-						search={{ tab: "code", mode: "json" }}
+						params={{ resourceType: resourceType!, id: id! }}
+						search={{ tab: "edit", mode: "json", builderTab: "form" }}
 						onClick={stopPropagation}
 						className="text-text-link hover:underline"
 					>

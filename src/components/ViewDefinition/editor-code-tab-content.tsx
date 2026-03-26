@@ -245,8 +245,8 @@ export const CodeTabContent = () => {
 		const text = view.state.doc.toString();
 		const offset =
 			codeMode === "yaml"
-				? findYamlPathOffset(text, issue.expression[0])
-				: findJsonPathOffset(text, issue.expression[0]);
+				? findYamlPathOffset(text, issue.expression[0]!)
+				: findJsonPathOffset(text, issue.expression[0]!);
 		if (offset == null) return;
 		view.dispatch({
 			selection: EditorSelection.cursor(offset),

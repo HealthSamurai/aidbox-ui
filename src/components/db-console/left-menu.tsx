@@ -246,7 +246,6 @@ function SqlHistoryCommand({
 												currentValue={formatted}
 												mode="sql"
 												foldGutter={false}
-												lintGutter={false}
 												lineNumbers={false}
 											/>
 										</TooltipContent>

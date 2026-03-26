@@ -82,7 +82,7 @@ const useToolbarMode = (
 		const el = ref.current;
 		if (!el) return;
 		const observer = new ResizeObserver((entries) => {
-			const width = entries[0].contentRect.width;
+			const width = entries[0]!.contentRect.width;
 			if (width >= 670) setMode("full");
 			else if (width >= 420) setMode("icons");
 			else setMode("collapsed");
@@ -264,7 +264,7 @@ export const useViewDefinitionActions = (
 		},
 		onSuccess: (result) => {
 			if (result.isErr()) {
-				viewDefinitionContext.setRunError(result.value.resource);
+				viewDefinitionContext.setRunError(result.value.resource as any);
 				return;
 			}
 
@@ -287,7 +287,7 @@ export const useViewDefinitionActions = (
 		},
 		onSuccess: (result) => {
 			if (result.isErr()) {
-				viewDefinitionContext.setRunError(result.value.resource);
+				viewDefinitionContext.setRunError(result.value.resource as any);
 				return;
 			}
 
@@ -303,7 +303,11 @@ export const useViewDefinitionActions = (
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
-				search: { tab: "builder", mode: "json" },
+				search: {
+					tab: "builder" as const,
+					mode: "json" as const,
+					builderTab: "code" as const,
+				},
 			});
 		},
 		onError: Utils.onMutationError,
@@ -370,12 +374,12 @@ export const useViewDefinitionActions = (
 						})),
 					});
 				} else {
-					for (const issue of issues) {
+					for (const issue of resource.issue) {
 						Utils.toastError(
-							issue.expression.replace(
+							issue.expression?.[0]?.replace(
 								/^Parameters\.parameter\[\d+\]\.resource\./,
 								"ViewDefinition.",
-							),
+							) ?? "Unknown error",
 							issue.diagnostics,
 						);
 					}

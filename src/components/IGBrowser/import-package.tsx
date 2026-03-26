@@ -52,7 +52,7 @@ function ProgressInline({ entries }: { entries: ProgressEntry[] }) {
 
 	if (entries.length === 0) return null;
 
-	const lastMsg = entries[entries.length - 1].msg;
+	const lastMsg = entries[entries.length - 1]!.msg;
 
 	return (
 		<>
@@ -326,7 +326,7 @@ function RegistryForm({
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
-			navigate({ to: "/ig" });
+			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
 		} catch (error) {
 			hadError = true;
 			await Utils.onError(error);
@@ -513,7 +513,7 @@ function UrlForm({
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
-			navigate({ to: "/ig" });
+			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
 		} catch (error) {
 			hadError = true;
 			await Utils.onError(error);
@@ -642,7 +642,7 @@ function FileForm({
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
-			navigate({ to: "/ig" });
+			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
 		} catch (error) {
 			hadError = true;
 			await Utils.onError(error);

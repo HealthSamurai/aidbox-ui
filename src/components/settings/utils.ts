@@ -18,7 +18,11 @@ export function getSettingValue(setting: Setting): unknown {
 }
 
 export function isSetByUser(setting: Setting): boolean {
-	return setting.sources.some((s) => USER_SOURCES.has(s.source));
+	return setting.sources.some((s) =>
+		USER_SOURCES.has(
+			s.source as typeof USER_SOURCES extends Set<infer T> ? T : never,
+		),
+	);
 }
 
 export function isPendingRestart(setting: Setting): boolean {

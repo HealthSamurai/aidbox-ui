@@ -113,8 +113,8 @@ export function EditTabContent({
 							<HSComp.ResizableHandle />
 							<HSComp.ResizablePanel defaultSize={30} minSize={10}>
 								<HSComp.OperationOutcomeView
-									resource={saveError}
-									onIssueClick={onIssueClick}
+									resource={saveError as any}
+									onIssueClick={onIssueClick as any}
 									className="h-full overflow-auto"
 								/>
 							</HSComp.ResizablePanel>

@@ -131,6 +131,11 @@ export const ResourcesTabCreateButton = () => {
 		<Router.Link
 			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
+			search={{
+				tab: "edit" as const,
+				mode: "json" as const,
+				builderTab: "form" as const,
+			}}
 		>
 			<HSComp.Button variant="secondary">
 				<Lucide.PlusIcon className="text-fg-link" />
@@ -360,6 +365,11 @@ export const ResourcesTabTable = ({
 										resourceType: resourcesPageContext.resourceType,
 										id,
 									}}
+									search={{
+										tab: "edit" as const,
+										mode: "json" as const,
+										builderTab: "form" as const,
+									}}
 								>
 									{id}
 								</Router.Link>
@@ -372,7 +382,7 @@ export const ResourcesTabTable = ({
 								)}
 							</HSComp.TableCell>
 							{dynamicKeys.map((k) => {
-								const v = (resource as Record<string, unknown>)[k];
+								const v = (resource as unknown as Record<string, unknown>)[k];
 								const hasValue = v != null;
 								return (
 									<HSComp.TableCell key={k} className="max-w-[300px]">
@@ -954,16 +964,21 @@ const ProfilesTabContent = ({
 
 	const setSelectedProfile = (schema: Schema | null) => {
 		navigate({
-			search: (prev: Record<string, unknown>) => {
+			from: "/resource/$resourceType/",
+			search: (prev) => {
 				if (!schema) {
-					const { profile: _, detailTab: __, ...rest } = prev;
-					return rest;
+					const {
+						profile: _,
+						detailTab: __,
+						...rest
+					} = prev as typeof prev & { profile?: string; detailTab?: string };
+					return rest as typeof prev;
 				}
 				return {
 					...prev,
 					profile: schema.entity.url,
 					detailTab: "differential",
-				};
+				} as typeof prev;
 			},
 		});
 	};
@@ -971,10 +986,12 @@ const ProfilesTabContent = ({
 	const detailTab = search.detailTab || "differential";
 	const setDetailTab = (value: string) => {
 		navigate({
-			search: (prev: Record<string, unknown>) => ({
-				...prev,
-				detailTab: value,
-			}),
+			from: "/resource/$resourceType/",
+			search: (prev) =>
+				({
+					...prev,
+					detailTab: value,
+				}) as typeof prev,
 		});
 	};
 
@@ -1219,6 +1236,11 @@ const SearchParametersTabContent = ({
 										resourceType: "SearchParameter",
 										id: param.id,
 									}}
+									search={{
+										tab: "edit" as const,
+										mode: "json" as const,
+										builderTab: "form" as const,
+									}}
 								>
 									{param.url || "-"}
 								</Router.Link>
@@ -1254,9 +1276,14 @@ export const ResourcesPage = ({
 	actionsRef.current = {
 		switchTab: (tab) => {
 			navigate({
-				search: (prev: Record<string, unknown>) => {
-					const { profile: _, detailTab: __, ...rest } = prev;
-					return { ...rest, tab };
+				from: "/resource/$resourceType/",
+				search: (prev) => {
+					const {
+						profile: _,
+						detailTab: __,
+						...rest
+					} = prev as typeof prev & { profile?: string; detailTab?: string };
+					return { ...rest, tab } as typeof prev;
 				},
 			});
 		},
@@ -1323,12 +1350,22 @@ export const ResourcesPage = ({
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType, id },
+				search: {
+					tab: "edit" as const,
+					mode: "json" as const,
+					builderTab: "form" as const,
+				},
 			});
 		},
 		instancesOpenCreatePage: () => {
 			navigate({
 				to: "/resource/$resourceType/create",
 				params: { resourceType },
+				search: {
+					tab: "edit" as const,
+					mode: "json" as const,
+					builderTab: "form" as const,
+				},
 			});
 		},
 		profilesList: async () => {
@@ -1346,20 +1383,24 @@ export const ResourcesPage = ({
 		},
 		profilesSelect: (url) => {
 			navigate({
-				search: (prev: Record<string, unknown>) => ({
-					...prev,
-					tab: "profiles",
-					profile: url,
-					detailTab: "differential",
-				}),
+				from: "/resource/$resourceType/",
+				search: (prev) =>
+					({
+						...prev,
+						tab: "profiles",
+						profile: url,
+						detailTab: "differential",
+					}) as typeof prev,
 			});
 		},
 		profilesSelectTab: (tab) => {
 			navigate({
-				search: (prev: Record<string, unknown>) => ({
-					...prev,
-					detailTab: tab,
-				}),
+				from: "/resource/$resourceType/",
+				search: (prev) =>
+					({
+						...prev,
+						detailTab: tab,
+					}) as typeof prev,
 			});
 		},
 		searchParamsList: async () => {
@@ -1394,9 +1435,14 @@ export const ResourcesPage = ({
 
 	const handleTabChange = (value: string) => {
 		navigate({
-			search: (prev: Record<string, unknown>) => {
-				const { profile: _, detailTab: __, ...rest } = prev;
-				return { ...rest, tab: value };
+			from: "/resource/$resourceType/",
+			search: (prev) => {
+				const {
+					profile: _,
+					detailTab: __,
+					...rest
+				} = prev as typeof prev & { profile?: string; detailTab?: string };
+				return { ...rest, tab: value } as typeof prev;
 			},
 		});
 	};

@@ -39,7 +39,7 @@ const mainMenuItems: {
 		url: "/resource",
 		title: "Resource browser",
 		link: (
-			<Link to="/resource">
+			<Link to="/resource" search={{ q: undefined }}>
 				<Columns3Cog />
 				Resource browser
 			</Link>
@@ -69,7 +69,7 @@ const mainMenuItems: {
 		url: "/ig",
 		title: "FHIR packages",
 		link: (
-			<Link to="/ig">
+			<Link to="/ig" search={{ q: undefined, sort: undefined }}>
 				<Package />
 				FHIR packages
 			</Link>
@@ -103,10 +103,7 @@ const mainMenuItems: {
 	},
 ];
 
-const isActiveNavItem = (
-	item: (typeof mainMenuItems)[number],
-	currentPath: string,
-) => {
+const isActiveNavItem = (item: { url: string }, currentPath: string) => {
 	return (
 		currentPath === item.url ||
 		(currentPath.startsWith(item.url) && item.url !== "/") ||
@@ -168,10 +165,7 @@ export function AidboxSidebar({
 							<SidebarMenuItem>
 								<SidebarMenuButton
 									asChild
-									isActive={isActiveNavItem(
-										{ url: "/settings", title: "Settings" },
-										currentPath,
-									)}
+									isActive={isActiveNavItem({ url: "/settings" }, currentPath)}
 									tooltip={{ sideOffset: 16, children: "Settings" }}
 									className="text-nowrap"
 								>

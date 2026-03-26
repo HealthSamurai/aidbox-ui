@@ -23,7 +23,7 @@ function getStoredWidth(): number {
 function ChatPanel({
 	onSend,
 }: {
-	onSend: (id: string, content: string, context?: ElementContext) => void;
+	onSend: (id: string, content: string, contexts?: ElementContext[]) => void;
 }) {
 	const [width, setWidth] = useState(getStoredWidth);
 	const isDragging = useRef(false);

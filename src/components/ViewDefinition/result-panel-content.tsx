@@ -249,7 +249,9 @@ const ResultContent = ({
 										{row[SKELETON_MARKER] ? (
 											<Skeleton className="h-4 w-3/4" />
 										) : (
-											<CellValue value={row[key]} />
+											<CellValue
+												value={(row as Record<string, unknown>)[key]}
+											/>
 										)}
 									</TableCell>
 								))}

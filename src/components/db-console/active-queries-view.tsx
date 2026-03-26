@@ -146,7 +146,6 @@ function ActiveQueryItem({
 							currentValue={formattedQuery}
 							mode="sql"
 							foldGutter={false}
-							lintGutter={false}
 							lineNumbers={false}
 						/>
 					</div>

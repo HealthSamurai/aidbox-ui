@@ -362,7 +362,6 @@ function IndexRow({
 						currentValue={formatIndexDef(index.indexdef)}
 						mode="sql"
 						foldGutter={false}
-						lintGutter={false}
 						lineNumbers={false}
 					/>
 				</TooltipContent>

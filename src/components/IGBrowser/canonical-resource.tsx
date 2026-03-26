@@ -597,10 +597,12 @@ export function CanonicalResource() {
 
 	const setTab = (v: string) => {
 		navigate({
-			search: (prev) => ({
-				...prev,
-				view: v === defaultTab ? undefined : v,
-			}),
+			from: "/ig/$packageId/resource/$resourceType/$resourceId",
+			search: (prev) =>
+				({
+					...prev,
+					view: v === defaultTab ? undefined : v,
+				}) as typeof prev,
 			replace: true,
 		});
 	};
@@ -670,6 +672,11 @@ export function CanonicalResource() {
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType, id: resourceId },
+				search: {
+					tab: "edit" as const,
+					mode: "json" as const,
+					builderTab: "form" as const,
+				},
 			});
 		},
 	};
@@ -696,6 +703,11 @@ export function CanonicalResource() {
 			<Link
 				to="/resource/$resourceType/edit/$id"
 				params={{ resourceType, id: resourceId }}
+				search={{
+					tab: "edit" as const,
+					mode: "json" as const,
+					builderTab: "form" as const,
+				}}
 			>
 				<SquarePenIcon className="w-4 h-4" />
 				Edit

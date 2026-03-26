@@ -63,7 +63,11 @@ export const SaveButton = ({
 				navigate({
 					to: `/resource/$resourceType/edit/$id`,
 					params: { resourceType, id: resource.id },
-					search: { tab: "code", mode: "json" },
+					search: {
+						tab: "edit" as const,
+						mode: "json" as const,
+						builderTab: "form" as const,
+					},
 				});
 		},
 	});

@@ -125,6 +125,12 @@ function PackageList({
 		navigate({
 			to: "/ig/$packageId",
 			params: { packageId },
+			search: {
+				tab: undefined,
+				view: undefined,
+				q: undefined,
+				page: undefined,
+			},
 		});
 
 	return (
@@ -213,7 +219,10 @@ export function Browser() {
 	};
 
 	const setFilterQuery = (q: string) => {
-		navigate({ search: (prev) => ({ ...prev, q: q || undefined }) });
+		navigate({
+			from: "/ig/",
+			search: (prev) => ({ ...prev, q: q || undefined }),
+		});
 	};
 
 	const handleSort = (column: SortColumn) => {
@@ -225,7 +234,10 @@ export function Browser() {
 							sort.direction === "asc" ? ("desc" as const) : ("asc" as const),
 					}
 				: { column, direction: "asc" as const };
-		navigate({ search: (prev) => ({ ...prev, sort: serializeSort(next) }) });
+		navigate({
+			from: "/ig/",
+			search: (prev) => ({ ...prev, sort: serializeSort(next) }),
+		});
 	};
 
 	const fuzzySearch = useMemo(
@@ -280,10 +292,19 @@ export function Browser() {
 			handleSort(column);
 		},
 		selectPackage: (id) => {
-			navigate({ to: "/ig/$packageId", params: { packageId: id } });
+			navigate({
+				to: "/ig/$packageId",
+				params: { packageId: id },
+				search: {
+					tab: undefined,
+					view: undefined,
+					q: undefined,
+					page: undefined,
+				},
+			});
 		},
 		openInstallationPage: () => {
-			navigate({ to: "/ig/add" });
+			navigate({ to: "/ig/add", search: {} });
 		},
 	};
 	useWebMCPIGBrowser(actionsRef);
@@ -303,7 +324,13 @@ export function Browser() {
 			e.preventDefault();
 			navigate({
 				to: "/ig/$packageId",
-				params: { packageId: filteredData[focusedIndex].id },
+				params: { packageId: filteredData[focusedIndex]!.id },
+				search: {
+					tab: undefined,
+					view: undefined,
+					q: undefined,
+					page: undefined,
+				},
 			});
 		}
 	};

@@ -37,7 +37,7 @@ export function findJsonPathOffset(
 
 	// Advance past whitespace
 	function skipWs() {
-		while (pos < len && /\s/.test(jsonText[pos])) pos++;
+		while (pos < len && /\s/.test(jsonText[pos]!)) pos++;
 	}
 
 	// Read a JSON string starting at pos (which should be `"`), return the string value
@@ -71,7 +71,7 @@ export function findJsonPathOffset(
 			skipArray();
 		} else {
 			// number, boolean, null
-			while (pos < len && !/[,\]}\s]/.test(jsonText[pos])) pos++;
+			while (pos < len && !/[,\]}\s]/.test(jsonText[pos]!)) pos++;
 		}
 	}
 
@@ -204,7 +204,7 @@ export function findYamlPathOffset(
 	}
 
 	function getIndent(lineIdx: number): number {
-		const line = lines[lineIdx];
+		const line = lines[lineIdx]!;
 		let i = 0;
 		while (i < line.length && line[i] === " ") i++;
 		return i;
@@ -231,7 +231,7 @@ export function findYamlPathOffset(
 					for (let i = startLine; i < lineStarts.length; i++) {
 						if (
 							i + 1 < lineStarts.length
-								? inlineOffset < lineStarts[i + 1]
+								? inlineOffset < lineStarts[i + 1]!
 								: true
 						) {
 							lineIdx = i;
@@ -248,7 +248,7 @@ export function findYamlPathOffset(
 
 			if (!found) {
 				for (let i = startLine; i < lines.length; i++) {
-					const line = lines[i];
+					const line = lines[i]!;
 					if (line.trim().length === 0) continue;
 					const indent = getIndent(i);
 					if (indent < contentIndent) break;
@@ -256,7 +256,7 @@ export function findYamlPathOffset(
 
 					const content = line.substring(contentIndent);
 					if (content.startsWith(`${segment}:`)) {
-						lastKeyOffset = lineStarts[i] + contentIndent;
+						lastKeyOffset = lineStarts[i]! + contentIndent;
 						contentIndent += 2;
 						startLine = i + 1;
 						inlineOffset = null;
@@ -273,7 +273,7 @@ export function findYamlPathOffset(
 			let found = false;
 
 			for (let i = startLine; i < lines.length; i++) {
-				const line = lines[i];
+				const line = lines[i]!;
 				if (line.trim().length === 0) continue;
 				const indent = getIndent(i);
 				if (indent < contentIndent) break;
@@ -284,7 +284,7 @@ export function findYamlPathOffset(
 					if (count === segment) {
 						const afterDash = content.substring(2).trim();
 						if (afterDash.length > 0) {
-							inlineOffset = lineStarts[i] + contentIndent + 2;
+							inlineOffset = lineStarts[i]! + contentIndent + 2;
 						} else {
 							inlineOffset = null;
 						}
@@ -415,7 +415,7 @@ export function outcomeToIssueLines(
 			const diag = issue.diagnostics ?? "";
 			const lineMatch = diag.match(/line:\s*(\d+)/);
 			if (lineMatch) {
-				addLine(Number.parseInt(lineMatch[1], 10), message);
+				addLine(Number.parseInt(lineMatch[1]!, 10), message);
 			} else {
 				addLine(1, message);
 			}

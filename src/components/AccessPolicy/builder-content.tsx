@@ -86,7 +86,7 @@ export const AccessPolicyBuilderContent = () => {
 					...parsed,
 					id: accessPolicy.id,
 					resourceType: accessPolicy.resourceType,
-					meta: (accessPolicy as Record<string, unknown>).meta,
+					meta: (accessPolicy as unknown as Record<string, unknown>).meta,
 				};
 				setAccessPolicy(full);
 			}

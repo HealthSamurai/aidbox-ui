@@ -125,7 +125,7 @@ export const VersionsTab = ({
 
 	React.useEffect(() => {
 		if (versions.length > 0 && selectedVersionId === null) {
-			setSelectedVersionId(versions[0].versionId);
+			setSelectedVersionId(versions[0]!.versionId);
 		}
 	}, [versions, selectedVersionId]);
 
