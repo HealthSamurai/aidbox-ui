@@ -378,26 +378,28 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 		});
 
 	const installRows: KVRow[] = [];
-	const inst = meta.installation?.[0];
-	if (inst) {
-		if (inst.intention)
-			installRows.push({ label: "Intention", value: inst.intention });
-		if (inst.cts)
-			installRows.push({
-				label: "Installed at",
-				value: new Date(inst.cts).toLocaleDateString("en-GB", {
-					day: "2-digit",
-					month: "short",
-					year: "numeric",
-				}),
-			});
-		if (inst.source?.type)
-			installRows.push({ label: "Source", value: inst.source.type });
-		if (inst.source?.["registry-url"])
-			installRows.push({
-				label: "Registry",
-				value: inst.source["registry-url"],
-			});
+	if (meta.installation?.length) {
+		const inst = meta.installation[0];
+		if (inst) {
+			if (inst.intention)
+				installRows.push({ label: "Intention", value: inst.intention });
+			if (inst.cts)
+				installRows.push({
+					label: "Installed at",
+					value: new Date(inst.cts).toLocaleDateString("en-GB", {
+						day: "2-digit",
+						month: "short",
+						year: "numeric",
+					}),
+				});
+			if (inst.source?.type)
+				installRows.push({ label: "Source", value: inst.source.type });
+			if (inst.source?.["registry-url"])
+				installRows.push({
+					label: "Registry",
+					value: inst.source["registry-url"],
+				});
+		}
 	}
 
 	return (
@@ -870,13 +872,15 @@ function formatPackageInfoVisual(meta: PackageMeta) {
 		rows.dependencies = Object.entries(meta.dependencies)
 			.map(([n, v]) => `${n}#${v}`)
 			.join(", ");
-	const inst = meta.installation?.[0];
-	if (inst) {
-		if (inst.intention) rows.intention = inst.intention;
-		if (inst.cts) rows.installedAt = inst.cts;
-		if (inst.source?.type) rows.sourceType = inst.source.type;
-		if (inst.source?.["registry-url"])
-			rows.registryUrl = inst.source["registry-url"];
+	if (meta.installation?.length) {
+		const inst = meta.installation[0];
+		if (inst) {
+			if (inst.intention) rows.intention = inst.intention;
+			if (inst.cts) rows.installedAt = inst.cts;
+			if (inst.source?.type) rows.sourceType = inst.source.type;
+			if (inst.source?.["registry-url"])
+				rows.registryUrl = inst.source["registry-url"];
+		}
 	}
 	return rows;
 }

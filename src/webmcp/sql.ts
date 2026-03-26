@@ -273,9 +273,9 @@ export function useWebMCPSql(actionsRef: RefObject<DbConsoleActions>) {
 			},
 			execute: async (args: { table: string }) => {
 				const parts = args.table.split(".");
-				const schema = parts.length > 1 ? (parts[0] as string) : "public";
-				const name =
-					parts.length > 1 ? (parts[1] as string) : (parts[0] as string);
+				const [first = "", second] = parts;
+				const schema = second !== undefined ? first : "public";
+				const name = second ?? first;
 				actionsRef.current.selectTable(schema, name);
 				return textResult("Table selected in sidebar");
 			},
@@ -300,9 +300,9 @@ export function useWebMCPSql(actionsRef: RefObject<DbConsoleActions>) {
 			},
 			execute: async (args: { table: string }) => {
 				const parts = args.table.split(".");
-				const schema = parts.length > 1 ? (parts[0] as string) : "public";
-				const name =
-					parts.length > 1 ? (parts[1] as string) : (parts[0] as string);
+				const [first = "", second] = parts;
+				const schema = second !== undefined ? first : "public";
+				const name = second ?? first;
 				actionsRef.current.selectTable(schema, name);
 				try {
 					const info = await actionsRef.current.getTableInfo(schema, name);
