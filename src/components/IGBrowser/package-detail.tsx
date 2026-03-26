@@ -796,6 +796,7 @@ function CanonicalsContent({
 													resourceType: item.resource.resourceType,
 													resourceId: item.resource.id,
 												}}
+												search={{ view: undefined }}
 												className="text-text-link hover:underline"
 												onClick={(e) => e.stopPropagation()}
 											>

@@ -572,8 +572,7 @@ function getTabsForType(resourceType: string): {
 // ---------------------------------------------------------------------------
 
 function isReadOnlyPackage(packageId: string) {
-	const name = packageId.split("#")[0];
-	return name.startsWith("io.health-samurai.");
+	return packageId.startsWith("io.health-samurai.");
 }
 
 export function CanonicalResource() {
