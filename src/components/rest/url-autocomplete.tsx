@@ -106,6 +106,76 @@ function nodeSupportsMethod(node: RoutesTree, method: string): boolean {
 
 // ─── Suggestion computation ─────────────────────────────────────────────────
 
+function walkToLastSegment(
+	tree: RoutesTree,
+	segments: string[],
+): RoutesTree | null {
+	let currentNode = tree;
+	for (let i = 0; i < segments.length - 1; i++) {
+		const match = matchSegment(currentNode, segments[i] as string);
+		if (!match) return null;
+		currentNode = match.next;
+	}
+	return currentNode;
+}
+
+function collectParamKeySuggestions(
+	child: RoutesTree,
+	method: string,
+	partial: string,
+	prefix: string,
+	seen: Set<string>,
+): Suggestion[] {
+	if (!nodeSupportsMethod(child, method)) return [];
+
+	const results: Suggestion[] = [];
+	for (const val of getEnum(child)) {
+		if (HIDDEN_RESOURCE_TYPES.has(val)) continue;
+		if (!val.toLowerCase().startsWith(partial)) continue;
+		if (seen.has(val)) continue;
+		seen.add(val);
+		results.push({ label: val, value: prefix + val, type: "resource-type" });
+	}
+	return results;
+}
+
+function collectLiteralKeySuggestion(
+	node: RoutesTree,
+	key: string,
+	method: string,
+	partial: string,
+	prefix: string,
+	isRootLevel: boolean,
+	seen: Set<string>,
+): Suggestion | null {
+	if (!key.toLowerCase().startsWith(partial)) return null;
+	if (isRootLevel && /^[A-Z]/.test(key)) return null;
+	const child = getNode(node, key);
+	if (child && !nodeSupportsMethod(child, method)) return null;
+	if (seen.has(key)) return null;
+	seen.add(key);
+	return {
+		label: key,
+		value: prefix + key,
+		type: key.startsWith("$") || key.startsWith("_") ? "operation" : "path",
+	};
+}
+
+const SUGGESTION_TYPE_ORDER: Record<Suggestion["type"], number> = {
+	path: 0,
+	operation: 1,
+	"resource-type": 2,
+	"search-param": 3,
+};
+
+function compareSuggestions(a: Suggestion, b: Suggestion): number {
+	const aFhir = a.label === "fhir" ? 0 : 1;
+	const bFhir = b.label === "fhir" ? 0 : 1;
+	if (aFhir !== bFhir) return aFhir - bFhir;
+	const diff = SUGGESTION_TYPE_ORDER[a.type] - SUGGESTION_TYPE_ORDER[b.type];
+	return diff !== 0 ? diff : a.label.localeCompare(b.label);
+}
+
 export function computePathSuggestions(
 	tree: RoutesTree,
 	input: string,
@@ -123,71 +193,40 @@ export function computePathSuggestions(
 
 	const normalized = input.startsWith("/") ? input : `/${input}`;
 	const segments = normalized.split("/").slice(1);
-	let currentNode = tree;
 
-	for (let i = 0; i < segments.length - 1; i++) {
-		const match = matchSegment(currentNode, segments[i] as string);
-		if (!match) return [];
-		currentNode = match.next;
-	}
+	const currentNode = walkToLastSegment(tree, segments);
+	if (!currentNode) return [];
 
-	const partial = (segments[segments.length - 1] as string).toLowerCase();
+	const partial = segments[segments.length - 1]?.toLowerCase() ?? "";
 	const basePath = `/${segments.slice(0, -1).join("/")}`;
 	const prefix = basePath === "/" ? "/" : `${basePath}/`;
 	const suggestions: Suggestion[] = [];
 	const seen = new Set<string>();
-
-	// Only show resource types under /fhir/, not at root level
 	const isRootLevel = segments.length === 1;
 
 	for (const key of getChildKeys(currentNode)) {
 		if (isParamKey(key)) {
-			if (partial.length === 0) continue;
-			if (isRootLevel) continue;
+			if (partial.length === 0 || isRootLevel) continue;
 			const child = getNode(currentNode, key);
 			if (!child) continue;
-			if (!nodeSupportsMethod(child, method)) continue;
-			for (const val of getEnum(child)) {
-				if (HIDDEN_RESOURCE_TYPES.has(val)) continue;
-				if (!val.toLowerCase().startsWith(partial)) continue;
-				if (seen.has(val)) continue;
-				seen.add(val);
-				suggestions.push({
-					label: val,
-					value: prefix + val,
-					type: "resource-type",
-				});
-			}
+			suggestions.push(
+				...collectParamKeySuggestions(child, method, partial, prefix, seen),
+			);
 		} else {
-			if (!key.toLowerCase().startsWith(partial)) continue;
-			if (isRootLevel && (key[0] as string) >= "A" && (key[0] as string) <= "Z")
-				continue;
-			const child = getNode(currentNode, key);
-			if (child && !nodeSupportsMethod(child, method)) continue;
-			if (seen.has(key)) continue;
-			seen.add(key);
-			suggestions.push({
-				label: key,
-				value: prefix + key,
-				type: key.startsWith("$") || key.startsWith("_") ? "operation" : "path",
-			});
+			const suggestion = collectLiteralKeySuggestion(
+				currentNode,
+				key,
+				method,
+				partial,
+				prefix,
+				isRootLevel,
+				seen,
+			);
+			if (suggestion) suggestions.push(suggestion);
 		}
 	}
 
-	suggestions.sort((a, b) => {
-		const aFhir = a.label === "fhir" ? 0 : 1;
-		const bFhir = b.label === "fhir" ? 0 : 1;
-		if (aFhir !== bFhir) return aFhir - bFhir;
-		const order = {
-			path: 0,
-			operation: 1,
-			"resource-type": 2,
-			"search-param": 3,
-		};
-		const diff = order[a.type] - order[b.type];
-		return diff !== 0 ? diff : a.label.localeCompare(b.label);
-	});
-
+	suggestions.sort(compareSuggestions);
 	return suggestions;
 }
 
@@ -411,7 +450,10 @@ export function UrlAutocomplete({
 					case "Enter":
 					case "Tab":
 						event.preventDefault();
-						applySuggestion(suggestions[selectedIndex] as Suggestion);
+						{
+							const suggestion = suggestions[selectedIndex];
+							if (suggestion) applySuggestion(suggestion);
+						}
 						return;
 					case "Escape":
 						event.preventDefault();

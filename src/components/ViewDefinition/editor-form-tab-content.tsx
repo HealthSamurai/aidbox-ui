@@ -99,6 +99,85 @@ type SelectItemInternal = ViewDefinitionSelect & {
 	children?: SelectItemInternal[];
 };
 
+/** Reorder items that have a `nodeId` field to match the given ID order. */
+function reorderByNodeIds<T extends { nodeId: string }>(
+	items: T[],
+	orderedIds: string[],
+): T[] {
+	const reordered: T[] = [];
+	for (const id of orderedIds) {
+		const found = items.find((i) => i.nodeId === id);
+		if (found) reordered.push(found);
+	}
+	return reordered;
+}
+
+/** Recursively find and update reordered children within nested select items. */
+function findAndReorderSelectItems(
+	items: SelectItemInternal[],
+	targetNodeId: string,
+	newChildren: string[],
+): { updated: boolean; items: SelectItemInternal[] } {
+	let wasUpdated = false;
+	const updatedItems = items.map((item) =>
+		processSelectItemForReorder(item, targetNodeId, newChildren, (flag) => {
+			wasUpdated = flag;
+		}),
+	);
+	return { updated: wasUpdated, items: updatedItems };
+}
+
+function processSelectItemForReorder(
+	item: SelectItemInternal,
+	targetNodeId: string,
+	newChildren: string[],
+	setUpdated: (v: boolean) => void,
+): SelectItemInternal {
+	if (item.nodeId === targetNodeId) {
+		if (item.type === "column" && item.column) {
+			const reorderedColumnIds = newChildren.filter(
+				(id) => !id.endsWith("_add_column"),
+			);
+			const reorderedColumns = reorderByNodeIds(
+				item.column,
+				reorderedColumnIds,
+			);
+			if (reorderedColumns.length === item.column.length) {
+				setUpdated(true);
+				return { ...item, column: reorderedColumns };
+			}
+		} else if (
+			(item.type === "forEach" ||
+				item.type === "forEachOrNull" ||
+				item.type === "unionAll") &&
+			item.children
+		) {
+			const reorderedChildIds = newChildren.filter(
+				(id) => !id.endsWith("_add_select"),
+			);
+			const reorderedChildren = reorderByNodeIds(
+				item.children,
+				reorderedChildIds,
+			);
+			if (reorderedChildren.length === item.children.length) {
+				setUpdated(true);
+				return { ...item, children: reorderedChildren };
+			}
+		}
+	} else if (item.children && item.children.length > 0) {
+		const result = findAndReorderSelectItems(
+			item.children,
+			targetNodeId,
+			newChildren,
+		);
+		if (result.updated) {
+			setUpdated(true);
+			return { ...item, children: result.items };
+		}
+	}
+	return item;
+}
+
 // Helper functions
 
 const parseColumn = (id: string, column: ViewDefinitionSelectColumn[]) => {
@@ -913,19 +992,10 @@ export const FormTabContent = ({
 
 		// Handle reordering of constants
 		if (itemId === "_constant") {
-			// Filter out the add button and reorder constants
-			const reorderedConstantIds = newChildren.filter(
-				(id) => id !== "_constant_add",
+			const reorderedConstants = reorderByNodeIds(
+				constants,
+				newChildren.filter((id) => id !== "_constant_add"),
 			);
-			const reorderedConstants: ConstantItem[] = [];
-
-			for (const id of reorderedConstantIds) {
-				const constant = constants.find((c) => c.nodeId === id);
-				if (constant) {
-					reorderedConstants.push(constant);
-				}
-			}
-
 			if (reorderedConstants.length === constants.length) {
 				setConstants(reorderedConstants);
 				updateViewDefinition(reorderedConstants);
@@ -934,17 +1004,10 @@ export const FormTabContent = ({
 
 		// Handle reordering of where conditions
 		else if (itemId === "_where") {
-			// Filter out the add button and reorder where conditions
-			const reorderedWhereIds = newChildren.filter((id) => id !== "_where_add");
-			const reorderedWhere: WhereItem[] = [];
-
-			for (const id of reorderedWhereIds) {
-				const where = whereConditions.find((w) => w.nodeId === id);
-				if (where) {
-					reorderedWhere.push(where);
-				}
-			}
-
+			const reorderedWhere = reorderByNodeIds(
+				whereConditions,
+				newChildren.filter((id) => id !== "_where_add"),
+			);
 			if (reorderedWhere.length === whereConditions.length) {
 				setWhereConditions(reorderedWhere);
 				updateViewDefinition(undefined, reorderedWhere);
@@ -953,28 +1016,9 @@ export const FormTabContent = ({
 
 		// Handle reordering of top-level select items
 		else if (itemId === "_select") {
-			// Filter out the add button and reorder select items
-			const reorderedSelectIds = newChildren.filter(
-				(id) => id !== "_select_add",
-			);
-
-			const reorderSelectItems = (
-				items: SelectItemInternal[],
-				orderedIds: string[],
-			): SelectItemInternal[] => {
-				const reordered: SelectItemInternal[] = [];
-				for (const id of orderedIds) {
-					const item = items.find((i) => i.nodeId === id);
-					if (item) {
-						reordered.push(item);
-					}
-				}
-				return reordered;
-			};
-
-			const reorderedSelect = reorderSelectItems(
+			const reorderedSelect = reorderByNodeIds(
 				selectItems,
-				reorderedSelectIds,
+				newChildren.filter((id) => id !== "_select_add"),
 			);
 			if (reorderedSelect.length === selectItems.length) {
 				setSelectItems(reorderedSelect);
@@ -984,74 +1028,11 @@ export const FormTabContent = ({
 
 		// Handle reordering within a select item (columns or nested selects)
 		else {
-			// First, try to find the item in the flat structure (could be a column node or nested select)
-			const findAndUpdateItems = (
-				items: SelectItemInternal[],
-			): { updated: boolean; items: SelectItemInternal[] } => {
-				let wasUpdated = false;
-				const updatedItems = items.map((item) => {
-					// Check if this item matches
-					if (item.nodeId === itemId) {
-						if (item.type === "column" && item.column) {
-							// Reorder columns
-							const reorderedColumnIds = newChildren.filter(
-								(id) => !id.endsWith("_add_column"),
-							);
-							const reorderedColumns: ColumnItem[] = [];
-
-							for (const id of reorderedColumnIds) {
-								const column = item.column.find(
-									(c: ColumnItem) => c.nodeId === id,
-								);
-								if (column) {
-									reorderedColumns.push(column);
-								}
-							}
-
-							if (reorderedColumns.length === item.column.length) {
-								wasUpdated = true;
-								return { ...item, column: reorderedColumns };
-							}
-						} else if (
-							(item.type === "forEach" ||
-								item.type === "forEachOrNull" ||
-								item.type === "unionAll") &&
-							item.children
-						) {
-							// Reorder nested select items
-							const reorderedChildIds = newChildren.filter(
-								(id) => !id.endsWith("_add_select"),
-							);
-							const reorderedChildren: SelectItemInternal[] = [];
-
-							for (const id of reorderedChildIds) {
-								const child = item.children.find((c) => c.nodeId === id);
-								if (child) {
-									reorderedChildren.push(child);
-								}
-							}
-
-							if (reorderedChildren.length === item.children.length) {
-								wasUpdated = true;
-								return { ...item, children: reorderedChildren };
-							}
-						}
-					}
-					// If not matched, check children recursively
-					else if (item.children && item.children.length > 0) {
-						const result = findAndUpdateItems(item.children);
-						if (result.updated) {
-							wasUpdated = true;
-							return { ...item, children: result.items };
-						}
-					}
-					return item;
-				});
-
-				return { updated: wasUpdated, items: updatedItems };
-			};
-
-			const result = findAndUpdateItems(selectItems);
+			const result = findAndReorderSelectItems(
+				selectItems,
+				itemId,
+				newChildren,
+			);
 			if (result.updated) {
 				setSelectItems(result.items);
 				updateViewDefinition(undefined, undefined, undefined, result.items);

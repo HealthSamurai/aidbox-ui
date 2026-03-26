@@ -28,6 +28,47 @@ interface TextSettingProps {
 	onClearError: (name: string) => void;
 }
 
+function DescriptionBlock({
+	description,
+	infoOpen,
+	setInfoOpen,
+}: {
+	description?: string;
+	infoOpen: boolean;
+	setInfoOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+	const toggleButton = (
+		<button
+			type="button"
+			onClick={() => setInfoOpen((o) => !o)}
+			className="invisible flex cursor-pointer items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+		>
+			{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
+			<span>{infoOpen ? "Less" : "More"}</span>
+		</button>
+	);
+
+	if (!description) return toggleButton;
+
+	return (
+		<div className="flex items-start gap-2 pt-1">
+			<div
+				className="min-w-0 flex-1 text-xs [overflow-wrap:anywhere] text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:whitespace-pre-wrap [&_table]:w-full [&_table]:table-fixed [&_td]:break-words [&_th]:break-words [&_ul]:list-disc [&_ul]:pl-4"
+				// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions, matching sansara behavior
+				dangerouslySetInnerHTML={{ __html: description }}
+			/>
+			<button
+				type="button"
+				onClick={() => setInfoOpen((o) => !o)}
+				className="invisible ml-auto inline-flex cursor-pointer shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
+			>
+				{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
+				<span>{infoOpen ? "Less" : "More"}</span>
+			</button>
+		</div>
+	);
+}
+
 export function TextSetting({
 	setting,
 	value,
@@ -96,33 +137,6 @@ export function TextSetting({
 		</div>
 	);
 
-	const descriptionBlock = setting.description ? (
-		<div className="flex items-start gap-2 pt-1">
-			<div
-				className="min-w-0 flex-1 text-xs [overflow-wrap:anywhere] text-text-secondary [&_a]:text-[var(--color-elements-links)] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:whitespace-pre-wrap [&_table]:w-full [&_table]:table-fixed [&_td]:break-words [&_th]:break-words [&_ul]:list-disc [&_ul]:pl-4"
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: Server-provided HTML descriptions, matching sansara behavior
-				dangerouslySetInnerHTML={{ __html: setting.description }}
-			/>
-			<button
-				type="button"
-				onClick={() => setInfoOpen((o) => !o)}
-				className="invisible ml-auto inline-flex cursor-pointer shrink-0 items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
-			>
-				{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
-				<span>{infoOpen ? "Less" : "More"}</span>
-			</button>
-		</div>
-	) : (
-		<button
-			type="button"
-			onClick={() => setInfoOpen((o) => !o)}
-			className="invisible flex cursor-pointer items-center gap-1 text-xs text-text-secondary hover:text-text-primary group-hover/setting:visible"
-		>
-			{infoOpen ? <Minus size={14} /> : <Plus size={14} />}
-			<span>{infoOpen ? "Less" : "More"}</span>
-		</button>
-	);
-
 	const isEditing = isConfirming && editable;
 
 	return (
@@ -140,7 +154,11 @@ export function TextSetting({
 							{errorMessage}
 						</p>
 					)}
-					{descriptionBlock}
+					<DescriptionBlock
+						description={setting.description}
+						infoOpen={infoOpen}
+						setInfoOpen={setInfoOpen}
+					/>
 					{infoOpen && <SettingInfoPanel setting={setting} />}
 				</div>
 				{isEditing && (
