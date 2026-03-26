@@ -1317,7 +1317,7 @@ function RouteComponent() {
 			if (!tree) return [];
 
 			if (path.includes("?")) {
-				const pathPart = path.split("?")[0] as string;
+				const pathPart = path.split("?")[0] ?? "";
 				const segments = pathPart.split("/").filter(Boolean);
 				const resourceType = segments.find((s) => /^[A-Z]/.test(s)) ?? null;
 

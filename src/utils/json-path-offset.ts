@@ -37,7 +37,7 @@ export function findJsonPathOffset(
 
 	// Advance past whitespace
 	function skipWs() {
-		while (pos < len && /\s/.test(jsonText[pos] as string)) pos++;
+		while (pos < len && /\s/.test(jsonText[pos] ?? "")) pos++;
 	}
 
 	// Read a JSON string starting at pos (which should be `"`), return the string value
@@ -71,7 +71,7 @@ export function findJsonPathOffset(
 			skipArray();
 		} else {
 			// number, boolean, null
-			while (pos < len && !/[,\]}\s]/.test(jsonText[pos] as string)) pos++;
+			while (pos < len && !/[,\]}\s]/.test(jsonText[pos] ?? "")) pos++;
 		}
 	}
 
@@ -195,7 +195,7 @@ interface YamlLineInfo {
 }
 
 function getIndent(lines: string[], lineIdx: number): number {
-	const line = lines[lineIdx] as string;
+	const line = lines[lineIdx] ?? "";
 	let i = 0;
 	while (i < line.length && line[i] === " ") i++;
 	return i;
@@ -209,7 +209,7 @@ function findLineForOffset(
 ): number {
 	for (let i = startLine; i < lineStarts.length; i++) {
 		const isLastLine = i + 1 >= lineStarts.length;
-		if (isLastLine || offset < (lineStarts[i + 1] as number)) {
+		if (isLastLine || offset < (lineStarts[i + 1] ?? 0)) {
 			return i;
 		}
 	}
@@ -255,16 +255,15 @@ function scanLinesForKey(
 	segment: string,
 ): boolean {
 	for (let i = state.startLine; i < info.lines.length; i++) {
-		const line = info.lines[i] as string;
-		if (line.trim().length === 0) continue;
+		const line = info.lines[i];
+		if (!line || line.trim().length === 0) continue;
 		const indent = getIndent(info.lines, i);
 		if (indent < state.contentIndent) break;
 		if (indent !== state.contentIndent) continue;
 
 		const content = line.substring(state.contentIndent);
 		if (content.startsWith(`${segment}:`)) {
-			state.lastKeyOffset =
-				(info.lineStarts[i] as number) + state.contentIndent;
+			state.lastKeyOffset = (info.lineStarts[i] ?? 0) + state.contentIndent;
 			state.contentIndent += 2;
 			state.startLine = i + 1;
 			state.inlineOffset = null;
@@ -285,8 +284,8 @@ function scanLinesForArrayIndex(
 ): boolean {
 	let count = 0;
 	for (let i = state.startLine; i < info.lines.length; i++) {
-		const line = info.lines[i] as string;
-		if (line.trim().length === 0) continue;
+		const line = info.lines[i];
+		if (!line || line.trim().length === 0) continue;
 		const indent = getIndent(info.lines, i);
 		if (indent < state.contentIndent) break;
 		if (indent !== state.contentIndent) continue;
@@ -301,7 +300,7 @@ function scanLinesForArrayIndex(
 		const afterDash = content.substring(2).trim();
 		state.inlineOffset =
 			afterDash.length > 0
-				? (info.lineStarts[i] as number) + state.contentIndent + 2
+				? (info.lineStarts[i] ?? 0) + state.contentIndent + 2
 				: null;
 		state.contentIndent += 2;
 		state.startLine = i + 1;
@@ -467,7 +466,7 @@ export function outcomeToIssueLines(
 			const diag = issue.diagnostics ?? "";
 			const lineMatch = diag.match(/line:\s*(\d+)/);
 			if (lineMatch) {
-				addLine(Number.parseInt(lineMatch[1] as string, 10), message);
+				addLine(Number.parseInt(lineMatch[1] ?? "", 10), message);
 			} else {
 				addLine(1, message);
 			}

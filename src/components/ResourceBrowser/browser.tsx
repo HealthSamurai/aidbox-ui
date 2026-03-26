@@ -315,12 +315,12 @@ export function Browser() {
 			focusedIndex >= 0 &&
 			focusedIndex < filteredData.length
 		) {
+			const item = filteredData[focusedIndex];
+			if (!item) return;
 			e.preventDefault();
 			navigate({
 				to: "/resource/$resourceType",
-				params: {
-					resourceType: filteredData[focusedIndex]?.resourceType as string,
-				},
+				params: { resourceType: item.resourceType },
 			});
 		}
 	};

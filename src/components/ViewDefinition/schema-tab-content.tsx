@@ -41,13 +41,17 @@ export function SchemaTabContent() {
 			defaultSchema?.["package-coordinate"],
 			defaultSchema?.entity?.url,
 		],
-		queryFn: () =>
-			fetchProfileElements(
+		queryFn: () => {
+			const coord = defaultSchema?.["package-coordinate"];
+			const url = defaultSchema?.entity?.url;
+			if (!coord || !url) return Promise.resolve(undefined);
+			return fetchProfileElements(
 				client,
 				"aidbox.introspector/get-profile-snapshot",
-				defaultSchema?.["package-coordinate"] as string,
-				defaultSchema?.entity.url as string,
-			),
+				coord,
+				url,
+			);
+		},
 		enabled:
 			!!defaultSchema?.["package-coordinate"] && !!defaultSchema?.entity?.url,
 		retry: false,

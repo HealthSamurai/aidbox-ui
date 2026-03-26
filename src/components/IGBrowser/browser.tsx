@@ -321,10 +321,12 @@ export function Browser() {
 			focusedIndex >= 0 &&
 			focusedIndex < filteredData.length
 		) {
+			const item = filteredData[focusedIndex];
+			if (!item) return;
 			e.preventDefault();
 			navigate({
 				to: "/ig/$packageId",
-				params: { packageId: filteredData[focusedIndex]?.id as string },
+				params: { packageId: item.id },
 				search: {
 					tab: undefined,
 					view: undefined,
