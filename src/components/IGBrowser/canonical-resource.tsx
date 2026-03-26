@@ -571,6 +571,11 @@ function getTabsForType(resourceType: string): {
 // Main component
 // ---------------------------------------------------------------------------
 
+function isReadOnlyPackage(packageId: string) {
+	const name = packageId.split("#")[0];
+	return name.startsWith("io.health-samurai.");
+}
+
 export function CanonicalResource() {
 	const { packageId, resourceType, resourceId } = useParams({
 		from: "/ig/$packageId/resource/$resourceType/$resourceId",
@@ -685,7 +690,9 @@ export function CanonicalResource() {
 		</div>
 	) : null;
 
-	const openInBrowserButton = (
+	const readOnly = isReadOnlyPackage(packageId);
+
+	const openInBrowserButton = readOnly ? null : (
 		<HSComp.Button variant="ghost" size="small" asChild>
 			<Link
 				to="/resource/$resourceType/edit/$id"
