@@ -545,11 +545,11 @@ function getTabsForType(resourceType: string): {
 		case "StructureDefinition":
 			return {
 				tabs: [
-					{ value: "json", label: "JSON" },
 					{ value: "differential", label: "Differential" },
 					{ value: "snapshot", label: "Snapshot" },
+					{ value: "json", label: "JSON" },
 				],
-				defaultTab: "json",
+				defaultTab: "differential",
 			};
 		case "ValueSet":
 			return {
@@ -570,6 +570,10 @@ function getTabsForType(resourceType: string): {
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+
+function isReadOnlyPackage(packageId: string) {
+	return packageId.startsWith("io.health-samurai.");
+}
 
 export function CanonicalResource() {
 	const { packageId, resourceType, resourceId } = useParams({
@@ -685,7 +689,9 @@ export function CanonicalResource() {
 		</div>
 	) : null;
 
-	const openInBrowserButton = (
+	const readOnly = isReadOnlyPackage(packageId);
+
+	const openInBrowserButton = readOnly ? null : (
 		<HSComp.Button variant="ghost" size="small" asChild>
 			<Link
 				to="/resource/$resourceType/edit/$id"

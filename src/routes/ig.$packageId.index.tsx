@@ -6,5 +6,7 @@ export const Route = createFileRoute("/ig/$packageId/")({
 	validateSearch: (search) => ({
 		tab: search.tab === "package-info" ? ("package-info" as const) : undefined,
 		view: search.view === "json" ? ("json" as const) : undefined,
+		q: typeof search.q === "string" ? search.q : undefined,
+		page: typeof search.page === "number" ? search.page : undefined,
 	}),
 });
