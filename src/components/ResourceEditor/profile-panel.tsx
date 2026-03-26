@@ -60,13 +60,17 @@ export function ProfilePanel({
 			selectedProfile?.["package-coordinate"],
 			selectedProfile?.entity?.url,
 		],
-		queryFn: () =>
-			fetchProfileElements(
+		queryFn: () => {
+			const coord = selectedProfile?.["package-coordinate"];
+			const url = selectedProfile?.entity?.url;
+			if (!coord || !url) return Promise.resolve(undefined);
+			return fetchProfileElements(
 				client,
 				"aidbox.introspector/get-profile-snapshot",
-				selectedProfile?.["package-coordinate"] as string,
-				selectedProfile?.entity.url as string,
-			),
+				coord,
+				url,
+			);
+		},
 		enabled:
 			!!selectedProfile?.["package-coordinate"] &&
 			!!selectedProfile?.entity?.url,

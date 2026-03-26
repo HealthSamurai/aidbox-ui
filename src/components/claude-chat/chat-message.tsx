@@ -37,11 +37,13 @@ function parseCodeBlock(
 	lines: string[],
 	startIndex: number,
 ): { element: ReactNode; nextIndex: number } {
-	const lang = (lines[startIndex] as string).slice(3).trim();
+	const lang = (lines[startIndex] ?? "").slice(3).trim();
 	const codeLines: string[] = [];
 	let i = startIndex + 1;
-	while (i < lines.length && !(lines[i] as string).startsWith("```")) {
-		codeLines.push(lines[i] as string);
+	while (i < lines.length) {
+		const line = lines[i];
+		if (!line || line.startsWith("```")) break;
+		codeLines.push(line);
 		i++;
 	}
 	i++; // skip closing ```
@@ -63,10 +65,12 @@ function parseList(
 ): { element: ReactNode; nextIndex: number } {
 	const items: ReactNode[] = [];
 	let i = startIndex;
-	while (i < lines.length && pattern.test(lines[i] as string)) {
+	while (i < lines.length) {
+		const line = lines[i];
+		if (!line || !pattern.test(line)) break;
 		items.push(
 			<li key={`li${String(items.length)}`}>
-				{renderInline((lines[i] as string).replace(pattern, ""))}
+				{renderInline(line.replace(pattern, ""))}
 			</li>,
 		);
 		i++;
@@ -85,7 +89,8 @@ function MarkdownContent({ content }: { content: string }) {
 	let i = 0;
 
 	while (i < lines.length) {
-		const line = lines[i] as string;
+		const line = lines[i];
+		if (!line) break;
 
 		// Code block
 		if (line.startsWith("```")) {
@@ -107,7 +112,7 @@ function MarkdownContent({ content }: { content: string }) {
 						: "text-sm font-semibold mt-1 mb-0.5";
 			blocks.push(
 				<div key={`b${String(blocks.length)}`} className={cls}>
-					{renderInline(headingMatch[2] as string)}
+					{renderInline(headingMatch[2] ?? "")}
 				</div>,
 			);
 			i++;

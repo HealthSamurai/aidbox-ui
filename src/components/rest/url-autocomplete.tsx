@@ -112,7 +112,9 @@ function walkToLastSegment(
 ): RoutesTree | null {
 	let currentNode = tree;
 	for (let i = 0; i < segments.length - 1; i++) {
-		const match = matchSegment(currentNode, segments[i] as string);
+		const seg = segments[i];
+		if (!seg) return null;
+		const match = matchSegment(currentNode, seg);
 		if (!match) return null;
 		currentNode = match.next;
 	}
@@ -232,7 +234,7 @@ export function computePathSuggestions(
 
 function detectResourceType(tree: RoutesTree, path: string): string | null {
 	const normalized = path.startsWith("/") ? path : `/${path}`;
-	const pathPart = normalized.split("?")[0] as string;
+	const pathPart = normalized.split("?")[0] ?? "";
 	const segments = pathPart.split("/").filter(Boolean);
 	let node = tree;
 	let lastResourceType: string | null = null;

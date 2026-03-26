@@ -406,7 +406,7 @@ function DbConsolePage() {
 		const parseError = (err: string, charOffset: number) => {
 			const posMatch = err.match(/Position:\s*(\d+)/);
 			if (!posMatch) return;
-			const charPos = Number.parseInt(posMatch[1] as string, 10);
+			const charPos = Number.parseInt(posMatch[1] ?? "", 10);
 			if (Number.isNaN(charPos) || charPos < 1) return;
 			const absPos = charOffset + charPos;
 			let line = 1;
