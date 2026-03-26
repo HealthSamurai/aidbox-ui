@@ -620,18 +620,37 @@ function CanonicalsContent({
 }) {
 	const client = useAidboxClient();
 	const navigate = useNavigate();
-	const [search, setSearch] = useState("");
-	const [substring, setSubstring] = useState("");
-	const [page, setPage] = useState(1);
+	const { q, page: urlPage } = useSearch({ from: "/ig/$packageId/" });
+	const substring = q ?? "";
+	const page = urlPage ?? 1;
+	const [search, setSearch] = useState(substring);
 
-	const debouncedSetSubstring = useDebounce((value: string) => {
-		setSubstring(value);
-		setPage(1);
+	useEffect(() => {
+		setSearch(substring);
+	}, [substring]);
+
+	const debouncedNavigate = useDebounce((value: string) => {
+		navigate({
+			search: (prev) => ({
+				...prev,
+				q: value || undefined,
+				page: undefined,
+			}),
+		});
 	}, 300);
 
 	const handleSearchChange = (value: string) => {
 		setSearch(value);
-		debouncedSetSubstring(value);
+		debouncedNavigate(value);
+	};
+
+	const setPage = (p: number) => {
+		navigate({
+			search: (prev) => ({
+				...prev,
+				page: p === 1 ? undefined : p,
+			}),
+		});
 	};
 
 	const { data, isLoading } = useCanonicals(packageId, substring, page);
@@ -647,8 +666,13 @@ function CanonicalsContent({
 
 			if (query !== undefined) {
 				setSearch(query);
-				setSubstring(query);
-				setPage(targetPage);
+				navigate({
+					search: (prev) => ({
+						...prev,
+						q: query || undefined,
+						page: targetPage === 1 ? undefined : targetPage,
+					}),
+				});
 			}
 			if (p !== undefined) {
 				setPage(p);
