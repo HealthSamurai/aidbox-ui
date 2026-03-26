@@ -545,9 +545,9 @@ function getTabsForType(resourceType: string): {
 		case "StructureDefinition":
 			return {
 				tabs: [
-					{ value: "json", label: "JSON" },
 					{ value: "differential", label: "Differential" },
 					{ value: "snapshot", label: "Snapshot" },
+					{ value: "json", label: "JSON" },
 				],
 				defaultTab: "differential",
 			};
