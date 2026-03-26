@@ -255,7 +255,7 @@ function RawEditor({
 		const doc = view.state.doc.toString();
 		const sepIdx = doc.indexOf("\n\n");
 		if (sepIdx === -1) return;
-		const bodyStart = sepIdx + 2;
+		const _bodyStart = sepIdx + 2;
 		const head = doc.slice(0, sepIdx);
 		const finalHead = newHead ?? head;
 		const newDoc = `${finalHead}\n\n${newBody}`;
@@ -364,7 +364,11 @@ function RequestView({
 	const resourceTypeHint = useMemo(() => {
 		const pathWithoutQuery = (selectedTab.path || "").split("?")[0] ?? "";
 		const segments = pathWithoutQuery.split("/").filter(Boolean);
-		return segments.find((s) => s[0]! >= "A" && s[0]! <= "Z") ?? undefined;
+		return (
+			segments.find(
+				(s) => (s[0] as string) >= "A" && (s[0] as string) <= "Z",
+			) ?? undefined
+		);
 	}, [selectedTab.path]);
 
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
@@ -978,7 +982,7 @@ function ExplainView({
 		queryKey: ["rest-console-explain", selectedTab.id, sendVersion],
 		queryFn: async (): Promise<ExplainResponse> => {
 			const headers = buildHeaders(selectedTab);
-			headers["Accept"] = "application/json";
+			headers.Accept = "application/json";
 			const basePath = selectedTab.path || "/";
 			const explainUrl = `${basePath}${basePath.includes("?") ? "&" : "?"}_explain=analyze`;
 
@@ -1366,10 +1370,12 @@ function RouteComponent() {
 			if (!tree) return [];
 
 			if (path.includes("?")) {
-				const pathPart = path.split("?")[0];
-				const segments = pathPart!.split("/").filter(Boolean);
+				const pathPart = path.split("?")[0] as string;
+				const segments = pathPart.split("/").filter(Boolean);
 				const resourceType =
-					segments.find((s) => s[0]! >= "A" && s[0]! <= "Z") ?? null;
+					segments.find(
+						(s) => (s[0] as string) >= "A" && (s[0] as string) <= "Z",
+					) ?? null;
 
 				let searchParams = searchParamsCache.current[resourceType ?? ""] ?? [];
 				if (resourceType && !searchParamsCache.current[resourceType]) {
@@ -1535,7 +1541,7 @@ function RouteComponent() {
 				};
 				if (e.collection) {
 					if (!grouped[e.collection]) grouped[e.collection] = [];
-					grouped[e.collection]!.push(item);
+					grouped[e.collection]?.push(item);
 				} else {
 					ungrouped.push(item);
 				}

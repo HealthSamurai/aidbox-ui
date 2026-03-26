@@ -182,7 +182,7 @@ export const ResourceEditorPage = ({
 	};
 
 	const editorViewRef = React.useRef<CodeEditorView | null>(null);
-	const saveRef = React.useRef<SaveHandle>(null!);
+	const saveRef = React.useRef<SaveHandle>(null);
 
 	const [saveError, setSaveError] = React.useState<OperationOutcome | null>(
 		null,
@@ -210,10 +210,11 @@ export const ResourceEditorPage = ({
 			const view = editorViewRef.current;
 			if (!view || !issue.expression?.length) return;
 			const text = view.state.doc.toString();
+			const expr = issue.expression[0] as string;
 			const offset =
 				mode === "yaml"
-					? findYamlPathOffset(text, issue.expression[0]!)
-					: findJsonPathOffset(text, issue.expression[0]!);
+					? findYamlPathOffset(text, expr)
+					: findJsonPathOffset(text, expr);
 			if (offset == null) return;
 			view.dispatch({
 				selection: EditorSelection.cursor(offset),
@@ -249,7 +250,7 @@ export const ResourceEditorPage = ({
 		});
 	};
 
-	const actionsRef = React.useRef<ResourceEditorActions>(null!);
+	const actionsRef = React.useRef<ResourceEditorActions>(null);
 
 	actionsRef.current = {
 		switchTab: (value: ResourceEditorTab) => {
@@ -267,8 +268,8 @@ export const ResourceEditorPage = ({
 		editorFormat: triggerFormat,
 		editorSave: async () => {
 			try {
-				const result = await saveRef.current.save();
-				return { status: "ok" as const, id: result.id ?? id ?? "" };
+				const result = await saveRef.current?.save();
+				return { status: "ok" as const, id: result?.id ?? id ?? "" };
 			} catch (e) {
 				// handleSaveError already called by SaveButton's onError
 				const issues =

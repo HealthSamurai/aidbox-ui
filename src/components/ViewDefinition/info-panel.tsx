@@ -11,7 +11,7 @@ export function InfoPanel({
 	onInstancesQueryChange,
 }: {
 	onClose: () => void;
-	actionsRef: RefObject<ViewDefinitionBuilderActions>;
+	actionsRef: RefObject<ViewDefinitionBuilderActions | null>;
 	instancesQuery: string;
 	onInstancesQueryChange: (query: string) => void;
 }) {

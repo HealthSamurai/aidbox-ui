@@ -32,7 +32,7 @@ function SidebarItem({
 
 	if (!isVisible) return null;
 
-	const Icon = CATEGORY_ICONS[def.category[0]!];
+	const Icon = def.category[0] ? CATEGORY_ICONS[def.category[0]] : undefined;
 	const sectionId = buildSectionId(def.category);
 	const label = def.category[0];
 

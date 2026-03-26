@@ -6,6 +6,12 @@ function textResult(text: string) {
 	return { content: [{ type: "text" as const, text }] };
 }
 
+function getActions(ref: RefObject<ResourceInstancesActions | null>) {
+	const actions = ref.current;
+	if (!actions) throw new Error("Resource instances actions not available");
+	return actions;
+}
+
 const TOOL_NAMES = [
 	"switch_tab",
 	"instances_get_search",
@@ -27,7 +33,7 @@ const TOOL_NAMES = [
 ] as const;
 
 export function useWebMCPResourceInstances(
-	actionsRef: RefObject<ResourceInstancesActions>,
+	actionsRef: RefObject<ResourceInstancesActions | null>,
 ) {
 	useEffect(() => {
 		if (!navigator.modelContext) return;
@@ -49,7 +55,7 @@ export function useWebMCPResourceInstances(
 				required: ["tab"],
 			},
 			execute: async (args: { tab: string }) => {
-				actionsRef.current.switchTab(args.tab);
+				getActions(actionsRef).switchTab(args.tab);
 				return textResult(`Switched to ${args.tab} tab`);
 			},
 		});
@@ -61,7 +67,7 @@ export function useWebMCPResourceInstances(
 				"(e.g. '_count=30&_page=1&_ilike=john').",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				return textResult(actionsRef.current.instancesGetSearch());
+				return textResult(getActions(actionsRef).instancesGetSearch());
 			},
 		});
 
@@ -83,7 +89,7 @@ export function useWebMCPResourceInstances(
 				required: ["query"],
 			},
 			execute: async (args: { query: string }) => {
-				actionsRef.current.instancesSearch(args.query);
+				getActions(actionsRef).instancesSearch(args.query);
 				return textResult(`Search query set to: ${args.query}`);
 			},
 		});
@@ -95,7 +101,7 @@ export function useWebMCPResourceInstances(
 				"including resources, total count, pagination info, and column names.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const results = actionsRef.current.instancesGetResults();
+				const results = getActions(actionsRef).instancesGetResults();
 				if (!results) return textResult("No data loaded yet");
 				return textResult(JSON.stringify(results, null, 2));
 			},
@@ -108,7 +114,7 @@ export function useWebMCPResourceInstances(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				return textResult(
-					JSON.stringify(actionsRef.current.instancesGetPage()),
+					JSON.stringify(getActions(actionsRef).instancesGetPage()),
 				);
 			},
 		});
@@ -119,7 +125,7 @@ export function useWebMCPResourceInstances(
 				"[Resource Instances] Get the IDs of all currently selected resources.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const ids = actionsRef.current.instancesGetSelected();
+				const ids = getActions(actionsRef).instancesGetSelected();
 				if (ids.length === 0) return textResult("No resources selected");
 				return textResult(JSON.stringify(ids));
 			},
@@ -148,7 +154,7 @@ export function useWebMCPResourceInstances(
 			},
 			execute: async (args: { ids: string[]; selected?: boolean }) => {
 				const selected = args.selected !== false;
-				actionsRef.current.instancesSelect(args.ids, selected);
+				getActions(actionsRef).instancesSelect(args.ids, selected);
 				const action = selected ? "Selected" : "Deselected";
 				const target =
 					args.ids.length === 1 && args.ids[0] === "*"
@@ -166,7 +172,8 @@ export function useWebMCPResourceInstances(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				try {
-					const deleted = await actionsRef.current.instancesDeleteSelected();
+					const deleted =
+						await getActions(actionsRef).instancesDeleteSelected();
 					return textResult(
 						`Deleted ${deleted.length} resource(s): ${deleted.join(", ")}`,
 					);
@@ -185,7 +192,7 @@ export function useWebMCPResourceInstances(
 				"Use instances_select first to select resources.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				const bundle = actionsRef.current.instancesExportSelected();
+				const bundle = getActions(actionsRef).instancesExportSelected();
 				if (!bundle) return textResult("No resources selected");
 				return textResult(JSON.stringify(bundle, null, 2));
 			},
@@ -206,7 +213,7 @@ export function useWebMCPResourceInstances(
 				required: ["page"],
 			},
 			execute: async (args: { page: number }) => {
-				actionsRef.current.instancesChangePage(args.page);
+				getActions(actionsRef).instancesChangePage(args.page);
 				return textResult(`Changed to page ${args.page}`);
 			},
 		});
@@ -227,7 +234,7 @@ export function useWebMCPResourceInstances(
 				required: ["pageSize"],
 			},
 			execute: async (args: { pageSize: number }) => {
-				actionsRef.current.instancesChangePageSize(args.pageSize);
+				getActions(actionsRef).instancesChangePageSize(args.pageSize);
 				return textResult(`Page size changed to ${args.pageSize}`);
 			},
 		});
@@ -247,7 +254,7 @@ export function useWebMCPResourceInstances(
 				required: ["id"],
 			},
 			execute: async (args: { id: string }) => {
-				actionsRef.current.instancesNavigateToResource(args.id);
+				getActions(actionsRef).instancesNavigateToResource(args.id);
 				return textResult(`Navigated to resource ${args.id}`);
 			},
 		});
@@ -258,7 +265,7 @@ export function useWebMCPResourceInstances(
 				"[Resource Instances] Navigate to the create page for a new resource of this type.",
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
-				actionsRef.current.instancesOpenCreatePage();
+				getActions(actionsRef).instancesOpenCreatePage();
 				return textResult("Opened create page");
 			},
 		});
@@ -271,7 +278,7 @@ export function useWebMCPResourceInstances(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				try {
-					const profiles = await actionsRef.current.profilesList();
+					const profiles = await getActions(actionsRef).profilesList();
 					return textResult(JSON.stringify(profiles, null, 2));
 				} catch (e) {
 					return textResult(
@@ -297,7 +304,7 @@ export function useWebMCPResourceInstances(
 				required: ["url"],
 			},
 			execute: async (args: { url: string }) => {
-				actionsRef.current.profilesSelect(args.url);
+				getActions(actionsRef).profilesSelect(args.url);
 				return textResult(`Selected profile: ${args.url}`);
 			},
 		});
@@ -326,7 +333,7 @@ export function useWebMCPResourceInstances(
 			execute: async (args: {
 				tab: "differential" | "snapshot" | "fhirschema" | "structuredefinition";
 			}) => {
-				actionsRef.current.profilesSelectTab(args.tab);
+				getActions(actionsRef).profilesSelectTab(args.tab);
 				return textResult(`Switched to ${args.tab} tab`);
 			},
 		});
@@ -339,7 +346,7 @@ export function useWebMCPResourceInstances(
 			inputSchema: { type: "object", properties: {} },
 			execute: async () => {
 				try {
-					const params = await actionsRef.current.searchParamsList();
+					const params = await getActions(actionsRef).searchParamsList();
 					return textResult(JSON.stringify(params, null, 2));
 				} catch (e) {
 					return textResult(

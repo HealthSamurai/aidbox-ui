@@ -1,5 +1,3 @@
-import type * as AidboxTypes from "@health-samurai/aidbox-client";
-
 export type TableEntry = { name: string; type: "table" | "view" };
 export type SchemaMap = Record<string, TableEntry[]>;
 

@@ -33,7 +33,7 @@ export const SaveButton = ({
 	client: AidboxClientR5;
 	onError?: (error: Error) => void;
 	onSuccess?: () => void;
-	saveRef?: React.RefObject<SaveHandle>;
+	saveRef?: React.RefObject<SaveHandle | null>;
 }) => {
 	const navigate = Router.useNavigate();
 	const queryClient = useQueryClient();

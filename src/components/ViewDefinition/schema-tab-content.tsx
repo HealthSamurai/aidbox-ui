@@ -45,8 +45,8 @@ export function SchemaTabContent() {
 			fetchProfileElements(
 				client,
 				"aidbox.introspector/get-profile-snapshot",
-				defaultSchema!["package-coordinate"],
-				defaultSchema!.entity.url,
+				defaultSchema?.["package-coordinate"] as string,
+				defaultSchema?.entity.url as string,
 			),
 		enabled:
 			!!defaultSchema?.["package-coordinate"] && !!defaultSchema?.entity?.url,

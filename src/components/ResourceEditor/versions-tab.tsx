@@ -19,7 +19,7 @@ import { pageId } from "./types";
 type VersionsTabProps = {
 	id: string;
 	resourceType: string;
-	actionsRef?: React.RefObject<ResourceEditorActions>;
+	actionsRef?: React.RefObject<ResourceEditorActions | null>;
 };
 
 type VersionEntry = {
@@ -125,7 +125,7 @@ export const VersionsTab = ({
 
 	React.useEffect(() => {
 		if (versions.length > 0 && selectedVersionId === null) {
-			setSelectedVersionId(versions[0]!.versionId);
+			setSelectedVersionId(versions[0]?.versionId ?? null);
 		}
 	}, [versions, selectedVersionId]);
 
@@ -180,7 +180,7 @@ export const VersionsTab = ({
 		onError: Utils.onMutationError,
 	});
 
-	if (actionsRef) {
+	if (actionsRef?.current) {
 		actionsRef.current.historyListVersions = () =>
 			versions.map((v) => ({ versionId: v.versionId, date: v.date }));
 		actionsRef.current.historySelectVersion = (versionId: string) => {

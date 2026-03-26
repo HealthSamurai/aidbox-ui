@@ -198,7 +198,7 @@ export function Browser() {
 
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
 
-	const actionsRef = useRef<ResourceBrowserActions>(null!);
+	const actionsRef = useRef<ResourceBrowserActions>(null);
 	useWebMCPResourceBrowser(actionsRef);
 
 	const [sort, setSort] = useState<SortState>({
@@ -318,7 +318,11 @@ export function Browser() {
 			e.preventDefault();
 			navigate({
 				to: "/resource/$resourceType",
-				params: { resourceType: filteredData[focusedIndex]!.resourceType },
+				params: {
+					resourceType: (
+						filteredData[focusedIndex] as (typeof filteredData)[number]
+					).resourceType,
+				},
 			});
 		}
 	};

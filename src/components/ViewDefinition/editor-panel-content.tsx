@@ -82,7 +82,7 @@ const useToolbarMode = (
 		const el = ref.current;
 		if (!el) return;
 		const observer = new ResizeObserver((entries) => {
-			const width = entries[0]!.contentRect.width;
+			const width = entries[0]?.contentRect.width ?? 0;
 			if (width >= 670) setMode("full");
 			else if (width >= 420) setMode("icons");
 			else setMode("collapsed");
@@ -264,7 +264,9 @@ export const useViewDefinitionActions = (
 		},
 		onSuccess: (result) => {
 			if (result.isErr()) {
-				viewDefinitionContext.setRunError(result.value.resource as any);
+				viewDefinitionContext.setRunError(
+					result.value.resource as unknown as HSComp.OperationOutcome,
+				);
 				return;
 			}
 
@@ -287,7 +289,9 @@ export const useViewDefinitionActions = (
 		},
 		onSuccess: (result) => {
 			if (result.isErr()) {
-				viewDefinitionContext.setRunError(result.value.resource as any);
+				viewDefinitionContext.setRunError(
+					result.value.resource as unknown as HSComp.OperationOutcome,
+				);
 				return;
 			}
 
@@ -586,7 +590,7 @@ export const EditorPanelContent = ({
 }: {
 	isPreviewOpen: boolean;
 	onTogglePreview: () => void;
-	actionsRef: React.RefObject<ViewDefinitionBuilderActions>;
+	actionsRef: React.RefObject<ViewDefinitionBuilderActions | null>;
 	onInstancesQueryChange: (query: string) => void;
 	onExpandResult?: () => void;
 }) => {
@@ -677,7 +681,9 @@ export const EditorPanelContent = ({
 		updateColumn: () => {},
 		removeColumn: () => {},
 	};
-	useWebMCPViewDefinition(actionsRef);
+	useWebMCPViewDefinition(
+		actionsRef as React.RefObject<ViewDefinitionBuilderActions>,
+	);
 
 	return (
 		<HSComp.ResizablePanelGroup direction="vertical" className="grow min-h-0">
@@ -724,7 +730,7 @@ export const EditorPanelContent = ({
 };
 
 export const BuilderContent = () => {
-	const actionsRef = React.useRef<ViewDefinitionBuilderActions>(null!);
+	const actionsRef = React.useRef<ViewDefinitionBuilderActions>(null);
 	const viewDefinitionTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);

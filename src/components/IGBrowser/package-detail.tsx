@@ -378,8 +378,8 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 		});
 
 	const installRows: KVRow[] = [];
-	if (meta.installation?.length) {
-		const inst = meta.installation[0]!;
+	const inst = meta.installation?.[0];
+	if (inst) {
 		if (inst.intention)
 			installRows.push({ label: "Intention", value: inst.intention });
 		if (inst.cts)
@@ -870,8 +870,8 @@ function formatPackageInfoVisual(meta: PackageMeta) {
 		rows.dependencies = Object.entries(meta.dependencies)
 			.map(([n, v]) => `${n}#${v}`)
 			.join(", ");
-	if (meta.installation?.length) {
-		const inst = meta.installation[0]!;
+	const inst = meta.installation?.[0];
+	if (inst) {
 		if (inst.intention) rows.intention = inst.intention;
 		if (inst.cts) rows.installedAt = inst.cts;
 		if (inst.source?.type) rows.sourceType = inst.source.type;
