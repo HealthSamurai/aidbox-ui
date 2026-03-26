@@ -109,7 +109,7 @@ function extractDebugData(data: unknown): DebugData {
 	const graphqlDebug = (obj?.extensions as Record<string, unknown>)
 		?.debug as DebugData[];
 	if (Array.isArray(graphqlDebug) && graphqlDebug.length > 0) {
-		return graphqlDebug[0];
+		return graphqlDebug[0]!;
 	}
 	// REST: { request: {...}, policies: [...] }
 	return obj as DebugData;

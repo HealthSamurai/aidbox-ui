@@ -194,7 +194,7 @@ function PlanNodeView({ meta }: { meta: PlanNodeMeta }) {
 	);
 }
 
-const EXPLAIN_VIEW_ITEMS = [
+const EXPLAIN_VIEW_ITEMS: { value: "visual" | "raw"; label: string }[] = [
 	{ value: "visual", label: "Visual" },
 	{ value: "raw", label: "Raw" },
 ];
@@ -303,7 +303,7 @@ export function ExplainContent({
 	}
 
 	if (results.length === 1) {
-		const r = results[0];
+		const r = results[0]!;
 		return (
 			<div className="flex flex-col flex-1 min-h-0">
 				<SingleExplainView

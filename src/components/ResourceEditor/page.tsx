@@ -95,7 +95,7 @@ export const ResourceEditorPageWithLoader = (
 			/>
 		);
 
-	const meta = (resourceData as Record<string, unknown>).meta as
+	const meta = (resourceData as unknown as Record<string, unknown>).meta as
 		| Record<string, unknown>
 		| undefined;
 
@@ -212,8 +212,8 @@ export const ResourceEditorPage = ({
 			const text = view.state.doc.toString();
 			const offset =
 				mode === "yaml"
-					? findYamlPathOffset(text, issue.expression[0])
-					: findJsonPathOffset(text, issue.expression[0]);
+					? findYamlPathOffset(text, issue.expression[0]!)
+					: findJsonPathOffset(text, issue.expression[0]!);
 			if (offset == null) return;
 			view.dispatch({
 				selection: EditorSelection.cursor(offset),
@@ -428,7 +428,9 @@ export const ResourceEditorPage = ({
 	}
 
 	const availableTabs = tabs.map((t) => t.value);
-	const effectiveTab = availableTabs.includes(tab) ? tab : availableTabs[0];
+	const effectiveTab = availableTabs.includes(tab)
+		? tab
+		: (availableTabs[0] as ResourceEditorTab | undefined);
 
 	const content = (
 		<>

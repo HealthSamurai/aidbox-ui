@@ -14,7 +14,7 @@ export default function ClaudeChatToggle() {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<IconButton
-					variant={isOpen ? "default" : "ghost"}
+					variant="ghost"
 					className="size-7 rounded-full"
 					icon={<Wand2 className="size-4" />}
 					aria-label="Claude Chat"

@@ -27,12 +27,17 @@ export function useExpandValueSet() {
 
 	// Cache: vsUrl → initial expand result (no filter)
 	const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
-	const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-	const pendingRef = useRef<{
-		resolve: (v: ValueSetExpansionContains[]) => void;
-		url: string;
-		filter: string;
-	}>();
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+		undefined,
+	);
+	const pendingRef = useRef<
+		| {
+				resolve: (v: ValueSetExpansionContains[]) => void;
+				url: string;
+				filter: string;
+		  }
+		| undefined
+	>(undefined);
 
 	const doExpand = useCallback(
 		async (

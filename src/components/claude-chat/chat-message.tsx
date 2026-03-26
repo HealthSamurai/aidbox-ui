@@ -39,15 +39,15 @@ function MarkdownContent({ content }: { content: string }) {
 	let i = 0;
 
 	while (i < lines.length) {
-		const line = lines[i];
+		const line = lines[i]!;
 
 		// Code block
 		if (line.startsWith("```")) {
 			const lang = line.slice(3).trim();
 			const codeLines: string[] = [];
 			i++;
-			while (i < lines.length && !lines[i].startsWith("```")) {
-				codeLines.push(lines[i]);
+			while (i < lines.length && !lines[i]!.startsWith("```")) {
+				codeLines.push(lines[i]!);
 				i++;
 			}
 			i++; // skip closing ```
@@ -65,7 +65,7 @@ function MarkdownContent({ content }: { content: string }) {
 		// Heading
 		const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
 		if (headingMatch) {
-			const level = headingMatch[1].length;
+			const level = headingMatch[1]!.length;
 			const cls =
 				level === 1
 					? "text-base font-bold mt-2 mb-1"
@@ -74,7 +74,7 @@ function MarkdownContent({ content }: { content: string }) {
 						: "text-sm font-semibold mt-1 mb-0.5";
 			blocks.push(
 				<div key={`b${String(blocks.length)}`} className={cls}>
-					{renderInline(headingMatch[2])}
+					{renderInline(headingMatch[2]!)}
 				</div>,
 			);
 			i++;
@@ -84,10 +84,10 @@ function MarkdownContent({ content }: { content: string }) {
 		// List item
 		if (/^[-*]\s+/.test(line)) {
 			const items: ReactNode[] = [];
-			while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+			while (i < lines.length && /^[-*]\s+/.test(lines[i]!)) {
 				items.push(
 					<li key={`li${String(items.length)}`}>
-						{renderInline(lines[i].replace(/^[-*]\s+/, ""))}
+						{renderInline(lines[i]!.replace(/^[-*]\s+/, ""))}
 					</li>,
 				);
 				i++;
@@ -103,10 +103,10 @@ function MarkdownContent({ content }: { content: string }) {
 		// Numbered list
 		if (/^\d+\.\s+/.test(line)) {
 			const items: ReactNode[] = [];
-			while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+			while (i < lines.length && /^\d+\.\s+/.test(lines[i]!)) {
 				items.push(
 					<li key={`li${String(items.length)}`}>
-						{renderInline(lines[i].replace(/^\d+\.\s+/, ""))}
+						{renderInline(lines[i]!.replace(/^\d+\.\s+/, ""))}
 					</li>,
 				);
 				i++;

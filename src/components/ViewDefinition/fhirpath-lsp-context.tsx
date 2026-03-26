@@ -24,7 +24,7 @@ export function FhirPathLspProvider({
 		ViewDefinitionResourceTypeContext,
 	);
 
-	const { setContextType, createPlugin } = useCodeMirrorLsp(client, {
+	const { setContextType, createPlugin } = useCodeMirrorLsp(client as any, {
 		contextType: viewDefinitionResourceType ?? undefined,
 		debug: false,
 	});

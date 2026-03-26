@@ -1595,7 +1595,7 @@ export const FormTabContent = ({
 				...(item.column
 					? {
 							columns: item.column.map((c) => ({
-								nodeId: c.nodeId,
+								nodeId: (c as { nodeId?: string }).nodeId ?? "",
 								name: c.name,
 								path: c.path,
 							})),
@@ -1616,7 +1616,7 @@ export const FormTabContent = ({
 		constants: constants.map((c) => ({
 			nodeId: c.nodeId,
 			name: c.name,
-			value: c.valueString,
+			value: c.valueString ?? "",
 		})),
 		where: whereConditions.map((w) => ({
 			nodeId: w.nodeId,
@@ -1625,7 +1625,7 @@ export const FormTabContent = ({
 		select: serializeSelectItems(selectItems),
 	});
 	actionsRef.current.setName = updateName;
-	actionsRef.current.setStatus = updateStatus;
+	actionsRef.current.setStatus = updateStatus as (status: string) => void;
 	actionsRef.current.addConstant = addConstant;
 	actionsRef.current.updateConstant = updateConstant;
 	actionsRef.current.removeConstant = removeConstant;

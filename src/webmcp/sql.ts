@@ -273,8 +273,8 @@ export function useWebMCPSql(actionsRef: RefObject<DbConsoleActions>) {
 			},
 			execute: async (args: { table: string }) => {
 				const parts = args.table.split(".");
-				const schema = parts.length > 1 ? parts[0] : "public";
-				const name = parts.length > 1 ? parts[1] : parts[0];
+				const schema = parts.length > 1 ? parts[0]! : "public";
+				const name = parts.length > 1 ? parts[1]! : parts[0]!;
 				actionsRef.current.selectTable(schema, name);
 				return textResult("Table selected in sidebar");
 			},
@@ -299,8 +299,8 @@ export function useWebMCPSql(actionsRef: RefObject<DbConsoleActions>) {
 			},
 			execute: async (args: { table: string }) => {
 				const parts = args.table.split(".");
-				const schema = parts.length > 1 ? parts[0] : "public";
-				const name = parts.length > 1 ? parts[1] : parts[0];
+				const schema = parts.length > 1 ? parts[0]! : "public";
+				const name = parts.length > 1 ? parts[1]! : parts[0]!;
 				actionsRef.current.selectTable(schema, name);
 				try {
 					const info = await actionsRef.current.getTableInfo(schema, name);
@@ -535,17 +535,17 @@ export function useWebMCPSql(actionsRef: RefObject<DbConsoleActions>) {
 				type: "object",
 				properties: {
 					limit: {
-						type: ["number", "null"],
+						type: "number",
 						description:
 							"Row limit to set (e.g. 10, 100, 1000) or null for no limit",
 					},
 				},
 				required: ["limit"],
 			},
-			execute: async (args: { limit: number | null }) => {
-				actionsRef.current.setRowLimit(args.limit);
+			execute: async (args: { limit?: number | null }) => {
+				actionsRef.current.setRowLimit(args.limit ?? null);
 				return textResult(
-					args.limit === null
+					args.limit == null
 						? "Row limit disabled"
 						: `Row limit set to ${args.limit}`,
 				);

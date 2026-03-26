@@ -379,7 +379,7 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 
 	const installRows: KVRow[] = [];
 	if (meta.installation?.length) {
-		const inst = meta.installation[0];
+		const inst = meta.installation[0]!;
 		if (inst.intention)
 			installRows.push({ label: "Intention", value: inst.intention });
 		if (inst.cts)
@@ -422,6 +422,12 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 									key={depId}
 									to="/ig/$packageId"
 									params={{ packageId: depId }}
+									search={{
+										tab: undefined,
+										view: undefined,
+										q: undefined,
+										page: undefined,
+									}}
 									className="text-text-link hover:underline text-sm"
 								>
 									{depId}
@@ -454,10 +460,12 @@ function PackageInfoContent({
 		actionsRef.current.setPackageInfoView = (v: string) => {
 			setStoredView(v);
 			navigate({
-				search: (prev) => ({
-					...prev,
-					view: v === "visual" ? undefined : v,
-				}),
+				from: "/ig/$packageId/",
+				search: (prev) =>
+					({
+						...prev,
+						view: v === "visual" ? undefined : v,
+					}) as typeof prev,
 				replace: true,
 			});
 		};
@@ -469,10 +477,12 @@ function PackageInfoContent({
 			onValueChange={(v) => {
 				setStoredView(v);
 				navigate({
-					search: (prev) => ({
-						...prev,
-						view: v === "visual" ? undefined : v,
-					}),
+					from: "/ig/$packageId/",
+					search: (prev) =>
+						({
+							...prev,
+							view: v === "visual" ? undefined : v,
+						}) as typeof prev,
 					replace: true,
 				});
 			}}
@@ -631,6 +641,7 @@ function CanonicalsContent({
 
 	const debouncedNavigate = useDebounce((value: string) => {
 		navigate({
+			from: "/ig/$packageId/",
 			search: (prev) => ({
 				...prev,
 				q: value || undefined,
@@ -646,6 +657,7 @@ function CanonicalsContent({
 
 	const setPage = (p: number) => {
 		navigate({
+			from: "/ig/$packageId/",
 			search: (prev) => ({
 				...prev,
 				page: p === 1 ? undefined : p,
@@ -667,6 +679,7 @@ function CanonicalsContent({
 			if (query !== undefined) {
 				setSearch(query);
 				navigate({
+					from: "/ig/$packageId/",
 					search: (prev) => ({
 						...prev,
 						q: query || undefined,
@@ -708,6 +721,7 @@ function CanonicalsContent({
 						resourceType: entry.resource.resourceType,
 						resourceId: entry.resource.id,
 					},
+					search: { view: undefined },
 				});
 			}
 		};
@@ -782,6 +796,7 @@ function CanonicalsContent({
 													resourceType: item.resource.resourceType,
 													resourceId: item.resource.id,
 												},
+												search: { view: undefined },
 											})
 										}
 									>
@@ -856,7 +871,7 @@ function formatPackageInfoVisual(meta: PackageMeta) {
 			.map(([n, v]) => `${n}#${v}`)
 			.join(", ");
 	if (meta.installation?.length) {
-		const inst = meta.installation[0];
+		const inst = meta.installation[0]!;
 		if (inst.intention) rows.intention = inst.intention;
 		if (inst.cts) rows.installedAt = inst.cts;
 		if (inst.source?.type) rows.sourceType = inst.source.type;
@@ -882,9 +897,10 @@ export function PackageDetail() {
 	const switchTab = (v: string) => {
 		setStoredTab(v);
 		navigate({
+			from: "/ig/$packageId/",
 			search: (prev) => ({
 				...prev,
-				tab: v === "canonicals" ? undefined : v,
+				tab: (v === "canonicals" ? undefined : v) as "package-info" | undefined,
 				view: v === "package-info" ? prev.view : undefined,
 			}),
 			replace: true,
@@ -919,7 +935,7 @@ export function PackageDetail() {
 		onError: Utils.onMutationError,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
-			navigate({ to: "/ig" });
+			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
 		},
 	});
 
@@ -963,7 +979,7 @@ export function PackageDetail() {
 		<HSComp.Tabs
 			value={currentTab}
 			onValueChange={switchTab}
-			variant="primary"
+			variant="tertiary"
 			className="flex flex-col h-full"
 		>
 			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-secondary">

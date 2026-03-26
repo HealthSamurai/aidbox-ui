@@ -12,11 +12,14 @@ export function splitSqlStatements(query: string): string[] {
 		.filter(Boolean);
 }
 
-export function isAidboxError(err: unknown): err is AidboxTypes.ErrorResponse {
+export function isAidboxError(
+	err: unknown,
+): err is { response: { text(): Promise<string> } } {
 	return (
 		typeof err === "object" &&
 		err !== null &&
 		"response" in err &&
-		typeof (err as AidboxTypes.ErrorResponse).response?.text === "function"
+		typeof (err as { response?: { text?: unknown } }).response?.text ===
+			"function"
 	);
 }

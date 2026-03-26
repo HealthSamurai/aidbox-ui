@@ -188,7 +188,8 @@ function getLastUpdated(resource: Resource): string | undefined {
 // NOTE: Uses meta.lastUpdated instead of createdAt due to ability of
 // changing createdAt extension URL.
 function groupHistoryByTime(items: UiHistoryEntry[]) {
-	const groups: Record<string, (UiHistoryEntry & { createdAt: number })[]> = {};
+	const groups: Record<string, (UiHistoryEntry & { lastUpdated: number })[]> =
+		{};
 
 	items.forEach((item) => {
 		const lastUpdated = getLastUpdated(item);

@@ -100,7 +100,7 @@ function ResourceList({
 								const isLastFavorite =
 									isFavorite &&
 									(index + 1 >= data.length ||
-										!favorites.has(data[index + 1].resourceType));
+										!favorites.has(data[index + 1]?.resourceType as string));
 								return (
 									<HSComp.TableRow
 										ref={index === focusedIndex ? focusedRowRef : undefined}
@@ -247,7 +247,10 @@ export function Browser() {
 	const navigate = useNavigate();
 
 	const setFilterQuery = (value: string) => {
-		navigate({ search: (prev) => ({ ...prev, q: value || undefined }) });
+		navigate({
+			from: "/resource/",
+			search: (prev) => ({ ...prev, q: value || undefined }),
+		});
 	};
 
 	actionsRef.current = {
@@ -315,7 +318,7 @@ export function Browser() {
 			e.preventDefault();
 			navigate({
 				to: "/resource/$resourceType",
-				params: { resourceType: filteredData[focusedIndex].resourceType },
+				params: { resourceType: filteredData[focusedIndex]!.resourceType },
 			});
 		}
 	};

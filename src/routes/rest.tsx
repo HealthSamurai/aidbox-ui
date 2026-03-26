@@ -4,6 +4,7 @@ import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
+	type GetStructureDefinitions,
 	PlayIcon,
 	RequestLineEditor,
 	ResizableHandle,
@@ -113,7 +114,11 @@ function operationOutcomeToIssueLines(
 		if (outcome?.resourceType !== "OperationOutcome" || !outcome.issue) {
 			return [];
 		}
-		return outcomeToIssueLines(bodyText, outcome.issue, mode);
+		return outcomeToIssueLines(
+			bodyText,
+			outcome.issue as Parameters<typeof outcomeToIssueLines>[1],
+			mode,
+		);
 	} catch {
 		return [];
 	}
@@ -187,7 +192,7 @@ function RawEditor({
 	selectedTab: Tab;
 	requestLineVersion: string;
 	onRawChange?: (rawText: string) => void;
-	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	getStructureDefinitions?: GetStructureDefinitions;
 	expandValueSet?: (
 		url: string,
 		filter: string,
@@ -292,7 +297,7 @@ function RawEditor({
 				key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
 				defaultValue={initialValue}
 				mode="http"
-				additionalExtensions={preventNewlineOnModEnter}
+				additionalExtensions={[preventNewlineOnModEnter]}
 				getStructureDefinitions={getStructureDefinitions}
 				expandValueSet={expandValueSet}
 				resourceTypeHint={resourceTypeHint}
@@ -341,7 +346,7 @@ function RequestView({
 	onBodyModeChange: (mode: "json" | "yaml") => void;
 	onHeadersUpdate: (headers: Header[]) => void;
 	webmcpActionsRef: React.RefObject<RestConsoleActions>;
-	getStructureDefinitions?: (type: string) => Promise<unknown>;
+	getStructureDefinitions?: GetStructureDefinitions;
 	expandValueSet?: (
 		url: string,
 		filter: string,
@@ -359,7 +364,7 @@ function RequestView({
 	const resourceTypeHint = useMemo(() => {
 		const pathWithoutQuery = (selectedTab.path || "").split("?")[0] ?? "";
 		const segments = pathWithoutQuery.split("/").filter(Boolean);
-		return segments.find((s) => s[0] >= "A" && s[0] <= "Z") ?? undefined;
+		return segments.find((s) => s[0]! >= "A" && s[0]! <= "Z") ?? undefined;
 	}, [selectedTab.path]);
 
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
@@ -693,7 +698,7 @@ function RequestView({
 						currentValue={getEditorValue()}
 						mode={bodyMode}
 						onChange={handleBodyEditorChange}
-						additionalExtensions={preventNewlineOnModEnter}
+						additionalExtensions={[preventNewlineOnModEnter]}
 						getStructureDefinitions={getStructureDefinitions}
 						expandValueSet={expandValueSet}
 						resourceTypeHint={resourceTypeHint}
@@ -1362,9 +1367,9 @@ function RouteComponent() {
 
 			if (path.includes("?")) {
 				const pathPart = path.split("?")[0];
-				const segments = pathPart.split("/").filter(Boolean);
+				const segments = pathPart!.split("/").filter(Boolean);
 				const resourceType =
-					segments.find((s) => s[0] >= "A" && s[0] <= "Z") ?? null;
+					segments.find((s) => s[0]! >= "A" && s[0]! <= "Z") ?? null;
 
 				let searchParams = searchParamsCache.current[resourceType ?? ""] ?? [];
 				if (resourceType && !searchParamsCache.current[resourceType]) {
@@ -1486,7 +1491,7 @@ function RouteComponent() {
 			const items = entries
 				.filter((e) => e.resource?.resourceType === "ui_history")
 				.map((e) => {
-					const r = e.resource as {
+					const r = e.resource as unknown as {
 						id: string;
 						command: string;
 						meta?: { lastUpdated?: string };
@@ -1530,7 +1535,7 @@ function RouteComponent() {
 				};
 				if (e.collection) {
 					if (!grouped[e.collection]) grouped[e.collection] = [];
-					grouped[e.collection].push(item);
+					grouped[e.collection]!.push(item);
 				} else {
 					ungrouped.push(item);
 				}

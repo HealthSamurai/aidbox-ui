@@ -47,7 +47,7 @@ function tryParseJson(value: string): string | null {
 const JSON_TOKEN_RE =
 	/("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(\b(?:true|false|null)\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
 
-const JSON_COLORS: Record<string, string> = {
+const JSON_COLORS = {
 	key: "#EA4A35",
 	string: "#405CBF",
 	keyword: "#569cd6",
@@ -672,7 +672,7 @@ export function ResultContent({
 			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 				<div className="flex-1 min-h-0">
 					<QueryResult
-						result={results[0]}
+						result={results[0]!}
 						index={0}
 						totalCount={1}
 						isMaximized={false}
