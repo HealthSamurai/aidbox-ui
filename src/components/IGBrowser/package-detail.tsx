@@ -765,7 +765,18 @@ function CanonicalsContent({
 											{item.resource.resourceType}
 										</HSComp.TableCell>
 										<HSComp.TableCell className="text-text-primary text-sm">
-											{item.resource.url}
+											<Link
+												to="/ig/$packageId/resource/$resourceType/$resourceId"
+												params={{
+													packageId,
+													resourceType: item.resource.resourceType,
+													resourceId: item.resource.id,
+												}}
+												className="text-text-link hover:underline"
+												onClick={(e) => e.stopPropagation()}
+											>
+												{item.resource.url}
+											</Link>
 										</HSComp.TableCell>
 									</HSComp.TableRow>
 								))}
