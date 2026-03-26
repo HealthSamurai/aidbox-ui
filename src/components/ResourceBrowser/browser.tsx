@@ -319,9 +319,7 @@ export function Browser() {
 			navigate({
 				to: "/resource/$resourceType",
 				params: {
-					resourceType: (
-						filteredData[focusedIndex] as (typeof filteredData)[number]
-					).resourceType,
+					resourceType: filteredData[focusedIndex]?.resourceType as string,
 				},
 			});
 		}

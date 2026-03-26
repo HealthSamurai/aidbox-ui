@@ -82,7 +82,8 @@ const useToolbarMode = (
 		const el = ref.current;
 		if (!el) return;
 		const observer = new ResizeObserver((entries) => {
-			const width = entries[0]?.contentRect.width ?? 0;
+			const width = entries[0]?.contentRect.width;
+			if (width === undefined) return;
 			if (width >= 670) setMode("full");
 			else if (width >= 420) setMode("icons");
 			else setMode("collapsed");

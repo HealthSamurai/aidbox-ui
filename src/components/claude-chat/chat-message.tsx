@@ -33,6 +33,52 @@ function renderInline(text: string): ReactNode[] {
 	return nodes;
 }
 
+function parseCodeBlock(
+	lines: string[],
+	startIndex: number,
+): { element: ReactNode; nextIndex: number } {
+	const lang = (lines[startIndex] as string).slice(3).trim();
+	const codeLines: string[] = [];
+	let i = startIndex + 1;
+	while (i < lines.length && !(lines[i] as string).startsWith("```")) {
+		codeLines.push(lines[i] as string);
+		i++;
+	}
+	i++; // skip closing ```
+	return {
+		element: (
+			<pre className="my-1.5 p-2 rounded bg-black/10 overflow-x-auto max-w-full text-[0.85em] font-mono">
+				<code data-lang={lang || undefined}>{codeLines.join("\n")}</code>
+			</pre>
+		),
+		nextIndex: i,
+	};
+}
+
+function parseList(
+	lines: string[],
+	startIndex: number,
+	pattern: RegExp,
+	ordered: boolean,
+): { element: ReactNode; nextIndex: number } {
+	const items: ReactNode[] = [];
+	let i = startIndex;
+	while (i < lines.length && pattern.test(lines[i] as string)) {
+		items.push(
+			<li key={`li${String(items.length)}`}>
+				{renderInline((lines[i] as string).replace(pattern, ""))}
+			</li>,
+		);
+		i++;
+	}
+	const Tag = ordered ? "ol" : "ul";
+	const cls = ordered ? "my-1 ml-4 list-decimal" : "my-1 ml-4 list-disc";
+	return {
+		element: <Tag className={cls}>{items}</Tag>,
+		nextIndex: i,
+	};
+}
+
 function MarkdownContent({ content }: { content: string }) {
 	const blocks: ReactNode[] = [];
 	const lines = content.split("\n");
@@ -43,22 +89,9 @@ function MarkdownContent({ content }: { content: string }) {
 
 		// Code block
 		if (line.startsWith("```")) {
-			const lang = line.slice(3).trim();
-			const codeLines: string[] = [];
-			i++;
-			while (i < lines.length && !lines[i]?.startsWith("```")) {
-				codeLines.push(lines[i] as string);
-				i++;
-			}
-			i++; // skip closing ```
-			blocks.push(
-				<pre
-					key={`b${String(blocks.length)}`}
-					className="my-1.5 p-2 rounded bg-black/10 overflow-x-auto max-w-full text-[0.85em] font-mono"
-				>
-					<code data-lang={lang || undefined}>{codeLines.join("\n")}</code>
-				</pre>,
-			);
+			const { element, nextIndex } = parseCodeBlock(lines, i);
+			blocks.push(<pre key={`b${String(blocks.length)}`}>{element}</pre>);
+			i = nextIndex;
 			continue;
 		}
 
@@ -81,44 +114,19 @@ function MarkdownContent({ content }: { content: string }) {
 			continue;
 		}
 
-		// List item
+		// Unordered list
 		if (/^[-*]\s+/.test(line)) {
-			const items: ReactNode[] = [];
-			while (i < lines.length && /^[-*]\s+/.test(lines[i] as string)) {
-				items.push(
-					<li key={`li${String(items.length)}`}>
-						{renderInline((lines[i] as string).replace(/^[-*]\s+/, ""))}
-					</li>,
-				);
-				i++;
-			}
-			blocks.push(
-				<ul key={`b${String(blocks.length)}`} className="my-1 ml-4 list-disc">
-					{items}
-				</ul>,
-			);
+			const { element, nextIndex } = parseList(lines, i, /^[-*]\s+/, false);
+			blocks.push(<ul key={`b${String(blocks.length)}`}>{element}</ul>);
+			i = nextIndex;
 			continue;
 		}
 
 		// Numbered list
 		if (/^\d+\.\s+/.test(line)) {
-			const items: ReactNode[] = [];
-			while (i < lines.length && /^\d+\.\s+/.test(lines[i] as string)) {
-				items.push(
-					<li key={`li${String(items.length)}`}>
-						{renderInline((lines[i] as string).replace(/^\d+\.\s+/, ""))}
-					</li>,
-				);
-				i++;
-			}
-			blocks.push(
-				<ol
-					key={`b${String(blocks.length)}`}
-					className="my-1 ml-4 list-decimal"
-				>
-					{items}
-				</ol>,
-			);
+			const { element, nextIndex } = parseList(lines, i, /^\d+\.\s+/, true);
+			blocks.push(<ol key={`b${String(blocks.length)}`}>{element}</ol>);
+			i = nextIndex;
 			continue;
 		}
 

@@ -303,7 +303,8 @@ export function ExplainContent({
 	}
 
 	if (results.length === 1) {
-		const r = results[0] as (typeof results)[number];
+		const r = results[0];
+		if (!r) return null;
 		return (
 			<div className="flex flex-col flex-1 min-h-0">
 				<SingleExplainView

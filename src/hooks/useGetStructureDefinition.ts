@@ -2,14 +2,11 @@ import type { GetStructureDefinitions } from "@health-samurai/react-components";
 import { useCallback, useRef } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 
+type StructureDefinition = Awaited<ReturnType<GetStructureDefinitions>>[number];
+
 interface Bundle {
 	entry?: {
-		resource: {
-			type: string;
-			name?: string;
-			baseDefinition?: string;
-			differential?: { element: unknown[] };
-		};
+		resource: StructureDefinition;
 	}[];
 }
 

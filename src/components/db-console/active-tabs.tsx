@@ -206,7 +206,7 @@ export function SqlActiveTabs({
 					setTabs((prev) => {
 						const result = [...prev];
 						const [moved] = result.splice(from, 1);
-						result.splice(to, 0, moved as SqlTab);
+						if (moved) result.splice(to, 0, moved);
 						return result;
 					});
 				}}

@@ -668,11 +668,13 @@ export function ResultContent({
 	}
 
 	if (results.length === 1) {
+		const singleResult = results[0];
+		if (!singleResult) return null;
 		return (
 			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 				<div className="flex-1 min-h-0">
 					<QueryResult
-						result={results[0] as (typeof results)[number]}
+						result={singleResult}
 						index={0}
 						totalCount={1}
 						isMaximized={false}
