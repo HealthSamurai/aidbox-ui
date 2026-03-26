@@ -549,7 +549,7 @@ function getTabsForType(resourceType: string): {
 					{ value: "differential", label: "Differential" },
 					{ value: "snapshot", label: "Snapshot" },
 				],
-				defaultTab: "json",
+				defaultTab: "differential",
 			};
 		case "ValueSet":
 			return {
