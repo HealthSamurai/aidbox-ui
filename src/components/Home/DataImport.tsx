@@ -443,7 +443,11 @@ export function DataImport() {
 						{!lbacEnabled && (
 							<div className={phase === "initial" ? "opacity-0" : ""}>
 								{phase === "success" ? (
-									<Button variant="ghost" disabled className="text-green-600 disabled:text-green-600">
+									<Button
+										variant="ghost"
+										disabled
+										className="text-green-600 disabled:text-green-600"
+									>
 										<Check className="size-4" />
 										<span>Successfully loaded</span>
 									</Button>
