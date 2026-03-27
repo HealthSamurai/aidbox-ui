@@ -3,12 +3,28 @@ import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
 	ArrowUpRight,
+	BadgeCheck,
+	Bell,
+	BookOpen,
+	Braces,
+	Cable,
 	Check,
+	Code,
 	Database,
+	FileCog,
+	FileText,
+	GitBranch,
 	Github,
+	Hash,
+	HeartPulse,
+	Package,
+	Server,
+	Shield,
 	SquareTerminal,
 	TableProperties,
+	Zap,
 } from "lucide-react";
+import { DataImport } from "./DataImport";
 import { restConsoleImage } from "./rest-image";
 import { sqlConsoleImage } from "./sql-image";
 import { vdBuilderImage } from "./vd-image";
@@ -164,14 +180,14 @@ function FeatureSection({
 				<div className="mt-8 flex gap-3">
 					{external ? (
 						<a href={to} target="_blank" rel="noopener noreferrer">
-							<Button variant="secondary">
+							<Button variant="secondary" size="small" className="p-2">
 								{cta}
 								<ArrowUpRight className="size-4" />
 							</Button>
 						</a>
 					) : (
 						<Link to={to}>
-							<Button variant="secondary">
+							<Button variant="secondary" size="small" className="p-2">
 								{cta}
 								<ArrowRight className="size-4" />
 							</Button>
@@ -179,7 +195,7 @@ function FeatureSection({
 					)}
 					{secondaryTo && secondaryCta && (
 						<a href={secondaryTo} target="_blank" rel="noopener noreferrer">
-							<Button variant="secondary">
+							<Button variant="secondary" size="small" className="p-2">
 								{secondaryCta}
 								<ArrowUpRight className="size-4" />
 							</Button>
@@ -216,6 +232,343 @@ function FeatureSection({
 		</section>
 	);
 }
+
+// --- Module Cards (ported from old home page) ---
+
+interface CardButtonData {
+	text: string;
+	href: string;
+	icon: React.ReactNode;
+}
+
+interface CardData {
+	heading: string;
+	icon?: React.ReactNode;
+	iconBorder?: boolean;
+	description?: string;
+	buttons: CardButtonData[];
+}
+
+function ModuleCard({
+	heading,
+	icon,
+	iconBorder,
+	description,
+	buttons,
+}: CardData) {
+	return (
+		<div className="flex h-full flex-1 flex-col justify-between gap-4 rounded-lg bg-bg-secondary p-5">
+			<div className="flex flex-col items-start gap-2">
+				<div className="flex items-center gap-2">
+					{icon && (
+						<div
+							className={`flex size-11 shrink-0 items-center justify-center text-text-secondary ${iconBorder ? "rounded-full" : ""}`}
+						>
+							{icon}
+						</div>
+					)}
+					<span className="text-sm font-semibold text-text-primary">
+						{heading}
+					</span>
+				</div>
+				{description && (
+					<p className="text-xs leading-5 text-text-tertiary">{description}</p>
+				)}
+			</div>
+			<div className="flex flex-wrap items-start gap-2">
+				{buttons.map((button) => (
+					<a
+						key={button.text}
+						href={button.href}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<Button variant="secondary" size="small" className="p-2">
+							{button.icon}
+							<span>{button.text}</span>
+						</Button>
+					</a>
+				))}
+			</div>
+		</div>
+	);
+}
+
+const aidboxModulesData: CardData[] = [
+	{
+		heading: "Security & Access control",
+		icon: <Shield className="size-5" />,
+		iconBorder: true,
+		description:
+			"Create and manage clients and users or integrate with external IDPs (Azure AD, OKTA, Keycloak, etc.). Define roles and permissions at the individual user or organizational level, set access rules for specific resources, groups, or attributes.",
+		buttons: [
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/access-control",
+			},
+		],
+	},
+	{
+		heading: "SQL on FHIR engine",
+		icon: <Database className="size-5" />,
+		iconBorder: true,
+		description:
+			"Create standardized, tabular views of FHIR resources using ViewDefinitions, query and analyze nested FHIR resources using familiar SQL syntax and tools.",
+		buttons: [
+			{
+				text: "Builder",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "/u/resource/ViewDefinition",
+			},
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/storage-1/sql-on-fhir",
+			},
+		],
+	},
+	{
+		heading: "IG loader",
+		icon: <GitBranch className="size-5" />,
+		iconBorder: true,
+		description:
+			"Load FHIR Implementation Guides automatically resolving all dependencies from Aidbox registry, upload custom FHIR NPM Packages or use FHIR CRUD API to load canonicals.",
+		buttons: [
+			{
+				text: "Load IG",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "/u/ig",
+			},
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/profiling-and-validation/fhir-schema-validator/upload-fhir-implementation-guide",
+			},
+		],
+	},
+	{
+		heading: "Forms",
+		icon: <FileText className="size-5" />,
+		iconBorder: true,
+		description:
+			"Use no-code form builder to design complex digital health forms.",
+		buttons: [
+			{
+				text: "Try",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "/ui/sdc",
+			},
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/aidbox-forms",
+			},
+		],
+	},
+	{
+		heading: "Subscriptions",
+		icon: <Bell className="size-5" />,
+		iconBorder: true,
+		description:
+			"Notify systems or application about changes in data based on events or pre-defined topics.",
+		buttons: [
+			{
+				text: "Tutorial",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/topic-based-subscriptions/wip-dynamic-subscriptiontopic-with-destinations/tutorial-produce-questionnaireresponse-to-kafka-topic",
+			},
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/topic-based-subscriptions",
+			},
+		],
+	},
+	{
+		heading: "Validation engine",
+		icon: <BadgeCheck className="size-5" />,
+		iconBorder: true,
+		description:
+			"Validate your data against FHIR or custom profiles, configure validation strictness.",
+		buttons: [
+			{
+				text: "Try Engine",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "/u/rest",
+			},
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/profiling-and-validation/fhir-schema-validator",
+			},
+		],
+	},
+	{
+		heading: "Integration toolkit",
+		icon: <Cable className="size-5" />,
+		iconBorder: true,
+		description:
+			"Use converters and APIs to connect with EHRs, labs, and other external systems.",
+		buttons: [
+			{
+				text: "HL7 v2",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "/u/resource/Hl7v2Message",
+			},
+			{
+				text: "CCDA",
+				icon: <ArrowUpRight className="size-3.5" />,
+				href: "https://ccda.aidbox.app/v2/ccda-fhir",
+			},
+			{
+				text: "Docs",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/modules/integration-toolkit",
+			},
+		],
+	},
+];
+
+const clientLibrariesData: CardData[] = [
+	{
+		heading: "JavaScript",
+		icon: <Braces className="size-5" />,
+		buttons: [
+			{
+				text: "About JavaScript SDK",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://docs.aidbox.app/app-development/aidbox-sdk/aidbox-javascript-sdk",
+			},
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/aidbox-sdk-js",
+			},
+			{
+				text: "NPM",
+				icon: <Package className="size-3.5" />,
+				href: "https://www.npmjs.com/package/@aidbox/sdk-r4",
+			},
+		],
+	},
+	{
+		heading: "Python",
+		icon: <Code className="size-5" />,
+		buttons: [
+			{
+				text: "About Python SDK",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://www.health-samurai.io/docs/aidbox/getting-started/python",
+			},
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/aidbox-python",
+			},
+		],
+	},
+	{
+		heading: ".NET",
+		icon: <Hash className="size-5" />,
+		buttons: [
+			{
+				text: "About .NET SDK",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://github.com/Aidbox/aidbox-dotnet/blob/main/README.MD",
+			},
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/aidbox-dotnet/",
+			},
+		],
+	},
+	{
+		heading: "SDK Generator",
+		icon: <FileCog className="size-5" />,
+		iconBorder: true,
+		buttons: [
+			{
+				text: "About SDK Generator",
+				icon: <BookOpen className="size-3.5" />,
+				href: "https://github.com/Aidbox/aidbox-sdk/blob/main/README.md",
+			},
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/aidbox-sdk",
+			},
+		],
+	},
+];
+
+const sampleAppsData: CardData[] = [
+	{
+		heading: "BEDA EMR",
+		icon: <HeartPulse className="size-5" />,
+		description:
+			"Clean and powerful frontend for Electronic Medical Records. Open-source. Customizable. Leverages HL7 FHIR standard as a data model and SDC IG for form management.",
+		buttons: [
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/examples/tree/main/aidbox-integrations/BedaEmr",
+			},
+		],
+	},
+	{
+		heading: "Custom resources",
+		icon: <Braces className="size-5" />,
+		description:
+			"Custom resources demonstration on the minimalistic JavaScript example project which implemented the typical flow for notifications.",
+		buttons: [
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/examples/tree/main/aidbox-features/aidbox-notify-via-custom-resources",
+			},
+		],
+	},
+	{
+		heading: "IPS IG",
+		icon: <Server className="size-5" />,
+		description:
+			"Pre-configured Aidbox instance and implementation of $summary operation defined by IPS.",
+		buttons: [
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/examples/tree/main/aidbox-custom-operations/ips-ig",
+			},
+		],
+	},
+	{
+		heading: "Aidbox Forms React",
+		icon: <FileText className="size-5" />,
+		description: "Example of integration Aidbox Forms Renderer with React.js",
+		buttons: [
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/examples/tree/main/aidbox-forms/aidbox-forms-renderer-react",
+			},
+		],
+	},
+	{
+		heading: "Aidbox topic-based subscriptions",
+		icon: <Zap className="size-5" />,
+		description:
+			"This example showcases Aidbox SubscriptionTopic producing data to Kafka.",
+		buttons: [
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/examples/tree/main/aidbox-features/aidbox-subscriptions-to-kafka",
+			},
+		],
+	},
+];
 
 export function HomePage() {
 	return (
@@ -298,6 +651,64 @@ export function HomePage() {
 						illustration={<VdIllustration />}
 						reverse
 					/>
+				</div>
+
+				{/* Import Data */}
+				<div className="mt-32">
+					<DataImport />
+				</div>
+
+				{/* Aidbox Modules */}
+				<div className="mt-32 flex flex-col gap-5">
+					<div className="flex flex-col gap-3">
+						<h2 className="text-2xl font-semibold text-text-primary">
+							Aidbox modules
+						</h2>
+						<p className="text-base leading-relaxed text-text-secondary">
+							Use additional modules to build secure and performant FHIR-first
+							digital health solutions
+						</p>
+					</div>
+					<div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-2 lg:grid-cols-3">
+						{aidboxModulesData.map((card) => (
+							<ModuleCard key={card.heading} {...card} />
+						))}
+					</div>
+				</div>
+
+				{/* Client Libraries */}
+				<div className="mt-32 flex flex-col gap-5">
+					<div className="flex flex-col gap-3">
+						<h2 className="text-2xl font-semibold text-text-primary">
+							Client libraries
+						</h2>
+						<p className="text-base leading-relaxed text-text-secondary">
+							Connect your project to Aidbox using official SDKs for your
+							preferred language
+						</p>
+					</div>
+					<div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-2 xl:grid-cols-4">
+						{clientLibrariesData.map((card) => (
+							<ModuleCard key={card.heading} {...card} />
+						))}
+					</div>
+				</div>
+
+				{/* Sample Apps */}
+				<div className="mt-32 flex flex-col gap-5">
+					<div className="flex flex-col gap-3">
+						<h2 className="text-2xl font-semibold text-text-primary">
+							Sample Apps
+						</h2>
+						<p className="text-base leading-relaxed text-text-secondary">
+							Explore example projects to jumpstart your development with Aidbox
+						</p>
+					</div>
+					<div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-2 lg:grid-cols-3">
+						{sampleAppsData.map((card) => (
+							<ModuleCard key={card.heading} {...card} />
+						))}
+					</div>
 				</div>
 			</div>
 		</div>
