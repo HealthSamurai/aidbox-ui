@@ -3,7 +3,6 @@ import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
-	SegmentControl,
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
@@ -194,19 +193,12 @@ function PlanNodeView({ meta }: { meta: PlanNodeMeta }) {
 	);
 }
 
-const EXPLAIN_VIEW_ITEMS: { value: "visual" | "raw"; label: string }[] = [
-	{ value: "visual", label: "Visual" },
-	{ value: "raw", label: "Raw" },
-];
-
 function SingleExplainView({
 	result,
 	viewMode,
-	onViewModeChange,
 }: {
 	result: ExplainData | string;
 	viewMode: "visual" | "raw";
-	onViewModeChange: (mode: "visual" | "raw") => void;
 }) {
 	if (typeof result === "string") {
 		return (
@@ -220,28 +212,27 @@ function SingleExplainView({
 
 	return (
 		<div className="relative flex flex-col flex-1 min-h-0">
-			<div className="absolute top-2 right-4 z-50 flex items-center border rounded-full p-2 border-border-secondary bg-bg-primary">
-				<SegmentControl
-					value={viewMode}
-					onValueChange={onViewModeChange}
-					items={EXPLAIN_VIEW_ITEMS}
-				/>
-			</div>
-			<div className="flex-1 overflow-auto pl-[14px] pr-6 py-4">
+			<div className="flex-1 overflow-auto pl-2 pr-6 py-4">
 				{viewMode === "visual" ? (
-					<TreeView<PlanNodeMeta>
-						rootItemId="root"
-						items={result.items}
-						defaultExpandedItems={result.allNodeIds}
-						disableHover
-						customItemView={(item) => {
-							const meta = item.getItemData()?.meta;
-							if (!meta) return item.getItemData()?.name;
-							return <PlanNodeView meta={meta} />;
-						}}
-					/>
+					<>
+						<div className="flex gap-4 text-xs text-text-tertiary mb-3 pl-3">
+							<span>Execution: {result.executionTime.toFixed(2)}ms</span>
+							<span>Planning: {result.planningTime.toFixed(2)}ms</span>
+						</div>
+						<TreeView<PlanNodeMeta>
+							rootItemId="root"
+							items={result.items}
+							defaultExpandedItems={result.allNodeIds}
+							disableHover
+							customItemView={(item) => {
+								const meta = item.getItemData()?.meta;
+								if (!meta) return item.getItemData()?.name;
+								return <PlanNodeView meta={meta} />;
+							}}
+						/>
+					</>
 				) : (
-					<pre className="text-sm whitespace-pre-wrap font-mono text-text-primary pl-4">
+					<pre className="text-sm whitespace-pre-wrap font-mono text-text-primary pl-3">
 						{result.rawText}
 					</pre>
 				)}
@@ -256,14 +247,12 @@ export function ExplainContent({
 	isLoading,
 	onCancel,
 	viewMode,
-	onViewModeChange,
 }: {
 	results: (ExplainData | string)[] | null;
 	error: string | null;
 	isLoading: boolean;
 	onCancel: () => void;
 	viewMode: "visual" | "raw";
-	onViewModeChange: (mode: "visual" | "raw") => void;
 }) {
 	if (isLoading) {
 		return (
@@ -307,17 +296,7 @@ export function ExplainContent({
 		if (!r) return null;
 		return (
 			<div className="flex flex-col flex-1 min-h-0">
-				<SingleExplainView
-					result={r}
-					viewMode={viewMode}
-					onViewModeChange={onViewModeChange}
-				/>
-				{typeof r !== "string" && (
-					<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex gap-4">
-						<span>Execution: {r.executionTime.toFixed(2)}ms</span>
-						<span>Planning: {r.planningTime.toFixed(2)}ms</span>
-					</div>
-				)}
+				<SingleExplainView result={r} viewMode={viewMode} />
 			</div>
 		);
 	}
@@ -329,22 +308,12 @@ export function ExplainContent({
 				const panel = (
 					<ResizablePanel key={`panel-${key}`} minSize={10}>
 						<div className="flex flex-col h-full min-h-0">
-							<div className="flex-none flex items-center justify-between px-4 py-1 border-b bg-bg-secondary">
+							<div className="flex-none flex items-center px-4 py-1 border-b bg-bg-secondary">
 								<span className="text-xs text-text-tertiary">
 									Query {index + 1}
 								</span>
-								{typeof result !== "string" && (
-									<span className="text-xs text-text-tertiary flex gap-3">
-										<span>Execution: {result.executionTime.toFixed(2)}ms</span>
-										<span>Planning: {result.planningTime.toFixed(2)}ms</span>
-									</span>
-								)}
 							</div>
-							<SingleExplainView
-								result={result}
-								viewMode={viewMode}
-								onViewModeChange={onViewModeChange}
-							/>
+							<SingleExplainView result={result} viewMode={viewMode} />
 						</div>
 					</ResizablePanel>
 				);
