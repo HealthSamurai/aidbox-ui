@@ -4,13 +4,8 @@ import type {
 } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import {
-	Link,
-	useNavigate,
-	useParams,
-	useSearch,
-} from "@tanstack/react-router";
-import { SquarePenIcon, X } from "lucide-react";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { X } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -577,10 +572,6 @@ function getTabsForType(resourceType: string): {
 // Main component
 // ---------------------------------------------------------------------------
 
-function isReadOnlyPackage(packageId: string) {
-	return packageId.startsWith("io.health-samurai.");
-}
-
 export function CanonicalResource() {
 	const { packageId, resourceType, resourceId } = useParams({
 		from: "/ig/$packageId/resource/$resourceType/$resourceId",
@@ -702,25 +693,6 @@ export function CanonicalResource() {
 		</div>
 	) : null;
 
-	const readOnly = isReadOnlyPackage(packageId);
-
-	const openInBrowserButton = readOnly ? null : (
-		<HSComp.Button variant="ghost" size="small" asChild>
-			<Link
-				to="/resource/$resourceType/edit/$id"
-				params={{ resourceType, id: resourceId }}
-				search={{
-					tab: "edit" as const,
-					mode: "json" as const,
-					builderTab: "form" as const,
-				}}
-			>
-				<SquarePenIcon className="w-4 h-4" />
-				Edit
-			</Link>
-		</HSComp.Button>
-	);
-
 	// Single-tab case (CodeSystem, etc.) — no tab bar needed
 	if (tabs.length === 1) {
 		if (jsonLoading) {
@@ -741,9 +713,7 @@ export function CanonicalResource() {
 		return (
 			<div className="flex flex-col grow min-h-0">
 				{header}
-				<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-					<div className="ml-auto mr-4">{openInBrowserButton}</div>
-				</div>
+				<div className="flex items-center bg-bg-secondary flex-none h-10 border-b" />
 				<JsonTab data={jsonData} />
 			</div>
 		);
@@ -765,7 +735,6 @@ export function CanonicalResource() {
 						</HSComp.TabsTrigger>
 					))}
 				</HSComp.TabsList>
-				<div className="ml-auto mr-4">{openInBrowserButton}</div>
 			</div>
 
 			{tabs.map((t) => {

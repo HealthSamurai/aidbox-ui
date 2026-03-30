@@ -32,6 +32,7 @@ import {
 	SqlLeftMenuContext,
 	SqlLeftMenuToggle,
 } from "../components/db-console/left-menu";
+import { LimitDropdown } from "../components/db-console/result-content";
 import { ResultPanel } from "../components/db-console/result-panel";
 import {
 	extractIndexType,
@@ -203,7 +204,6 @@ function DbConsolePage() {
 		defaultValue: 10,
 		getInitialValueInEffect: false,
 	});
-	const [hasExplicitLimit, setHasExplicitLimit] = useState(false);
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
@@ -215,9 +215,16 @@ function DbConsolePage() {
 	const [isResultCollapsed, setIsResultCollapsed] = useState(false);
 	const [isResultMaximized, setIsResultMaximized] = useState(false);
 	const [resultActiveTab, setResultActiveTab] = useState("result");
-	const [explainViewMode, setExplainViewMode] = useState<"visual" | "raw">(
-		"visual",
+	const [explainViewMode, setExplainViewModeState] = useState<"visual" | "raw">(
+		() =>
+			(localStorage.getItem("db-console-explain-view-mode") as
+				| "visual"
+				| "raw") ?? "visual",
 	);
+	const setExplainViewMode = (v: "visual" | "raw") => {
+		localStorage.setItem("db-console-explain-view-mode", v);
+		setExplainViewModeState(v);
+	};
 
 	const currentResult = tabResults.get(selectedTab?.id ?? "");
 	const results = currentResult?.results ?? null;
@@ -234,6 +241,7 @@ function DbConsolePage() {
 
 	const cancelledTabRef = useRef<string | null>(null);
 	const runningQueryRef = useRef<string | null>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
 
 	const handleQueryChange = useCallback(
 		(value: string) => {
@@ -243,6 +251,14 @@ function DbConsolePage() {
 		},
 		[setTabs],
 	);
+
+	const updateTabResult = useCallback((tabId: string, data: TabResultData) => {
+		setTabResults((prev) => {
+			const next = new Map(prev);
+			next.set(tabId, data);
+			return next;
+		});
+	}, []);
 
 	const executeQuery = useCallback(
 		async (overrideQuery?: string) => {
@@ -260,64 +276,55 @@ function DbConsolePage() {
 			if (limitResult.singleLimit !== undefined) {
 				setRowLimit(limitResult.singleLimit);
 			}
-			setHasExplicitLimit(limitResult.hasExplicit);
 			const q = limitResult.query;
+
+			abortControllerRef.current?.abort();
+			const controller = new AbortController();
+			abortControllerRef.current = controller;
 
 			cancelledTabRef.current = null;
 			runningQueryRef.current = queryRef.current;
 			setIsLoading(true);
 			const queryToSave = queryRef.current;
-			setTabResults((prev) => {
-				const next = new Map(prev);
-				next.set(tabId, { results: null, error: null });
-				return next;
-			});
+			updateTabResult(tabId, { results: null, error: null });
 
 			try {
-				const response = await client.rawRequest({
+				const baseUrl = client.getBaseUrl();
+				const response = await fetch(`${baseUrl}/$psql`, {
 					method: "POST",
-					url: "/$psql",
-					headers: { "Content-Type": "application/json" },
+					headers: {
+						"Content-Type": "application/json",
+						Accept: "application/json",
+					},
+					credentials: "include",
 					body: JSON.stringify({ query: q }),
+					signal: controller.signal,
 				});
 
 				if (cancelledTabRef.current === tabId) return;
 
-				if (!response.response.ok) {
-					const text = await response.response.text();
-					setTabResults((prev) => {
-						const next = new Map(prev);
-						next.set(tabId, {
-							results: null,
-							error: `HTTP ${response.response.status}: ${text}`,
-						});
-						return next;
+				if (!response.ok) {
+					const text = await response.text();
+					updateTabResult(tabId, {
+						results: null,
+						error: `HTTP ${response.status}: ${text}`,
 					});
 					return;
 				}
 
-				const data = await response.response.json();
-				if (cancelledTabRef.current === tabId) return;
-
+				const data = await response.json();
 				const items: QueryResultItem[] = Array.isArray(data) ? data : [data];
 				if (!items.some((item) => item.error)) {
 					saveSqlHistory(queryToSave, queryClient, client);
 				}
 
-				setTabResults((prev) => {
-					const next = new Map(prev);
-					next.set(tabId, { results: items, error: null });
-					return next;
-				});
+				updateTabResult(tabId, { results: items, error: null });
 			} catch (err) {
 				if (cancelledTabRef.current === tabId) return;
+				if (err instanceof DOMException && err.name === "AbortError") return;
 
 				const errorMsg = await extractErrorMessage(err);
-				setTabResults((prev) => {
-					const next = new Map(prev);
-					next.set(tabId, { results: null, error: errorMsg });
-					return next;
-				});
+				updateTabResult(tabId, { results: null, error: errorMsg });
 			} finally {
 				if (cancelledTabRef.current !== tabId) {
 					setIsLoading(false);
@@ -325,22 +332,21 @@ function DbConsolePage() {
 				runningQueryRef.current = null;
 			}
 		},
-		[client, queryClient, setRowLimit, handleQueryChange],
+		[client, queryClient, setRowLimit, handleQueryChange, updateTabResult],
 	);
 
 	const cancelQuery = useCallback(async () => {
 		const tabId = selectedTabRef.current?.id;
 		if (!tabId) return;
 
+		abortControllerRef.current?.abort();
+		abortControllerRef.current = null;
+
 		const queryText = runningQueryRef.current;
 		cancelledTabRef.current = tabId;
 		runningQueryRef.current = null;
 		setIsLoading(false);
-		setTabResults((prev) => {
-			const next = new Map(prev);
-			next.set(tabId, { results: null, error: "Query cancelled" });
-			return next;
-		});
+		updateTabResult(tabId, { results: null, error: "Query cancelled" });
 
 		if (queryText) {
 			try {
@@ -357,7 +363,7 @@ function DbConsolePage() {
 				// best-effort cancel
 			}
 		}
-	}, [client]);
+	}, [client, updateTabResult]);
 
 	const { data: historyData } = useSqlHistory();
 
@@ -388,17 +394,6 @@ function DbConsolePage() {
 			return next;
 		});
 	}, []);
-
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-				e.preventDefault();
-				executeQuery();
-			}
-		};
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [executeQuery]);
 
 	const issueLineNumbers = useMemo(() => {
 		const issues: { line: number; message: string }[] = [];
@@ -721,48 +716,15 @@ function DbConsolePage() {
 							<ResizablePanel defaultSize={40} minSize={10}>
 								<div className="flex flex-col h-full">
 									<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-										{showStop ? (
-											<Button
-												variant="link"
-												size="regular"
-												className="text-text-error-primary! pl-4 pr-4 h-full! rounded-none!"
-												onClick={cancelQuery}
-											>
-												<Square className="w-3.5 h-3.5 fill-current" />
-												STOP
-											</Button>
-										) : (
-											<Tooltip delayDuration={300}>
-												<TooltipTrigger asChild>
-													<Button
-														variant="link"
-														size="regular"
-														className="text-text-link! pl-4 pr-4 h-full! rounded-none!"
-														onClick={() => executeQuery()}
-														disabled={!query.trim()}
-													>
-														<PlayIcon className="w-4 h-4 fill-current text-text-link" />
-														RUN
-													</Button>
-												</TooltipTrigger>
-												<TooltipContent side="bottom">
-													{navigator.platform?.includes("Mac")
-														? "⌘+Enter"
-														: "Ctrl+Enter"}
-												</TooltipContent>
-											</Tooltip>
-										)}
-										<Separator orientation="vertical" className="h-6!" />
 										<Tooltip delayDuration={300}>
 											<TooltipTrigger asChild>
 												<Button
 													variant="link"
-													className="h-full! flex-shrink-0 border-b-0 rounded-none! px-4"
+													className="h-full! flex-shrink-0 border-b-0 rounded-none!"
 													onClick={formatQuery}
 													disabled={!query.trim()}
 												>
 													<AlignLeft className="w-4 h-4" />
-													Format
 												</Button>
 											</TooltipTrigger>
 											<TooltipContent side="bottom">
@@ -772,6 +734,46 @@ function DbConsolePage() {
 													: "Ctrl+Shift+F"}
 											</TooltipContent>
 										</Tooltip>
+										<Separator orientation="vertical" className="h-6!" />
+										<div className="w-[84px] h-full flex items-center justify-start">
+											{showStop ? (
+												<Button
+													variant="link"
+													size="regular"
+													className="text-text-error-primary! pl-2.5 pr-3 h-full! rounded-none!"
+													onClick={cancelQuery}
+												>
+													<Square className="w-3.5 h-3.5 fill-current" />
+													STOP
+												</Button>
+											) : (
+												<Tooltip delayDuration={300}>
+													<TooltipTrigger asChild>
+														<Button
+															variant="link"
+															size="regular"
+															className="text-text-link! pl-2.5 pr-3 h-full! rounded-none!"
+															onClick={() => executeQuery()}
+															disabled={!query.trim()}
+														>
+															<PlayIcon className="w-4 h-4 fill-current text-text-link" />
+															RUN
+														</Button>
+													</TooltipTrigger>
+													<TooltipContent side="bottom">
+														{navigator.platform?.includes("Mac")
+															? "⌘+Enter"
+															: "Ctrl+Enter"}
+													</TooltipContent>
+												</Tooltip>
+											)}
+										</div>
+										<div>
+											<LimitDropdown
+												rowLimit={rowLimit}
+												onRowLimitChange={setRowLimit}
+											/>
+										</div>
 									</div>
 									<div className="flex-1 min-h-0">
 										<CodeEditor
@@ -811,9 +813,6 @@ function DbConsolePage() {
 											onRun={executeQuery}
 											onCancel={cancelQuery}
 											query={query}
-											rowLimit={rowLimit}
-											onRowLimitChange={setRowLimit}
-											hasExplicitLimit={hasExplicitLimit}
 											collapsed={isResultCollapsed}
 											onToggleCollapse={() => {
 												const panel = resultPanelRef.current;

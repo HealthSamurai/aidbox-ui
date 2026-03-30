@@ -1068,40 +1068,38 @@ function ResponsePane({
 	return (
 		<Tabs
 			value={activeResponseTab}
-			className="h-full"
+			className="flex flex-col h-full"
 			onValueChange={(value) => onResponseTabChange(value as ResponseTabs)}
 		>
-			<div className="flex flex-col h-full">
-				<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
-					<div className="flex items-center">
-						<span className="typo-label text-text-secondary pr-3">
-							Response:
-						</span>
-						<TabsList>
-							<TabsTrigger value="body">Body</TabsTrigger>
-							<TabsTrigger value="headers">Headers</TabsTrigger>
-							<TabsTrigger value="raw">Raw</TabsTrigger>
-							{isGetSearchRequest(selectedTab) && (
-								<TabsTrigger value="explain">Explain</TabsTrigger>
-							)}
-						</TabsList>
-					</div>
-					<div className="flex items-center gap-1">
-						{response && activeResponseTab !== "explain" && (
-							<ResponseInfo response={response} />
+			<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
+				<div className="flex items-center">
+					<span className="typo-label text-text-secondary pr-3">Response:</span>
+					<TabsList>
+						<TabsTrigger value="body">Body</TabsTrigger>
+						<TabsTrigger value="headers">Headers</TabsTrigger>
+						<TabsTrigger value="raw">Raw</TabsTrigger>
+						{isGetSearchRequest(selectedTab) && (
+							<TabsTrigger value="explain">Explain</TabsTrigger>
 						)}
-						{fullScreenState === "normal" && (
-							<SplitButton
-								direction={splitState}
-								onChange={(newMode) => onSplitChange(newMode)}
-							/>
-						)}
-						<ExpandPane
-							onToggle={(state) => onFullScreenToggle(state)}
-							state={fullScreenState}
-						/>
-					</div>
+					</TabsList>
 				</div>
+				<div className="flex items-center gap-1">
+					{response && activeResponseTab !== "explain" && (
+						<ResponseInfo response={response} />
+					)}
+					{fullScreenState === "normal" && (
+						<SplitButton
+							direction={splitState}
+							onChange={(newMode) => onSplitChange(newMode)}
+						/>
+					)}
+					<ExpandPane
+						onToggle={(state) => onFullScreenToggle(state)}
+						state={fullScreenState}
+					/>
+				</div>
+			</div>
+			<div className="flex-1 min-h-0 overflow-hidden">
 				<ResponseView
 					response={response}
 					activeResponseTab={activeResponseTab}

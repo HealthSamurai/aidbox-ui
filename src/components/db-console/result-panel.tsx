@@ -1,6 +1,8 @@
 import {
 	Button,
+	SegmentControl,
 	Tabs,
+	TabsContent,
 	TabsList,
 	TabsTrigger,
 	Tooltip,
@@ -13,7 +15,7 @@ import {
 	PanelBottomClose,
 	PanelBottomOpen,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
 import {
@@ -22,7 +24,7 @@ import {
 	type ExplainJSON,
 	flattenPlanNode,
 } from "./explain";
-import { ResultContent } from "./result-content";
+import { ExportDropdown, ResultContent } from "./result-content";
 import { isAidboxError, splitSqlStatements } from "./utils";
 
 export function ResultPanel({
@@ -32,9 +34,6 @@ export function ResultPanel({
 	onRun,
 	onCancel,
 	query,
-	rowLimit,
-	onRowLimitChange,
-	hasExplicitLimit,
 	collapsed,
 	onToggleCollapse,
 	isMaximized,
@@ -50,9 +49,6 @@ export function ResultPanel({
 	onRun: () => void;
 	onCancel: () => void;
 	query: string;
-	rowLimit: number | null;
-	onRowLimitChange: (limit: number | null) => void;
-	hasExplicitLimit: boolean;
 	collapsed: boolean;
 	onToggleCollapse: () => void;
 	isMaximized: boolean;
@@ -63,6 +59,16 @@ export function ResultPanel({
 	setExplainViewMode: (mode: "visual" | "raw") => void;
 }) {
 	const client = useAidboxClient();
+	const [resultViewMode, setResultViewModeState] = useState<"table" | "list">(
+		() =>
+			(localStorage.getItem("db-console-result-view-mode") as
+				| "table"
+				| "list") ?? "table",
+	);
+	const setResultViewMode = (v: "table" | "list") => {
+		localStorage.setItem("db-console-result-view-mode", v);
+		setResultViewModeState(v);
+	};
 	const [explainResults, setExplainResults] = useState<
 		(ExplainData | string)[] | null
 	>(null);
@@ -71,6 +77,7 @@ export function ResultPanel({
 	const queryRef = useRef(query);
 	queryRef.current = query;
 	const explainCancelledRef = useRef(false);
+	const explainAbortRef = useRef<AbortController | null>(null);
 
 	useEffect(() => {
 		if (!isMaximized) return;
@@ -82,32 +89,31 @@ export function ResultPanel({
 	}, [isMaximized, setIsMaximized]);
 
 	const runExplainForStatement = useCallback(
-		async (q: string): Promise<ExplainData | string> => {
+		async (q: string, signal: AbortSignal): Promise<ExplainData | string> => {
+			const baseUrl = client.getBaseUrl();
+			const fetchPsql = (sql: string) =>
+				fetch(`${baseUrl}/$psql`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Accept: "application/json",
+					},
+					credentials: "include",
+					body: JSON.stringify({ query: sql }),
+					signal,
+				});
+
 			const [jsonResponse, textResponse] = await Promise.all([
-				client.rawRequest({
-					method: "POST",
-					url: "/$psql",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						query: `EXPLAIN (ANALYZE, COSTS, BUFFERS, FORMAT JSON) ${q}`,
-					}),
-				}),
-				client.rawRequest({
-					method: "POST",
-					url: "/$psql",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						query: `EXPLAIN (ANALYZE, COSTS, BUFFERS) ${q}`,
-					}),
-				}),
+				fetchPsql(`EXPLAIN (ANALYZE, COSTS, BUFFERS, FORMAT JSON) ${q}`),
+				fetchPsql(`EXPLAIN (ANALYZE, COSTS, BUFFERS) ${q}`),
 			]);
 
-			if (!jsonResponse.response.ok) {
-				const text = await jsonResponse.response.text();
-				throw new Error(`HTTP ${jsonResponse.response.status}: ${text}`);
+			if (!jsonResponse.ok) {
+				const text = await jsonResponse.text();
+				throw new Error(`HTTP ${jsonResponse.status}: ${text}`);
 			}
 
-			const textData = await textResponse.response.json();
+			const textData = await textResponse.json();
 			const textRows: Record<string, unknown>[] = Array.isArray(textData)
 				? (textData[0]?.result ?? [])
 				: (textData.result ?? []);
@@ -115,7 +121,7 @@ export function ResultPanel({
 				.map((r: Record<string, unknown>) => Object.values(r)[0])
 				.join("\n");
 
-			const data = await jsonResponse.response.json();
+			const data = await jsonResponse.json();
 			const rows: Record<string, unknown>[] = Array.isArray(data)
 				? (data[0]?.result ?? [])
 				: (data.result ?? []);
@@ -170,18 +176,23 @@ export function ResultPanel({
 			)
 			.filter(Boolean);
 		if (statements.length === 0) return;
+		explainAbortRef.current?.abort();
+		const controller = new AbortController();
+		explainAbortRef.current = controller;
+
 		explainCancelledRef.current = false;
 		setExplainLoading(true);
 		setExplainError(null);
 		setExplainResults(null);
 		try {
 			const results = await Promise.all(
-				statements.map((s) => runExplainForStatement(s)),
+				statements.map((s) => runExplainForStatement(s, controller.signal)),
 			);
 			if (explainCancelledRef.current) return;
 			setExplainResults(results);
 		} catch (err) {
 			if (explainCancelledRef.current) return;
+			if (err instanceof DOMException && err.name === "AbortError") return;
 
 			if (isAidboxError(err)) {
 				const text = await err.response.text();
@@ -198,6 +209,8 @@ export function ResultPanel({
 
 	const cancelExplain = useCallback(async () => {
 		const q = queryRef.current.trim();
+		explainAbortRef.current?.abort();
+		explainAbortRef.current = null;
 		explainCancelledRef.current = true;
 		setExplainLoading(false);
 		setExplainError("EXPLAIN cancelled");
@@ -226,18 +239,51 @@ export function ResultPanel({
 		}
 	}, [activeTab, runExplain, results]);
 
+	const totalRows = useMemo(
+		() =>
+			results
+				? results.reduce((sum, r) => sum + (r.result?.length ?? 0), 0)
+				: 0,
+		[results],
+	);
+
 	return (
-		<div
+		<Tabs
+			value={activeTab}
+			onValueChange={setActiveTab}
 			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 left-0 w-full h-full z-30 bg-bg-primary" : ""}`}
 		>
-			<div className="flex items-center justify-between bg-bg-secondary pr-2 border-b h-10">
-				<Tabs variant="tertiary" value={activeTab} onValueChange={setActiveTab}>
-					<TabsList className="pl-4 h-10">
-						<TabsTrigger value="result">Result</TabsTrigger>
-						<TabsTrigger value="explain">Explain</TabsTrigger>
-					</TabsList>
-				</Tabs>
-				<div className="flex items-center gap-1">
+			<div className="flex items-center justify-between bg-bg-secondary pr-2 border-b">
+				<TabsList className="pl-2">
+					<TabsTrigger value="result">
+						Result{results && totalRows > 0 ? ` (${totalRows})` : ""}
+					</TabsTrigger>
+					<TabsTrigger value="explain">Explain</TabsTrigger>
+				</TabsList>
+				<div className="flex items-center gap-2">
+					{activeTab === "result" && (
+						<SegmentControl
+							value={resultViewMode}
+							onValueChange={(v) => setResultViewMode(v as "table" | "list")}
+							items={[
+								{ value: "table", label: "Table" },
+								{ value: "list", label: "List" },
+							]}
+						/>
+					)}
+					{activeTab === "explain" && (
+						<SegmentControl
+							value={explainViewMode}
+							onValueChange={(v) => setExplainViewMode(v as "visual" | "raw")}
+							items={[
+								{ value: "visual", label: "Visual" },
+								{ value: "raw", label: "Raw" },
+							]}
+						/>
+					)}
+					{activeTab === "result" && results && totalRows > 0 && (
+						<ExportDropdown results={results} />
+					)}
 					{!isMaximized && (
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -286,32 +332,35 @@ export function ResultPanel({
 					</Tooltip>
 				</div>
 			</div>
-			{!collapsed &&
-				(activeTab === "result" ? (
-					<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+			{!collapsed && (
+				<>
+					<TabsContent
+						value="result"
+						className="flex flex-col flex-1 min-h-0 overflow-hidden mt-0"
+					>
 						<ResultContent
 							results={results}
 							error={error}
 							isLoading={isLoading}
 							onRun={onRun}
 							onCancel={onCancel}
-							rowLimit={rowLimit}
-							onRowLimitChange={onRowLimitChange}
-							hasExplicitLimit={hasExplicitLimit}
+							viewMode={resultViewMode}
 						/>
-					</div>
-				) : (
-					<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+					</TabsContent>
+					<TabsContent
+						value="explain"
+						className="flex flex-col flex-1 min-h-0 overflow-hidden mt-0"
+					>
 						<ExplainContent
 							results={explainResults}
 							error={explainError}
 							isLoading={explainLoading}
 							onCancel={cancelExplain}
 							viewMode={explainViewMode}
-							onViewModeChange={setExplainViewMode}
 						/>
-					</div>
-				))}
-		</div>
+					</TabsContent>
+				</>
+			)}
+		</Tabs>
 	);
 }

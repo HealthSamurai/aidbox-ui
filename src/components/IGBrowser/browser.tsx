@@ -134,9 +134,9 @@ function PackageList({
 		});
 
 	return (
-		<div className="h-full overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:h-full">
-			<HSComp.Table zebra>
-				<HSComp.TableHeader className="block overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:w-full">
+		<div className="h-full overflow-auto [&_table]:mb-25">
+			<HSComp.Table stickyHeader zebra>
+				<HSComp.TableHeader>
 					<HSComp.TableRow>
 						<HSComp.TableHead
 							sortable
@@ -156,10 +156,7 @@ function PackageList({
 						</HSComp.TableHead>
 					</HSComp.TableRow>
 				</HSComp.TableHeader>
-				<HSComp.TableBody
-					className="block overflow-y-auto [&_tr]:table [&_tr]:w-full"
-					style={{ height: "calc(100% - 41px)" }}
-				>
+				<HSComp.TableBody>
 					{isLoading
 						? skeletonRows
 						: data.map((row, index) => (

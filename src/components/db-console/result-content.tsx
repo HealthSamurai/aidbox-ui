@@ -239,12 +239,14 @@ function QueryResult({
 	totalCount,
 	isMaximized,
 	onToggleMaximize,
+	viewMode = "table",
 }: {
 	result: QueryResultItem;
 	index: number;
 	totalCount: number;
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
+	viewMode?: "table" | "list";
 }) {
 	if (result.error) {
 		return (
@@ -284,15 +286,37 @@ function QueryResult({
 						<div className="text-sm">Query returned no rows</div>
 					</div>
 				</div>
+			) : viewMode === "list" ? (
+				<div className="flex-1 overflow-auto min-h-0 divide-y divide-border-secondary">
+					{rows.map((row, rowIdx) => (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
+							key={rowIdx}
+							className="grid gap-x-4 px-6 py-3"
+							style={{ gridTemplateColumns: "max-content 1fr" }}
+						>
+							{columns.map((key) => (
+								<div key={key} className="contents">
+									<div className="py-1 px-2 text-right text-text-secondary typo-label text-sm whitespace-nowrap">
+										{key}
+									</div>
+									<div className="py-1 px-2 min-w-0">
+										<CellValue value={row[key]} />
+									</div>
+								</div>
+							))}
+						</div>
+					))}
+				</div>
 			) : (
 				<div className="flex-1 overflow-auto min-h-0">
 					<Table stickyHeader className="typo-code">
 						<TableHeader>
 							<TableRow>
-								{columns.map((key) => (
+								{columns.map((key, colIdx) => (
 									<TableHead
 										key={key}
-										className="px-6 hover:bg-transparent whitespace-nowrap"
+										className={`px-6 hover:bg-transparent whitespace-nowrap ${colIdx === 0 ? "pl-5.5" : ""}`}
 									>
 										{key}
 									</TableHead>
@@ -303,8 +327,11 @@ function QueryResult({
 							{rows.map((row, rowIdx) => (
 								// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
 								<TableRow key={rowIdx}>
-									{columns.map((key) => (
-										<TableCell key={key} className="px-6 align-top">
+									{columns.map((key, colIdx) => (
+										<TableCell
+											key={key}
+											className={`px-6 align-top ${colIdx === 0 ? "pl-5.5" : ""}`}
+										>
 											<CellValue value={row[key]} />
 										</TableCell>
 									))}
@@ -318,7 +345,7 @@ function QueryResult({
 	);
 }
 
-function LimitDropdown({
+export function LimitDropdown({
 	rowLimit,
 	onRowLimitChange,
 }: {
@@ -339,43 +366,41 @@ function LimitDropdown({
 	}, [rowLimit]);
 
 	return (
-		<span className="flex items-center gap-1">
-			Limit:
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant="link"
-						className="text-text-secondary bg-bg-tertiary rounded-full px-2 h-6"
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="link"
+					className="text-text-secondary bg-bg-tertiary rounded-full px-2.5 h-6"
+				>
+					<span className="text-text-tertiary uppercase">Limit</span>
+					<span className="text-text-secondary">
+						{rowLimit === null ? "No limit" : rowLimit}
+					</span>
+					<ChevronDown className="size-3 text-text-tertiary" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start">
+				{limitOptions.map((option) => (
+					<DropdownMenuItem
+						key={option.value}
+						onSelect={() =>
+							onRowLimitChange(
+								option.value === "none" ? null : Number(option.value),
+							)
+						}
 					>
-						<span className="typo-body">
-							{rowLimit === null ? "No limit" : rowLimit}
-						</span>
-						<ChevronDown className="size-4" />
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end">
-					{limitOptions.map((option) => (
-						<DropdownMenuItem
-							key={option.value}
-							onSelect={() =>
-								onRowLimitChange(
-									option.value === "none" ? null : Number(option.value),
-								)
-							}
-						>
-							{option.label}
-							{String(rowLimit ?? "none") === option.value && (
-								<Check className="ml-auto size-4" />
-							)}
-						</DropdownMenuItem>
-					))}
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</span>
+						{option.label}
+						{String(rowLimit ?? "none") === option.value && (
+							<Check className="ml-auto size-4" />
+						)}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
-function ExportDropdown({ results }: { results: QueryResultItem[] }) {
+export function ExportDropdown({ results }: { results: QueryResultItem[] }) {
 	const exportResult = useCallback(
 		(resultItems: QueryResultItem[], format: "markdown" | "json" | "csv") => {
 			const parts = resultItems.map((r) => {
@@ -411,8 +436,6 @@ function ExportDropdown({ results }: { results: QueryResultItem[] }) {
 			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" size="small">
 					<Download className="w-3.5 h-3.5" />
-					Export
-					<ChevronDown className="w-3 h-3" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
@@ -500,148 +523,65 @@ function ExportDropdown({ results }: { results: QueryResultItem[] }) {
 	);
 }
 
-function ResultFooter({
-	results,
-	rowLimit,
-	onRowLimitChange,
-	hasExplicitLimit,
-}: {
-	results: QueryResultItem[] | null;
-	rowLimit: number | null;
-	onRowLimitChange: (limit: number | null) => void;
-	hasExplicitLimit: boolean;
-}) {
-	const totalRows = results
-		? results.reduce((sum, r) => sum + (r.result?.length ?? 0), 0)
-		: 0;
-	const totalDuration = results
-		? results.reduce((sum, r) => sum + r.duration, 0)
-		: 0;
-	const hasRows = totalRows > 0;
-
-	if (!results) {
-		if (hasExplicitLimit) return null;
-		return (
-			<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex items-center justify-end">
-				<LimitDropdown
-					rowLimit={rowLimit}
-					onRowLimitChange={onRowLimitChange}
-				/>
-			</div>
-		);
-	}
-
-	return (
-		<div className="flex-none px-6 py-2 border-t text-xs text-text-tertiary bg-bg-secondary flex items-center justify-between">
-			<span>
-				{totalRows} row · Time: {totalDuration}ms
-			</span>
-			<div className="flex items-center gap-3">
-				{hasRows && <ExportDropdown results={results} />}
-				{!hasExplicitLimit && (
-					<LimitDropdown
-						rowLimit={rowLimit}
-						onRowLimitChange={onRowLimitChange}
-					/>
-				)}
-			</div>
-		</div>
-	);
-}
-
 export function ResultContent({
 	results,
 	error,
 	isLoading,
 	onRun,
 	onCancel,
-	rowLimit,
-	onRowLimitChange,
-	hasExplicitLimit,
+	viewMode = "table",
 }: {
 	results: QueryResultItem[] | null;
 	error: string | null;
 	isLoading: boolean;
 	onRun: () => void;
 	onCancel: () => void;
-	rowLimit: number | null;
-	onRowLimitChange: (limit: number | null) => void;
-	hasExplicitLimit: boolean;
+	viewMode?: "table" | "list";
 }) {
 	const [maximizedIndex, setMaximizedIndex] = useState<number | null>(null);
 
 	if (isLoading) {
 		return (
-			<>
-				<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
-					<div className="flex items-center">
-						<Loader2 className="animate-spin mr-2" size={16} />
-						Executing query…
-					</div>
-					<Button variant="secondary" size="small" onClick={onCancel}>
-						Cancel
-					</Button>
+			<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
+				<div className="flex items-center">
+					<Loader2 className="animate-spin mr-2" size={16} />
+					Executing query…
 				</div>
-				{!hasExplicitLimit && (
-					<ResultFooter
-						results={null}
-						rowLimit={rowLimit}
-						onRowLimitChange={onRowLimitChange}
-						hasExplicitLimit={hasExplicitLimit}
-					/>
-				)}
-			</>
+				<Button variant="secondary" size="small" onClick={onCancel}>
+					Cancel
+				</Button>
+			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<>
-				<div className="flex-1 min-h-0 overflow-auto p-6">
-					<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
-						{error}
-					</pre>
-				</div>
-				{!hasExplicitLimit && (
-					<ResultFooter
-						results={null}
-						rowLimit={rowLimit}
-						onRowLimitChange={onRowLimitChange}
-						hasExplicitLimit={hasExplicitLimit}
-					/>
-				)}
-			</>
+			<div className="flex-1 min-h-0 overflow-auto p-6">
+				<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
+					{error}
+				</pre>
+			</div>
 		);
 	}
 
 	if (!results) {
 		return (
-			<>
-				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
-					<div className="text-center">
-						<div className="text-lg mb-2">No results yet</div>
-						<div className="text-sm">
-							Click{" "}
-							<button
-								type="button"
-								className="text-text-link hover:underline cursor-pointer"
-								onClick={() => onRun()}
-							>
-								Run
-							</button>{" "}
-							to execute a query
-						</div>
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No results yet</div>
+					<div className="text-sm">
+						Click{" "}
+						<button
+							type="button"
+							className="text-text-link hover:underline cursor-pointer"
+							onClick={() => onRun()}
+						>
+							Run
+						</button>{" "}
+						to execute a query
 					</div>
 				</div>
-				{!hasExplicitLimit && (
-					<ResultFooter
-						results={null}
-						rowLimit={rowLimit}
-						onRowLimitChange={onRowLimitChange}
-						hasExplicitLimit={hasExplicitLimit}
-					/>
-				)}
-			</>
+			</div>
 		);
 	}
 
@@ -655,14 +595,9 @@ export function ResultContent({
 						totalCount={results.length}
 						isMaximized
 						onToggleMaximize={() => setMaximizedIndex(null)}
+						viewMode={viewMode}
 					/>
 				</div>
-				<ResultFooter
-					results={results}
-					rowLimit={rowLimit}
-					onRowLimitChange={onRowLimitChange}
-					hasExplicitLimit={hasExplicitLimit}
-				/>
 			</div>
 		);
 	}
@@ -679,14 +614,9 @@ export function ResultContent({
 						totalCount={1}
 						isMaximized={false}
 						onToggleMaximize={() => {}}
+						viewMode={viewMode}
 					/>
 				</div>
-				<ResultFooter
-					results={results}
-					rowLimit={rowLimit}
-					onRowLimitChange={onRowLimitChange}
-					hasExplicitLimit={hasExplicitLimit}
-				/>
 			</div>
 		);
 	}
@@ -705,6 +635,7 @@ export function ResultContent({
 									totalCount={results.length}
 									isMaximized={false}
 									onToggleMaximize={() => setMaximizedIndex(index)}
+									viewMode={viewMode}
 								/>
 							</ResizablePanel>
 						);
@@ -713,12 +644,6 @@ export function ResultContent({
 					})}
 				</ResizablePanelGroup>
 			</div>
-			<ResultFooter
-				results={results}
-				rowLimit={rowLimit}
-				onRowLimitChange={onRowLimitChange}
-				hasExplicitLimit={hasExplicitLimit}
-			/>
 		</div>
 	);
 }

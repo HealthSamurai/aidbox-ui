@@ -5,7 +5,7 @@ export const LIMIT_PRESETS = [10, 100, 1000];
 
 export function splitSqlStatements(query: string): string[] {
 	return query
-		.split(/----|\s*;\s*/)
+		.split(/----/)
 		.map((s) => s.trim())
 		.filter(Boolean);
 }
