@@ -11,7 +11,7 @@ import {
 	Button,
 } from "@health-samurai/react-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, Database, Loader2, Upload } from "lucide-react";
+import { ArrowUpRight, Check, Database, Loader2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { getAidboxBaseURL } from "../../utils";
@@ -342,9 +342,9 @@ export function DataImport() {
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							<Button variant="secondary" size="small" className="p-2">
-								<BookOpen className="size-3.5" />
-								<span>CRUD API</span>
+							<Button variant="secondary">
+								CRUD API
+								<ArrowUpRight className="size-4" />
 							</Button>
 						</a>
 						<a
@@ -352,9 +352,9 @@ export function DataImport() {
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							<Button variant="secondary" size="small" className="p-2">
-								<BookOpen className="size-3.5" />
-								<span>Bundle</span>
+							<Button variant="secondary">
+								Bundle
+								<ArrowUpRight className="size-4" />
 							</Button>
 						</a>
 						<a
@@ -362,9 +362,9 @@ export function DataImport() {
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							<Button variant="secondary" size="small" className="p-2">
-								<BookOpen className="size-3.5" />
-								<span>Bulk import</span>
+							<Button variant="secondary">
+								Bulk import
+								<ArrowUpRight className="size-4" />
 							</Button>
 						</a>
 					</div>
