@@ -741,9 +741,7 @@ export function CanonicalResource() {
 		return (
 			<div className="flex flex-col grow min-h-0">
 				{header}
-				<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-					<div className="ml-auto mr-4">{openInBrowserButton}</div>
-				</div>
+				<div className="flex items-center bg-bg-secondary flex-none h-10 border-b" />
 				<JsonTab data={jsonData} />
 			</div>
 		);
@@ -765,7 +763,6 @@ export function CanonicalResource() {
 						</HSComp.TabsTrigger>
 					))}
 				</HSComp.TabsList>
-				<div className="ml-auto mr-4">{openInBrowserButton}</div>
 			</div>
 
 			{tabs.map((t) => {

@@ -446,9 +446,17 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 function PackageInfoContent({
 	meta,
 	actionsRef,
+	reinstallMutate,
+	reinstallIsPending,
+	deleteMutate,
+	deleteIsPending,
 }: {
 	meta: PackageMeta;
 	actionsRef: RefObject<PackageDetailActions>;
+	reinstallMutate: () => void;
+	reinstallIsPending: boolean;
+	deleteMutate: () => void;
+	deleteIsPending: boolean;
 }) {
 	const navigate = useNavigate();
 	const { view } = useSearch({ from: "/ig/$packageId/" });
@@ -473,41 +481,63 @@ function PackageInfoContent({
 		};
 	});
 
+	const switchView = (v: string) => {
+		setStoredView(v);
+		navigate({
+			from: "/ig/$packageId/",
+			search: (prev) =>
+				({
+					...prev,
+					view: v === "visual" ? undefined : v,
+				}) as typeof prev,
+			replace: true,
+		});
+	};
+
 	return (
-		<HSComp.Tabs
-			value={currentView}
-			onValueChange={(v) => {
-				setStoredView(v);
-				navigate({
-					from: "/ig/$packageId/",
-					search: (prev) =>
-						({
-							...prev,
-							view: v === "visual" ? undefined : v,
-						}) as typeof prev,
-					replace: true,
-				});
-			}}
-			variant="tertiary"
-			className="flex flex-col grow min-h-0"
-		>
-			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-				<HSComp.TabsList className="py-0! border-b-0!">
-					<HSComp.TabsTrigger value="visual">Visual</HSComp.TabsTrigger>
-					<HSComp.TabsTrigger value="json">JSON</HSComp.TabsTrigger>
-				</HSComp.TabsList>
+		<div className="relative flex flex-col grow min-h-0">
+			<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b pl-5 pr-4">
+				<div className="flex items-center gap-2">
+					<ReinstallPackageButton
+						meta={meta}
+						reinstallMutate={reinstallMutate}
+						reinstallIsPending={reinstallIsPending}
+					/>
+					<DeletePackageButton
+						meta={meta}
+						deleteMutate={deleteMutate}
+						deleteIsPending={deleteIsPending}
+					/>
+				</div>
 			</div>
-			<HSComp.TabsContent value="visual" className="overflow-auto pb-20">
-				<VisualView meta={meta} />
-			</HSComp.TabsContent>
-			<HSComp.TabsContent value="json" className="relative grow min-h-0">
-				<HSComp.CodeEditor
-					readOnly
-					currentValue={JSON.stringify(meta, null, 2)}
-					mode="json"
-				/>
-			</HSComp.TabsContent>
-		</HSComp.Tabs>
+			<div className="relative flex-1 min-h-0">
+				<div className="sticky top-0 right-0 z-10 flex justify-end pointer-events-none h-0 min-h-0 pr-4 pt-3">
+					<div className="flex items-center gap-2 h-fit border rounded-full p-2 border-border-secondary bg-bg-primary pointer-events-auto">
+						<HSComp.SegmentControl
+							value={currentView}
+							onValueChange={switchView}
+							items={[
+								{ value: "visual", label: "Visual" },
+								{ value: "json", label: "JSON" },
+							]}
+						/>
+					</div>
+				</div>
+				{currentView === "json" ? (
+					<div className="h-full">
+						<HSComp.CodeEditor
+							readOnly
+							currentValue={JSON.stringify(meta, null, 2)}
+							mode="json"
+						/>
+					</div>
+				) : (
+					<div className="overflow-auto h-full pb-20">
+						<VisualView meta={meta} />
+					</div>
+				)}
+			</div>
+		</div>
 	);
 }
 
@@ -983,30 +1013,15 @@ export function PackageDetail() {
 		<HSComp.Tabs
 			value={currentTab}
 			onValueChange={switchTab}
-			variant="tertiary"
 			className="flex flex-col h-full"
 		>
-			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-secondary">
-				<HSComp.TabsList className="mx-4 py-0! border-b-0!">
+			<div className="flex items-center bg-bg-primary flex-none border-b border-border-secondary">
+				<HSComp.TabsList className="pl-4">
 					<HSComp.TabsTrigger value="canonicals">Canonicals</HSComp.TabsTrigger>
 					<HSComp.TabsTrigger value="package-info">
 						Package Info
 					</HSComp.TabsTrigger>
 				</HSComp.TabsList>
-				{data && (
-					<div className="ml-auto flex items-center gap-2 mr-4">
-						<ReinstallPackageButton
-							meta={data}
-							reinstallMutate={() => reinstallMutation.mutate()}
-							reinstallIsPending={reinstallMutation.isPending}
-						/>
-						<DeletePackageButton
-							meta={data}
-							deleteMutate={() => deleteMutation.mutate()}
-							deleteIsPending={deleteMutation.isPending}
-						/>
-					</div>
-				)}
 			</div>
 			<HSComp.TabsContent
 				value="canonicals"
@@ -1018,7 +1033,14 @@ export function PackageDetail() {
 				{isLoading ? (
 					<LoadingSkeleton />
 				) : data ? (
-					<PackageInfoContent meta={data} actionsRef={actionsRef} />
+					<PackageInfoContent
+						meta={data}
+						actionsRef={actionsRef}
+						reinstallMutate={() => reinstallMutation.mutate()}
+						reinstallIsPending={reinstallMutation.isPending}
+						deleteMutate={() => deleteMutation.mutate()}
+						deleteIsPending={deleteMutation.isPending}
+					/>
 				) : null}
 			</HSComp.TabsContent>
 		</HSComp.Tabs>
