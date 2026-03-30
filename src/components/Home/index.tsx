@@ -455,17 +455,12 @@ const clientLibrariesData: CardData[] = [
 			{
 				text: "About JavaScript SDK",
 				icon: <BookOpen className="size-3.5" />,
-				href: "https://docs.aidbox.app/app-development/aidbox-sdk/aidbox-javascript-sdk",
+				href: "https://github.com/HealthSamurai/aidbox-ts-sdk/tree/master/packages/aidbox-client/README.md",
 			},
 			{
 				text: "GitHub",
 				icon: <Github className="size-3.5" />,
-				href: "https://github.com/Aidbox/aidbox-sdk-js",
-			},
-			{
-				text: "NPM",
-				icon: <Package className="size-3.5" />,
-				href: "https://www.npmjs.com/package/@aidbox/sdk-r4",
+				href: "https://github.com/HealthSamurai/aidbox-ts-sdk/tree/master/packages/aidbox-client",
 			},
 		],
 	},
@@ -509,12 +504,12 @@ const clientLibrariesData: CardData[] = [
 			{
 				text: "About SDK Generator",
 				icon: <BookOpen className="size-3.5" />,
-				href: "https://github.com/Aidbox/aidbox-sdk/blob/main/README.md",
+				href: "https://github.com/atomic-ehr/codegen/blob/main/README.md",
 			},
 			{
 				text: "GitHub",
 				icon: <Github className="size-3.5" />,
-				href: "https://github.com/Aidbox/aidbox-sdk",
+				href: "https://github.com/atomic-ehr/codegen",
 			},
 		],
 	},
@@ -582,6 +577,19 @@ const sampleAppsData: CardData[] = [
 				text: "GitHub",
 				icon: <Github className="size-3.5" />,
 				href: "https://github.com/Aidbox/examples/tree/main/aidbox-features/aidbox-subscriptions-to-kafka",
+			},
+		],
+	},
+	{
+		heading: "Aidbox canonical mapping",
+		icon: <GitBranch className="size-5" />,
+		description:
+			"This example demonstrates how to build a canonical mapping layer that translates proprietary HIS data into FHIR resources (Patient, Encounter, Location).",
+		buttons: [
+			{
+				text: "GitHub",
+				icon: <Github className="size-3.5" />,
+				href: "https://github.com/Aidbox/examples/tree/main/aidbox-features/aidbox-canonical-mapping",
 			},
 		],
 	},
