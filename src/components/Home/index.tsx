@@ -17,7 +17,6 @@ import {
 	Github,
 	Hash,
 	HeartPulse,
-	Package,
 	Server,
 	Shield,
 	SquareTerminal,
