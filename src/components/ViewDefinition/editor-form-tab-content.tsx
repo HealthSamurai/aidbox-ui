@@ -82,15 +82,47 @@ interface DeIdentConfig {
 	customArg?: string;
 }
 
-const DEIDENT_METHODS: { value: DeIdentMethod; label: string }[] = [
-	{ value: "redact", label: "Redact" },
-	{ value: "keep", label: "Keep" },
-	{ value: "cryptoHash", label: "Crypto Hash" },
-	{ value: "dateshift", label: "Date Shift" },
-	{ value: "encrypt", label: "Encrypt" },
-	{ value: "substitute", label: "Substitute" },
-	{ value: "perturb", label: "Perturb" },
-	{ value: "custom_function", label: "Custom Function" },
+const DEIDENT_METHODS: {
+	value: DeIdentMethod;
+	label: string;
+	description: string;
+}[] = [
+	{
+		value: "redact",
+		label: "Redact",
+		description: "Remove the value entirely (returns NULL)",
+	},
+	{
+		value: "cryptoHash",
+		label: "Crypto Hash",
+		description: "Replace with HMAC-SHA256 hash (one-way, deterministic)",
+	},
+	{
+		value: "dateshift",
+		label: "Date Shift",
+		description:
+			"Shift dates by a deterministic offset per resource (±1–50 days)",
+	},
+	{
+		value: "encrypt",
+		label: "Encrypt",
+		description: "AES-128 encrypt (reversible with key)",
+	},
+	{
+		value: "substitute",
+		label: "Substitute",
+		description: "Replace with a fixed value",
+	},
+	{
+		value: "perturb",
+		label: "Perturb",
+		description: "Add random noise to numeric values",
+	},
+	{
+		value: "custom_function",
+		label: "Custom Function",
+		description: "Apply a custom PostgreSQL function",
+	},
 ];
 
 function parseDeIdentExtension(
@@ -155,7 +187,7 @@ function buildDeIdentExtension(config: DeIdentConfig | undefined):
 		if (config.span != null)
 			subs.push({ url: "span", valueDecimal: config.span });
 		if (config.rangeType)
-			subs.push({ url: "rangeType", valueString: config.rangeType });
+			subs.push({ url: "rangeType", valueCode: config.rangeType });
 		if (config.roundTo != null)
 			subs.push({ url: "roundTo", valueInteger: config.roundTo });
 	}
@@ -538,7 +570,12 @@ function DeIdentPopover({
 						if (v === "none") {
 							onChange(undefined);
 						} else {
-							onChange({ method: v as DeIdentMethod });
+							const m = v as DeIdentMethod;
+							onChange(
+								m === "perturb"
+									? { method: m, rangeType: "fixed", roundTo: 0 }
+									: { method: m },
+							);
 						}
 					}}
 				>
@@ -548,7 +585,7 @@ function DeIdentPopover({
 					<SelectContent>
 						<SelectItem value="none">None</SelectItem>
 						{DEIDENT_METHODS.map((m) => (
-							<SelectItem key={m.value} value={m.value}>
+							<SelectItem key={m.value} value={m.value} title={m.description}>
 								{m.label}
 							</SelectItem>
 						))}
