@@ -94,20 +94,16 @@ const DEIDENT_METHODS: { value: DeIdentMethod; label: string }[] = [
 ];
 
 function parseDeIdentExtension(
-	extensions:
-		| Array<{
-				url: string;
-				extension?: Array<{ url: string; [key: string]: unknown }>;
-				[key: string]: unknown;
-		  }>
-		| undefined,
+	// biome-ignore lint/suspicious/noExplicitAny: Extension type lacks index signature for value[x] fields
+	extensions: any[] | undefined,
 ): DeIdentConfig | undefined {
 	if (!extensions) return undefined;
 	const ext = extensions.find((e) => e.url === DEIDENT_EXT_URL);
 	if (!ext?.extension) return undefined;
 
 	const get = (url: string): unknown => {
-		const sub = ext.extension?.find((s) => s.url === url);
+		// biome-ignore lint/suspicious/noExplicitAny: extensions have dynamic value[x] fields
+		const sub = ext.extension?.find((s: any) => s.url === url);
 		if (!sub) return undefined;
 		return (
 			sub.valueCode ??
@@ -376,7 +372,7 @@ const parseSelectItems = (
 const buildColumn = (columns: ColumnItem[]) => {
 	return {
 		column: columns.map((col) => {
-			const result: Record<string, unknown> = {
+			const result: ViewDefinitionSelectColumn = {
 				name: col.name,
 				path: col.path,
 			};
@@ -596,8 +592,7 @@ function DeIdentPopover({
 						<Input
 							className="h-8"
 							placeholder="Span (e.g. 10)"
-							type="number"
-							value={config?.span ?? ""}
+							value={config?.span != null ? String(config.span) : ""}
 							onChange={(e) =>
 								update({
 									span: e.target.value ? Number(e.target.value) : undefined,
@@ -619,8 +614,7 @@ function DeIdentPopover({
 						<Input
 							className="h-8"
 							placeholder="Round to (decimals)"
-							type="number"
-							value={config?.roundTo ?? ""}
+							value={config?.roundTo != null ? String(config.roundTo) : ""}
 							onChange={(e) =>
 								update({
 									roundTo: e.target.value ? Number(e.target.value) : undefined,
