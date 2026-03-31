@@ -14,11 +14,17 @@ import {
 	DropdownMenuTrigger,
 	Input,
 	type ItemInstance,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 	type TreeInstance,
 	TreeView,
 	type TreeViewItem,
@@ -29,6 +35,7 @@ import {
 	GripVertical,
 	Pi,
 	PlusIcon,
+	ShieldCheck,
 	TextQuote,
 	X,
 } from "lucide-react";
@@ -46,6 +53,127 @@ import {
 	ViewDefinitionResourceTypeContext,
 } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
+
+// --- De-identification extension support ---
+
+const DEIDENT_EXT_URL =
+	"http://health-samurai.io/fhir/core/StructureDefinition/de-identification";
+
+type DeIdentMethod =
+	| "redact"
+	| "keep"
+	| "cryptoHash"
+	| "dateshift"
+	| "encrypt"
+	| "substitute"
+	| "perturb"
+	| "custom_function";
+
+interface DeIdentConfig {
+	method: DeIdentMethod;
+	cryptoHashKey?: string;
+	dateShiftKey?: string;
+	encryptKey?: string;
+	replaceWith?: string;
+	span?: number;
+	rangeType?: string;
+	roundTo?: number;
+	customFunction?: string;
+	customArg?: string;
+}
+
+const DEIDENT_METHODS: { value: DeIdentMethod; label: string }[] = [
+	{ value: "redact", label: "Redact" },
+	{ value: "keep", label: "Keep" },
+	{ value: "cryptoHash", label: "Crypto Hash" },
+	{ value: "dateshift", label: "Date Shift" },
+	{ value: "encrypt", label: "Encrypt" },
+	{ value: "substitute", label: "Substitute" },
+	{ value: "perturb", label: "Perturb" },
+	{ value: "custom_function", label: "Custom Function" },
+];
+
+function parseDeIdentExtension(
+	extensions:
+		| Array<{
+				url: string;
+				extension?: Array<{ url: string; [key: string]: unknown }>;
+				[key: string]: unknown;
+		  }>
+		| undefined,
+): DeIdentConfig | undefined {
+	if (!extensions) return undefined;
+	const ext = extensions.find((e) => e.url === DEIDENT_EXT_URL);
+	if (!ext?.extension) return undefined;
+
+	const get = (url: string): unknown => {
+		const sub = ext.extension?.find((s) => s.url === url);
+		if (!sub) return undefined;
+		return (
+			sub.valueCode ??
+			sub.valueString ??
+			sub.valueInteger ??
+			sub.valueDecimal ??
+			sub.valueBoolean ??
+			undefined
+		);
+	};
+
+	const method = get("method") as DeIdentMethod | undefined;
+	if (!method) return undefined;
+
+	return {
+		method,
+		cryptoHashKey: get("cryptoHashKey") as string | undefined,
+		dateShiftKey: get("dateShiftKey") as string | undefined,
+		encryptKey: get("encryptKey") as string | undefined,
+		replaceWith: get("replaceWith") as string | undefined,
+		span: get("span") as number | undefined,
+		rangeType: get("rangeType") as string | undefined,
+		roundTo: get("roundTo") as number | undefined,
+		customFunction: get("custom_function") as string | undefined,
+		customArg: get("custom_arg") as string | undefined,
+	};
+}
+
+function buildDeIdentExtension(config: DeIdentConfig | undefined):
+	| Array<{
+			url: string;
+			extension: Array<{ url: string; [key: string]: unknown }>;
+	  }>
+	| undefined {
+	if (!config) return undefined;
+	const subs: Array<{ url: string; [key: string]: unknown }> = [
+		{ url: "method", valueCode: config.method },
+	];
+
+	if (config.method === "cryptoHash" && config.cryptoHashKey)
+		subs.push({ url: "cryptoHashKey", valueString: config.cryptoHashKey });
+	if (config.method === "dateshift" && config.dateShiftKey)
+		subs.push({ url: "dateShiftKey", valueString: config.dateShiftKey });
+	if (config.method === "encrypt" && config.encryptKey)
+		subs.push({ url: "encryptKey", valueString: config.encryptKey });
+	if (config.method === "substitute" && config.replaceWith)
+		subs.push({ url: "replaceWith", valueString: config.replaceWith });
+	if (config.method === "perturb") {
+		if (config.span != null)
+			subs.push({ url: "span", valueDecimal: config.span });
+		if (config.rangeType)
+			subs.push({ url: "rangeType", valueString: config.rangeType });
+		if (config.roundTo != null)
+			subs.push({ url: "roundTo", valueInteger: config.roundTo });
+	}
+	if (config.method === "custom_function") {
+		if (config.customFunction)
+			subs.push({ url: "custom_function", valueString: config.customFunction });
+		if (config.customArg)
+			subs.push({ url: "custom_arg", valueString: config.customArg });
+	}
+
+	return [{ url: DEIDENT_EXT_URL, extension: subs }];
+}
+
+// --- End de-identification ---
 
 type ItemMeta = {
 	type:
@@ -188,6 +316,7 @@ const parseColumn = (id: string, column: ViewDefinitionSelectColumn[]) => {
 			nodeId: `${id}-col-${idx}-${generateId()}`,
 			name: c.name || "",
 			path: c.path || "",
+			extension: c.extension,
 		})),
 	};
 };
@@ -246,10 +375,16 @@ const parseSelectItems = (
 
 const buildColumn = (columns: ColumnItem[]) => {
 	return {
-		column: columns.map((col) => ({
-			name: col.name,
-			path: col.path,
-		})),
+		column: columns.map((col) => {
+			const result: Record<string, unknown> = {
+				name: col.name,
+				path: col.path,
+			};
+			if (col.extension && col.extension.length > 0) {
+				result.extension = col.extension;
+			}
+			return result;
+		}),
 	};
 };
 
@@ -348,6 +483,172 @@ const InputView = ({
 		/>
 	);
 };
+
+// --- De-identification popover component ---
+
+function DeIdentPopover({
+	config,
+	onChange,
+}: {
+	config: DeIdentConfig | undefined;
+	onChange: (config: DeIdentConfig | undefined) => void;
+}) {
+	const method = config?.method;
+
+	const update = (patch: Partial<DeIdentConfig>) => {
+		if (!config) return;
+		onChange({ ...config, ...patch });
+	};
+
+	const methodLabel = config
+		? (DEIDENT_METHODS.find((m) => m.value === config.method)?.label ??
+			config.method)
+		: undefined;
+
+	return (
+		<Popover>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<PopoverTrigger asChild>
+						<Button
+							variant="link"
+							size="small"
+							className={`shrink-0 ${config ? "text-text-info-primary" : "group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"}`}
+							asChild
+						>
+							<span>
+								<ShieldCheck size={14} />
+							</span>
+						</Button>
+					</PopoverTrigger>
+				</TooltipTrigger>
+				<TooltipContent>
+					{methodLabel
+						? `De-identification: ${methodLabel}`
+						: "De-identification: none"}
+				</TooltipContent>
+			</Tooltip>
+			<PopoverContent
+				className="w-72 p-3 flex flex-col gap-2"
+				onClick={(e) => e.stopPropagation()}
+				onMouseDown={(e) => e.stopPropagation()}
+			>
+				<span className="text-xs font-medium text-text-secondary">
+					De-identification
+				</span>
+				<Select
+					value={method || "none"}
+					onValueChange={(v) => {
+						if (v === "none") {
+							onChange(undefined);
+						} else {
+							onChange({ method: v as DeIdentMethod });
+						}
+					}}
+				>
+					<SelectTrigger className="h-8">
+						<SelectValue placeholder="None" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="none">None</SelectItem>
+						{DEIDENT_METHODS.map((m) => (
+							<SelectItem key={m.value} value={m.value}>
+								{m.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+
+				{method === "cryptoHash" && (
+					<Input
+						className="h-8"
+						placeholder="HMAC Key"
+						value={config?.cryptoHashKey || ""}
+						onChange={(e) => update({ cryptoHashKey: e.target.value })}
+					/>
+				)}
+				{method === "dateshift" && (
+					<Input
+						className="h-8"
+						placeholder="Date Shift Key"
+						value={config?.dateShiftKey || ""}
+						onChange={(e) => update({ dateShiftKey: e.target.value })}
+					/>
+				)}
+				{method === "encrypt" && (
+					<Input
+						className="h-8"
+						placeholder="Encryption Key"
+						value={config?.encryptKey || ""}
+						onChange={(e) => update({ encryptKey: e.target.value })}
+					/>
+				)}
+				{method === "substitute" && (
+					<Input
+						className="h-8"
+						placeholder="Replace with"
+						value={config?.replaceWith || ""}
+						onChange={(e) => update({ replaceWith: e.target.value })}
+					/>
+				)}
+				{method === "perturb" && (
+					<div className="flex flex-col gap-2">
+						<Input
+							className="h-8"
+							placeholder="Span (e.g. 10)"
+							type="number"
+							value={config?.span ?? ""}
+							onChange={(e) =>
+								update({
+									span: e.target.value ? Number(e.target.value) : undefined,
+								})
+							}
+						/>
+						<Select
+							value={config?.rangeType || "fixed"}
+							onValueChange={(v) => update({ rangeType: v })}
+						>
+							<SelectTrigger className="h-8">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="fixed">Fixed</SelectItem>
+								<SelectItem value="proportional">Proportional</SelectItem>
+							</SelectContent>
+						</Select>
+						<Input
+							className="h-8"
+							placeholder="Round to (decimals)"
+							type="number"
+							value={config?.roundTo ?? ""}
+							onChange={(e) =>
+								update({
+									roundTo: e.target.value ? Number(e.target.value) : undefined,
+								})
+							}
+						/>
+					</div>
+				)}
+				{method === "custom_function" && (
+					<div className="flex flex-col gap-2">
+						<Input
+							className="h-8"
+							placeholder="Function name"
+							value={config?.customFunction || ""}
+							onChange={(e) => update({ customFunction: e.target.value })}
+						/>
+						<Input
+							className="h-8"
+							placeholder="Argument (optional)"
+							value={config?.customArg || ""}
+							onChange={(e) => update({ customArg: e.target.value })}
+						/>
+					</div>
+				)}
+			</PopoverContent>
+		</Popover>
+	);
+}
 
 export const FormTabContent = ({
 	actionsRef,
@@ -706,6 +1007,47 @@ export const FormTabContent = ({
 						column: item.column.map((col: ColumnItem) =>
 							col.nodeId === columnId ? { ...col, [field]: value } : col,
 						),
+					};
+				}
+				if (item.children) {
+					return { ...item, children: updateColumns(item.children) };
+				}
+				return item;
+			});
+		};
+
+		const updatedItems = updateColumns(selectItems);
+		setSelectItems(updatedItems);
+		updateViewDefinition(undefined, undefined, undefined, updatedItems);
+	};
+
+	// Function to update de-identification config on a column
+	const updateColumnDeIdent = (
+		selectItemId: string,
+		columnId: string,
+		deIdentConfig: DeIdentConfig | undefined,
+	) => {
+		const updateColumns = (
+			items: SelectItemInternal[],
+		): SelectItemInternal[] => {
+			return items.map((item) => {
+				if (item.nodeId === selectItemId && item.column) {
+					return {
+						...item,
+						column: item.column.map((col: ColumnItem) => {
+							if (col.nodeId !== columnId) return col;
+							const otherExts = (col.extension || []).filter(
+								(e) => e.url !== DEIDENT_EXT_URL,
+							);
+							const deIdentExt = buildDeIdentExtension(deIdentConfig);
+							const newExts = deIdentExt
+								? [...otherExts, ...deIdentExt]
+								: otherExts;
+							return {
+								...col,
+								extension: newExts.length > 0 ? newExts : undefined,
+							};
+						}),
 					};
 				}
 				if (item.children) {
@@ -1420,6 +1762,16 @@ export const FormTabContent = ({
 								)
 							}
 							contextPath={contextPath}
+						/>
+						<DeIdentPopover
+							config={parseDeIdentExtension(columnData.extension)}
+							onChange={(deIdentConfig) =>
+								updateColumnDeIdent(
+									selectItemId,
+									columnData.nodeId,
+									deIdentConfig,
+								)
+							}
 						/>
 						<Button
 							variant="link"
