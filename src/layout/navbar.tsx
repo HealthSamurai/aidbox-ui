@@ -17,7 +17,6 @@ import {
 import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
-	ImagePlus,
 	LogOut,
 	MessageCircleQuestionMark,
 	Moon,
@@ -100,21 +99,25 @@ function NavbarButtons() {
 
 	return (
 		<div className="flex items-center gap-2">
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<Button
-						variant="ghost"
-						className="rounded-full p-2"
-						onClick={() => {
+			<div className="flex items-center gap-2 px-2">
+				<label
+					htmlFor="new-ui-toggle"
+					className="typo-label text-text-secondary cursor-pointer"
+				>
+					New UI
+				</label>
+				<Switch
+					id="new-ui-toggle"
+					size="small"
+					checked={true}
+					onCheckedChange={(checked) => {
+						if (!checked) {
 							localStorage.setItem(PREFERRED_UI_KEY, "old");
 							window.location.href = getAidboxBaseURL();
-						}}
-					>
-						<ImagePlus />
-					</Button>
-				</TooltipTrigger>
-				<TooltipContent side="bottom">Switch to old UI</TooltipContent>
-			</Tooltip>
+						}
+					}}
+				/>
+			</div>
 
 			<Tooltip>
 				<TooltipTrigger asChild>
