@@ -100,24 +100,24 @@ function NavbarButtons() {
 	return (
 		<div className="flex items-center gap-2">
 			<div className="flex items-center gap-2 px-2">
-					<label
-						htmlFor="new-ui-toggle"
-						className="typo-label text-text-secondary cursor-pointer"
-					>
-						New UI
-					</label>
-					<Switch
-						id="new-ui-toggle"
-						size="small"
-						checked={true}
-						onCheckedChange={(checked) => {
-							if (!checked) {
-								localStorage.setItem(PREFERRED_UI_KEY, "old");
-								window.location.href = getAidboxBaseURL();
-							}
-						}}
-					/>
-				</div>
+				<label
+					htmlFor="new-ui-toggle"
+					className="typo-label text-text-secondary cursor-pointer"
+				>
+					New UI
+				</label>
+				<Switch
+					id="new-ui-toggle"
+					size="small"
+					checked={true}
+					onCheckedChange={(checked) => {
+						if (!checked) {
+							localStorage.setItem(PREFERRED_UI_KEY, "old");
+							window.location.href = getAidboxBaseURL();
+						}
+					}}
+				/>
+			</div>
 
 			<Tooltip>
 				<TooltipTrigger asChild>
