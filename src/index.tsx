@@ -9,7 +9,10 @@ import { PREFERRED_UI_KEY, UI_BASE_PATH } from "./shared/const";
 import { VimModeProvider } from "./shared/vim-mode";
 import { getAidboxBaseURL } from "./utils";
 
-if (!import.meta.env.DEV && localStorage.getItem(PREFERRED_UI_KEY) === "old") {
+if (
+	!import.meta.env.DEV &&
+	document.cookie.split("; ").some((c) => c === `${PREFERRED_UI_KEY}=old`)
+) {
 	window.location.href = getAidboxBaseURL();
 }
 

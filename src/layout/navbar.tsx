@@ -112,7 +112,7 @@ function NavbarButtons() {
 					checked={true}
 					onCheckedChange={(checked) => {
 						if (!checked) {
-							localStorage.setItem(PREFERRED_UI_KEY, "old");
+							document.cookie = `${PREFERRED_UI_KEY}=old; path=/; max-age=31536000`;
 							window.location.href = getAidboxBaseURL();
 						}
 					}}
