@@ -7,7 +7,7 @@ export function useUserInfo() {
 
 	return useQuery({
 		queryKey: ["userInfo"],
-		queryFn: client.userinfo,
+		queryFn: () => client.userinfo(),
 		refetchOnWindowFocus: false,
 	});
 }
