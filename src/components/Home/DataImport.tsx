@@ -418,7 +418,7 @@ export function DataImport() {
 											<span>Test dataset is not compatible with LBAC.</span>
 											<div>
 												<a
-													href="/ui/console#/settings?search=Enable%20LBAC"
+													href="/u/settings#setting-security.lbac.enabled"
 													target="_blank"
 													rel="noopener noreferrer"
 													className="underline"
