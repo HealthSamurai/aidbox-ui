@@ -14,7 +14,13 @@ import {
 	Trash2Icon,
 	X,
 } from "lucide-react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
@@ -654,6 +660,40 @@ function useCanonicals(packageId: string, substring: string, page: number) {
 	});
 }
 
+function ResizeHandle({
+	width,
+	onWidthChange,
+}: {
+	width: number;
+	onWidthChange: (width: number) => void;
+}) {
+	const handleMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault();
+			const startX = e.clientX;
+			const startWidth = width;
+			const onMouseMove = (ev: MouseEvent) => {
+				onWidthChange(Math.max(80, startWidth + ev.clientX - startX));
+			};
+			const onMouseUp = () => {
+				document.removeEventListener("mousemove", onMouseMove);
+				document.removeEventListener("mouseup", onMouseUp);
+			};
+			document.addEventListener("mousemove", onMouseMove);
+			document.addEventListener("mouseup", onMouseUp);
+		},
+		[width, onWidthChange],
+	);
+
+	return (
+		<div
+			onMouseDown={handleMouseDown}
+			className="absolute top-0 right-0 h-full w-1 cursor-col-resize opacity-0 hover:opacity-100 bg-border-secondary"
+			style={{ userSelect: "none", touchAction: "none" }}
+		/>
+	);
+}
+
 function CanonicalsContent({
 	packageId,
 	actionsRef,
@@ -667,6 +707,8 @@ function CanonicalsContent({
 	const substring = q ?? "";
 	const page = urlPage ?? 1;
 	const [search, setSearch] = useState(substring);
+	const [resourceTypeWidth, setResourceTypeWidth] = useState(192);
+	const [titleWidth, setTitleWidth] = useState(256);
 
 	useEffect(() => {
 		setSearch(substring);
@@ -786,10 +828,26 @@ function CanonicalsContent({
 				<HSComp.Table zebra className="typo-code">
 					<HSComp.TableHeader className="block shrink-0 overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
 						<HSComp.TableRow>
-							<HSComp.TableHead className="w-48 pl-7!">
+							<HSComp.TableHead
+								className="relative pl-7!"
+								style={{ width: resourceTypeWidth }}
+							>
 								Resource Type
+								<ResizeHandle
+									width={resourceTypeWidth}
+									onWidthChange={setResourceTypeWidth}
+								/>
 							</HSComp.TableHead>
-							<HSComp.TableHead className="w-64">Title</HSComp.TableHead>
+							<HSComp.TableHead
+								className="relative"
+								style={{ width: titleWidth }}
+							>
+								Title
+								<ResizeHandle
+									width={titleWidth}
+									onWidthChange={setTitleWidth}
+								/>
+							</HSComp.TableHead>
 							<HSComp.TableHead>URL</HSComp.TableHead>
 						</HSComp.TableRow>
 					</HSComp.TableHeader>
@@ -798,7 +856,10 @@ function CanonicalsContent({
 							? Array.from({ length: 30 }, (_, i) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
 									<HSComp.TableRow key={i} zebra index={i}>
-										<HSComp.TableCell className="w-48 pl-7!">
+										<HSComp.TableCell
+											className="pl-7!"
+											style={{ width: resourceTypeWidth }}
+										>
 											<HSComp.Skeleton
 												className="h-5"
 												style={{
@@ -806,7 +867,7 @@ function CanonicalsContent({
 												}}
 											/>
 										</HSComp.TableCell>
-										<HSComp.TableCell className="w-64">
+										<HSComp.TableCell style={{ width: titleWidth }}>
 											<HSComp.Skeleton
 												className="h-5"
 												style={{
@@ -842,11 +903,15 @@ function CanonicalsContent({
 											})
 										}
 									>
-										<HSComp.TableCell className="text-text-secondary text-sm w-48 pl-7!">
+										<HSComp.TableCell
+											className="text-text-secondary text-sm pl-7!"
+											style={{ width: resourceTypeWidth }}
+										>
 											{item.resource.resourceType}
 										</HSComp.TableCell>
 										<HSComp.TableCell
-											className="text-text-secondary text-sm w-64 truncate"
+											className="text-text-secondary text-sm truncate"
+											style={{ width: titleWidth }}
 											title={item.resource.name}
 										>
 											{item.resource.title ?? item.resource.name}
