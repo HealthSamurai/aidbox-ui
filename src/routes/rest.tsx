@@ -1039,7 +1039,10 @@ function ExplainView({
 				</TabsContent>
 			)}
 			{plan && (
-				<TabsContent value="plan" className="grow min-h-0 overflow-auto">
+				<TabsContent
+					value="plan"
+					className="grow min-h-0 overflow-auto bg-bg-primary"
+				>
 					<pre className="p-4 typo-code text-text-primary whitespace-pre">
 						{plan}
 					</pre>

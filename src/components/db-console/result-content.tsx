@@ -114,7 +114,7 @@ const CellValue = ({ value }: { value: unknown }) => {
 		}
 		return (
 			<div className="sticky top-10 typo-code">
-				<span style={{ color: "#405CBF" }}>"{value}"</span>
+				<span style={{ color: "#405CBF" }}>{value}</span>
 			</div>
 		);
 	}
@@ -310,13 +310,13 @@ function QueryResult({
 				</div>
 			) : (
 				<div className="flex-1 overflow-auto min-h-0">
-					<Table stickyHeader className="typo-code">
+					<Table stickyHeader className="typo-code w-auto min-w-full">
 						<TableHeader>
 							<TableRow>
 								{columns.map((key, colIdx) => (
 									<TableHead
 										key={key}
-										className={`px-6 hover:bg-transparent whitespace-nowrap ${colIdx === 0 ? "pl-5.5" : ""}`}
+										className={`px-6 hover:bg-transparent whitespace-nowrap ${colIdx === 0 ? "pl-5.5" : ""} ${colIdx === columns.length - 1 ? "w-full" : ""}`}
 									>
 										{key}
 									</TableHead>
@@ -400,7 +400,13 @@ export function LimitDropdown({
 	);
 }
 
-export function ExportDropdown({ results }: { results: QueryResultItem[] }) {
+export function ExportDropdown({
+	results,
+	disabled,
+}: {
+	results: QueryResultItem[];
+	disabled?: boolean;
+}) {
 	const exportResult = useCallback(
 		(resultItems: QueryResultItem[], format: "markdown" | "json" | "csv") => {
 			const parts = resultItems.map((r) => {
@@ -434,7 +440,7 @@ export function ExportDropdown({ results }: { results: QueryResultItem[] }) {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="small">
+				<Button variant="ghost" size="small" disabled={disabled}>
 					<Download className="w-3.5 h-3.5" />
 				</Button>
 			</DropdownMenuTrigger>
