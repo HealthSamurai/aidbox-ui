@@ -546,6 +546,7 @@ type CanonicalEntry = {
 		resourceType: string;
 		id: string;
 		url?: string;
+		title?: string;
 		name?: string;
 		version?: string;
 		status?: string;
@@ -788,6 +789,7 @@ function CanonicalsContent({
 							<HSComp.TableHead className="w-48 pl-7!">
 								Resource Type
 							</HSComp.TableHead>
+							<HSComp.TableHead className="w-64">Title</HSComp.TableHead>
 							<HSComp.TableHead>URL</HSComp.TableHead>
 						</HSComp.TableRow>
 					</HSComp.TableHeader>
@@ -801,6 +803,14 @@ function CanonicalsContent({
 												className="h-5"
 												style={{
 													width: `${80 + ((i * 23) % 60)}px`,
+												}}
+											/>
+										</HSComp.TableCell>
+										<HSComp.TableCell className="w-64">
+											<HSComp.Skeleton
+												className="h-5"
+												style={{
+													width: `${100 + ((i * 17) % 120)}px`,
 												}}
 											/>
 										</HSComp.TableCell>
@@ -834,6 +844,12 @@ function CanonicalsContent({
 									>
 										<HSComp.TableCell className="text-text-secondary text-sm w-48 pl-7!">
 											{item.resource.resourceType}
+										</HSComp.TableCell>
+										<HSComp.TableCell
+											className="text-text-secondary text-sm w-64 truncate"
+											title={item.resource.name}
+										>
+											{item.resource.title ?? item.resource.name}
 										</HSComp.TableCell>
 										<HSComp.TableCell className="text-text-primary text-sm">
 											<Link
