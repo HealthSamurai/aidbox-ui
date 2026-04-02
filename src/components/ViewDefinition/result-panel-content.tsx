@@ -346,9 +346,7 @@ export function ResultPanel({
 		},
 		onSuccess: async (data: AidboxTypes.ResponseWithMeta, variables) => {
 			if (variables.runId !== runIdRef.current) return;
-			const raw = (await data.response.json()).data;
-			const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
-			const decodedData = new TextDecoder().decode(bytes);
+			const decodedData = atob((await data.response.json()).data);
 			const { tableData: newRows } = processTableData(decodedData);
 			setAccumulatedData((prev) => [...prev, ...newRows]);
 			const pageSize = viewDefinitionContext.runResultPageSize || 30;

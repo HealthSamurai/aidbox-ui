@@ -1,14 +1,6 @@
 export type TableEntry = { name: string; type: "table" | "view" };
 export type SchemaMap = Record<string, TableEntry[]>;
 
-export type FunctionEntry = {
-	name: string;
-	arguments: string;
-	return_type: string;
-	function_type: string;
-};
-export type FunctionsMap = Record<string, FunctionEntry[]>;
-
 export const LIMIT_PRESETS = [10, 100, 1000];
 
 export function splitSqlStatements(query: string): string[] {
