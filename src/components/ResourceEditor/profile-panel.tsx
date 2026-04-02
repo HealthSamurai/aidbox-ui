@@ -83,13 +83,21 @@ export function ProfilePanel({
 		refetchOnWindowFocus: false,
 	});
 
+	const resourceProfiles: string[] =
+		((resource?.meta as Record<string, unknown>)?.profile as string[]) ?? [];
+
 	const dropdownOptions = React.useMemo(
 		() =>
-			profileEntries.map(([key, schema]) => ({
-				value: key,
-				label: schema.entity?.name || key,
-			})),
-		[profileEntries],
+			profileEntries.map(([key, schema]) => {
+				const name = schema.entity?.name || key;
+				const url = schema.entity?.url;
+				const isApplied = url ? resourceProfiles.includes(url) : false;
+				return {
+					value: key,
+					label: isApplied ? `${name} \u25CF` : name,
+				};
+			}),
+		[profileEntries, resourceProfiles],
 	);
 
 	if (actionsRef?.current) {
@@ -109,8 +117,6 @@ export function ProfilePanel({
 
 	const selectedProfileUrl = selectedProfile?.entity?.url;
 	const isDefault = selectedProfile?.["default?"] === true;
-	const resourceProfiles: string[] =
-		((resource?.meta as Record<string, unknown>)?.profile as string[]) ?? [];
 	const isProfileApplied =
 		isDefault ||
 		(!!selectedProfileUrl && resourceProfiles.includes(selectedProfileUrl));
