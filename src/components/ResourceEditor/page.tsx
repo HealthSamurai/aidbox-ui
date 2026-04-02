@@ -407,6 +407,22 @@ export const ResourceEditorPage = ({
 					storageKey="resourceEditor-profileOpen"
 					autoSaveId="resource-editor-horizontal-panel"
 					actionsRef={actionsRef}
+					resource={resource}
+					onApplyProfile={(profileUrl) => {
+						const meta = resource.meta ?? {};
+						const profiles = meta.profile ?? [];
+						if (!profiles.includes(profileUrl)) {
+							const updated = {
+								...resource,
+								meta: { ...meta, profile: [...profiles, profileUrl] },
+							};
+							const text =
+								mode === "yaml"
+									? YAML.dump(updated, { indent })
+									: JSON.stringify(updated, null, indent);
+							handleTextChange(text);
+						}
+					}}
 				/>
 			</HSComp.TabsContent>
 		),
