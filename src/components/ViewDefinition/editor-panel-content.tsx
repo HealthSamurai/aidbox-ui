@@ -392,8 +392,7 @@ export const useViewDefinitionActions = (
 			} else {
 				viewDefinitionContext.setRunError(undefined);
 				const { data } = result.value.resource;
-				const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
-				const decodedData = new TextDecoder().decode(bytes);
+				const decodedData = atob(data);
 				viewDefinitionContext.setRunResult(decodedData);
 				options?.onRunSuccess?.();
 				HSComp.toast.success("ViewDefinition run successfully", {

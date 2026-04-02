@@ -21,7 +21,7 @@ import { useSqlHistory } from "../../api/sql-history";
 import { useLocalStorage } from "../../hooks";
 import { ActiveQueriesView } from "./active-queries-view";
 import { SqlTablesCommand } from "./tables-view";
-import type { FunctionsMap, SchemaMap } from "./utils";
+import type { SchemaMap } from "./utils";
 
 // Types
 
@@ -264,16 +264,12 @@ function SqlHistoryCommand({
 
 export function SqlLeftMenu({
 	schemas,
-	functions,
 	onHistoryItemClick,
 	onTableClick,
-	onFunctionClick,
 }: {
 	schemas: SchemaMap;
-	functions: FunctionsMap;
 	onHistoryItemClick: (command: string) => void;
 	onTableClick: (query: string) => void;
-	onFunctionClick: (schema: string, name: string, args: string) => void;
 }) {
 	const leftMenuStatus = React.useContext(SqlLeftMenuContext);
 	const { data: historyData, isLoading, error } = useSqlHistory();
@@ -304,7 +300,7 @@ export function SqlLeftMenu({
 				<div className={tabsHeader}>
 					<TabsList>
 						<TabsTrigger value="history">History</TabsTrigger>
-						<TabsTrigger value="tables">Structure</TabsTrigger>
+						<TabsTrigger value="tables">Tables</TabsTrigger>
 						<TabsTrigger value="queries">Queries</TabsTrigger>
 					</TabsList>
 				</div>
@@ -361,9 +357,7 @@ export function SqlLeftMenu({
 				<TabsContent value="tables" className={tabsContent}>
 					<SqlTablesCommand
 						schemas={schemas}
-						functions={functions}
 						onTableClick={onTableClick}
-						onFunctionClick={onFunctionClick}
 						isActive={selectedMenuTab === "tables" && leftMenuStatus === "open"}
 					/>
 				</TabsContent>
@@ -401,7 +395,7 @@ export function SqlLeftMenuToggle({
 					)}
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>History / Structure / Queries</TooltipContent>
+			<TooltipContent>History / Tables / Queries</TooltipContent>
 		</Tooltip>
 	);
 }
