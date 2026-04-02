@@ -76,9 +76,9 @@ interface DeIdentConfig {
 	dateShiftKey?: string;
 	encryptKey?: string;
 	replaceWith?: string;
-	span?: number;
+	span?: number | string;
 	rangeType?: string;
-	roundTo?: number;
+	roundTo?: number | string;
 	customFunction?: string;
 	customArg?: string;
 }
@@ -185,12 +185,24 @@ function buildDeIdentExtension(config: DeIdentConfig | undefined):
 	if (config.method === "substitute" && config.replaceWith)
 		subs.push({ url: "replaceWith", valueString: config.replaceWith });
 	if (config.method === "perturb") {
-		if (config.span != null)
-			subs.push({ url: "span", valueDecimal: config.span });
+		if (config.span != null) {
+			const n = Number(config.span);
+			subs.push(
+				Number.isNaN(n)
+					? { url: "span", valueString: String(config.span) }
+					: { url: "span", valueDecimal: n },
+			);
+		}
 		if (config.rangeType)
 			subs.push({ url: "rangeType", valueCode: config.rangeType });
-		if (config.roundTo != null)
-			subs.push({ url: "roundTo", valueInteger: config.roundTo });
+		if (config.roundTo != null) {
+			const n = Number(config.roundTo);
+			subs.push(
+				Number.isNaN(n)
+					? { url: "roundTo", valueString: String(config.roundTo) }
+					: { url: "roundTo", valueInteger: n },
+			);
+		}
 	}
 	if (config.method === "custom_function") {
 		if (config.customFunction)
@@ -513,6 +525,52 @@ const InputView = ({
 	);
 };
 
+function ValidatedInput({
+	value,
+	placeholder,
+	validate,
+	errorMessage,
+	onChange,
+}: {
+	value: string;
+	placeholder: string;
+	validate: (v: string) => boolean;
+	errorMessage: string;
+	onChange: (v: string) => void;
+}) {
+	const [localValue, setLocalValue] = useState(value);
+	const lastSent = React.useRef(value);
+
+	useEffect(() => {
+		if (value !== lastSent.current) {
+			setLocalValue(value);
+			lastSent.current = value;
+		}
+	}, [value]);
+
+	const isInvalid = localValue !== "" && !validate(localValue);
+	return (
+		<div>
+			<Input
+				className={`h-8 ${isInvalid ? "ring-1 ring-border-error" : ""}`}
+				placeholder={placeholder}
+				value={localValue}
+				onChange={(e) => {
+					setLocalValue(e.target.value);
+					lastSent.current = e.target.value;
+					onChange(e.target.value);
+				}}
+			/>
+			{isInvalid && (
+				<span className="text-xs text-text-error-primary flex items-center gap-1 pt-2">
+					<TriangleAlert size={12} className="shrink-0" />
+					{errorMessage}
+				</span>
+			)}
+		</div>
+	);
+}
+
 // --- De-identification popover component ---
 
 function DeIdentPopover({
@@ -615,21 +673,13 @@ function DeIdentPopover({
 					/>
 				)}
 				{method === "encrypt" && (
-					<div>
-						<Input
-							className={`h-8 ${config?.encryptKey && !/^([0-9a-fA-F]{2}){4,16}$/.test(config.encryptKey) ? "ring-1 ring-border-error" : ""}`}
-							placeholder="Hex key (32 hex chars)"
-							value={config?.encryptKey || ""}
-							onChange={(e) => update({ encryptKey: e.target.value })}
-						/>
-						{config?.encryptKey &&
-							!/^([0-9a-fA-F]{2}){4,16}$/.test(config.encryptKey) && (
-								<span className="text-xs text-text-error-primary flex items-center gap-1 pt-2">
-									<TriangleAlert size={12} className="shrink-0" />
-									8-32 hex characters (0-9, a-f)
-								</span>
-							)}
-					</div>
+					<ValidatedInput
+						value={config?.encryptKey || ""}
+						placeholder="Hex key (8-32 hex chars)"
+						validate={(v) => /^([0-9a-fA-F]{2}){4,16}$/.test(v)}
+						errorMessage="8-32 hex characters, even count (0-9, a-f)"
+						onChange={(v) => update({ encryptKey: v })}
+					/>
 				)}
 				{method === "substitute" && (
 					<Input
@@ -641,14 +691,15 @@ function DeIdentPopover({
 				)}
 				{method === "perturb" && (
 					<div className="flex flex-col gap-2">
-						<Input
-							className="h-8"
-							placeholder="Span (e.g. 10)"
+						<ValidatedInput
 							value={config?.span != null ? String(config.span) : ""}
-							onChange={(e) =>
+							placeholder="Span (e.g. 10)"
+							validate={(v) => !Number.isNaN(Number(v))}
+							errorMessage="Must be a number"
+							onChange={(v) =>
 								update({
-									span: e.target.value ? Number(e.target.value) : undefined,
-								})
+									span: v || undefined,
+								} as Partial<DeIdentConfig>)
 							}
 						/>
 						<Select
@@ -663,35 +714,28 @@ function DeIdentPopover({
 								<SelectItem value="proportional">Proportional</SelectItem>
 							</SelectContent>
 						</Select>
-						<Input
-							className="h-8"
-							placeholder="Round to (decimals)"
+						<ValidatedInput
 							value={config?.roundTo != null ? String(config.roundTo) : ""}
-							onChange={(e) =>
+							placeholder="Round to (decimals)"
+							validate={(v) => !Number.isNaN(Number(v))}
+							errorMessage="Must be a number"
+							onChange={(v) =>
 								update({
-									roundTo: e.target.value ? Number(e.target.value) : undefined,
-								})
+									roundTo: v || undefined,
+								} as Partial<DeIdentConfig>)
 							}
 						/>
 					</div>
 				)}
 				{method === "custom_function" && (
 					<div className="flex flex-col gap-2">
-						<div>
-							<Input
-								className={`h-8 ${config?.customFunction && !/^[a-zA-Z][a-zA-Z0-9_.]*$/.test(config.customFunction) ? "ring-1 ring-border-error" : ""}`}
-								placeholder="Function name"
-								value={config?.customFunction || ""}
-								onChange={(e) => update({ customFunction: e.target.value })}
-							/>
-							{config?.customFunction &&
-								!/^[a-zA-Z][a-zA-Z0-9_.]*$/.test(config.customFunction) && (
-									<span className="text-xs text-text-error-primary flex items-center gap-1 pt-2">
-										<TriangleAlert size={12} className="shrink-0" />
-										Letters, digits, underscores, dots only
-									</span>
-								)}
-						</div>
+						<ValidatedInput
+							value={config?.customFunction || ""}
+							placeholder="Function name"
+							validate={(v) => /^[a-zA-Z][a-zA-Z0-9_.]*$/.test(v)}
+							errorMessage="Letters, digits, underscores, dots only"
+							onChange={(v) => update({ customFunction: v })}
+						/>
 						<Input
 							className="h-8"
 							placeholder="Argument (optional)"
