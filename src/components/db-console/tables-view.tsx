@@ -280,6 +280,39 @@ function TablesListView({
 		});
 	}, [allItems, search]);
 
+	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+		const list = listRef.current;
+		if (!list) return;
+		const buttons = Array.from(
+			list.querySelectorAll<HTMLButtonElement>("button[data-table-item]"),
+		);
+		if (buttons.length === 0) return;
+		const active = list.querySelector<HTMLButtonElement>(
+			"button[data-table-item][data-active]",
+		);
+
+		if (e.key === "Enter") {
+			if (active) active.click();
+			return;
+		}
+
+		if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+		e.preventDefault();
+		let idx = active ? buttons.indexOf(active) : -1;
+		if (e.key === "ArrowDown") idx = Math.min(idx + 1, buttons.length - 1);
+		else idx = Math.max(idx - 1, 0);
+		if (active) {
+			active.removeAttribute("data-active");
+			active.classList.remove("bg-bg-secondary");
+		}
+		const next = buttons[idx];
+		if (next) {
+			next.setAttribute("data-active", "");
+			next.classList.add("bg-bg-secondary");
+			next.scrollIntoView({ block: "nearest" });
+		}
+	}, []);
+
 	const handleSearchChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
 			setSearch(e.target.value);
@@ -308,7 +341,8 @@ function TablesListView({
 					ref={inputRef}
 					value={search}
 					onChange={handleSearchChange}
-					placeholder="Search..."
+					onKeyDown={handleKeyDown}
+					placeholder="Search tables..."
 					className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 				/>
 			</div>
