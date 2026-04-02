@@ -856,7 +856,9 @@ export const CollectionsView = ({
 	const allFolderIds = Object.entries(tree)
 		.filter(([key, item]) => key !== "root" && item.children != null)
 		.map(([key]) => key);
-	const expandedItems = allFolderIds.filter((id) => !collapsedItems.includes(id));
+	const expandedItems = allFolderIds.filter(
+		(id) => !collapsedItems.includes(id),
+	);
 	const setExpandedItems = (newExpanded: string[]) => {
 		setCollapsedItems(allFolderIds.filter((id) => !newExpanded.includes(id)));
 	};

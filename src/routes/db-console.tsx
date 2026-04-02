@@ -676,7 +676,11 @@ function DbConsolePage() {
 
 	return (
 		<SqlLeftMenuContext value={leftMenuOpen ? "open" : "close"}>
-			<ResizablePanelGroup direction="horizontal" className="w-full h-full" autoSaveId="db-console-horizontal-panel">
+			<ResizablePanelGroup
+				direction="horizontal"
+				className="w-full h-full"
+				autoSaveId="db-console-horizontal-panel"
+			>
 				<ResizablePanel
 					ref={leftPanelRef}
 					defaultSize={20}

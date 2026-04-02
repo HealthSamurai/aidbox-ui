@@ -400,7 +400,13 @@ export function LimitDropdown({
 	);
 }
 
-export function ExportDropdown({ results, disabled }: { results: QueryResultItem[]; disabled?: boolean }) {
+export function ExportDropdown({
+	results,
+	disabled,
+}: {
+	results: QueryResultItem[];
+	disabled?: boolean;
+}) {
 	const exportResult = useCallback(
 		(resultItems: QueryResultItem[], format: "markdown" | "json" | "csv") => {
 			const parts = resultItems.map((r) => {

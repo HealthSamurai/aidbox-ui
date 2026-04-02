@@ -890,7 +890,8 @@ function humanizeValueFallback(
 	if (fallbackCoding !== null) return fallbackCoding;
 
 	if (typeof value === "string") return value;
-	if (typeof value === "boolean" || typeof value === "number") return String(value);
+	if (typeof value === "boolean" || typeof value === "number")
+		return String(value);
 
 	const unknownHumanized = humanizeUnknown(value);
 	return unknownHumanized === "" ? "[...]" : unknownHumanized;
