@@ -848,11 +848,18 @@ export const CollectionsView = ({
 		key: "rest-console-pinned-collections",
 		defaultValue: [],
 	});
-	const [expandedItems, setExpandedItems] = useLocalStorage<string[]>({
-		key: "rest-console-expanded-collections",
+	const [collapsedItems, setCollapsedItems] = useLocalStorage<string[]>({
+		key: "rest-console-collapsed-collections",
 		defaultValue: [],
 	});
 	const tree = buildTreeView(collectionEntries.data ?? [], pinnedCollections);
+	const allFolderIds = Object.entries(tree)
+		.filter(([key, item]) => key !== "root" && item.children != null)
+		.map(([key]) => key);
+	const expandedItems = allFolderIds.filter((id) => !collapsedItems.includes(id));
+	const setExpandedItems = (newExpanded: string[]) => {
+		setCollapsedItems(allFolderIds.filter((id) => !newExpanded.includes(id)));
+	};
 	const selectedTab = tabs.find((tab) => tab.selected);
 	const queryClient = useQueryClient();
 

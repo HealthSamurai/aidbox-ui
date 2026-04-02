@@ -256,20 +256,23 @@ export function ResultPanel({
 			<div className="flex items-center justify-between bg-bg-secondary pr-2 border-b">
 				<TabsList className="pl-2">
 					<TabsTrigger value="result">
-						Result{results && totalRows > 0 ? ` (${totalRows})` : ""}
+						Result ({totalRows})
 					</TabsTrigger>
 					<TabsTrigger value="explain">Explain</TabsTrigger>
 				</TabsList>
 				<div className="flex items-center gap-2">
 					{activeTab === "result" && (
-						<SegmentControl
-							value={resultViewMode}
-							onValueChange={(v) => setResultViewMode(v as "table" | "list")}
-							items={[
-								{ value: "table", label: "Table" },
-								{ value: "list", label: "List" },
-							]}
-						/>
+						<>
+							<SegmentControl
+								value={resultViewMode}
+								onValueChange={(v) => setResultViewMode(v as "table" | "list")}
+								items={[
+									{ value: "table", label: "Table" },
+									{ value: "list", label: "List" },
+								]}
+							/>
+							<ExportDropdown results={results ?? []} disabled={!results || totalRows === 0} />
+						</>
 					)}
 					{activeTab === "explain" && (
 						<SegmentControl
@@ -280,9 +283,6 @@ export function ResultPanel({
 								{ value: "raw", label: "Raw" },
 							]}
 						/>
-					)}
-					{activeTab === "result" && results && totalRows > 0 && (
-						<ExportDropdown results={results} />
 					)}
 					{!isMaximized && (
 						<Tooltip>
