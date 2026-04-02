@@ -14,13 +14,20 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { ChevronLeft, ChevronRight, Eye, Table2, X } from "lucide-react";
+import {
+	Braces,
+	ChevronLeft,
+	ChevronRight,
+	Eye,
+	Table2,
+	X,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
-import type { SchemaMap } from "./utils";
+import type { FunctionsMap, SchemaMap } from "./utils";
 
 // Types
 
@@ -165,15 +172,35 @@ function formatRowCount(count: number): string {
 	return `~${(count / 1_000_000).toFixed(1)}M`;
 }
 
-// Tables list
+// Structure list (tables + functions merged by schema)
+
+type StructureItem =
+	| {
+			kind: "table";
+			schema: string;
+			name: string;
+			type: "table" | "view";
+			key: string;
+	  }
+	| {
+			kind: "function";
+			schema: string;
+			name: string;
+			arguments: string;
+			key: string;
+	  };
 
 function TablesListView({
 	schemas,
+	functions,
 	onSelect,
+	onFunctionClick,
 	isActive,
 }: {
 	schemas: SchemaMap;
+	functions: FunctionsMap;
 	onSelect: (table: TableId) => void;
+	onFunctionClick: (schema: string, name: string, args: string) => void;
 	isActive: boolean;
 }) {
 	const [search, setSearch] = useState("");
@@ -192,43 +219,65 @@ function TablesListView({
 	}, [isActive]);
 
 	const allItems = useMemo(() => {
-		const schemaKeys = Object.keys(schemas).sort((a, b) => {
+		const schemaSet = new Set([
+			...Object.keys(schemas),
+			...Object.keys(functions),
+		]);
+		const schemaKeys = [...schemaSet].sort((a, b) => {
 			if (a === "public") return -1;
 			if (b === "public") return 1;
 			return a.localeCompare(b);
 		});
 
-		const items: {
-			schema: string;
-			name: string;
-			type: "table" | "view";
-			key: string;
-		}[] = [];
+		const items: StructureItem[] = [];
 		for (const schema of schemaKeys) {
-			const entries = schemas[schema];
-			if (!entries) continue;
-			const sorted = [...entries].sort((a, b) => {
-				const aSystem = a.name.startsWith("_");
-				const bSystem = b.name.startsWith("_");
-				if (aSystem !== bSystem) return aSystem ? 1 : -1;
-				return a.name.localeCompare(b.name);
-			});
-			for (const entry of sorted) {
-				items.push({
-					schema,
-					name: entry.name,
-					type: entry.type,
-					key: `${schema}.${entry.name}`,
+			const tableEntries = schemas[schema];
+			if (tableEntries) {
+				const sorted = [...tableEntries].sort((a, b) => {
+					const aSystem = a.name.startsWith("_");
+					const bSystem = b.name.startsWith("_");
+					if (aSystem !== bSystem) return aSystem ? 1 : -1;
+					return a.name.localeCompare(b.name);
 				});
+				for (const entry of sorted) {
+					items.push({
+						kind: "table",
+						schema,
+						name: entry.name,
+						type: entry.type,
+						key: `${schema}.${entry.name}`,
+					});
+				}
+			}
+			const fnEntries = functions[schema];
+			if (fnEntries) {
+				const sorted = [...fnEntries].sort((a, b) =>
+					a.name.localeCompare(b.name),
+				);
+				for (const entry of sorted) {
+					items.push({
+						kind: "function",
+						schema,
+						name: entry.name,
+						arguments: entry.arguments,
+						key: `fn:${schema}.${entry.name}(${entry.arguments})`,
+					});
+				}
 			}
 		}
 		return items;
-	}, [schemas]);
+	}, [schemas, functions]);
 
 	const filtered = useMemo(() => {
 		if (!search) return allItems;
 		const lower = search.toLowerCase();
-		return allItems.filter((t) => t.key.toLowerCase().includes(lower));
+		return allItems.filter((item) => {
+			const searchKey =
+				item.kind === "function"
+					? `${item.schema}.${item.name}(${item.arguments})`
+					: `${item.schema}.${item.name}`;
+			return searchKey.toLowerCase().includes(lower);
+		});
 	}, [allItems, search]);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -272,9 +321,8 @@ function TablesListView({
 		[],
 	);
 
-	// Group filtered items by schema for display
 	const groups = useMemo(() => {
-		const map = new Map<string, typeof filtered>();
+		const map = new Map<string, StructureItem[]>();
 		for (const item of filtered) {
 			let group = map.get(item.schema);
 			if (!group) {
@@ -301,7 +349,7 @@ function TablesListView({
 			<div ref={listRef} className="flex-1 min-h-0 overflow-auto pt-1">
 				{filtered.length === 0 && (
 					<div className="p-4 text-center typo-body-xs text-text-tertiary">
-						No tables found.
+						No results found.
 					</div>
 				)}
 				{Array.from(groups).map(([schema, items]) => (
@@ -322,26 +370,41 @@ function TablesListView({
 							{schema}
 						</button>
 						{(search || expanded[schema]) &&
-							items.map((item) => (
-								<button
-									type="button"
-									key={item.key}
-									data-table-item
-									onClick={() =>
-										onSelect({ schema: item.schema, name: item.name })
-									}
-									className={`${tableItem} w-full`}
-								>
-									{item.type === "view" ? (
-										<Eye className="size-3.5 shrink-0 text-text-tertiary" />
-									) : (
-										<Table2 className="size-3.5 shrink-0 text-text-tertiary" />
-									)}
-									<span className="typo-code text-text-body truncate">
-										{item.name}
-									</span>
-								</button>
-							))}
+							items.map((item) =>
+								item.kind === "function" ? (
+									<button
+										type="button"
+										key={item.key}
+										onClick={() =>
+											onFunctionClick(item.schema, item.name, item.arguments)
+										}
+										className={`${tableItem} w-full`}
+									>
+										<Braces className="size-3.5 shrink-0 text-text-tertiary" />
+										<span className="typo-code text-text-body truncate">
+											{item.name}
+										</span>
+									</button>
+								) : (
+									<button
+										type="button"
+										key={item.key}
+										onClick={() =>
+											onSelect({ schema: item.schema, name: item.name })
+										}
+										className={`${tableItem} w-full`}
+									>
+										{item.type === "view" ? (
+											<Eye className="size-3.5 shrink-0 text-text-tertiary" />
+										) : (
+											<Table2 className="size-3.5 shrink-0 text-text-tertiary" />
+										)}
+										<span className="typo-code text-text-body truncate">
+											{item.name}
+										</span>
+									</button>
+								),
+							)}
 					</div>
 				))}
 			</div>
@@ -640,11 +703,15 @@ function DetailSection({
 
 export function SqlTablesCommand({
 	schemas,
+	functions,
 	onTableClick,
+	onFunctionClick,
 	isActive,
 }: {
 	schemas: SchemaMap;
+	functions: FunctionsMap;
 	onTableClick: (query: string) => void;
+	onFunctionClick: (schema: string, name: string, args: string) => void;
 	isActive: boolean;
 }) {
 	const [selectedTable, setSelectedTable] = useLocalStorage<TableId | null>({
@@ -668,7 +735,7 @@ export function SqlTablesCommand({
 				<div className="flex-none h-10 border-b px-3 flex items-center">
 					<input
 						disabled
-						placeholder="Search tables..."
+						placeholder="Search..."
 						className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 					/>
 				</div>
@@ -706,7 +773,9 @@ export function SqlTablesCommand({
 	return (
 		<TablesListView
 			schemas={schemas}
+			functions={functions}
 			onSelect={setSelectedTable}
+			onFunctionClick={onFunctionClick}
 			isActive={isActive}
 		/>
 	);

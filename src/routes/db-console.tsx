@@ -41,6 +41,7 @@ import {
 	psqlRequest,
 } from "../components/db-console/tables-view";
 import {
+	type FunctionsMap,
 	isAidboxError,
 	type SchemaMap,
 	splitSqlStatements,
@@ -57,6 +58,8 @@ import { useWebMCPSql } from "../webmcp/sql";
 const TITLE = "SQL console";
 
 const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
+
+const FUNCTIONS_QUERY = `SELECT n.nspname AS function_schema, p.proname AS function_name, pg_get_function_identity_arguments(p.oid) AS arguments, CASE p.prokind WHEN 'f' THEN 'function' WHEN 'p' THEN 'procedure' WHEN 'a' THEN 'aggregate' WHEN 'w' THEN 'window' END AS function_type, t.typname AS return_type FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_type t ON t.oid = p.prorettype WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY n.nspname, p.proname`;
 
 export const Route = createFileRoute("/db-console")({
 	component: DbConsolePage,
@@ -113,6 +116,7 @@ async function extractErrorMessage(err: unknown): Promise<string> {
 function useDbConsoleData() {
 	const client = useAidboxClient();
 	const [schemas, setSchemas] = useState<SchemaMap>({});
+	const [functions, setFunctions] = useState<FunctionsMap>({});
 
 	useEffect(() => {
 		let cancelled = false;
@@ -147,18 +151,52 @@ function useDbConsoleData() {
 			})
 			.catch(() => {});
 
+		client
+			.rawRequest({
+				method: "POST",
+				url: "/$psql",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ query: FUNCTIONS_QUERY }),
+			})
+			.then(async (res) => {
+				if (cancelled || !res.response.ok) return;
+				const data = await res.response.json();
+				const rows: {
+					function_schema: string;
+					function_name: string;
+					arguments: string;
+					function_type: string;
+					return_type: string;
+				}[] = Array.isArray(data)
+					? (data[0]?.result ?? [])
+					: (data.result ?? []);
+				const map: FunctionsMap = {};
+				for (const row of rows) {
+					const s = row.function_schema;
+					if (!map[s]) map[s] = [];
+					map[s].push({
+						name: row.function_name,
+						arguments: row.arguments,
+						return_type: row.return_type,
+						function_type: row.function_type,
+					});
+				}
+				setFunctions(map);
+			})
+			.catch(() => {});
+
 		return () => {
 			cancelled = true;
 		};
 	}, [client]);
 
-	return { schemas };
+	return { schemas, functions };
 }
 
 function DbConsolePage() {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
-	const { schemas } = useDbConsoleData();
+	const { schemas, functions } = useDbConsoleData();
 	const vimMode = useVimMode();
 
 	const sqlConfig = useMemo<SqlConfig>(
@@ -383,6 +421,25 @@ function DbConsolePage() {
 			});
 		},
 		[setTabs],
+	);
+
+	const handleFunctionClick = useCallback(
+		async (schema: string, name: string, args: string) => {
+			const s = schema.replace(/'/g, "''");
+			const n = name.replace(/'/g, "''");
+			const a = args.replace(/'/g, "''");
+			const query = `SELECT pg_get_functiondef(p.oid) AS definition FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace WHERE ns.nspname = '${s}' AND p.proname = '${n}' AND pg_get_function_identity_arguments(p.oid) = '${a}' LIMIT 1`;
+			try {
+				const rows = await psqlRequest(client, query);
+				const definition = rows[0]?.definition;
+				if (definition) {
+					handleHistoryItemClick(definition);
+				}
+			} catch {
+				// ignore fetch errors
+			}
+		},
+		[client, handleHistoryItemClick],
 	);
 
 	const handleTabsRemoved = useCallback((tabIds: string[]) => {
@@ -693,8 +750,10 @@ function DbConsolePage() {
 				>
 					<SqlLeftMenu
 						schemas={schemas}
+						functions={functions}
 						onHistoryItemClick={handleHistoryItemClick}
 						onTableClick={handleHistoryItemClick}
+						onFunctionClick={handleFunctionClick}
 					/>
 				</ResizablePanel>
 				{leftMenuOpen && <ResizableHandle />}
