@@ -37,6 +37,7 @@ import {
 	PlusIcon,
 	ShieldCheck,
 	TextQuote,
+	TriangleAlert,
 	X,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -591,6 +592,11 @@ function DeIdentPopover({
 						))}
 					</SelectContent>
 				</Select>
+				{method && (
+					<span className="text-xs text-text-tertiary">
+						{DEIDENT_METHODS.find((m) => m.value === method)?.description}
+					</span>
+				)}
 
 				{method === "cryptoHash" && (
 					<Input
@@ -609,12 +615,21 @@ function DeIdentPopover({
 					/>
 				)}
 				{method === "encrypt" && (
-					<Input
-						className="h-8"
-						placeholder="Encryption Key"
-						value={config?.encryptKey || ""}
-						onChange={(e) => update({ encryptKey: e.target.value })}
-					/>
+					<div>
+						<Input
+							className={`h-8 ${config?.encryptKey && !/^([0-9a-fA-F]{2}){4,16}$/.test(config.encryptKey) ? "ring-1 ring-border-error" : ""}`}
+							placeholder="Hex key (32 hex chars)"
+							value={config?.encryptKey || ""}
+							onChange={(e) => update({ encryptKey: e.target.value })}
+						/>
+						{config?.encryptKey &&
+							!/^([0-9a-fA-F]{2}){4,16}$/.test(config.encryptKey) && (
+								<span className="text-xs text-text-error-primary flex items-center gap-1 pt-2">
+									<TriangleAlert size={12} className="shrink-0" />
+									8-32 hex characters (0-9, a-f)
+								</span>
+							)}
+					</div>
 				)}
 				{method === "substitute" && (
 					<Input
@@ -662,17 +677,21 @@ function DeIdentPopover({
 				)}
 				{method === "custom_function" && (
 					<div className="flex flex-col gap-2">
-						<Input
-							className="h-8"
-							placeholder="Function name"
-							value={config?.customFunction || ""}
-							onChange={(e) => {
-								const v = e.target.value;
-								if (v === "" || /^[a-zA-Z][a-zA-Z0-9_.]*$/.test(v)) {
-									update({ customFunction: v });
-								}
-							}}
-						/>
+						<div>
+							<Input
+								className={`h-8 ${config?.customFunction && !/^[a-zA-Z][a-zA-Z0-9_.]*$/.test(config.customFunction) ? "ring-1 ring-border-error" : ""}`}
+								placeholder="Function name"
+								value={config?.customFunction || ""}
+								onChange={(e) => update({ customFunction: e.target.value })}
+							/>
+							{config?.customFunction &&
+								!/^[a-zA-Z][a-zA-Z0-9_.]*$/.test(config.customFunction) && (
+									<span className="text-xs text-text-error-primary flex items-center gap-1 pt-2">
+										<TriangleAlert size={12} className="shrink-0" />
+										Letters, digits, underscores, dots only
+									</span>
+								)}
+						</div>
 						<Input
 							className="h-8"
 							placeholder="Argument (optional)"
