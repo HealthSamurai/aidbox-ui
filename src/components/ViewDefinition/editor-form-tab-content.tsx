@@ -666,7 +666,12 @@ function DeIdentPopover({
 							className="h-8"
 							placeholder="Function name"
 							value={config?.customFunction || ""}
-							onChange={(e) => update({ customFunction: e.target.value })}
+							onChange={(e) => {
+								const v = e.target.value;
+								if (v === "" || /^[a-zA-Z][a-zA-Z0-9_.]*$/.test(v)) {
+									update({ customFunction: v });
+								}
+							}}
 						/>
 						<Input
 							className="h-8"
