@@ -1,3 +1,4 @@
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
@@ -13,6 +14,8 @@ interface ProfilePanelProps {
 	onClose: () => void;
 	actionsRef?: React.RefObject<ResourceEditorActions | null>;
 	onOpenPanel?: () => void;
+	resource?: Resource;
+	onApplyProfile?: (profileUrl: string) => void;
 }
 
 export function ProfilePanel({
@@ -20,6 +23,8 @@ export function ProfilePanel({
 	onClose,
 	actionsRef,
 	onOpenPanel,
+	resource,
+	onApplyProfile,
 }: ProfilePanelProps) {
 	const client = useAidboxClient();
 	const [selectedProfileKey, setSelectedProfileKey] = React.useState<
@@ -78,13 +83,21 @@ export function ProfilePanel({
 		refetchOnWindowFocus: false,
 	});
 
+	const resourceProfiles: string[] =
+		((resource?.meta as Record<string, unknown>)?.profile as string[]) ?? [];
+
 	const dropdownOptions = React.useMemo(
 		() =>
-			profileEntries.map(([key, schema]) => ({
-				value: key,
-				label: schema.entity?.name || key,
-			})),
-		[profileEntries],
+			profileEntries.map(([key, schema]) => {
+				const name = schema.entity?.name || key;
+				const url = schema.entity?.url;
+				const isApplied = url ? resourceProfiles.includes(url) : false;
+				return {
+					value: key,
+					label: isApplied ? `${name} \u25CF` : name,
+				};
+			}),
+		[profileEntries, resourceProfiles],
 	);
 
 	if (actionsRef?.current) {
@@ -102,6 +115,12 @@ export function ProfilePanel({
 		};
 	}
 
+	const selectedProfileUrl = selectedProfile?.entity?.url;
+	const isDefault = selectedProfile?.["default?"] === true;
+	const isProfileApplied =
+		isDefault ||
+		(!!selectedProfileUrl && resourceProfiles.includes(selectedProfileUrl));
+
 	return (
 		<div className="flex flex-col h-full">
 			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10! min-h-10 shrink-0">
@@ -113,6 +132,15 @@ export function ProfilePanel({
 							selectedValue={selectedProfileKey}
 							onSelectItem={setSelectedProfileKey}
 						/>
+					)}
+					{!isProfileApplied && selectedProfileUrl && onApplyProfile && (
+						<HSComp.Button
+							size="small"
+							variant="secondary"
+							onClick={() => onApplyProfile(selectedProfileUrl)}
+						>
+							Apply
+						</HSComp.Button>
 					)}
 				</div>
 				<HSComp.IconButton

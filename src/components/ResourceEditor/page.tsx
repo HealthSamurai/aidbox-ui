@@ -140,19 +140,12 @@ export const ResourceEditorPage = ({
 	};
 
 	const setMode = (newMode: EditorMode) => {
-		try {
-			const parsed =
-				mode === "json" ? JSON.parse(resourceText) : YAML.load(resourceText);
-			const newText =
-				newMode === "yaml"
-					? YAML.dump(parsed, { indent })
-					: JSON.stringify(parsed, null, indent);
-			setResourceText(newText);
-			initialTextRef.current = newText;
-			setResource(parsed);
-		} catch {
-			// If parsing fails, we keep the current value
-		}
+		const newText =
+			newMode === "yaml"
+				? YAML.dump(resource, { indent })
+				: JSON.stringify(resource, null, indent);
+		setResourceText(newText);
+		initialTextRef.current = newText;
 		navigate({
 			search: (prev: Record<string, unknown>) => ({
 				...prev,
@@ -407,6 +400,22 @@ export const ResourceEditorPage = ({
 					storageKey="resourceEditor-profileOpen"
 					autoSaveId="resource-editor-horizontal-panel"
 					actionsRef={actionsRef}
+					resource={resource}
+					onApplyProfile={(profileUrl) => {
+						const meta = resource.meta ?? {};
+						const profiles = meta.profile ?? [];
+						if (!profiles.includes(profileUrl)) {
+							const updated = {
+								...resource,
+								meta: { ...meta, profile: [...profiles, profileUrl] },
+							};
+							const text =
+								mode === "yaml"
+									? YAML.dump(updated, { indent })
+									: JSON.stringify(updated, null, indent);
+							handleTextChange(text);
+						}
+					}}
 				/>
 			</HSComp.TabsContent>
 		),

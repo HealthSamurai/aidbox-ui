@@ -1,6 +1,7 @@
 import type {
 	OperationOutcome,
 	OperationOutcomeIssue,
+	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
@@ -29,6 +30,8 @@ interface EditTabContentProps {
 	storageKey: string;
 	autoSaveId: string;
 	actionsRef?: React.RefObject<ResourceEditorActions | null>;
+	resource?: Resource;
+	onApplyProfile?: (profileUrl: string) => void;
 }
 
 export function EditTabContent({
@@ -47,6 +50,8 @@ export function EditTabContent({
 	storageKey,
 	autoSaveId,
 	actionsRef,
+	resource,
+	onApplyProfile,
 }: EditTabContentProps) {
 	const getStructureDefinitions = useGetStructureDefinitions();
 	const expandValueSet = useExpandValueSet();
@@ -133,6 +138,8 @@ export function EditTabContent({
 							onClose={handleToggleProfile}
 							actionsRef={actionsRef}
 							onOpenPanel={() => setIsProfileOpen(true)}
+							resource={resource}
+							onApplyProfile={onApplyProfile}
 						/>
 					</HSComp.ResizablePanel>
 				</>
