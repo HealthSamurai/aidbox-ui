@@ -25,7 +25,7 @@ export function SearchBar({
 					className="flex-1 bg-bg-primary"
 					prefixValue={
 						<span className="flex gap-1 text-nowrap text-elements-assistive">
-							<span className="font-bold">GET</span>
+							<span className="font-medium">GET</span>
 							<span>{`/fhir/${viewDefinitionTypeContext.viewDefinitionResourceType}?`}</span>
 						</span>
 					}

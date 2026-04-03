@@ -100,7 +100,7 @@ export const ResourcesTabSarchInput = () => {
 					onChange={(e) => setQueryValue(e.target.value)}
 					prefixValue={
 						<span className="flex gap-1 text-nowrap text-elements-assistive">
-							<span className="font-bold">GET</span>
+							<span className="font-medium">GET</span>
 							<span>/fhir/{resourcesPageContext.resourceType}?</span>
 						</span>
 					}
