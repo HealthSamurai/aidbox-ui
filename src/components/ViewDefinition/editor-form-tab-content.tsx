@@ -33,6 +33,7 @@ import {
 	ChevronDown,
 	Funnel,
 	GripVertical,
+	Info,
 	Pi,
 	PlusIcon,
 	ShieldCheck,
@@ -65,6 +66,7 @@ type DeIdentMethod =
 	| "keep"
 	| "cryptoHash"
 	| "dateshift"
+	| "dateshiftSafeHarbor"
 	| "encrypt"
 	| "substitute"
 	| "perturb"
@@ -103,6 +105,12 @@ const DEIDENT_METHODS: {
 		label: "Date Shift",
 		description:
 			"Shift dates by a deterministic offset per resource (±1–50 days)",
+	},
+	{
+		value: "dateshiftSafeHarbor",
+		label: "Date Shift (Safe Harbor)",
+		description:
+			"Date shift that redacts values indicating age over 89 (HIPAA Safe Harbor)",
 	},
 	{
 		value: "encrypt",
@@ -178,7 +186,11 @@ function buildDeIdentExtension(config: DeIdentConfig | undefined):
 
 	if (config.method === "cryptoHash" && config.cryptoHashKey)
 		subs.push({ url: "cryptoHashKey", valueString: config.cryptoHashKey });
-	if (config.method === "dateshift" && config.dateShiftKey)
+	if (
+		(config.method === "dateshift" ||
+			config.method === "dateshiftSafeHarbor") &&
+		config.dateShiftKey
+	)
 		subs.push({ url: "dateShiftKey", valueString: config.dateShiftKey });
 	if (config.method === "encrypt" && config.encryptKey)
 		subs.push({ url: "encryptKey", valueString: config.encryptKey });
@@ -664,13 +676,21 @@ function DeIdentPopover({
 						onChange={(e) => update({ cryptoHashKey: e.target.value })}
 					/>
 				)}
-				{method === "dateshift" && (
-					<Input
-						className="h-8"
-						placeholder="Date Shift Key"
-						value={config?.dateShiftKey || ""}
-						onChange={(e) => update({ dateShiftKey: e.target.value })}
-					/>
+				{(method === "dateshift" || method === "dateshiftSafeHarbor") && (
+					<>
+						<Input
+							className="h-8"
+							placeholder="Date Shift Key"
+							value={config?.dateShiftKey || ""}
+							onChange={(e) => update({ dateShiftKey: e.target.value })}
+						/>
+						{method === "dateshiftSafeHarbor" && (
+							<span className="text-xs text-text-tertiary flex items-center gap-1">
+								<Info size={12} className="shrink-0" />
+								Use on birth date fields only
+							</span>
+						)}
+					</>
 				)}
 				{method === "encrypt" && (
 					<ValidatedInput
