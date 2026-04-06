@@ -17,6 +17,7 @@ import { Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
+import { psqlRequest } from "./tables-view";
 
 // Types
 
@@ -40,25 +41,6 @@ WHERE state = 'active'
   AND query NOT LIKE '%pg_stat_activity%'
   AND pid != pg_backend_pid()
 ORDER BY query, query_start`;
-
-function psqlRequest(
-	client: ReturnType<typeof useAidboxClient>,
-	query: string,
-) {
-	return client
-		.rawRequest({
-			method: "POST",
-			url: "/$psql",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ query }),
-		})
-		.then(async (res) => {
-			if (!res.response.ok) throw new Error(`HTTP ${res.response.status}`);
-			const data = await res.response.json();
-			const arr = Array.isArray(data) ? data : [data];
-			return arr[0]?.result ?? [];
-		});
-}
 
 function formatDuration(seconds: number): string {
 	if (seconds < 60) return `${seconds.toFixed(1)}s`;
@@ -179,7 +161,7 @@ export function ActiveQueriesView({ isActive }: { isActive: boolean }) {
 
 	const fetchQueries = useCallback(async () => {
 		try {
-			const result = await psqlRequest(client, ACTIVE_QUERIES_SQL);
+			const result = await psqlRequest<ActiveQuery>(client, ACTIVE_QUERIES_SQL);
 			if (!mountedRef.current) return;
 			setQueries(result);
 			setError(null);
