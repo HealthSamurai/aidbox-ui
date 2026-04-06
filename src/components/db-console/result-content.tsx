@@ -248,6 +248,9 @@ function QueryResult({
 	onToggleMaximize: () => void;
 	viewMode?: "table" | "list";
 }) {
+	const rows = result.result ?? [];
+	const columns = extractColumns(rows);
+
 	if (result.error) {
 		return (
 			<div className="flex flex-col h-full">
@@ -266,9 +269,6 @@ function QueryResult({
 			</div>
 		);
 	}
-
-	const rows = result.result ?? [];
-	const columns = extractColumns(rows);
 
 	return (
 		<div className="flex flex-col h-full min-h-0 overflow-hidden">

@@ -27,6 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
+import type { QueryResultItem } from "../../webmcp/db-console-context";
 import type { FunctionsMap, SchemaMap } from "./utils";
 
 // Types
@@ -72,23 +73,78 @@ const tableItem = cn(
 
 // Data fetching
 
-export function psqlRequest(
+type NotebookResultEntry =
+	| { type: "rset"; data: Record<string, unknown>[] }
+	| { type: "count"; data: number };
+
+type NotebookPsqlResponse = {
+	query: string;
+	duration: number;
+	status: "success" | "error";
+	result?: NotebookResultEntry[];
+	error?: string;
+	position?: number;
+};
+
+export function psqlRequest<T = Record<string, unknown>>(
 	client: ReturnType<typeof useAidboxClient>,
 	query: string,
-) {
+): Promise<T[]> {
 	return client
 		.rawRequest({
 			method: "POST",
-			url: "/$psql",
+			url: "/$notebook-psql",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ query }),
 		})
 		.then(async (res) => {
 			if (!res.response.ok) throw new Error(`HTTP ${res.response.status}`);
-			const data = await res.response.json();
-			const arr = Array.isArray(data) ? data : [data];
-			return arr[0]?.result ?? [];
+			const data: NotebookPsqlResponse = await res.response.json();
+			if (data.status === "error")
+				throw new Error(data.error ?? "Query failed");
+			const rset = data.result?.find(
+				(r): r is Extract<NotebookResultEntry, { type: "rset" }> =>
+					r.type === "rset",
+			);
+			return (rset?.data ?? []) as T[];
 		});
+}
+
+export function transformToQueryResultItems(
+	data: NotebookPsqlResponse,
+): QueryResultItem[] {
+	if (data.status === "error") {
+		return [
+			{
+				query: data.query,
+				duration: data.duration,
+				status: "error",
+				error: data.error,
+				position: data.position,
+				result: [],
+				rows: 0,
+			},
+		];
+	}
+	if (!data.result) return [];
+	return data.result.map((entry) => {
+		if (entry.type === "rset") {
+			return {
+				query: data.query,
+				duration: data.duration,
+				status: "success",
+				result: entry.data,
+				rows: entry.data.length,
+			};
+		}
+		return {
+			query: data.query,
+			duration: data.duration,
+			status: "success",
+			result: [{ affected_rows: entry.data }],
+			rows: entry.data,
+		};
+	});
 }
 
 export type { TableDetails };
@@ -99,10 +155,16 @@ export async function fetchTableDetails(
 	name: string,
 ): Promise<TableDetails> {
 	const [columns, indexes, rowCountRows, sizeRows] = await Promise.all([
-		psqlRequest(client, buildColumnsQuery(schema, name)),
-		psqlRequest(client, buildIndexesQuery(schema, name)),
-		psqlRequest(client, buildRowCountQuery(schema, name)),
-		psqlRequest(client, buildSizeQuery(schema, name)),
+		psqlRequest<ColumnInfo>(client, buildColumnsQuery(schema, name)),
+		psqlRequest<IndexInfo>(client, buildIndexesQuery(schema, name)),
+		psqlRequest<{ row_count: number }>(
+			client,
+			buildRowCountQuery(schema, name),
+		),
+		psqlRequest<{ table_size: string; indexes_size: string }>(
+			client,
+			buildSizeQuery(schema, name),
+		),
 	]);
 	return {
 		columns,
