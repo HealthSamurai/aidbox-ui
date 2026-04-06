@@ -14,6 +14,7 @@ export interface QueryResultItem {
 	rows: number;
 	status: string;
 	error?: string;
+	position?: number;
 }
 
 export interface TableInfo {

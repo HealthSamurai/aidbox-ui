@@ -39,6 +39,7 @@ import {
 	fetchTableDetails,
 	formatColumnType,
 	psqlRequest,
+	transformToQueryResultItems,
 } from "../components/db-console/tables-view";
 import {
 	type FunctionsMap,
@@ -57,6 +58,31 @@ import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "SQL console";
 
+async function fetchBlock(
+	baseUrl: string,
+	block: string,
+	limit: number | null,
+	signal: AbortSignal,
+): Promise<QueryResultItem[]> {
+	const body: { query: string; limit?: number } = { query: block };
+	if (limit !== null) body.limit = limit;
+	const response = await fetch(`${baseUrl}/$notebook-psql`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+		},
+		credentials: "include",
+		body: JSON.stringify(body),
+		signal,
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`HTTP ${response.status}: ${text}`);
+	}
+	return transformToQueryResultItems(await response.json());
+}
+
 const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
 
 const FUNCTIONS_QUERY = `SELECT n.nspname AS function_schema, p.proname AS function_name, pg_get_function_identity_arguments(p.oid) AS arguments, CASE p.prokind WHEN 'f' THEN 'function' WHEN 'p' THEN 'procedure' WHEN 'a' THEN 'aggregate' WHEN 'w' THEN 'window' END AS function_type, t.typname AS return_type FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_type t ON t.oid = p.prorettype WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY n.nspname, p.proname`;
@@ -71,39 +97,6 @@ type TabResultData = {
 	results: QueryResultItem[] | null;
 	error: string | null;
 };
-
-/** Process SQL statements to handle LIMIT logic. Returns updated query and limit state. */
-function processQueryLimits(
-	statements: string[],
-	rowLimit: number | null,
-): { query: string; hasExplicit: boolean; singleLimit?: number } {
-	const allHaveLimit = statements.every((s) => /\bLIMIT\s+\d+/i.test(s));
-
-	if (allHaveLimit) {
-		const singleLimit =
-			statements.length === 1
-				? (statements[0]?.match(/\bLIMIT\s+(\d+)/i)?.[1] ?? undefined)
-				: undefined;
-		return {
-			query: statements.join("\n----\n"),
-			hasExplicit: true,
-			singleLimit: singleLimit ? Number(singleLimit) : undefined,
-		};
-	}
-
-	if (rowLimit !== null) {
-		const withLimits = statements
-			.map((s) =>
-				/\bLIMIT\s+\d+/i.test(s) || !/^\s*SELECT\b/i.test(s)
-					? s
-					: `${s} LIMIT ${rowLimit}`,
-			)
-			.join("\n----\n");
-		return { query: withLimits, hasExplicit: false };
-	}
-
-	return { query: statements.join("\n----\n"), hasExplicit: false };
-}
 
 /** Extract a human-readable error message from a caught error. */
 async function extractErrorMessage(err: unknown): Promise<string> {
@@ -121,23 +114,13 @@ function useDbConsoleData() {
 	useEffect(() => {
 		let cancelled = false;
 
-		client
-			.rawRequest({
-				method: "POST",
-				url: "/$psql",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ query: TABLES_QUERY }),
-			})
-			.then(async (res) => {
-				if (cancelled || !res.response.ok) return;
-				const data = await res.response.json();
-				const rows: {
-					table_schema: string;
-					table_name: string;
-					table_type: string;
-				}[] = Array.isArray(data)
-					? (data[0]?.result ?? [])
-					: (data.result ?? []);
+		psqlRequest<{
+			table_schema: string;
+			table_name: string;
+			table_type: string;
+		}>(client, TABLES_QUERY)
+			.then((rows) => {
+				if (cancelled) return;
 				const map: SchemaMap = {};
 				for (const row of rows) {
 					const s = row.table_schema;
@@ -151,25 +134,15 @@ function useDbConsoleData() {
 			})
 			.catch(() => {});
 
-		client
-			.rawRequest({
-				method: "POST",
-				url: "/$psql",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ query: FUNCTIONS_QUERY }),
-			})
-			.then(async (res) => {
-				if (cancelled || !res.response.ok) return;
-				const data = await res.response.json();
-				const rows: {
-					function_schema: string;
-					function_name: string;
-					arguments: string;
-					function_type: string;
-					return_type: string;
-				}[] = Array.isArray(data)
-					? (data[0]?.result ?? [])
-					: (data.result ?? []);
+		psqlRequest<{
+			function_schema: string;
+			function_name: string;
+			arguments: string;
+			function_type: string;
+			return_type: string;
+		}>(client, FUNCTIONS_QUERY)
+			.then((rows) => {
+				if (cancelled) return;
 				const map: FunctionsMap = {};
 				for (const row of rows) {
 					const s = row.function_schema;
@@ -252,17 +225,6 @@ function DbConsolePage() {
 	}, []);
 	const [isResultCollapsed, setIsResultCollapsed] = useState(false);
 	const [isResultMaximized, setIsResultMaximized] = useState(false);
-	const [resultActiveTab, setResultActiveTab] = useState("result");
-	const [explainViewMode, setExplainViewModeState] = useState<"visual" | "raw">(
-		() =>
-			(localStorage.getItem("db-console-explain-view-mode") as
-				| "visual"
-				| "raw") ?? "visual",
-	);
-	const setExplainViewMode = (v: "visual" | "raw") => {
-		localStorage.setItem("db-console-explain-view-mode", v);
-		setExplainViewModeState(v);
-	};
 
 	const currentResult = tabResults.get(selectedTab?.id ?? "");
 	const results = currentResult?.results ?? null;
@@ -304,17 +266,13 @@ function DbConsolePage() {
 				handleQueryChange(overrideQuery);
 			}
 			const rawQuery = overrideQuery ?? queryRef.current;
-			if (!rawQuery.trim()) return;
-
 			const tabId = selectedTabRef.current?.id;
 			if (!tabId) return;
 
-			const statements = splitSqlStatements(rawQuery);
-			const limitResult = processQueryLimits(statements, rowLimitRef.current);
-			if (limitResult.singleLimit !== undefined) {
-				setRowLimit(limitResult.singleLimit);
+			if (!rawQuery.trim()) {
+				updateTabResult(tabId, { results: null, error: null });
+				return;
 			}
-			const q = limitResult.query;
 
 			abortControllerRef.current?.abort();
 			const controller = new AbortController();
@@ -328,35 +286,26 @@ function DbConsolePage() {
 
 			try {
 				const baseUrl = client.getBaseUrl();
-				const response = await fetch(`${baseUrl}/$psql`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Accept: "application/json",
-					},
-					credentials: "include",
-					body: JSON.stringify({ query: q }),
-					signal: controller.signal,
-				});
+				const blocks = splitSqlStatements(rawQuery);
+				const allItems: QueryResultItem[] = [];
 
-				if (cancelledTabRef.current === tabId) return;
-
-				if (!response.ok) {
-					const text = await response.text();
-					updateTabResult(tabId, {
-						results: null,
-						error: `HTTP ${response.status}: ${text}`,
-					});
-					return;
+				for (const block of blocks) {
+					if (cancelledTabRef.current === tabId) return;
+					allItems.push(
+						...(await fetchBlock(
+							baseUrl,
+							block,
+							rowLimitRef.current,
+							controller.signal,
+						)),
+					);
 				}
 
-				const data = await response.json();
-				const items: QueryResultItem[] = Array.isArray(data) ? data : [data];
-				if (!items.some((item) => item.error)) {
+				if (!allItems.some((item) => item.error)) {
 					saveSqlHistory(queryToSave, queryClient, client);
 				}
 
-				updateTabResult(tabId, { results: items, error: null });
+				updateTabResult(tabId, { results: allItems, error: null });
 			} catch (err) {
 				if (cancelledTabRef.current === tabId) return;
 				if (err instanceof DOMException && err.name === "AbortError") return;
@@ -370,7 +319,7 @@ function DbConsolePage() {
 				runningQueryRef.current = null;
 			}
 		},
-		[client, queryClient, setRowLimit, handleQueryChange, updateTabResult],
+		[client, queryClient, handleQueryChange, updateTabResult],
 	);
 
 	const cancelQuery = useCallback(async () => {
@@ -391,7 +340,7 @@ function DbConsolePage() {
 				const escaped = queryText.slice(0, 200).replace(/'/g, "''");
 				await client.rawRequest({
 					method: "POST",
-					url: "/$psql",
+					url: "/$notebook-psql",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						query: `SELECT pg_cancel_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND query LIKE '%${escaped}%' AND pid != pg_backend_pid()`,
@@ -430,7 +379,7 @@ function DbConsolePage() {
 			const a = args.replace(/'/g, "''");
 			const query = `SELECT pg_get_functiondef(p.oid) AS definition FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace WHERE ns.nspname = '${s}' AND p.proname = '${n}' AND pg_get_function_identity_arguments(p.oid) = '${a}' LIMIT 1`;
 			try {
-				const rows = await psqlRequest(client, query);
+				const rows = await psqlRequest<{ definition: string }>(client, query);
 				const definition = rows[0]?.definition;
 				if (definition) {
 					handleHistoryItemClick(definition);
@@ -453,46 +402,17 @@ function DbConsolePage() {
 	}, []);
 
 	const issueLineNumbers = useMemo(() => {
-		const issues: { line: number; message: string }[] = [];
-
-		const parseError = (err: string, charOffset: number) => {
-			const posMatch = err.match(/Position:\s*(\d+)/);
-			if (!posMatch) return;
-			const charPos = Number.parseInt(posMatch[1] ?? "", 10);
-			if (Number.isNaN(charPos) || charPos < 1) return;
-			const absPos = charOffset + charPos;
-			let line = 1;
-			for (let i = 0; i < Math.min(absPos - 1, query.length); i++) {
-				if (query[i] === "\n") line++;
-			}
-			const msgMatch = err.match(/^ERROR:\s*(.+?)(?:\n|$)/);
-			issues.push({ line, message: msgMatch ? (msgMatch[1] ?? err) : err });
-		};
-
-		if (error) parseError(error, 0);
-
-		if (results) {
-			const statementOffsets = [0];
-			const delimiterRegex = /----|\s*;\s*/g;
-			let match: RegExpExecArray | null = delimiterRegex.exec(query);
-			while (match !== null) {
-				let end = match.index + match[0].length;
-				while (end < query.length && query[end] === "\n") end++;
-				statementOffsets.push(end);
-				match = delimiterRegex.exec(query);
-			}
-
-			for (let i = 0; i < results.length; i++) {
-				const r = results[i];
-				if (!r) continue;
-				if (r.error) {
-					parseError(r.error, statementOffsets[i] ?? 0);
-				}
-			}
+		if (!results) return undefined;
+		if (results.length !== 1) return undefined;
+		const r = results[0];
+		if (!r?.error || !r.position) return undefined;
+		let line = 1;
+		for (let i = 0; i < Math.min(r.position - 1, query.length); i++) {
+			if (query[i] === "\n") line++;
 		}
-
-		return issues.length > 0 ? issues : undefined;
-	}, [results, error, query]);
+		const msgMatch = r.error.match(/^ERROR:\s*(.+?)(?:\n|$)/);
+		return [{ line, message: msgMatch?.[1] ?? r.error }];
+	}, [results, query]);
 
 	const editorViewRef = useRef<EditorView | null>(null);
 
@@ -647,11 +567,8 @@ function DbConsolePage() {
 		collapseResults: () => resultPanelRef.current?.collapse(),
 		maximizeResults: () => setIsResultMaximized(true),
 		minimizeResults: () => setIsResultMaximized(false),
-		showExplain: (mode) => {
-			setResultActiveTab("explain");
-			if (mode) setExplainViewMode(mode);
-		},
-		showResults: () => setResultActiveTab("result"),
+		showExplain: () => {},
+		showResults: () => {},
 		getQueryStatus: () => {
 			if (isLoading) return { status: "loading" };
 			if (currentResult?.error)
@@ -664,23 +581,21 @@ function DbConsolePage() {
 			return limit ? items.slice(0, limit) : items;
 		},
 		getActiveQueries: async () => {
-			const rows = await psqlRequest(
+			const rows = await psqlRequest<{
+				pid: number;
+				query: string;
+				duration_seconds: number;
+				usename: string;
+			}>(
 				client,
 				`SELECT DISTINCT ON (query) pid, query, state, EXTRACT(EPOCH FROM (now() - query_start))::numeric(10,1) as duration_seconds, usename FROM pg_stat_activity WHERE state = 'active' AND query NOT LIKE '%pg_stat_activity%' AND pid != pg_backend_pid() ORDER BY query, query_start`,
 			);
-			return rows.map(
-				(r: {
-					pid: number;
-					query: string;
-					duration_seconds: number;
-					usename: string;
-				}) => ({
-					pid: r.pid,
-					query: r.query,
-					duration_seconds: r.duration_seconds,
-					usename: r.usename,
-				}),
-			);
+			return rows.map((r) => ({
+				pid: r.pid,
+				query: r.query,
+				duration_seconds: r.duration_seconds,
+				usename: r.usename,
+			}));
 		},
 		cancelQuery: async (pid) => {
 			await psqlRequest(client, `SELECT pg_cancel_backend(${pid})`);
@@ -876,7 +791,6 @@ function DbConsolePage() {
 											isLoading={isLoading}
 											onRun={executeQuery}
 											onCancel={cancelQuery}
-											query={query}
 											collapsed={isResultCollapsed}
 											onToggleCollapse={() => {
 												const panel = resultPanelRef.current;
@@ -889,10 +803,6 @@ function DbConsolePage() {
 											}}
 											isMaximized={isResultMaximized}
 											setIsMaximized={setIsResultMaximized}
-											activeTab={resultActiveTab}
-											setActiveTab={setResultActiveTab}
-											explainViewMode={explainViewMode}
-											setExplainViewMode={setExplainViewMode}
 										/>
 									</ResizablePanel>
 								</>
