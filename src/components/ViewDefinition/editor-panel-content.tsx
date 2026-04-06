@@ -1,4 +1,7 @@
-import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import type {
+	ViewDefinition,
+	ViewDefinitionSelect,
+} from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import {
 	DropdownMenu,
@@ -101,15 +104,23 @@ export const EditorHeaderMenu = ({
 	onMaterialize,
 	onTogglePreview,
 	isPreviewOpen,
+	hasDeidentExtensions,
 }: {
 	onSave: () => void;
 	onRun: () => void;
 	onMaterialize: (type: "view" | "materialized-view" | "table") => void;
 	onTogglePreview: () => void;
 	isPreviewOpen: boolean;
+	hasDeidentExtensions?: boolean;
 }) => {
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const mode = useToolbarMode(containerRef);
+	const viewTitle = hasDeidentExtensions
+		? "Exposes encryption keys in system catalogs. Use Table."
+		: undefined;
+	const matViewTitle = hasDeidentExtensions
+		? "Exposes encryption keys in system catalogs. Use Table."
+		: undefined;
 
 	return (
 		<div
@@ -142,14 +153,22 @@ export const EditorHeaderMenu = ({
 							<DropdownMenuSub>
 								<DropdownMenuSubTrigger>Materialize</DropdownMenuSubTrigger>
 								<DropdownMenuSubContent>
-									<DropdownMenuItem onSelect={() => onMaterialize("view")}>
-										View
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => onMaterialize("materialized-view")}
-									>
-										Materialized View
-									</DropdownMenuItem>
+									<span title={viewTitle}>
+										<DropdownMenuItem
+											disabled={hasDeidentExtensions}
+											onSelect={() => onMaterialize("view")}
+										>
+											View
+										</DropdownMenuItem>
+									</span>
+									<span title={matViewTitle}>
+										<DropdownMenuItem
+											disabled={hasDeidentExtensions}
+											onSelect={() => onMaterialize("materialized-view")}
+										>
+											Materialized View
+										</DropdownMenuItem>
+									</span>
 									<DropdownMenuItem onSelect={() => onMaterialize("table")}>
 										Table
 									</DropdownMenuItem>
@@ -203,14 +222,22 @@ export const EditorHeaderMenu = ({
 							</TooltipTrigger>
 							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
 							<DropdownMenuContent align="start">
-								<DropdownMenuItem onSelect={() => onMaterialize("view")}>
-									View
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onSelect={() => onMaterialize("materialized-view")}
-								>
-									Materialized View
-								</DropdownMenuItem>
+								<span title={viewTitle}>
+									<DropdownMenuItem
+										disabled={hasDeidentExtensions}
+										onSelect={() => onMaterialize("view")}
+									>
+										View
+									</DropdownMenuItem>
+								</span>
+								<span title={matViewTitle}>
+									<DropdownMenuItem
+										disabled={hasDeidentExtensions}
+										onSelect={() => onMaterialize("materialized-view")}
+									>
+										Materialized View
+									</DropdownMenuItem>
+								</span>
 								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
 									Table
 								</DropdownMenuItem>
@@ -598,6 +625,18 @@ export const EditorPanelContent = ({
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+
+	const hasDeidentExtensions = React.useMemo(() => {
+		const DEIDENT_URL =
+			"http://health-samurai.io/fhir/core/StructureDefinition/de-identification";
+		const checkSelect = (sel: ViewDefinitionSelect): boolean =>
+			(sel.column ?? []).some((col) =>
+				col.extension?.some((ext) => ext.url === DEIDENT_URL),
+			) || (sel.select ?? []).some(checkSelect);
+		return (viewDefinitionContext.viewDefinition?.select ?? []).some(
+			checkSelect,
+		);
+	}, [viewDefinitionContext.viewDefinition]);
 	const viewDefinitionResourceTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);
@@ -697,6 +736,7 @@ export const EditorPanelContent = ({
 						onMaterialize={handleMaterialize}
 						onTogglePreview={onTogglePreview}
 						isPreviewOpen={isPreviewOpen}
+						hasDeidentExtensions={hasDeidentExtensions}
 					/>
 					<div
 						className={`flex-1 min-h-0 overflow-auto ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
