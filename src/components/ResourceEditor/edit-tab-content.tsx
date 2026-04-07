@@ -23,6 +23,7 @@ interface EditTabContentProps {
 	setResourceText: (text: string) => void;
 	viewCallback?: (view: CodeEditorView) => void;
 	actions?: React.ReactNode;
+	extraTrailingActions?: React.ReactNode;
 	saveError?: OperationOutcome | null;
 	onIssueClick?: (issue: OperationOutcomeIssue) => void;
 	issueLineNumbers?: { line: number; message?: string }[];
@@ -43,6 +44,7 @@ export function EditTabContent({
 	setResourceText,
 	viewCallback,
 	actions,
+	extraTrailingActions,
 	saveError,
 	onIssueClick,
 	issueLineNumbers,
@@ -100,16 +102,19 @@ export function EditTabContent({
 							getStructureDefinitions={getStructureDefinitions}
 							expandValueSet={expandValueSet}
 							trailingActions={
-								!isProfileOpen && (
-									<HSComp.Toggle
-										variant="outline"
-										pressed={isProfileOpen}
-										onPressedChange={handleToggleProfile}
-									>
-										<Lucide.PanelRightIcon className="w-4 h-4" />
-										Profile
-									</HSComp.Toggle>
-								)
+								<>
+									{extraTrailingActions}
+									{!isProfileOpen && (
+										<HSComp.Toggle
+											variant="outline"
+											pressed={isProfileOpen}
+											onPressedChange={handleToggleProfile}
+										>
+											<Lucide.PanelRightIcon className="w-4 h-4" />
+											Profile
+										</HSComp.Toggle>
+									)}
+								</>
 							}
 						/>
 					</HSComp.ResizablePanel>

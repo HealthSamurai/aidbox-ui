@@ -30,6 +30,7 @@ import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
 import { deleteResource, fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
+import { FromExampleButton } from "./from-example";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
 
@@ -345,6 +346,24 @@ export const ResourceEditorPage = ({
 		});
 	}
 
+	const handleExampleSelect = (exampleResource: Record<string, unknown>) => {
+		const merged = { ...exampleResource, resourceType };
+		setResource(merged as Resource);
+		const text =
+			mode === "yaml"
+				? YAML.dump(merged, { indent })
+				: JSON.stringify(merged, null, indent);
+		setResourceText(text);
+		setEditDirty(true);
+	};
+
+	const editTrailingActions = !id ? (
+		<FromExampleButton
+			resourceType={resourceType}
+			onSelect={handleExampleSelect}
+		/>
+	) : undefined;
+
 	const editActions = (
 		<>
 			<SaveButton
@@ -393,6 +412,7 @@ export const ResourceEditorPage = ({
 						editorViewRef.current = view;
 					}}
 					actions={editActions}
+					extraTrailingActions={editTrailingActions}
 					saveError={saveError}
 					onIssueClick={handleIssueClick}
 					issueLineNumbers={issueLineNumbers}
