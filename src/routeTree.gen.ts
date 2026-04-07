@@ -26,6 +26,7 @@ import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.ind
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
 import { Route as IgPackageIdResourceResourceTypeResourceIdRouteImport } from './routes/ig.$packageId.resource.$resourceType.$resourceId'
+import { Route as IgPackageIdExampleResourceTypeExampleIdRouteImport } from './routes/ig.$packageId.example.$resourceType.$exampleId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -116,6 +117,12 @@ const IgPackageIdResourceResourceTypeResourceIdRoute =
     path: '/resource/$resourceType/$resourceId',
     getParentRoute: () => IgPackageIdRoute,
   } as any)
+const IgPackageIdExampleResourceTypeExampleIdRoute =
+  IgPackageIdExampleResourceTypeExampleIdRouteImport.update({
+    id: '/example/$resourceType/$exampleId',
+    path: '/example/$resourceType/$exampleId',
+    getParentRoute: () => IgPackageIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/ig/$packageId/example/$resourceType/$exampleId': typeof IgPackageIdExampleResourceTypeExampleIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 export interface FileRoutesByTo {
@@ -149,6 +157,7 @@ export interface FileRoutesByTo {
   '/ig/$packageId': typeof IgPackageIdIndexRoute
   '/resource/$resourceType': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/ig/$packageId/example/$resourceType/$exampleId': typeof IgPackageIdExampleResourceTypeExampleIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 export interface FileRoutesById {
@@ -169,6 +178,7 @@ export interface FileRoutesById {
   '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
+  '/ig/$packageId/example/$resourceType/$exampleId': typeof IgPackageIdExampleResourceTypeExampleIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 export interface FileRouteTypes {
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/ig/$packageId/'
     | '/resource/$resourceType/'
     | '/resource/$resourceType/edit/$id'
+    | '/ig/$packageId/example/$resourceType/$exampleId'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/ig/$packageId'
     | '/resource/$resourceType'
     | '/resource/$resourceType/edit/$id'
+    | '/ig/$packageId/example/$resourceType/$exampleId'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   id:
     | '__root__'
@@ -224,6 +236,7 @@ export interface FileRouteTypes {
     | '/ig/$packageId/'
     | '/resource/$resourceType/'
     | '/resource/$resourceType/edit/$id'
+    | '/ig/$packageId/example/$resourceType/$exampleId'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesById: FileRoutesById
 }
@@ -358,16 +371,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IgPackageIdResourceResourceTypeResourceIdRouteImport
       parentRoute: typeof IgPackageIdRoute
     }
+    '/ig/$packageId/example/$resourceType/$exampleId': {
+      id: '/ig/$packageId/example/$resourceType/$exampleId'
+      path: '/example/$resourceType/$exampleId'
+      fullPath: '/ig/$packageId/example/$resourceType/$exampleId'
+      preLoaderRoute: typeof IgPackageIdExampleResourceTypeExampleIdRouteImport
+      parentRoute: typeof IgPackageIdRoute
+    }
   }
 }
 
 interface IgPackageIdRouteChildren {
   IgPackageIdIndexRoute: typeof IgPackageIdIndexRoute
+  IgPackageIdExampleResourceTypeExampleIdRoute: typeof IgPackageIdExampleResourceTypeExampleIdRoute
   IgPackageIdResourceResourceTypeResourceIdRoute: typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
 
 const IgPackageIdRouteChildren: IgPackageIdRouteChildren = {
   IgPackageIdIndexRoute: IgPackageIdIndexRoute,
+  IgPackageIdExampleResourceTypeExampleIdRoute:
+    IgPackageIdExampleResourceTypeExampleIdRoute,
   IgPackageIdResourceResourceTypeResourceIdRoute:
     IgPackageIdResourceResourceTypeResourceIdRoute,
 }

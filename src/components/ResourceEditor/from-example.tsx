@@ -1,12 +1,17 @@
 import {
 	Button,
-	cn,
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, ChevronDown, Search } from "lucide-react";
+import {
+	BookOpen,
+	ChevronDown,
+	ChevronRight,
+	ScrollText,
+	Search,
+} from "lucide-react";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import {
@@ -25,6 +30,7 @@ export function FromExampleButton({
 	const client = useAidboxClient();
 	const [open, setOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
+	const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
 
 	const { data: examples } = useQuery({
 		queryKey: ["examples", resourceType],
@@ -38,13 +44,32 @@ export function FromExampleButton({
 		if (!examples) return [];
 		if (!search) return examples;
 		const q = search.toLowerCase();
-		return examples.filter(
-			(e) =>
-				e["resource-id"]?.toLowerCase().includes(q) ||
-				e.name?.toLowerCase().includes(q) ||
-				e.package?.toLowerCase().includes(q),
-		);
+		return examples.filter((e) => {
+			const hay = [e["resource-id"], e.name, e.package, ...(e.profiles ?? [])]
+				.filter(Boolean)
+				.join(" ")
+				.toLowerCase();
+			return hay.includes(q);
+		});
 	}, [examples, search]);
+
+	const grouped = React.useMemo(() => {
+		const groups: { key: string; entries: ExampleEntry[] }[] = [];
+		const map = new Map<string, ExampleEntry[]>();
+		for (const entry of filtered) {
+			const key = entry.package
+				? `${entry.package}${entry["package-version"] ? `#${entry["package-version"]}` : ""}`
+				: "";
+			let list = map.get(key);
+			if (!list) {
+				list = [];
+				map.set(key, list);
+				groups.push({ key, entries: list });
+			}
+			list.push(entry);
+		}
+		return groups;
+	}, [filtered]);
 
 	const handleSelect = async (entry: ExampleEntry) => {
 		const resource = await fetchExample(client, resourceType, entry.id);
@@ -66,11 +91,11 @@ export function FromExampleButton({
 			<PopoverTrigger asChild>
 				<Button variant="ghost" size="small" className="gap-1.5">
 					<BookOpen size={14} />
-					Create from example
+					Examples
 					<ChevronDown size={12} />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-80 p-0" align="start">
+			<PopoverContent className="w-[480px] p-0 mr-2" align="end">
 				<div className="flex items-center gap-2 border-b px-3 py-2">
 					<Search size={14} className="text-text-tertiary shrink-0" />
 					<input
@@ -80,7 +105,7 @@ export function FromExampleButton({
 						onChange={(e) => setSearch(e.target.value)}
 					/>
 				</div>
-				<div className="max-h-60 overflow-y-auto">
+				<div className="max-h-80 overflow-y-auto px-3 pr-3 pt-1">
 					{!examples && (
 						<div className="px-3 py-4 text-sm text-text-tertiary text-center">
 							Loading...
@@ -91,29 +116,47 @@ export function FromExampleButton({
 							No examples found
 						</div>
 					)}
-					{filtered.map((entry) => (
-						<button
-							type="button"
-							key={entry.id}
-							className={cn(
-								"w-full text-left px-3 py-2 text-sm",
-								"hover:bg-bg-quaternary cursor-pointer",
-								"flex flex-col gap-0.5",
+					{grouped.map((group) => (
+						<div key={group.key}>
+							{group.key && (
+								<button
+									type="button"
+									className="flex w-full items-center gap-2.5 pl-px pt-3 pb-2 typo-label-xs text-text-tertiary uppercase cursor-pointer hover:text-text-secondary"
+									onClick={() =>
+										setCollapsed((prev) => ({
+											...prev,
+											[group.key]: !prev[group.key],
+										}))
+									}
+								>
+									<ChevronRight
+										className={`size-3 transition-transform duration-150 ${!collapsed[group.key] || search ? "rotate-90" : ""}`}
+									/>
+									{group.key}
+								</button>
 							)}
-							onClick={() => handleSelect(entry)}
-						>
-							<span className="font-medium">
-								{entry["resource-id"] || entry.name || entry.id}
-							</span>
-							{entry.package && (
-								<span className="text-xs text-text-tertiary">
-									{entry.package}
-									{entry["package-version"]
-										? `#${entry["package-version"]}`
-										: ""}
-								</span>
-							)}
-						</button>
+							{(search || !group.key || !collapsed[group.key]) &&
+								group.entries.map((entry) => (
+									<button
+										type="button"
+										key={entry.id}
+										className="flex w-full items-center gap-2 text-left py-1.5 px-2 ml-4 rounded cursor-pointer hover:bg-bg-secondary"
+										onClick={() => handleSelect(entry)}
+									>
+										<ScrollText className="size-3.5 shrink-0 text-text-tertiary" />
+										<span className="truncate">
+											<span className="typo-code text-text-body">
+												{entry["resource-id"] || entry.name || entry.id}
+											</span>
+											{entry.profiles && entry.profiles.length > 0 && (
+												<span className="typo-body-xs text-text-tertiary ml-2">
+													{entry.profiles.join(", ")}
+												</span>
+											)}
+										</span>
+									</button>
+								))}
+						</div>
 					))}
 				</div>
 			</PopoverContent>

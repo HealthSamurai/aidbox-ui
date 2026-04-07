@@ -33,6 +33,7 @@ interface EditTabContentProps {
 	actionsRef?: React.RefObject<ResourceEditorActions | null>;
 	resource?: Resource;
 	onApplyProfile?: (profileUrl: string) => void;
+	onExampleSelect?: (resource: Record<string, unknown>) => void;
 }
 
 export function EditTabContent({
@@ -54,6 +55,7 @@ export function EditTabContent({
 	actionsRef,
 	resource,
 	onApplyProfile,
+	onExampleSelect,
 }: EditTabContentProps) {
 	const getStructureDefinitions = useGetStructureDefinitions();
 	const expandValueSet = useExpandValueSet();
@@ -111,7 +113,7 @@ export function EditTabContent({
 											onPressedChange={handleToggleProfile}
 										>
 											<Lucide.PanelRightIcon className="w-4 h-4" />
-											Profile
+											Profiles & Examples
 										</HSComp.Toggle>
 									)}
 								</>
@@ -145,6 +147,7 @@ export function EditTabContent({
 							onOpenPanel={() => setIsProfileOpen(true)}
 							resource={resource}
 							onApplyProfile={onApplyProfile}
+							onExampleSelect={onExampleSelect}
 						/>
 					</HSComp.ResizablePanel>
 				</>

@@ -2,23 +2,30 @@ import type { AidboxClientR5 } from "../AidboxClient";
 
 export interface ExampleEntry {
 	id: string;
+	"resource-type"?: string;
 	"resource-id"?: string;
 	name?: string;
 	package?: string;
 	"package-version"?: string;
+	profiles?: string[];
 }
 
 export async function fetchExamples(
 	client: AidboxClientR5,
-	resourceType: string,
+	resourceType?: string,
+	substring?: string,
 ): Promise<ExampleEntry[]> {
+	const params: Record<string, unknown> = {};
+	if (resourceType) params.rt = resourceType;
+	if (substring) params.substring = substring;
+
 	const response = await client.rawRequest({
 		method: "POST",
 		url: "/rpc?_m=aidbox.introspector/list-examples",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			method: "aidbox.introspector/list-examples",
-			params: { rt: resourceType },
+			params,
 		}),
 	});
 	const json = await response.response.json();

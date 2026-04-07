@@ -30,7 +30,6 @@ import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
 import { deleteResource, fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
-import { FromExampleButton } from "./from-example";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
 
@@ -357,13 +356,6 @@ export const ResourceEditorPage = ({
 		setEditDirty(true);
 	};
 
-	const editTrailingActions = !id ? (
-		<FromExampleButton
-			resourceType={resourceType}
-			onSelect={handleExampleSelect}
-		/>
-	) : undefined;
-
 	const editActions = (
 		<>
 			<SaveButton
@@ -412,7 +404,7 @@ export const ResourceEditorPage = ({
 						editorViewRef.current = view;
 					}}
 					actions={editActions}
-					extraTrailingActions={editTrailingActions}
+					extraTrailingActions={undefined}
 					saveError={saveError}
 					onIssueClick={handleIssueClick}
 					issueLineNumbers={issueLineNumbers}
@@ -421,6 +413,7 @@ export const ResourceEditorPage = ({
 					autoSaveId="resource-editor-horizontal-panel"
 					actionsRef={actionsRef}
 					resource={resource}
+					onExampleSelect={handleExampleSelect}
 					onApplyProfile={(profileUrl) => {
 						const meta = resource.meta ?? {};
 						const profiles = meta.profile ?? [];
