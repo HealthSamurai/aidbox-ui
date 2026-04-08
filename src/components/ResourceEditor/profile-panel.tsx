@@ -9,6 +9,17 @@ import { transformSnapshotToTree } from "../../utils";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { pageId } from "./types";
 
+/** Strip version suffix (e.g. `|1.0.0`) from a FHIR profile URL for comparison */
+function stripProfileVersion(url: string): string {
+	const idx = url.indexOf("|");
+	return idx === -1 ? url : url.slice(0, idx);
+}
+
+function profilesInclude(profiles: string[], url: string): boolean {
+	const bare = stripProfileVersion(url);
+	return profiles.some((p) => stripProfileVersion(p) === bare);
+}
+
 interface ProfilePanelProps {
 	resourceType: string;
 	onClose: () => void;
@@ -91,7 +102,7 @@ export function ProfilePanel({
 			profileEntries.map(([key, schema]) => {
 				const name = schema.entity?.name || key;
 				const url = schema.entity?.url;
-				const isApplied = url ? resourceProfiles.includes(url) : false;
+				const isApplied = url ? profilesInclude(resourceProfiles, url) : false;
 				return {
 					value: key,
 					label: isApplied ? `${name} \u25CF` : name,
@@ -119,7 +130,8 @@ export function ProfilePanel({
 	const isDefault = selectedProfile?.["default?"] === true;
 	const isProfileApplied =
 		isDefault ||
-		(!!selectedProfileUrl && resourceProfiles.includes(selectedProfileUrl));
+		(!!selectedProfileUrl &&
+			profilesInclude(resourceProfiles, selectedProfileUrl));
 
 	return (
 		<div className="flex flex-col h-full">
