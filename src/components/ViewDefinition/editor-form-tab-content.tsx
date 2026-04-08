@@ -892,8 +892,9 @@ function DeIdentPopover({
 			</Tooltip>
 			<PopoverContent
 				className="w-72 p-3 flex flex-col gap-2"
+				align="end"
 				sideOffset={4}
-				alignOffset={-16}
+				alignOffset={16}
 				onClick={(e) => e.stopPropagation()}
 				onMouseDown={(e) => e.stopPropagation()}
 			>
