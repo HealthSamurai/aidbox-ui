@@ -545,6 +545,47 @@ function isMissingDeidentParam(config: DeIdentConfig | undefined): boolean {
 	}
 }
 
+function computeFieldErrors(
+	issues: Array<{ expression?: string[] }> | undefined,
+	paramPrefix: RegExp,
+	constants: ConstantItem[],
+	whereConditions: WhereItem[],
+): Set<string> {
+	if (!issues) return new Set();
+	const result = new Set<string>();
+	for (const issue of issues) {
+		for (let expr of issue.expression ?? []) {
+			expr = expr.replace(paramPrefix, "ViewDefinition.");
+			const topMatch = expr.match(/^ViewDefinition\.(name|status|resource)$/);
+			if (topMatch?.[1]) {
+				result.add(topMatch[1]);
+				continue;
+			}
+			const constMatch = expr.match(/^ViewDefinition\.constant\[(\d+)\]/);
+			const constItem =
+				constMatch?.[1] != null ? constants[Number(constMatch[1])] : undefined;
+			if (constItem) {
+				const suffix = expr.endsWith(".name")
+					? ":name"
+					: expr.endsWith(".value")
+						? ":value"
+						: "";
+				result.add(constItem.nodeId + suffix);
+				continue;
+			}
+			const whereMatch = expr.match(/^ViewDefinition\.where\[(\d+)\]/);
+			const whereItem =
+				whereMatch?.[1] != null
+					? whereConditions[Number(whereMatch[1])]
+					: undefined;
+			if (whereItem) {
+				result.add(whereItem.nodeId);
+			}
+		}
+	}
+	return result;
+}
+
 function classifyErrorTarget(expr: string): ErrorTarget {
 	if (expr.includes(".extension")) return "extension";
 	if (expr.endsWith(".path")) return "path";
@@ -916,6 +957,19 @@ export const FormTabContent = ({
 		defaultValue: ["_properties"],
 	});
 
+	const paramPrefix = /^Parameters\.parameter\[\d+\]\.resource\./;
+
+	const fieldErrors = useMemo(
+		() =>
+			computeFieldErrors(
+				viewDefinitionContext.runError?.issue,
+				paramPrefix,
+				constants,
+				whereConditions,
+			),
+		[viewDefinitionContext.runError, constants, whereConditions],
+	);
+
 	// Compute per-column error targets from OperationOutcome issues
 	const columnErrors = useMemo(() => {
 		const issues = viewDefinitionContext.runError?.issue;
@@ -924,7 +978,8 @@ export const FormTabContent = ({
 		const exprMap = buildExpressionToNodeIdMap(selectItems);
 		const result = new Map<string, Set<ErrorTarget>>();
 		for (const issue of issues) {
-			for (const expr of issue.expression ?? []) {
+			for (let expr of issue.expression ?? []) {
+				expr = expr.replace(paramPrefix, "ViewDefinition.");
 				const nodeId = resolveExpressionToNodeId(expr, exprMap);
 				if (!nodeId) continue;
 				if (!result.has(nodeId)) result.set(nodeId, new Set());
@@ -939,8 +994,70 @@ export const FormTabContent = ({
 
 	// Set issueClickRef for form builder — scroll, focus input or open popover
 	viewDefinitionContext.issueClickRef.current = (issue) => {
-		const expr = issue.expression?.[0];
+		let expr = issue.expression?.[0];
 		if (!expr) return;
+
+		// Strip Parameters wrapper prefix from $run responses
+		const paramPrefix = /^Parameters\.parameter\[\d+\]\.resource\./;
+		expr = expr.replace(paramPrefix, "ViewDefinition.");
+
+		// Handle top-level ViewDefinition fields (name, status, resource)
+		const topLevelField = expr.match(
+			/^ViewDefinition\.(name|status|resource)$/,
+		)?.[1];
+		if (topLevelField) {
+			const input = document.querySelector<HTMLInputElement>(
+				`[data-field="${topLevelField}"] input`,
+			);
+			if (input) {
+				input.scrollIntoView({ behavior: "smooth", block: "center" });
+				setTimeout(() => input.focus(), 300);
+			}
+			return;
+		}
+
+		// Handle constants: ViewDefinition.constant[N]
+		const constClickMatch = expr.match(/^ViewDefinition\.constant\[(\d+)\]/);
+		const constClickItem =
+			constClickMatch?.[1] != null
+				? constants[Number(constClickMatch[1])]
+				: undefined;
+		if (constClickItem) {
+			const el = document.querySelector(
+				`[data-node-id="${constClickItem.nodeId}"]`,
+			);
+			if (el) {
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
+				setTimeout(() => {
+					// Focus second input (value) if the error is on value, else first (name)
+					const inputs = el.querySelectorAll<HTMLInputElement>("input");
+					const isValueErr = expr.endsWith(".value");
+					(isValueErr ? inputs[1] : inputs[0])?.focus();
+				}, 300);
+			}
+			return;
+		}
+
+		// Handle where conditions: ViewDefinition.where[N]
+		const whereClickMatch = expr.match(/^ViewDefinition\.where\[(\d+)\]/);
+		const whereClickItem =
+			whereClickMatch?.[1] != null
+				? whereConditions[Number(whereClickMatch[1])]
+				: undefined;
+		if (whereClickItem) {
+			const el = document.querySelector(
+				`[data-node-id="${whereClickItem.nodeId}"]`,
+			);
+			if (el) {
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
+				setTimeout(() => {
+					document.getElementById(`fhirpath-${whereClickItem.nodeId}`)?.focus();
+				}, 300);
+			}
+			return;
+		}
+
+		// Handle select/column paths
 		const exprMap = buildExpressionToNodeIdMap(selectItems);
 		const nodeId = resolveExpressionToNodeId(expr, exprMap);
 		if (!nodeId) return;
@@ -1783,7 +1900,10 @@ export const FormTabContent = ({
 				return (
 					<div className="flex w-full items-center justify-between">
 						{labelView(item)}
-						<div className="w-[50%]">
+						<div
+							className={`w-[50%] ${fieldErrors.has("name") ? "ring-1 ring-border-error rounded-md" : ""}`}
+							data-field="name"
+						>
 							<InputView
 								placeholder="ViewDefinition name"
 								value={viewDefinition?.name || ""}
@@ -2140,12 +2260,16 @@ export const FormTabContent = ({
 			case "where-value": {
 				const whereData = item.getItemData()?.meta?.whereData;
 				if (!whereData) return null;
+				const whereErr = fieldErrors.has(whereData.nodeId);
 
 				// Where conditions at top level use the resource type as context
 				const contextPath = viewDefinitionResourceType || "";
 
 				return (
-					<div className="flex items-center w-full gap-2">
+					<div
+						className={`flex items-center w-full gap-2 ${whereErr ? "ring-1 ring-border-error rounded-md" : ""}`}
+						data-node-id={whereData.nodeId}
+					>
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
 							<Funnel size={12} />
 						</span>
@@ -2191,26 +2315,37 @@ export const FormTabContent = ({
 			case "constant-value": {
 				const constantData = item.getItemData()?.meta?.constantData;
 				if (!constantData) return null;
+				const nid = constantData.nodeId;
+				const nameErr = fieldErrors.has(`${nid}:name`) || fieldErrors.has(nid);
+				const valErr = fieldErrors.has(`${nid}:value`) || fieldErrors.has(nid);
 
 				return (
-					<div className="flex items-center w-full gap-2">
+					<div className="flex items-center w-full gap-2" data-node-id={nid}>
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
 							<Pi size={12} />
 						</span>
-						<InputView
-							placeholder="Name"
-							value={constantData.name}
-							onChange={(value) =>
-								updateConstant(constantData.nodeId, "name", value)
-							}
-						/>
-						<InputView
-							placeholder="Value"
-							value={constantData.valueString}
-							onChange={(value) =>
-								updateConstant(constantData.nodeId, "valueString", value)
-							}
-						/>
+						<div
+							className={nameErr ? "ring-1 ring-border-error rounded-md" : ""}
+						>
+							<InputView
+								placeholder="Name"
+								value={constantData.name}
+								onChange={(value) =>
+									updateConstant(constantData.nodeId, "name", value)
+								}
+							/>
+						</div>
+						<div
+							className={valErr ? "ring-1 ring-border-error rounded-md" : ""}
+						>
+							<InputView
+								placeholder="Value"
+								value={constantData.valueString}
+								onChange={(value) =>
+									updateConstant(constantData.nodeId, "valueString", value)
+								}
+							/>
+						</div>
 
 						<Button
 							variant="link"
