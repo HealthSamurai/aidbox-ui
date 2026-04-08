@@ -345,6 +345,17 @@ export const ResourceEditorPage = ({
 		});
 	}
 
+	const handleExampleSelect = (exampleResource: Record<string, unknown>) => {
+		const merged = { ...exampleResource, resourceType };
+		setResource(merged as Resource);
+		const text =
+			mode === "yaml"
+				? YAML.dump(merged, { indent })
+				: JSON.stringify(merged, null, indent);
+		setResourceText(text);
+		setEditDirty(true);
+	};
+
 	const editActions = (
 		<>
 			<SaveButton
@@ -393,6 +404,7 @@ export const ResourceEditorPage = ({
 						editorViewRef.current = view;
 					}}
 					actions={editActions}
+					extraTrailingActions={undefined}
 					saveError={saveError}
 					onIssueClick={handleIssueClick}
 					issueLineNumbers={issueLineNumbers}
@@ -401,6 +413,7 @@ export const ResourceEditorPage = ({
 					autoSaveId="resource-editor-horizontal-panel"
 					actionsRef={actionsRef}
 					resource={resource}
+					onExampleSelect={handleExampleSelect}
 					onApplyProfile={(profileUrl) => {
 						const meta = resource.meta ?? {};
 						const profiles = meta.profile ?? [];

@@ -1,4 +1,7 @@
-import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import type {
+	ViewDefinition,
+	ViewDefinitionSelect,
+} from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import {
 	DropdownMenu,
@@ -22,6 +25,7 @@ import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
+import { FromExampleButton } from "../ResourceEditor/from-example";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
 import {
@@ -101,15 +105,27 @@ export const EditorHeaderMenu = ({
 	onMaterialize,
 	onTogglePreview,
 	isPreviewOpen,
+	hasDeidentExtensions,
+	isNew,
+	onExampleSelect,
 }: {
 	onSave: () => void;
 	onRun: () => void;
 	onMaterialize: (type: "view" | "materialized-view" | "table") => void;
 	onTogglePreview: () => void;
 	isPreviewOpen: boolean;
+	hasDeidentExtensions?: boolean;
+	isNew?: boolean;
+	onExampleSelect?: (resource: Record<string, unknown>) => void;
 }) => {
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const mode = useToolbarMode(containerRef);
+	const viewTitle = hasDeidentExtensions
+		? "Exposes encryption keys in system catalogs. Use Table."
+		: undefined;
+	const matViewTitle = hasDeidentExtensions
+		? "Exposes encryption keys in system catalogs. Use Table."
+		: undefined;
 
 	return (
 		<div
@@ -142,14 +158,22 @@ export const EditorHeaderMenu = ({
 							<DropdownMenuSub>
 								<DropdownMenuSubTrigger>Materialize</DropdownMenuSubTrigger>
 								<DropdownMenuSubContent>
-									<DropdownMenuItem onSelect={() => onMaterialize("view")}>
-										View
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => onMaterialize("materialized-view")}
-									>
-										Materialized View
-									</DropdownMenuItem>
+									<span title={viewTitle}>
+										<DropdownMenuItem
+											disabled={hasDeidentExtensions}
+											onSelect={() => onMaterialize("view")}
+										>
+											View
+										</DropdownMenuItem>
+									</span>
+									<span title={matViewTitle}>
+										<DropdownMenuItem
+											disabled={hasDeidentExtensions}
+											onSelect={() => onMaterialize("materialized-view")}
+										>
+											Materialized View
+										</DropdownMenuItem>
+									</span>
 									<DropdownMenuItem onSelect={() => onMaterialize("table")}>
 										Table
 									</DropdownMenuItem>
@@ -203,14 +227,22 @@ export const EditorHeaderMenu = ({
 							</TooltipTrigger>
 							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
 							<DropdownMenuContent align="start">
-								<DropdownMenuItem onSelect={() => onMaterialize("view")}>
-									View
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onSelect={() => onMaterialize("materialized-view")}
-								>
-									Materialized View
-								</DropdownMenuItem>
+								<span title={viewTitle}>
+									<DropdownMenuItem
+										disabled={hasDeidentExtensions}
+										onSelect={() => onMaterialize("view")}
+									>
+										View
+									</DropdownMenuItem>
+								</span>
+								<span title={matViewTitle}>
+									<DropdownMenuItem
+										disabled={hasDeidentExtensions}
+										onSelect={() => onMaterialize("materialized-view")}
+									>
+										Materialized View
+									</DropdownMenuItem>
+								</span>
 								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
 									Table
 								</DropdownMenuItem>
@@ -219,8 +251,14 @@ export const EditorHeaderMenu = ({
 					</Tooltip>
 				</div>
 			)}
-			{!isPreviewOpen && (
-				<div className="flex items-center gap-1 px-2">
+			<div className="flex items-center gap-2 px-2">
+				{isNew && onExampleSelect && (
+					<FromExampleButton
+						resourceType="ViewDefinition"
+						onSelect={onExampleSelect}
+					/>
+				)}
+				{!isPreviewOpen && (
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<HSComp.Toggle
@@ -234,8 +272,8 @@ export const EditorHeaderMenu = ({
 						</TooltipTrigger>
 						{mode !== "full" && <TooltipContent>Instances</TooltipContent>}
 					</Tooltip>
-				</div>
-			)}
+				)}
+			</div>
 		</div>
 	);
 };
@@ -598,6 +636,19 @@ export const EditorPanelContent = ({
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
+	const [formKey, setFormKey] = React.useState(0);
+
+	const hasDeidentExtensions = React.useMemo(() => {
+		const DEIDENT_URL =
+			"http://health-samurai.io/fhir/core/StructureDefinition/de-identification";
+		const checkSelect = (sel: ViewDefinitionSelect): boolean =>
+			(sel.column ?? []).some((col) =>
+				col.extension?.some((ext) => ext.url === DEIDENT_URL),
+			) || (sel.select ?? []).some(checkSelect);
+		return (viewDefinitionContext.viewDefinition?.select ?? []).some(
+			checkSelect,
+		);
+	}, [viewDefinitionContext.viewDefinition]);
 	const viewDefinitionResourceTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);
@@ -697,17 +748,28 @@ export const EditorPanelContent = ({
 						onMaterialize={handleMaterialize}
 						onTogglePreview={onTogglePreview}
 						isPreviewOpen={isPreviewOpen}
+						hasDeidentExtensions={hasDeidentExtensions}
+						isNew={!viewDefinitionContext.originalId}
+						onExampleSelect={(resource) => {
+							const vd = {
+								...resource,
+								resourceType: "ViewDefinition",
+							} as ViewDefinition;
+							viewDefinitionContext.setViewDefinition(vd);
+							viewDefinitionContext.setIsDirty(true);
+							setFormKey((k) => k + 1);
+						}}
 					/>
 					<div
 						className={`flex-1 min-h-0 overflow-auto ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
 					>
 						{isPreviewOpen ? (
 							<div className="px-2.5 py-1">
-								<FormTabContent actionsRef={actionsRef} />
+								<FormTabContent key={formKey} actionsRef={actionsRef} />
 							</div>
 						) : (
 							<div className="min-h-full bg-bg-primary px-2.5 py-3">
-								<FormTabContent actionsRef={actionsRef} />
+								<FormTabContent key={formKey} actionsRef={actionsRef} />
 							</div>
 						)}
 					</div>

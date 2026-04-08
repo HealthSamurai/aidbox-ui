@@ -24,6 +24,7 @@ export interface SchemaData {
 interface PackageEntry {
 	name: string;
 	version: string;
+	type?: string;
 }
 
 interface PackageEntitiesResult {
@@ -74,8 +75,11 @@ export const fetchSchemas = async (
 	client: AidboxClientR5,
 	resourceType: string,
 ): Promise<Record<string, Schema> | undefined> => {
-	const packages = await fetchPackages(client);
-	if (!packages || packages.length === 0) return undefined;
+	const allPackages = await fetchPackages(client);
+	if (!allPackages || allPackages.length === 0) return undefined;
+
+	const EXAMPLE_TYPES = new Set(["fhir.examples", "Examples"]);
+	const packages = allPackages.filter((p) => !EXAMPLE_TYPES.has(p.type ?? ""));
 
 	const results = await Promise.all(
 		packages.map(async (pkg) => {
