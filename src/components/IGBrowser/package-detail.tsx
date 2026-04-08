@@ -86,8 +86,15 @@ async function rpcCall(
 	return json;
 }
 
+const MANAGEABLE_SYSTEM_PACKAGES = new Set([
+	"io.health-samurai.de-identification.r4",
+]);
+
 function isSystemPackage(name: string) {
-	return name.startsWith("io.health-samurai.");
+	return (
+		name.startsWith("io.health-samurai.") &&
+		!MANAGEABLE_SYSTEM_PACKAGES.has(name)
+	);
 }
 
 function isCorePackage(type?: string) {
