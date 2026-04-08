@@ -467,6 +467,91 @@ const buildUnionAll = ({ children }: SelectItemInternal) => {
 	};
 };
 
+/**
+ * Build a map from FHIR expression path prefixes to column nodeIds.
+ * E.g., "ViewDefinition.select[0].column[1]" → nodeId of the 2nd column in the 1st select.
+ * Also maps select-level paths for forEach/forEachOrNull items.
+ */
+function buildExpressionToNodeIdMap(
+	items: SelectItemInternal[],
+	parentPath = "ViewDefinition",
+): Map<string, string> {
+	const map = new Map<string, string>();
+	let selectIdx = 0;
+	for (const item of items) {
+		const selectPath = `${parentPath}.select[${selectIdx}]`;
+		map.set(selectPath, item.nodeId);
+		if (item.type === "column" && item.column) {
+			for (let colIdx = 0; colIdx < item.column.length; colIdx++) {
+				const col = item.column[colIdx];
+				if (!col) continue;
+				const colPath = `${selectPath}.column[${colIdx}]`;
+				map.set(colPath, col.nodeId);
+			}
+		} else if (item.children) {
+			const childMap = buildExpressionToNodeIdMap(item.children, selectPath);
+			for (const [k, v] of childMap) map.set(k, v);
+		}
+		selectIdx++;
+	}
+	return map;
+}
+
+/**
+ * Find the nodeId for a FHIR expression by matching the longest prefix.
+ * E.g., "ViewDefinition.select[0].column[1].extension[0]" matches column[1].
+ */
+function resolveExpressionToNodeId(
+	expr: string,
+	exprMap: Map<string, string>,
+): string | undefined {
+	// Try exact match first, then progressively shorter prefixes
+	let path = expr;
+	while (path.length > 0) {
+		const nodeId = exprMap.get(path);
+		if (nodeId) return nodeId;
+		// Remove last segment (e.g., ".extension[0]" or ".column[1]")
+		const lastDot = path.lastIndexOf(".");
+		const lastBracket = path.lastIndexOf("[");
+		const cutAt = Math.max(lastDot, lastBracket);
+		if (cutAt <= 0) break;
+		path = path.substring(0, cutAt);
+	}
+	return undefined;
+}
+
+type ErrorTarget = "extension" | "path" | "name" | "column";
+
+function isEmpty(v: unknown): boolean {
+	return v === undefined || v === null || v === "";
+}
+
+function isMissingDeidentParam(config: DeIdentConfig | undefined): boolean {
+	if (!config) return false;
+	switch (config.method) {
+		case "cryptoHash":
+			return isEmpty(config.cryptoHashKey);
+		case "dateshift":
+		case "dateshiftSafeHarbor":
+			return isEmpty(config.dateShiftKey);
+		case "encrypt":
+			return isEmpty(config.encryptKey);
+		case "substitute":
+			return isEmpty(config.replaceWith);
+		case "custom_function":
+			return isEmpty(config.customFunction);
+		default:
+			return false;
+	}
+}
+
+function classifyErrorTarget(expr: string): ErrorTarget {
+	if (expr.includes(".extension")) return "extension";
+	if (expr.endsWith(".path")) return "path";
+	if (expr.endsWith(".name")) return "name";
+	return "column";
+}
+
 const buildSelectArray = (
 	items: SelectItemInternal[],
 ): ViewDefinitionSelect[] => {
@@ -564,7 +649,7 @@ function ValidatedInput({
 	return (
 		<div>
 			<Input
-				className={`h-8 ${isInvalid ? "ring-1 ring-border-error" : ""}`}
+				className={`h-8 ${isInvalid ? "border-border-error! focus-visible:border-border-error!" : ""}`}
 				placeholder={placeholder}
 				value={localValue}
 				onChange={(e) => {
@@ -583,15 +668,150 @@ function ValidatedInput({
 	);
 }
 
+function DeIdentMethodParams({
+	config,
+	update,
+}: {
+	config: DeIdentConfig | undefined;
+	update: (patch: Partial<DeIdentConfig>) => void;
+}) {
+	const method = config?.method;
+	if (!method) return null;
+
+	switch (method) {
+		case "cryptoHash":
+			return (
+				<Input
+					className={`h-8 ${isEmpty(config?.cryptoHashKey) ? "border-border-error! focus-visible:border-border-error!" : ""}`}
+					placeholder="HMAC Key"
+					value={config?.cryptoHashKey || ""}
+					onChange={(e) => update({ cryptoHashKey: e.target.value })}
+				/>
+			);
+		case "dateshift":
+		case "dateshiftSafeHarbor":
+			return (
+				<>
+					<Input
+						className={`h-8 ${isEmpty(config?.dateShiftKey) ? "border-border-error! focus-visible:border-border-error!" : ""}`}
+						placeholder="Date Shift Key"
+						value={config?.dateShiftKey || ""}
+						onChange={(e) => update({ dateShiftKey: e.target.value })}
+					/>
+					{method === "dateshiftSafeHarbor" && (
+						<span className="text-xs text-text-tertiary flex items-center gap-1">
+							<Info size={12} className="shrink-0" />
+							Use on birth date fields only
+						</span>
+					)}
+				</>
+			);
+		case "encrypt":
+			return (
+				<div>
+					<Input
+						className={`h-8 ${isEmpty(config?.encryptKey) || (config?.encryptKey && !/^([0-9a-fA-F]{2}){4,16}$/.test(config.encryptKey)) ? "border-border-error! focus-visible:border-border-error!" : ""}`}
+						placeholder="Hex key (8-32 hex chars)"
+						value={config?.encryptKey || ""}
+						onChange={(e) => update({ encryptKey: e.target.value })}
+					/>
+					{config?.encryptKey &&
+						!/^([0-9a-fA-F]{2}){4,16}$/.test(config.encryptKey) && (
+							<span className="text-xs text-text-error-primary flex items-center gap-1 pt-2">
+								<TriangleAlert size={12} className="shrink-0" />
+								8-32 hex characters, even count (0-9, a-f)
+							</span>
+						)}
+				</div>
+			);
+		case "substitute":
+			return (
+				<Input
+					className={`h-8 ${isEmpty(config?.replaceWith) ? "border-border-error! focus-visible:border-border-error!" : ""}`}
+					placeholder="Replace with"
+					value={config?.replaceWith || ""}
+					onChange={(e) => update({ replaceWith: e.target.value })}
+				/>
+			);
+		case "perturb":
+			return (
+				<div className="flex flex-col gap-2">
+					<ValidatedInput
+						value={config?.span != null ? String(config.span) : ""}
+						placeholder="Span (e.g. 10)"
+						validate={(v) => !Number.isNaN(Number(v))}
+						errorMessage="Must be a number"
+						onChange={(v) =>
+							update({
+								span: v || undefined,
+							} as Partial<DeIdentConfig>)
+						}
+					/>
+					<Select
+						value={config?.rangeType || "fixed"}
+						onValueChange={(v) => update({ rangeType: v })}
+					>
+						<SelectTrigger className="h-8">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="fixed">Fixed</SelectItem>
+							<SelectItem value="proportional">Proportional</SelectItem>
+						</SelectContent>
+					</Select>
+					<ValidatedInput
+						value={config?.roundTo != null ? String(config.roundTo) : ""}
+						placeholder="Round to (decimals)"
+						validate={(v) => !Number.isNaN(Number(v))}
+						errorMessage="Must be a number"
+						onChange={(v) =>
+							update({
+								roundTo: v || undefined,
+							} as Partial<DeIdentConfig>)
+						}
+					/>
+				</div>
+			);
+		case "custom_function":
+			return (
+				<div className="flex flex-col gap-2">
+					<ValidatedInput
+						value={config?.customFunction || ""}
+						placeholder="Function name"
+						validate={(v) => /^[a-zA-Z][a-zA-Z0-9_.]*$/.test(v)}
+						errorMessage="Letters, digits, underscores, dots only"
+						onChange={(v) => update({ customFunction: v })}
+					/>
+					<Input
+						className="h-8"
+						placeholder="Argument (optional)"
+						value={config?.customArg || ""}
+						onChange={(e) => update({ customArg: e.target.value })}
+					/>
+				</div>
+			);
+		default:
+			return null;
+	}
+}
+
 // --- De-identification popover component ---
 
 function DeIdentPopover({
 	config,
 	onChange,
+	hasError,
+	registerOpen,
 }: {
 	config: DeIdentConfig | undefined;
 	onChange: (config: DeIdentConfig | undefined) => void;
+	hasError?: boolean;
+	registerOpen?: (openFn: () => void) => void;
 }) {
+	const [open, setOpen] = React.useState(false);
+	React.useEffect(() => {
+		registerOpen?.(() => setOpen(true));
+	}, [registerOpen]);
 	const method = config?.method;
 
 	const update = (patch: Partial<DeIdentConfig>) => {
@@ -599,20 +819,22 @@ function DeIdentPopover({
 		onChange({ ...config, ...patch });
 	};
 
+	const showError = hasError || isMissingDeidentParam(config);
+
 	const methodLabel = config
 		? (DEIDENT_METHODS.find((m) => m.value === config.method)?.label ??
 			config.method)
 		: undefined;
 
 	return (
-		<Popover>
+		<Popover open={open} onOpenChange={setOpen}>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>
 						<Button
 							variant="link"
 							size="small"
-							className={`shrink-0 ${config ? "text-text-info-primary" : "group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"}`}
+							className={`shrink-0 ${showError ? "text-text-error-primary" : config ? "text-text-info-primary" : "group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"}`}
 							asChild
 						>
 							<span>
@@ -629,6 +851,8 @@ function DeIdentPopover({
 			</Tooltip>
 			<PopoverContent
 				className="w-72 p-3 flex flex-col gap-2"
+				sideOffset={4}
+				alignOffset={-16}
 				onClick={(e) => e.stopPropagation()}
 				onMouseDown={(e) => e.stopPropagation()}
 			>
@@ -668,102 +892,7 @@ function DeIdentPopover({
 					</span>
 				)}
 
-				{method === "cryptoHash" && (
-					<Input
-						className="h-8"
-						placeholder="HMAC Key"
-						value={config?.cryptoHashKey || ""}
-						onChange={(e) => update({ cryptoHashKey: e.target.value })}
-					/>
-				)}
-				{(method === "dateshift" || method === "dateshiftSafeHarbor") && (
-					<>
-						<Input
-							className="h-8"
-							placeholder="Date Shift Key"
-							value={config?.dateShiftKey || ""}
-							onChange={(e) => update({ dateShiftKey: e.target.value })}
-						/>
-						{method === "dateshiftSafeHarbor" && (
-							<span className="text-xs text-text-tertiary flex items-center gap-1">
-								<Info size={12} className="shrink-0" />
-								Use on birth date fields only
-							</span>
-						)}
-					</>
-				)}
-				{method === "encrypt" && (
-					<ValidatedInput
-						value={config?.encryptKey || ""}
-						placeholder="Hex key (8-32 hex chars)"
-						validate={(v) => /^([0-9a-fA-F]{2}){4,16}$/.test(v)}
-						errorMessage="8-32 hex characters, even count (0-9, a-f)"
-						onChange={(v) => update({ encryptKey: v })}
-					/>
-				)}
-				{method === "substitute" && (
-					<Input
-						className="h-8"
-						placeholder="Replace with"
-						value={config?.replaceWith || ""}
-						onChange={(e) => update({ replaceWith: e.target.value })}
-					/>
-				)}
-				{method === "perturb" && (
-					<div className="flex flex-col gap-2">
-						<ValidatedInput
-							value={config?.span != null ? String(config.span) : ""}
-							placeholder="Span (e.g. 10)"
-							validate={(v) => !Number.isNaN(Number(v))}
-							errorMessage="Must be a number"
-							onChange={(v) =>
-								update({
-									span: v || undefined,
-								} as Partial<DeIdentConfig>)
-							}
-						/>
-						<Select
-							value={config?.rangeType || "fixed"}
-							onValueChange={(v) => update({ rangeType: v })}
-						>
-							<SelectTrigger className="h-8">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="fixed">Fixed</SelectItem>
-								<SelectItem value="proportional">Proportional</SelectItem>
-							</SelectContent>
-						</Select>
-						<ValidatedInput
-							value={config?.roundTo != null ? String(config.roundTo) : ""}
-							placeholder="Round to (decimals)"
-							validate={(v) => !Number.isNaN(Number(v))}
-							errorMessage="Must be a number"
-							onChange={(v) =>
-								update({
-									roundTo: v || undefined,
-								} as Partial<DeIdentConfig>)
-							}
-						/>
-					</div>
-				)}
-				{method === "custom_function" && (
-					<div className="flex flex-col gap-2">
-						<ValidatedInput
-							value={config?.customFunction || ""}
-							placeholder="Function name"
-							validate={(v) => /^[a-zA-Z][a-zA-Z0-9_.]*$/.test(v)}
-							errorMessage="Letters, digits, underscores, dots only"
-							onChange={(v) => update({ customFunction: v })}
-						/>
-						<Input
-							className="h-8"
-							placeholder="Argument (optional)"
-							value={config?.customArg || ""}
-							onChange={(e) => update({ customArg: e.target.value })}
-						/>
-					</div>
-				)}
+				<DeIdentMethodParams config={config} update={update} />
 			</PopoverContent>
 		</Popover>
 	);
@@ -786,6 +915,52 @@ export const FormTabContent = ({
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
 		defaultValue: ["_properties"],
 	});
+
+	// Compute per-column error targets from OperationOutcome issues
+	const columnErrors = useMemo(() => {
+		const issues = viewDefinitionContext.runError?.issue;
+		if (!issues || selectItems.length === 0)
+			return new Map<string, Set<ErrorTarget>>();
+		const exprMap = buildExpressionToNodeIdMap(selectItems);
+		const result = new Map<string, Set<ErrorTarget>>();
+		for (const issue of issues) {
+			for (const expr of issue.expression ?? []) {
+				const nodeId = resolveExpressionToNodeId(expr, exprMap);
+				if (!nodeId) continue;
+				if (!result.has(nodeId)) result.set(nodeId, new Set());
+				(result.get(nodeId) ?? new Set()).add(classifyErrorTarget(expr));
+			}
+		}
+		return result;
+	}, [viewDefinitionContext.runError, selectItems]);
+
+	// Refs for programmatic focus: popover openers keyed by nodeId
+	const deidentPopoverRefs = React.useRef<Map<string, () => void>>(new Map());
+
+	// Set issueClickRef for form builder — scroll, focus input or open popover
+	viewDefinitionContext.issueClickRef.current = (issue) => {
+		const expr = issue.expression?.[0];
+		if (!expr) return;
+		const exprMap = buildExpressionToNodeIdMap(selectItems);
+		const nodeId = resolveExpressionToNodeId(expr, exprMap);
+		if (!nodeId) return;
+		const target = classifyErrorTarget(expr);
+		const el = document.querySelector(`[data-node-id="${nodeId}"]`);
+		if (el) {
+			el.scrollIntoView({ behavior: "smooth", block: "center" });
+			setTimeout(() => {
+				if (target === "name") {
+					const input = el.querySelector<HTMLInputElement>("input");
+					input?.focus();
+				} else if (target === "path") {
+					const pathEl = document.getElementById(`fhirpath-${nodeId}`);
+					pathEl?.focus();
+				} else if (target === "extension") {
+					deidentPopoverRefs.current.get(nodeId)?.();
+				}
+			}, 300);
+		}
+	};
 
 	// Initialize state from viewDefinition - only on initial load or when ID changes
 	// Use a special marker to distinguish "not initialized" from "initialized with no id"
@@ -1562,6 +1737,7 @@ export const FormTabContent = ({
 		);
 	};
 
+	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: large switch over tree node types
 	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const metaType = item.getItemData()?.meta?.type;
 
@@ -1849,12 +2025,22 @@ export const FormTabContent = ({
 					true, // include the parent's expression if it's a forEach/forEachOrNull
 				);
 
+				const colErrors = columnErrors.get(columnData.nodeId);
+				const errExt = colErrors?.has("extension");
+				const errName = colErrors?.has("name");
+				const errPath = colErrors?.has("path");
+
 				return (
-					<div className="flex items-center w-full gap-2">
+					<div
+						className="flex items-center w-full gap-2"
+						data-node-id={columnData.nodeId}
+					>
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1">
 							<TextQuote size={12} />
 						</span>
-						<div className="w-[300px] shrink-0">
+						<div
+							className={`w-[300px] shrink-0 ${errName ? "ring-1 ring-border-error rounded-md" : ""}`}
+						>
 							<InputView
 								placeholder="Column name"
 								value={columnData.name}
@@ -1868,20 +2054,24 @@ export const FormTabContent = ({
 								}
 							/>
 						</div>
-						<FhirPathInput
-							id={`fhirpath-${columnData.nodeId}`}
-							placeholder="Path"
-							value={columnData.path}
-							onChange={(value) =>
-								updateSelectColumn(
-									selectItemId,
-									columnData.nodeId,
-									"path",
-									value,
-								)
-							}
-							contextPath={contextPath}
-						/>
+						<div
+							className={`flex-1 min-w-0 ${errPath ? "ring-1 ring-border-error rounded-md" : ""}`}
+						>
+							<FhirPathInput
+								id={`fhirpath-${columnData.nodeId}`}
+								placeholder="Path"
+								value={columnData.path}
+								onChange={(value) =>
+									updateSelectColumn(
+										selectItemId,
+										columnData.nodeId,
+										"path",
+										value,
+									)
+								}
+								contextPath={contextPath}
+							/>
+						</div>
 						<DeIdentPopover
 							config={parseDeIdentExtension(columnData.extension)}
 							onChange={(deIdentConfig) =>
@@ -1890,6 +2080,10 @@ export const FormTabContent = ({
 									columnData.nodeId,
 									deIdentConfig,
 								)
+							}
+							hasError={errExt}
+							registerOpen={(openFn) =>
+								deidentPopoverRefs.current.set(columnData.nodeId, openFn)
 							}
 						/>
 						<Button
