@@ -417,7 +417,11 @@ export const ResourceEditorPage = ({
 					onApplyProfile={(profileUrl) => {
 						const meta = resource.meta ?? {};
 						const profiles = meta.profile ?? [];
-						if (!profiles.includes(profileUrl)) {
+						if (
+							!profiles.some(
+								(p) => p.split("|")[0] === profileUrl.split("|")[0],
+							)
+						) {
 							const updated = {
 								...resource,
 								meta: { ...meta, profile: [...profiles, profileUrl] },
