@@ -868,7 +868,7 @@ function DeIdentPopover({
 		: undefined;
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={setOpen} modal>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>
