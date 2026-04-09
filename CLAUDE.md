@@ -53,5 +53,3 @@ Restart is required because Vite caches pre-bundled deps in memory.
 ## Linting & Type Checking
 
 Always run `pnpm lint:fix` and `pnpm typecheck` after making code changes.
-
-**Never suppress biome errors with `biome-ignore`.** If a lint rule triggers, refactor the code to fix the underlying issue (e.g., extract a function to reduce complexity, restructure to avoid the pattern). The lint rules exist to keep the codebase maintainable.

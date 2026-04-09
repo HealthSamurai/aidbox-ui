@@ -23,7 +23,6 @@ interface EditTabContentProps {
 	setResourceText: (text: string) => void;
 	viewCallback?: (view: CodeEditorView) => void;
 	actions?: React.ReactNode;
-	extraTrailingActions?: React.ReactNode;
 	saveError?: OperationOutcome | null;
 	onIssueClick?: (issue: OperationOutcomeIssue) => void;
 	issueLineNumbers?: { line: number; message?: string }[];
@@ -33,7 +32,6 @@ interface EditTabContentProps {
 	actionsRef?: React.RefObject<ResourceEditorActions | null>;
 	resource?: Resource;
 	onApplyProfile?: (profileUrl: string) => void;
-	onExampleSelect?: (resource: Record<string, unknown>) => void;
 }
 
 export function EditTabContent({
@@ -45,7 +43,6 @@ export function EditTabContent({
 	setResourceText,
 	viewCallback,
 	actions,
-	extraTrailingActions,
 	saveError,
 	onIssueClick,
 	issueLineNumbers,
@@ -55,7 +52,6 @@ export function EditTabContent({
 	actionsRef,
 	resource,
 	onApplyProfile,
-	onExampleSelect,
 }: EditTabContentProps) {
 	const getStructureDefinitions = useGetStructureDefinitions();
 	const expandValueSet = useExpandValueSet();
@@ -104,19 +100,16 @@ export function EditTabContent({
 							getStructureDefinitions={getStructureDefinitions}
 							expandValueSet={expandValueSet}
 							trailingActions={
-								<>
-									{extraTrailingActions}
-									{!isProfileOpen && (
-										<HSComp.Toggle
-											variant="outline"
-											pressed={isProfileOpen}
-											onPressedChange={handleToggleProfile}
-										>
-											<Lucide.PanelRightIcon className="w-4 h-4" />
-											Profiles & Examples
-										</HSComp.Toggle>
-									)}
-								</>
+								!isProfileOpen && (
+									<HSComp.Toggle
+										variant="outline"
+										pressed={isProfileOpen}
+										onPressedChange={handleToggleProfile}
+									>
+										<Lucide.PanelRightIcon className="w-4 h-4" />
+										Profile
+									</HSComp.Toggle>
+								)
 							}
 						/>
 					</HSComp.ResizablePanel>
@@ -147,7 +140,6 @@ export function EditTabContent({
 							onOpenPanel={() => setIsProfileOpen(true)}
 							resource={resource}
 							onApplyProfile={onApplyProfile}
-							onExampleSelect={onExampleSelect}
 						/>
 					</HSComp.ResizablePanel>
 				</>
