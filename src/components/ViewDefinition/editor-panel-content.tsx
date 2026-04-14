@@ -25,7 +25,6 @@ import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
-import { FromExampleButton } from "../ResourceEditor/from-example";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
 import {
@@ -106,8 +105,6 @@ export const EditorHeaderMenu = ({
 	onTogglePreview,
 	isPreviewOpen,
 	hasDeidentExtensions,
-	isNew,
-	onExampleSelect,
 }: {
 	onSave: () => void;
 	onRun: () => void;
@@ -115,8 +112,6 @@ export const EditorHeaderMenu = ({
 	onTogglePreview: () => void;
 	isPreviewOpen: boolean;
 	hasDeidentExtensions?: boolean;
-	isNew?: boolean;
-	onExampleSelect?: (resource: Record<string, unknown>) => void;
 }) => {
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const mode = useToolbarMode(containerRef);
@@ -251,14 +246,8 @@ export const EditorHeaderMenu = ({
 					</Tooltip>
 				</div>
 			)}
-			<div className="flex items-center gap-2 px-2">
-				{isNew && onExampleSelect && (
-					<FromExampleButton
-						resourceType="ViewDefinition"
-						onSelect={onExampleSelect}
-					/>
-				)}
-				{!isPreviewOpen && (
+			{!isPreviewOpen && (
+				<div className="flex items-center gap-1 px-2">
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<HSComp.Toggle
@@ -272,8 +261,8 @@ export const EditorHeaderMenu = ({
 						</TooltipTrigger>
 						{mode !== "full" && <TooltipContent>Instances</TooltipContent>}
 					</Tooltip>
-				)}
-			</div>
+				</div>
+			)}
 		</div>
 	);
 };
@@ -636,7 +625,6 @@ export const EditorPanelContent = ({
 }) => {
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
-	const [formKey, setFormKey] = React.useState(0);
 
 	const hasDeidentExtensions = React.useMemo(() => {
 		const DEIDENT_URL =
@@ -749,27 +737,17 @@ export const EditorPanelContent = ({
 						onTogglePreview={onTogglePreview}
 						isPreviewOpen={isPreviewOpen}
 						hasDeidentExtensions={hasDeidentExtensions}
-						isNew={!viewDefinitionContext.originalId}
-						onExampleSelect={(resource) => {
-							const vd = {
-								...resource,
-								resourceType: "ViewDefinition",
-							} as ViewDefinition;
-							viewDefinitionContext.setViewDefinition(vd);
-							viewDefinitionContext.setIsDirty(true);
-							setFormKey((k) => k + 1);
-						}}
 					/>
 					<div
 						className={`flex-1 min-h-0 overflow-auto ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
 					>
 						{isPreviewOpen ? (
 							<div className="px-2.5 py-1">
-								<FormTabContent key={formKey} actionsRef={actionsRef} />
+								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						) : (
 							<div className="min-h-full bg-bg-primary px-2.5 py-3">
-								<FormTabContent key={formKey} actionsRef={actionsRef} />
+								<FormTabContent actionsRef={actionsRef} />
 							</div>
 						)}
 					</div>

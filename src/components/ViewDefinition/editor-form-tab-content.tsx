@@ -66,7 +66,7 @@ type DeIdentMethod =
 	| "keep"
 	| "cryptoHash"
 	| "dateshift"
-	| "dateshiftSafeHarbor"
+	| "birthDateSafeHarbor"
 	| "encrypt"
 	| "substitute"
 	| "perturb"
@@ -107,10 +107,10 @@ const DEIDENT_METHODS: {
 			"Shift dates by a deterministic offset per resource (±1–50 days)",
 	},
 	{
-		value: "dateshiftSafeHarbor",
-		label: "Date Shift (Safe Harbor)",
+		value: "birthDateSafeHarbor",
+		label: "Birth Date (Safe Harbor)",
 		description:
-			"Date shift that redacts values indicating age over 89 (HIPAA Safe Harbor)",
+			"For Patient.birthDate only — date shift that redacts when age over 89 (HIPAA Safe Harbor)",
 	},
 	{
 		value: "encrypt",
@@ -188,7 +188,7 @@ function buildDeIdentExtension(config: DeIdentConfig | undefined):
 		subs.push({ url: "cryptoHashKey", valueString: config.cryptoHashKey });
 	if (
 		(config.method === "dateshift" ||
-			config.method === "dateshiftSafeHarbor") &&
+			config.method === "birthDateSafeHarbor") &&
 		config.dateShiftKey
 	)
 		subs.push({ url: "dateShiftKey", valueString: config.dateShiftKey });
@@ -532,7 +532,7 @@ function isMissingDeidentParam(config: DeIdentConfig | undefined): boolean {
 		case "cryptoHash":
 			return isEmpty(config.cryptoHashKey);
 		case "dateshift":
-		case "dateshiftSafeHarbor":
+		case "birthDateSafeHarbor":
 			return isEmpty(config.dateShiftKey);
 		case "encrypt":
 			return isEmpty(config.encryptKey);
@@ -730,7 +730,7 @@ function DeIdentMethodParams({
 				/>
 			);
 		case "dateshift":
-		case "dateshiftSafeHarbor":
+		case "birthDateSafeHarbor":
 			return (
 				<>
 					<Input
@@ -739,7 +739,7 @@ function DeIdentMethodParams({
 						value={config?.dateShiftKey || ""}
 						onChange={(e) => update({ dateShiftKey: e.target.value })}
 					/>
-					{method === "dateshiftSafeHarbor" && (
+					{method === "birthDateSafeHarbor" && (
 						<span className="text-xs text-text-tertiary flex items-center gap-1">
 							<Info size={12} className="shrink-0" />
 							Use on birth date fields only
@@ -868,7 +868,7 @@ function DeIdentPopover({
 		: undefined;
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={setOpen} modal>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>

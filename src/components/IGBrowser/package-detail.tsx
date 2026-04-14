@@ -18,19 +18,16 @@ import {
 	type RefObject,
 	useCallback,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
-import { type ExampleEntry, fetchExamples } from "../../api/examples";
 import * as Utils from "../../api/utils";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useWebMCPPackageDetail } from "../../webmcp/package-detail";
 import type { PackageDetailActions } from "../../webmcp/package-detail-context";
-import { EmptyState } from "../empty-state";
 
 type Installation = {
 	intention?: string;
@@ -959,199 +956,6 @@ function CanonicalsContent({
 	);
 }
 
-function ExamplesContent({ packageId }: { packageId: string }) {
-	const client = useAidboxClient();
-	const navigate = useNavigate();
-	const { q, page: urlPage } = useSearch({ from: "/ig/$packageId/" });
-	const substring = q ?? "";
-	const page = urlPage ?? 1;
-	const [search, setSearch] = useState(substring);
-	const [pkgName, pkgVersion] = useMemo(() => {
-		const idx = packageId.indexOf("#");
-		return idx >= 0
-			? [packageId.slice(0, idx), packageId.slice(idx + 1)]
-			: [packageId, undefined];
-	}, [packageId]);
-
-	useEffect(() => {
-		setSearch(substring);
-	}, [substring]);
-
-	const debouncedNavigate = useDebounce((value: string) => {
-		navigate({
-			from: "/ig/$packageId/",
-			search: (prev) => ({
-				...prev,
-				q: value || undefined,
-				page: undefined,
-			}),
-		});
-	}, 300);
-
-	const handleSearchChange = (value: string) => {
-		setSearch(value);
-		debouncedNavigate(value);
-	};
-
-	const setPage = (p: number) => {
-		navigate({
-			from: "/ig/$packageId/",
-			search: (prev) => ({
-				...prev,
-				page: p === 1 ? undefined : p,
-			}),
-		});
-	};
-
-	const { data: allExamples, isLoading } = useQuery<ExampleEntry[]>({
-		queryKey: ["ig-examples-all"],
-		staleTime: 5 * 60 * 1000,
-		queryFn: () => fetchExamples(client),
-	});
-
-	const packageExamples = useMemo(() => {
-		if (!allExamples) return [];
-		const matched = allExamples.filter(
-			(e) =>
-				e.package === pkgName &&
-				(pkgVersion === undefined || e["package-version"] === pkgVersion),
-		);
-		const seen = new Set<string>();
-		return matched.filter((e) => {
-			const key = `${e["resource-type"]}/${e["resource-id"] ?? e.id}`;
-			if (seen.has(key)) return false;
-			seen.add(key);
-			return true;
-		});
-	}, [allExamples, pkgName, pkgVersion]);
-
-	const filteredExamples = useMemo(() => {
-		if (!substring) return packageExamples;
-		const tokens = substring.toLowerCase().split(/\s+/);
-		return packageExamples.filter((e) => {
-			const hay =
-				`${e["resource-type"] ?? ""} ${e["resource-id"] ?? ""} ${e.name ?? ""}`.toLowerCase();
-			return tokens.every((t) => hay.includes(t));
-		});
-	}, [packageExamples, substring]);
-
-	const totalPages = Math.ceil(filteredExamples.length / PAGE_SIZE);
-	const pageExamples = useMemo(
-		() => filteredExamples.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-		[filteredExamples, page],
-	);
-
-	return (
-		<div className="flex flex-col h-full min-h-0">
-			<div className="flex gap-4 items-center px-4 py-3 border-b border-border-secondary flex-none">
-				<HSComp.Input
-					type="text"
-					className="flex-1 bg-bg-primary"
-					placeholder="Search by resource type or id"
-					autoFocus
-					value={search}
-					onChange={(e) => handleSearchChange(e.target.value)}
-					rightSlot={
-						search && (
-							<HSComp.IconButton
-								icon={<X />}
-								aria-label="Clear"
-								variant="link"
-								onClick={() => handleSearchChange("")}
-							/>
-						)
-					}
-				/>
-			</div>
-			{!isLoading && packageExamples.length === 0 ? (
-				<EmptyState
-					title="No examples"
-					description="This package does not contain any example resources"
-					grayscale
-				/>
-			) : (
-				<div className="grow min-h-0 overflow-auto">
-					<HSComp.Table zebra className="typo-code w-full">
-						<HSComp.TableHeader className="sticky top-0 z-10">
-							<HSComp.TableRow>
-								<HSComp.TableHead className="pl-7! w-[1%] whitespace-nowrap">
-									Resource Type
-								</HSComp.TableHead>
-								<HSComp.TableHead>Resource ID</HSComp.TableHead>
-							</HSComp.TableRow>
-						</HSComp.TableHeader>
-						<HSComp.TableBody>
-							{isLoading
-								? Array.from({ length: 30 }, (_, i) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
-										<HSComp.TableRow key={i} zebra index={i}>
-											<HSComp.TableCell className="pl-7!">
-												<HSComp.Skeleton
-													className="h-5"
-													style={{ width: `${80 + ((i * 23) % 60)}px` }}
-												/>
-											</HSComp.TableCell>
-											<HSComp.TableCell>
-												<HSComp.Skeleton
-													className="h-5"
-													style={{ width: `${120 + ((i * 31) % 150)}px` }}
-												/>
-											</HSComp.TableCell>
-										</HSComp.TableRow>
-									))
-								: pageExamples.map((item, index) => (
-										<HSComp.TableRow
-											key={item.id}
-											zebra
-											index={index}
-											className="cursor-pointer"
-											onClick={() =>
-												navigate({
-													to: "/ig/$packageId/example/$resourceType/$exampleId",
-													params: {
-														packageId,
-														resourceType: item["resource-type"] ?? "Unknown",
-														exampleId: item.id,
-													},
-												})
-											}
-										>
-											<HSComp.TableCell className="text-text-secondary text-sm pl-7!">
-												{item["resource-type"]}
-											</HSComp.TableCell>
-											<HSComp.TableCell className="text-text-primary text-sm">
-												<Link
-													to="/ig/$packageId/example/$resourceType/$exampleId"
-													params={{
-														packageId,
-														resourceType: item["resource-type"] ?? "Unknown",
-														exampleId: item.id,
-													}}
-													className="text-text-link hover:underline"
-													onClick={(e) => e.stopPropagation()}
-												>
-													{item["resource-id"] ?? item.id}
-												</Link>
-											</HSComp.TableCell>
-										</HSComp.TableRow>
-									))}
-						</HSComp.TableBody>
-					</HSComp.Table>
-				</div>
-			)}
-			<div className="flex items-center justify-end border-t bg-bg-secondary px-4 h-10 flex-none">
-				{totalPages > 1 && (
-					<PaginationPages
-						currentPage={page}
-						totalPages={totalPages}
-						onPageChange={setPage}
-					/>
-				)}
-			</div>
-		</div>
-	);
-}
-
 function LoadingSkeleton() {
 	return (
 		<div className="p-4 flex flex-col gap-3">
@@ -1210,13 +1014,7 @@ export function PackageDetail() {
 		key: IG_TAB_KEY,
 		defaultValue: "canonicals",
 	});
-	const isExamplesPackage =
-		data?.type === "fhir.examples" || data?.type === "Examples";
-	const effectiveTab = tab ?? storedTab;
-	const currentTab =
-		isExamplesPackage && effectiveTab === "canonicals"
-			? "examples"
-			: effectiveTab;
+	const currentTab = tab ?? storedTab;
 
 	const switchTab = (v: string) => {
 		setStoredTab(v);
@@ -1224,13 +1022,8 @@ export function PackageDetail() {
 			from: "/ig/$packageId/",
 			search: (prev) => ({
 				...prev,
-				tab: (v === "canonicals" ? undefined : v) as
-					| "package-info"
-					| "examples"
-					| undefined,
+				tab: (v === "canonicals" ? undefined : v) as "package-info" | undefined,
 				view: v === "package-info" ? prev.view : undefined,
-				q: undefined,
-				page: undefined,
 			}),
 			replace: true,
 		});
@@ -1312,12 +1105,7 @@ export function PackageDetail() {
 		>
 			<div className="flex items-center bg-bg-primary flex-none border-b border-border-secondary">
 				<HSComp.TabsList className="pl-4">
-					{!isExamplesPackage && (
-						<HSComp.TabsTrigger value="canonicals">
-							Canonicals
-						</HSComp.TabsTrigger>
-					)}
-					<HSComp.TabsTrigger value="examples">Examples</HSComp.TabsTrigger>
+					<HSComp.TabsTrigger value="canonicals">Canonicals</HSComp.TabsTrigger>
 					<HSComp.TabsTrigger value="package-info">
 						Package Info
 					</HSComp.TabsTrigger>
@@ -1328,12 +1116,6 @@ export function PackageDetail() {
 				className="grow min-h-0 flex flex-col"
 			>
 				<CanonicalsContent packageId={packageId} actionsRef={actionsRef} />
-			</HSComp.TabsContent>
-			<HSComp.TabsContent
-				value="examples"
-				className="grow min-h-0 flex flex-col"
-			>
-				<ExamplesContent packageId={packageId} />
 			</HSComp.TabsContent>
 			<HSComp.TabsContent value="package-info" className="overflow-auto">
 				{isLoading ? (
