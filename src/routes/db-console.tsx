@@ -966,10 +966,13 @@ function DbConsolePage() {
 												autocommit={autocommit}
 												onAutocommitChange={setAutocommit}
 											/>
-											<ReadOnlyToggle
-												readOnly={readOnly}
-												onReadOnlyChange={setReadOnly}
-											/>
+											{/* Read-only toggle hidden — keep state wired so behavior stays on the default (read-write). Re-enable when product decides to expose it. */}
+											{false && (
+												<ReadOnlyToggle
+													readOnly={readOnly}
+													onReadOnlyChange={setReadOnly}
+												/>
+											)}
 											<AsyncToggle
 												async={asyncMode}
 												onAsyncChange={setAsyncMode}
