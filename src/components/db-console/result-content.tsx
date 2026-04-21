@@ -506,6 +506,38 @@ export function ReadOnlyToggle({
 	);
 }
 
+export function AsyncToggle({
+	async,
+	onAsyncChange,
+}: {
+	async: boolean;
+	onAsyncChange: (next: boolean) => void;
+}) {
+	return (
+		<Tooltip delayDuration={300}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="link"
+					className={`rounded-full px-2.5 h-6 ${
+						async
+							? "text-text-link bg-bg-tertiary"
+							: "text-text-secondary bg-bg-tertiary"
+					}`}
+					onClick={() => onAsyncChange(!async)}
+				>
+					<span className="text-text-tertiary uppercase">Mode</span>
+					<span>{async ? "Background" : "Foreground"}</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				{async
+					? "Query runs server-side; UI polls for status. Closing the tab does not stop it."
+					: "Query runs synchronously; closing the tab aborts it."}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
 export function ExportDropdown({
 	results,
 	disabled,

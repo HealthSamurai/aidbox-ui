@@ -33,6 +33,7 @@ import {
 	SqlLeftMenuToggle,
 } from "../components/db-console/left-menu";
 import {
+	AsyncToggle,
 	AutocommitToggle,
 	LimitDropdown,
 	ReadOnlyToggle,
@@ -63,20 +64,14 @@ import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "SQL console";
 
-async function fetchBlock(
-	baseUrl: string,
-	block: string,
-	limit: number | null,
-	signal: AbortSignal,
-	opts: {
-		autocommit: boolean;
-		timeoutSec: number | null;
-		readOnly: boolean;
-		queryId: string;
-	},
-): Promise<QueryResultItem[]> {
-	const body: { query: string; limit?: number } = { query: block };
-	if (limit !== null) body.limit = limit;
+type SqlRunOpts = {
+	autocommit: boolean;
+	timeoutSec: number | null;
+	readOnly: boolean;
+	queryId: string;
+};
+
+function buildSqlHeaders(opts: SqlRunOpts): Record<string, string> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 		Accept: "application/json",
@@ -86,6 +81,43 @@ async function fetchBlock(
 	if (opts.timeoutSec !== null)
 		headers["X-Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
 	if (opts.readOnly) headers["X-Aidbox-Sql-Read-Only"] = "true";
+	return headers;
+}
+
+async function fetchBlock(
+	baseUrl: string,
+	block: string,
+	limit: number | null,
+	signal: AbortSignal,
+	opts: SqlRunOpts,
+): Promise<QueryResultItem[]> {
+	const body: { query: string; limit?: number } = { query: block };
+	if (limit !== null) body.limit = limit;
+	const response = await fetch(`${baseUrl}/$notebook-psql`, {
+		method: "POST",
+		headers: buildSqlHeaders(opts),
+		credentials: "include",
+		body: JSON.stringify(body),
+		signal,
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`HTTP ${response.status}: ${text}`);
+	}
+	return transformToQueryResultItems(await response.json());
+}
+
+async function kickOffAsync(
+	baseUrl: string,
+	block: string,
+	limit: number | null,
+	signal: AbortSignal,
+	opts: SqlRunOpts,
+): Promise<string> {
+	const body: { query: string; limit?: number } = { query: block };
+	if (limit !== null) body.limit = limit;
+	const headers = buildSqlHeaders(opts);
+	headers["X-Aidbox-Sql-Async"] = "true";
 	const response = await fetch(`${baseUrl}/$notebook-psql`, {
 		method: "POST",
 		headers,
@@ -97,7 +129,44 @@ async function fetchBlock(
 		const text = await response.text();
 		throw new Error(`HTTP ${response.status}: ${text}`);
 	}
-	return transformToQueryResultItems(await response.json());
+	const json = (await response.json()) as { "operation-id"?: string };
+	const id = json["operation-id"];
+	if (!id) throw new Error("Missing operation-id in async kick-off response");
+	return id;
+}
+
+type AsyncStatus =
+	| { status: "in-progress" }
+	| { status: "completed"; result: unknown }
+	| { status: "failed"; error: string }
+	| { status: "not-found" };
+
+async function fetchAsyncStatus(
+	baseUrl: string,
+	operationId: string,
+	signal: AbortSignal,
+): Promise<AsyncStatus> {
+	const response = await fetch(
+		`${baseUrl}/$psql/operations/${encodeURIComponent(operationId)}`,
+		{
+			method: "GET",
+			headers: { Accept: "application/json" },
+			credentials: "include",
+			signal,
+		},
+	);
+	if (response.status === 404) return { status: "not-found" };
+	return (await response.json()) as AsyncStatus;
+}
+
+async function cancelAsync(
+	baseUrl: string,
+	operationId: string,
+): Promise<void> {
+	await fetch(
+		`${baseUrl}/$psql/operations/${encodeURIComponent(operationId)}`,
+		{ method: "DELETE", credentials: "include" },
+	);
 }
 
 const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
@@ -247,6 +316,11 @@ function DbConsolePage() {
 		defaultValue: false,
 		getInitialValueInEffect: false,
 	});
+	const [asyncMode, setAsyncMode] = useLocalStorage<boolean>({
+		key: "db-console-async-mode",
+		defaultValue: false,
+		getInitialValueInEffect: false,
+	});
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
@@ -280,9 +354,14 @@ function DbConsolePage() {
 	const readOnlyRef = useRef(readOnly);
 	readOnlyRef.current = readOnly;
 
+	const asyncModeRef = useRef(asyncMode);
+	asyncModeRef.current = asyncMode;
+
 	const cancelledTabRef = useRef<string | null>(null);
 	const runningQueryIdRef = useRef<string | null>(null);
+	const runningOperationIdRef = useRef<string | null>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const handleQueryChange = useCallback(
 		(value: string) => {
@@ -301,6 +380,60 @@ function DbConsolePage() {
 		});
 	}, []);
 
+	const stopPolling = useCallback(() => {
+		if (pollTimeoutRef.current !== null) {
+			clearTimeout(pollTimeoutRef.current);
+			pollTimeoutRef.current = null;
+		}
+	}, []);
+
+	const pollAsync = useCallback(
+		(tabId: string, operationId: string, queryToSave: string) => {
+			const baseUrl = client.getBaseUrl();
+			const tick = async () => {
+				if (cancelledTabRef.current === tabId) return;
+				try {
+					const status = await fetchAsyncStatus(
+						baseUrl,
+						operationId,
+						new AbortController().signal,
+					);
+					if (cancelledTabRef.current === tabId) return;
+					if (status.status === "in-progress") {
+						pollTimeoutRef.current = setTimeout(tick, 1000);
+						return;
+					}
+					stopPolling();
+					runningOperationIdRef.current = null;
+					setIsLoading(false);
+					if (status.status === "completed") {
+						const items = transformToQueryResultItems(
+							status.result as Parameters<
+								typeof transformToQueryResultItems
+							>[0],
+						);
+						if (!items.some((item) => item.error)) {
+							saveSqlHistory(queryToSave, queryClient, client);
+						}
+						updateTabResult(tabId, { results: items, error: null });
+					} else if (status.status === "failed") {
+						updateTabResult(tabId, { results: null, error: status.error });
+					} else {
+						updateTabResult(tabId, {
+							results: null,
+							error: "Async operation not found",
+						});
+					}
+				} catch {
+					// transient network error — keep polling
+					pollTimeoutRef.current = setTimeout(tick, 1000);
+				}
+			};
+			tick();
+		},
+		[client, queryClient, stopPolling, updateTabResult],
+	);
+
 	const executeQuery = useCallback(
 		async (overrideQuery?: string) => {
 			if (overrideQuery !== undefined) {
@@ -316,29 +449,48 @@ function DbConsolePage() {
 			}
 
 			abortControllerRef.current?.abort();
+			stopPolling();
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
 
 			const queryId = generateId();
 			cancelledTabRef.current = null;
 			runningQueryIdRef.current = queryId;
+			runningOperationIdRef.current = null;
 			setIsLoading(true);
 			const queryToSave = queryRef.current;
 			updateTabResult(tabId, { results: null, error: null });
 
+			const runOpts: SqlRunOpts = {
+				autocommit: autocommitRef.current,
+				timeoutSec: timeoutRef.current,
+				readOnly: readOnlyRef.current,
+				queryId,
+			};
+
 			try {
 				const baseUrl = client.getBaseUrl();
+
+				if (asyncModeRef.current) {
+					const operationId = await kickOffAsync(
+						baseUrl,
+						rawQuery,
+						rowLimitRef.current,
+						controller.signal,
+						runOpts,
+					);
+					if (cancelledTabRef.current === tabId) return;
+					runningOperationIdRef.current = operationId;
+					pollAsync(tabId, operationId, queryToSave);
+					return;
+				}
+
 				const allItems = await fetchBlock(
 					baseUrl,
 					rawQuery,
 					rowLimitRef.current,
 					controller.signal,
-					{
-						autocommit: autocommitRef.current,
-						timeoutSec: timeoutRef.current,
-						readOnly: readOnlyRef.current,
-						queryId,
-					},
+					runOpts,
 				);
 
 				if (cancelledTabRef.current === tabId) return;
@@ -356,12 +508,19 @@ function DbConsolePage() {
 				updateTabResult(tabId, { results: null, error: errorMsg });
 			} finally {
 				runningQueryIdRef.current = null;
-				if (cancelledTabRef.current !== tabId) {
+				if (!asyncModeRef.current && cancelledTabRef.current !== tabId) {
 					setIsLoading(false);
 				}
 			}
 		},
-		[client, queryClient, handleQueryChange, updateTabResult],
+		[
+			client,
+			queryClient,
+			handleQueryChange,
+			updateTabResult,
+			pollAsync,
+			stopPolling,
+		],
 	);
 
 	const cancelQuery = useCallback(async () => {
@@ -370,26 +529,32 @@ function DbConsolePage() {
 
 		abortControllerRef.current?.abort();
 		abortControllerRef.current = null;
+		stopPolling();
 
 		const queryId = runningQueryIdRef.current;
+		const operationId = runningOperationIdRef.current;
 		cancelledTabRef.current = tabId;
 		runningQueryIdRef.current = null;
+		runningOperationIdRef.current = null;
 		setIsLoading(false);
 		updateTabResult(tabId, { results: null, error: "Query cancelled" });
 
-		if (queryId) {
-			try {
+		const baseUrl = client.getBaseUrl();
+		try {
+			if (operationId) {
+				await cancelAsync(baseUrl, operationId);
+			} else if (queryId) {
 				await client.rawRequest({
 					method: "POST",
 					url: "/$psql-cancel",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ "query-id": queryId }),
 				});
-			} catch {
-				// best-effort cancel
 			}
+		} catch {
+			// best-effort cancel
 		}
-	}, [client, updateTabResult]);
+	}, [client, stopPolling, updateTabResult]);
 
 	const { data: historyData } = useSqlHistory();
 
@@ -802,6 +967,10 @@ function DbConsolePage() {
 											<ReadOnlyToggle
 												readOnly={readOnly}
 												onReadOnlyChange={setReadOnly}
+											/>
+											<AsyncToggle
+												async={asyncMode}
+												onAsyncChange={setAsyncMode}
 											/>
 										</div>
 									</div>
