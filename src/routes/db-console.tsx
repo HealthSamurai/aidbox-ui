@@ -1,3 +1,4 @@
+import { indentWithTab } from "@codemirror/commands";
 import { Prec } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import {
@@ -674,6 +675,7 @@ function DbConsolePage() {
 							return true;
 						},
 					},
+					indentWithTab,
 				]),
 			),
 		],
