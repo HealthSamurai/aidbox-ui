@@ -250,6 +250,9 @@ function QueryResult({
 }) {
 	const rows = result.result ?? [];
 	const columns = extractColumns(rows);
+	const isExplain =
+		columns.length === 1 && columns[0]?.toLowerCase() === "query plan";
+	const explainColumn = isExplain ? columns[0] : undefined;
 
 	if (result.error) {
 		return (
@@ -285,6 +288,12 @@ function QueryResult({
 						<div className="text-lg mb-2">No results</div>
 						<div className="text-sm">Query returned no rows</div>
 					</div>
+				</div>
+			) : isExplain && explainColumn ? (
+				<div className="flex-1 overflow-auto min-h-0 p-4">
+					<pre className="typo-code whitespace-pre text-text-primary">
+						{rows.map((row) => String(row[explainColumn] ?? "")).join("\n")}
+					</pre>
 				</div>
 			) : viewMode === "list" ? (
 				<div className="flex-1 overflow-auto min-h-0 divide-y divide-border-secondary">
