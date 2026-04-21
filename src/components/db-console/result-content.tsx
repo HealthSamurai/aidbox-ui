@@ -28,7 +28,7 @@ import {
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
-import { LIMIT_PRESETS } from "./utils";
+import { LIMIT_PRESETS, TIMEOUT_PRESETS } from "./utils";
 
 // ── JSON highlighting ──
 
@@ -397,6 +397,80 @@ export function LimitDropdown({
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+export function TimeoutDropdown({
+	timeoutSec,
+	onTimeoutChange,
+}: {
+	timeoutSec: number | null;
+	onTimeoutChange: (timeout: number | null) => void;
+}) {
+	const currentLabel = useMemo(() => {
+		const preset = TIMEOUT_PRESETS.find((p) => p.value === timeoutSec);
+		if (preset) return preset.label;
+		return timeoutSec === null ? "No timeout" : `${timeoutSec}s`;
+	}, [timeoutSec]);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="link"
+					className="text-text-secondary bg-bg-tertiary rounded-full px-2.5 h-6"
+				>
+					<span className="text-text-tertiary uppercase">Timeout</span>
+					<span className="text-text-secondary">{currentLabel}</span>
+					<ChevronDown className="size-3 text-text-tertiary" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start">
+				{TIMEOUT_PRESETS.map((option) => (
+					<DropdownMenuItem
+						key={option.label}
+						onSelect={() => onTimeoutChange(option.value)}
+					>
+						{option.label}
+						{option.value === timeoutSec && (
+							<Check className="ml-auto size-4" />
+						)}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+export function AutocommitToggle({
+	autocommit,
+	onAutocommitChange,
+}: {
+	autocommit: boolean;
+	onAutocommitChange: (next: boolean) => void;
+}) {
+	return (
+		<Tooltip delayDuration={300}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="link"
+					className={`rounded-full px-2.5 h-6 ${
+						autocommit
+							? "text-text-link bg-bg-tertiary"
+							: "text-text-secondary bg-bg-tertiary"
+					}`}
+					onClick={() => onAutocommitChange(!autocommit)}
+				>
+					<span className="text-text-tertiary uppercase">Tx</span>
+					<span>{autocommit ? "Autocommit" : "Transaction"}</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				{autocommit
+					? "Each statement commits immediately. Required for VACUUM, CREATE INDEX CONCURRENTLY."
+					: "Wrap the whole script in a single transaction."}
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 

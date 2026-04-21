@@ -32,7 +32,11 @@ import {
 	SqlLeftMenuContext,
 	SqlLeftMenuToggle,
 } from "../components/db-console/left-menu";
-import { LimitDropdown } from "../components/db-console/result-content";
+import {
+	AutocommitToggle,
+	LimitDropdown,
+	TimeoutDropdown,
+} from "../components/db-console/result-content";
 import { ResultPanel } from "../components/db-console/result-panel";
 import {
 	extractIndexType,
@@ -42,6 +46,7 @@ import {
 	transformToQueryResultItems,
 } from "../components/db-console/tables-view";
 import {
+	DEFAULT_TIMEOUT_SEC,
 	type FunctionsMap,
 	isAidboxError,
 	type SchemaMap,
@@ -62,15 +67,20 @@ async function fetchBlock(
 	block: string,
 	limit: number | null,
 	signal: AbortSignal,
+	opts: { autocommit: boolean; timeoutSec: number | null },
 ): Promise<QueryResultItem[]> {
 	const body: { query: string; limit?: number } = { query: block };
 	if (limit !== null) body.limit = limit;
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+		Accept: "application/json",
+	};
+	if (opts.autocommit) headers["X-Aidbox-Sql-Autocommit"] = "true";
+	if (opts.timeoutSec !== null)
+		headers["X-Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
 	const response = await fetch(`${baseUrl}/$notebook-psql`, {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
+		headers,
 		credentials: "include",
 		body: JSON.stringify(body),
 		signal,
@@ -214,6 +224,16 @@ function DbConsolePage() {
 		defaultValue: 10,
 		getInitialValueInEffect: false,
 	});
+	const [timeoutSec, setTimeoutSec] = useLocalStorage<number | null>({
+		key: "db-console-timeout-sec",
+		defaultValue: DEFAULT_TIMEOUT_SEC,
+		getInitialValueInEffect: false,
+	});
+	const [autocommit, setAutocommit] = useLocalStorage<boolean>({
+		key: "db-console-autocommit",
+		defaultValue: false,
+		getInitialValueInEffect: false,
+	});
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
@@ -237,6 +257,12 @@ function DbConsolePage() {
 
 	const rowLimitRef = useRef(rowLimit);
 	rowLimitRef.current = rowLimit;
+
+	const timeoutRef = useRef(timeoutSec);
+	timeoutRef.current = timeoutSec;
+
+	const autocommitRef = useRef(autocommit);
+	autocommitRef.current = autocommit;
 
 	const cancelledTabRef = useRef<string | null>(null);
 	const runningQueryRef = useRef<string | null>(null);
@@ -290,6 +316,10 @@ function DbConsolePage() {
 					rawQuery,
 					rowLimitRef.current,
 					controller.signal,
+					{
+						autocommit: autocommitRef.current,
+						timeoutSec: timeoutRef.current,
+					},
 				);
 
 				if (cancelledTabRef.current === tabId) return;
@@ -740,10 +770,18 @@ function DbConsolePage() {
 												</Tooltip>
 											)}
 										</div>
-										<div>
+										<div className="flex items-center gap-2">
 											<LimitDropdown
 												rowLimit={rowLimit}
 												onRowLimitChange={setRowLimit}
+											/>
+											<TimeoutDropdown
+												timeoutSec={timeoutSec}
+												onTimeoutChange={setTimeoutSec}
+											/>
+											<AutocommitToggle
+												autocommit={autocommit}
+												onAutocommitChange={setAutocommit}
 											/>
 										</div>
 									</div>
