@@ -309,7 +309,7 @@ function DbConsolePage() {
 	});
 	const [autocommit, setAutocommit] = useLocalStorage<boolean>({
 		key: "db-console-autocommit",
-		defaultValue: false,
+		defaultValue: true,
 		getInitialValueInEffect: false,
 	});
 	const [readOnly, setReadOnly] = useLocalStorage<boolean>({
