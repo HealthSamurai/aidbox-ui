@@ -11,13 +11,6 @@ export type FunctionsMap = Record<string, FunctionEntry[]>;
 
 export const LIMIT_PRESETS = [10, 100, 1000];
 
-export function splitSqlStatements(query: string): string[] {
-	return query
-		.split(/\n----\n/)
-		.map((s) => s.trim())
-		.filter(Boolean);
-}
-
 export function isAidboxError(
 	err: unknown,
 ): err is { response: { text(): Promise<string> } } {

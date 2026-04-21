@@ -45,7 +45,6 @@ import {
 	type FunctionsMap,
 	isAidboxError,
 	type SchemaMap,
-	splitSqlStatements,
 } from "../components/db-console/utils";
 import { useLocalStorage } from "../hooks";
 import { useVimMode } from "../shared/vim-mode";
@@ -286,20 +285,14 @@ function DbConsolePage() {
 
 			try {
 				const baseUrl = client.getBaseUrl();
-				const blocks = splitSqlStatements(rawQuery);
-				const allItems: QueryResultItem[] = [];
+				const allItems = await fetchBlock(
+					baseUrl,
+					rawQuery,
+					rowLimitRef.current,
+					controller.signal,
+				);
 
-				for (const block of blocks) {
-					if (cancelledTabRef.current === tabId) return;
-					allItems.push(
-						...(await fetchBlock(
-							baseUrl,
-							block,
-							rowLimitRef.current,
-							controller.signal,
-						)),
-					);
-				}
+				if (cancelledTabRef.current === tabId) return;
 
 				if (!allItems.some((item) => item.error)) {
 					saveSqlHistory(queryToSave, queryClient, client);
