@@ -474,6 +474,38 @@ export function AutocommitToggle({
 	);
 }
 
+export function ReadOnlyToggle({
+	readOnly,
+	onReadOnlyChange,
+}: {
+	readOnly: boolean;
+	onReadOnlyChange: (next: boolean) => void;
+}) {
+	return (
+		<Tooltip delayDuration={300}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="link"
+					className={`rounded-full px-2.5 h-6 ${
+						readOnly
+							? "text-text-link bg-bg-tertiary"
+							: "text-text-secondary bg-bg-tertiary"
+					}`}
+					onClick={() => onReadOnlyChange(!readOnly)}
+				>
+					<span className="text-text-tertiary uppercase">RO</span>
+					<span>{readOnly ? "Read-only" : "Read-write"}</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				{readOnly
+					? "Writes and DDL rejected by the server."
+					: "Statements can modify data and schema."}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
 export function ExportDropdown({
 	results,
 	disabled,

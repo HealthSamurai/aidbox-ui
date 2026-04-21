@@ -35,6 +35,7 @@ import {
 import {
 	AutocommitToggle,
 	LimitDropdown,
+	ReadOnlyToggle,
 	TimeoutDropdown,
 } from "../components/db-console/result-content";
 import { ResultPanel } from "../components/db-console/result-panel";
@@ -67,7 +68,11 @@ async function fetchBlock(
 	block: string,
 	limit: number | null,
 	signal: AbortSignal,
-	opts: { autocommit: boolean; timeoutSec: number | null },
+	opts: {
+		autocommit: boolean;
+		timeoutSec: number | null;
+		readOnly: boolean;
+	},
 ): Promise<QueryResultItem[]> {
 	const body: { query: string; limit?: number } = { query: block };
 	if (limit !== null) body.limit = limit;
@@ -78,6 +83,7 @@ async function fetchBlock(
 	if (opts.autocommit) headers["X-Aidbox-Sql-Autocommit"] = "true";
 	if (opts.timeoutSec !== null)
 		headers["X-Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
+	if (opts.readOnly) headers["X-Aidbox-Sql-Read-Only"] = "true";
 	const response = await fetch(`${baseUrl}/$notebook-psql`, {
 		method: "POST",
 		headers,
@@ -234,6 +240,11 @@ function DbConsolePage() {
 		defaultValue: false,
 		getInitialValueInEffect: false,
 	});
+	const [readOnly, setReadOnly] = useLocalStorage<boolean>({
+		key: "db-console-read-only",
+		defaultValue: false,
+		getInitialValueInEffect: false,
+	});
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
@@ -263,6 +274,9 @@ function DbConsolePage() {
 
 	const autocommitRef = useRef(autocommit);
 	autocommitRef.current = autocommit;
+
+	const readOnlyRef = useRef(readOnly);
+	readOnlyRef.current = readOnly;
 
 	const cancelledTabRef = useRef<string | null>(null);
 	const runningQueryRef = useRef<string | null>(null);
@@ -319,6 +333,7 @@ function DbConsolePage() {
 					{
 						autocommit: autocommitRef.current,
 						timeoutSec: timeoutRef.current,
+						readOnly: readOnlyRef.current,
 					},
 				);
 
@@ -782,6 +797,10 @@ function DbConsolePage() {
 											<AutocommitToggle
 												autocommit={autocommit}
 												onAutocommitChange={setAutocommit}
+											/>
+											<ReadOnlyToggle
+												readOnly={readOnly}
+												onReadOnlyChange={setReadOnly}
 											/>
 										</div>
 									</div>
