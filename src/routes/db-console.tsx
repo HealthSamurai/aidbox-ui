@@ -72,6 +72,7 @@ async function fetchBlock(
 		autocommit: boolean;
 		timeoutSec: number | null;
 		readOnly: boolean;
+		queryId: string;
 	},
 ): Promise<QueryResultItem[]> {
 	const body: { query: string; limit?: number } = { query: block };
@@ -79,6 +80,7 @@ async function fetchBlock(
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 		Accept: "application/json",
+		"X-Aidbox-Sql-Query-Id": opts.queryId,
 	};
 	if (opts.autocommit) headers["X-Aidbox-Sql-Autocommit"] = "true";
 	if (opts.timeoutSec !== null)
@@ -279,7 +281,7 @@ function DbConsolePage() {
 	readOnlyRef.current = readOnly;
 
 	const cancelledTabRef = useRef<string | null>(null);
-	const runningQueryRef = useRef<string | null>(null);
+	const runningQueryIdRef = useRef<string | null>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 
 	const handleQueryChange = useCallback(
@@ -317,8 +319,9 @@ function DbConsolePage() {
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
 
+			const queryId = generateId();
 			cancelledTabRef.current = null;
-			runningQueryRef.current = queryRef.current;
+			runningQueryIdRef.current = queryId;
 			setIsLoading(true);
 			const queryToSave = queryRef.current;
 			updateTabResult(tabId, { results: null, error: null });
@@ -334,6 +337,7 @@ function DbConsolePage() {
 						autocommit: autocommitRef.current,
 						timeoutSec: timeoutRef.current,
 						readOnly: readOnlyRef.current,
+						queryId,
 					},
 				);
 
@@ -351,10 +355,10 @@ function DbConsolePage() {
 				const errorMsg = await extractErrorMessage(err);
 				updateTabResult(tabId, { results: null, error: errorMsg });
 			} finally {
+				runningQueryIdRef.current = null;
 				if (cancelledTabRef.current !== tabId) {
 					setIsLoading(false);
 				}
-				runningQueryRef.current = null;
 			}
 		},
 		[client, queryClient, handleQueryChange, updateTabResult],
@@ -367,22 +371,19 @@ function DbConsolePage() {
 		abortControllerRef.current?.abort();
 		abortControllerRef.current = null;
 
-		const queryText = runningQueryRef.current;
+		const queryId = runningQueryIdRef.current;
 		cancelledTabRef.current = tabId;
-		runningQueryRef.current = null;
+		runningQueryIdRef.current = null;
 		setIsLoading(false);
 		updateTabResult(tabId, { results: null, error: "Query cancelled" });
 
-		if (queryText) {
+		if (queryId) {
 			try {
-				const escaped = queryText.slice(0, 200).replace(/'/g, "''");
 				await client.rawRequest({
 					method: "POST",
-					url: "/$notebook-psql",
+					url: "/$psql-cancel",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						query: `SELECT pg_cancel_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND query LIKE '%${escaped}%' AND pid != pg_backend_pid()`,
-					}),
+					body: JSON.stringify({ "query-id": queryId }),
 				});
 			} catch {
 				// best-effort cancel
