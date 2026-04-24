@@ -136,40 +136,6 @@ async function kickOffAsync(
 	return id;
 }
 
-type AsyncStatus =
-	| { status: "in-progress" }
-	| { status: "completed"; result: unknown }
-	| { status: "failed"; error: string }
-	| { status: "not-found" };
-
-async function fetchAsyncStatus(
-	baseUrl: string,
-	operationId: string,
-	signal: AbortSignal,
-): Promise<AsyncStatus> {
-	const response = await fetch(
-		`${baseUrl}/$psql/operations/${encodeURIComponent(operationId)}`,
-		{
-			method: "GET",
-			headers: { Accept: "application/json" },
-			credentials: "include",
-			signal,
-		},
-	);
-	if (response.status === 404) return { status: "not-found" };
-	return (await response.json()) as AsyncStatus;
-}
-
-async function cancelAsync(
-	baseUrl: string,
-	operationId: string,
-): Promise<void> {
-	await fetch(
-		`${baseUrl}/$psql/operations/${encodeURIComponent(operationId)}`,
-		{ method: "DELETE", credentials: "include" },
-	);
-}
-
 const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
 
 const FUNCTIONS_QUERY = `SELECT n.nspname AS function_schema, p.proname AS function_name, pg_get_function_identity_arguments(p.oid) AS arguments, CASE p.prokind WHEN 'f' THEN 'function' WHEN 'p' THEN 'procedure' WHEN 'a' THEN 'aggregate' WHEN 'w' THEN 'window' END AS function_type, t.typname AS return_type FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_type t ON t.oid = p.prorettype WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY n.nspname, p.proname`;
@@ -187,6 +153,9 @@ export const Route = createFileRoute("/db-console")({
 type TabResultData = {
 	results: QueryResultItem[] | null;
 	error: string | null;
+	// Fire-and-forget async: set once on kick-off, shown as a one-shot
+	// confirmation. No polling, no result surfacing.
+	asyncStarted?: { operationId: string; startedAt: number };
 };
 
 /** Extract a human-readable error message from a caught error. */
@@ -363,6 +332,7 @@ function DbConsolePage() {
 	const currentResult = tabResults.get(selectedTab?.id ?? "");
 	const results = currentResult?.results ?? null;
 	const error = currentResult?.error ?? null;
+	const asyncStarted = currentResult?.asyncStarted;
 
 	const queryRef = useRef(query);
 	queryRef.current = query;
@@ -387,9 +357,7 @@ function DbConsolePage() {
 
 	const cancelledTabRef = useRef<string | null>(null);
 	const runningQueryIdRef = useRef<string | null>(null);
-	const runningOperationIdRef = useRef<string | null>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
-	const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const handleQueryChange = useCallback(
 		(value: string) => {
@@ -408,60 +376,6 @@ function DbConsolePage() {
 		});
 	}, []);
 
-	const stopPolling = useCallback(() => {
-		if (pollTimeoutRef.current !== null) {
-			clearTimeout(pollTimeoutRef.current);
-			pollTimeoutRef.current = null;
-		}
-	}, []);
-
-	const pollAsync = useCallback(
-		(tabId: string, operationId: string, queryToSave: string) => {
-			const baseUrl = client.getBaseUrl();
-			const tick = async () => {
-				if (cancelledTabRef.current === tabId) return;
-				try {
-					const status = await fetchAsyncStatus(
-						baseUrl,
-						operationId,
-						new AbortController().signal,
-					);
-					if (cancelledTabRef.current === tabId) return;
-					if (status.status === "in-progress") {
-						pollTimeoutRef.current = setTimeout(tick, 1000);
-						return;
-					}
-					stopPolling();
-					runningOperationIdRef.current = null;
-					setIsLoading(false);
-					if (status.status === "completed") {
-						const items = transformToQueryResultItems(
-							status.result as Parameters<
-								typeof transformToQueryResultItems
-							>[0],
-						);
-						if (!items.some((item) => item.error)) {
-							saveSqlHistory(queryToSave, queryClient, client);
-						}
-						updateTabResult(tabId, { results: items, error: null });
-					} else if (status.status === "failed") {
-						updateTabResult(tabId, { results: null, error: status.error });
-					} else {
-						updateTabResult(tabId, {
-							results: null,
-							error: "Async operation not found",
-						});
-					}
-				} catch {
-					// transient network error — keep polling
-					pollTimeoutRef.current = setTimeout(tick, 1000);
-				}
-			};
-			tick();
-		},
-		[client, queryClient, stopPolling, updateTabResult],
-	);
-
 	const executeQuery = useCallback(
 		async (overrideQuery?: string) => {
 			if (overrideQuery !== undefined) {
@@ -477,14 +391,12 @@ function DbConsolePage() {
 			}
 
 			abortControllerRef.current?.abort();
-			stopPolling();
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
 
 			const queryId = generateId();
 			cancelledTabRef.current = null;
 			runningQueryIdRef.current = queryId;
-			runningOperationIdRef.current = null;
 			setIsLoading(true);
 			const queryToSave = queryRef.current;
 			updateTabResult(tabId, { results: null, error: null });
@@ -500,6 +412,8 @@ function DbConsolePage() {
 				const baseUrl = client.getBaseUrl();
 
 				if (asyncModeRef.current) {
+					// Fire-and-forget: kick off, confirm, don't poll. Results
+					// live on the server; background jobs execute on their own.
 					const operationId = await kickOffAsync(
 						baseUrl,
 						rawQuery,
@@ -508,8 +422,12 @@ function DbConsolePage() {
 						runOpts,
 					);
 					if (cancelledTabRef.current === tabId) return;
-					runningOperationIdRef.current = operationId;
-					pollAsync(tabId, operationId, queryToSave);
+					saveSqlHistory(queryToSave, queryClient, client);
+					updateTabResult(tabId, {
+						results: null,
+						error: null,
+						asyncStarted: { operationId, startedAt: Date.now() },
+					});
 					return;
 				}
 
@@ -536,19 +454,12 @@ function DbConsolePage() {
 				updateTabResult(tabId, { results: null, error: errorMsg });
 			} finally {
 				runningQueryIdRef.current = null;
-				if (!asyncModeRef.current && cancelledTabRef.current !== tabId) {
+				if (cancelledTabRef.current !== tabId) {
 					setIsLoading(false);
 				}
 			}
 		},
-		[
-			client,
-			queryClient,
-			handleQueryChange,
-			updateTabResult,
-			pollAsync,
-			stopPolling,
-		],
+		[client, queryClient, handleQueryChange, updateTabResult],
 	);
 
 	const cancelQuery = useCallback(async () => {
@@ -557,32 +468,26 @@ function DbConsolePage() {
 
 		abortControllerRef.current?.abort();
 		abortControllerRef.current = null;
-		stopPolling();
 
 		const queryId = runningQueryIdRef.current;
-		const operationId = runningOperationIdRef.current;
 		cancelledTabRef.current = tabId;
 		runningQueryIdRef.current = null;
-		runningOperationIdRef.current = null;
 		setIsLoading(false);
 		updateTabResult(tabId, { results: null, error: "Query cancelled" });
 
-		const baseUrl = client.getBaseUrl();
-		try {
-			if (operationId) {
-				await cancelAsync(baseUrl, operationId);
-			} else if (queryId) {
+		if (queryId) {
+			try {
 				await client.rawRequest({
 					method: "POST",
 					url: "/$psql-cancel",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ "query-id": queryId }),
 				});
+			} catch {
+				// best-effort cancel
 			}
-		} catch {
-			// best-effort cancel
 		}
-	}, [client, stopPolling, updateTabResult]);
+	}, [client, updateTabResult]);
 
 	const { data: historyData } = useSqlHistory();
 
@@ -1023,7 +928,7 @@ function DbConsolePage() {
 								</div>
 							</ResizablePanel>
 
-							{(results || error || isLoading) && (
+							{(results || error || asyncStarted || isLoading) && (
 								<>
 									<ResizableHandle />
 
@@ -1040,6 +945,7 @@ function DbConsolePage() {
 											key={selectedTab?.id}
 											results={results}
 											error={error}
+											asyncStarted={asyncStarted}
 											isLoading={isLoading}
 											onRun={executeQuery}
 											onCancel={cancelQuery}
