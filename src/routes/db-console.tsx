@@ -4,12 +4,16 @@ import { type EditorView, keymap } from "@codemirror/view";
 import {
 	Button,
 	CodeEditor,
-	Label,
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-	RadioGroup,
-	RadioGroupItem,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
@@ -919,138 +923,99 @@ function DbConsolePage() {
 												rowLimit={rowLimit}
 												onRowLimitChange={setRowLimit}
 											/>
-											<Popover>
+											<DropdownMenu>
 												<Tooltip delayDuration={300}>
 													<TooltipTrigger asChild>
-														<PopoverTrigger asChild>
+														<DropdownMenuTrigger asChild>
 															<Button
 																variant="link"
 																className="text-text-secondary bg-bg-tertiary rounded-full px-2 h-6"
 															>
 																<Settings2 className="size-3.5" />
 															</Button>
-														</PopoverTrigger>
+														</DropdownMenuTrigger>
 													</TooltipTrigger>
 													<TooltipContent side="bottom">
 														SQL execution settings
 													</TooltipContent>
 												</Tooltip>
-												<PopoverContent
-													align="start"
-													className="w-72 p-0 divide-y divide-border-secondary"
-												>
-													<section className="p-4 space-y-2">
-														<Label className="typo-label-xs text-text-tertiary uppercase">
-															Timeout
-														</Label>
-														<RadioGroup
-															value={
-																timeoutSec === null
-																	? "none"
-																	: String(timeoutSec)
-															}
-															onValueChange={(v) =>
-																setTimeoutSec(v === "none" ? null : Number(v))
-															}
-															className="gap-1.5"
-														>
-															{TIMEOUT_PRESETS.map((p) => {
-																const val =
-																	p.value === null ? "none" : String(p.value);
-																return (
-																	<Label
-																		key={val}
-																		className="flex items-center gap-2 text-sm cursor-pointer"
-																	>
-																		<RadioGroupItem value={val} />
-																		{p.label}
-																	</Label>
-																);
-															})}
-														</RadioGroup>
-													</section>
+												<DropdownMenuContent align="start" className="w-56">
+													<DropdownMenuSub>
+														<DropdownMenuSubTrigger>
+															<span className="flex-1">Timeout</span>
+															<span className="text-text-tertiary">
+																{TIMEOUT_PRESETS.find(
+																	(p) => p.value === timeoutSec,
+																)?.label ??
+																	(timeoutSec === null
+																		? "No timeout"
+																		: `${timeoutSec}s`)}
+															</span>
+														</DropdownMenuSubTrigger>
+														<DropdownMenuSubContent>
+															<DropdownMenuRadioGroup
+																value={
+																	timeoutSec === null
+																		? "none"
+																		: String(timeoutSec)
+																}
+																onValueChange={(v) =>
+																	setTimeoutSec(v === "none" ? null : Number(v))
+																}
+															>
+																{TIMEOUT_PRESETS.map((p) => {
+																	const val =
+																		p.value === null ? "none" : String(p.value);
+																	return (
+																		<DropdownMenuRadioItem
+																			key={val}
+																			value={val}
+																		>
+																			{p.label}
+																		</DropdownMenuRadioItem>
+																	);
+																})}
+															</DropdownMenuRadioGroup>
+														</DropdownMenuSubContent>
+													</DropdownMenuSub>
 
-													<section className="p-4 space-y-2">
-														<Label className="typo-label-xs text-text-tertiary uppercase">
-															Transaction mode
-														</Label>
-														<RadioGroup
-															value={autocommit ? "autocommit" : "transaction"}
-															onValueChange={(v) =>
-																setAutocommit(v === "autocommit")
-															}
-															className="gap-1.5"
-														>
-															<Label className="flex items-start gap-2 text-sm cursor-pointer">
-																<RadioGroupItem
-																	value="autocommit"
-																	className="mt-0.5"
-																/>
-																<div>
-																	<div>Autocommit</div>
-																	<div className="text-xs text-text-secondary">
-																		Each statement commits immediately. Required
-																		for VACUUM, CREATE INDEX CONCURRENTLY.
-																	</div>
-																</div>
-															</Label>
-															<Label className="flex items-start gap-2 text-sm cursor-pointer">
-																<RadioGroupItem
-																	value="transaction"
-																	className="mt-0.5"
-																/>
-																<div>
-																	<div>Transaction</div>
-																	<div className="text-xs text-text-secondary">
-																		Wrap the whole script in a single
-																		transaction.
-																	</div>
-																</div>
-															</Label>
-														</RadioGroup>
-													</section>
+													<DropdownMenuSeparator />
+													<DropdownMenuLabel className="typo-label-xs text-text-tertiary uppercase">
+														Transaction mode
+													</DropdownMenuLabel>
+													<DropdownMenuRadioGroup
+														value={autocommit ? "autocommit" : "transaction"}
+														onValueChange={(v) =>
+															setAutocommit(v === "autocommit")
+														}
+													>
+														<DropdownMenuRadioItem value="autocommit">
+															Autocommit
+														</DropdownMenuRadioItem>
+														<DropdownMenuRadioItem value="transaction">
+															Transaction
+														</DropdownMenuRadioItem>
+													</DropdownMenuRadioGroup>
 
-													<section className="p-4 space-y-2">
-														<Label className="typo-label-xs text-text-tertiary uppercase">
-															Execution
-														</Label>
-														<RadioGroup
-															value={asyncMode ? "background" : "foreground"}
-															onValueChange={(v) =>
-																setAsyncMode(v === "background")
-															}
-															className="gap-1.5"
-														>
-															<Label className="flex items-start gap-2 text-sm cursor-pointer">
-																<RadioGroupItem
-																	value="foreground"
-																	className="mt-0.5"
-																/>
-																<div>
-																	<div>Foreground</div>
-																	<div className="text-xs text-text-secondary">
-																		Run synchronously; closing the tab aborts
-																		it.
-																	</div>
-																</div>
-															</Label>
-															<Label className="flex items-start gap-2 text-sm cursor-pointer">
-																<RadioGroupItem
-																	value="background"
-																	className="mt-0.5"
-																/>
-																<div>
-																	<div>Background</div>
-																	<div className="text-xs text-text-secondary">
-																		Fire-and-forget on the server. No result
-																		returned to the UI.
-																	</div>
-																</div>
-															</Label>
-														</RadioGroup>
-													</section>
-												</PopoverContent>
-											</Popover>
+													<DropdownMenuSeparator />
+													<DropdownMenuLabel className="typo-label-xs text-text-tertiary uppercase">
+														Execution
+													</DropdownMenuLabel>
+													<DropdownMenuRadioGroup
+														value={asyncMode ? "background" : "foreground"}
+														onValueChange={(v) =>
+															setAsyncMode(v === "background")
+														}
+													>
+														<DropdownMenuRadioItem value="foreground">
+															Foreground
+														</DropdownMenuRadioItem>
+														<DropdownMenuRadioItem value="background">
+															Background
+														</DropdownMenuRadioItem>
+													</DropdownMenuRadioGroup>
+												</DropdownMenuContent>
+											</DropdownMenu>
 										</div>
 									</div>
 									<div className="flex-1 min-h-0">
