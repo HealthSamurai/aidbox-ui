@@ -4,9 +4,12 @@ import { type EditorView, keymap } from "@codemirror/view";
 import {
 	Button,
 	CodeEditor,
+	Label,
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
+	RadioGroup,
+	RadioGroupItem,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
@@ -36,13 +39,7 @@ import {
 	SqlLeftMenuContext,
 	SqlLeftMenuToggle,
 } from "../components/db-console/left-menu";
-import {
-	AsyncToggle,
-	AutocommitToggle,
-	LimitDropdown,
-	ReadOnlyToggle,
-	TimeoutDropdown,
-} from "../components/db-console/result-content";
+import { LimitDropdown } from "../components/db-console/result-content";
 import { ResultPanel } from "../components/db-console/result-panel";
 import {
 	extractIndexType,
@@ -56,6 +53,7 @@ import {
 	type FunctionsMap,
 	isAidboxError,
 	type SchemaMap,
+	TIMEOUT_PRESETS,
 } from "../components/db-console/utils";
 import { useLocalStorage } from "../hooks";
 import { useVimMode } from "../shared/vim-mode";
@@ -318,7 +316,10 @@ function DbConsolePage() {
 		defaultValue: true,
 		getInitialValueInEffect: false,
 	});
-	const [readOnly, setReadOnly] = useLocalStorage<boolean>({
+	// Read-only mode state is wired through to the backend headers but the UI
+	// toggle is hidden for now — see Hide read-only toggle commit. Value stays
+	// at the default (false / read-write).
+	const [readOnly, _setReadOnly] = useLocalStorage<boolean>({
 		key: "db-console-read-only",
 		defaultValue: false,
 		getInitialValueInEffect: false,
@@ -936,27 +937,118 @@ function DbConsolePage() {
 												</Tooltip>
 												<PopoverContent
 													align="start"
-													className="w-auto p-3 flex flex-col gap-2"
+													className="w-72 p-0 divide-y divide-border-secondary"
 												>
-													<TimeoutDropdown
-														timeoutSec={timeoutSec}
-														onTimeoutChange={setTimeoutSec}
-													/>
-													<AutocommitToggle
-														autocommit={autocommit}
-														onAutocommitChange={setAutocommit}
-													/>
-													{/* Read-only toggle hidden — keep state wired so behavior stays on the default (read-write). Re-enable when product decides to expose it. */}
-													{false && (
-														<ReadOnlyToggle
-															readOnly={readOnly}
-															onReadOnlyChange={setReadOnly}
-														/>
-													)}
-													<AsyncToggle
-														async={asyncMode}
-														onAsyncChange={setAsyncMode}
-													/>
+													<section className="p-4 space-y-2">
+														<Label className="typo-label-xs text-text-tertiary uppercase">
+															Timeout
+														</Label>
+														<RadioGroup
+															value={
+																timeoutSec === null
+																	? "none"
+																	: String(timeoutSec)
+															}
+															onValueChange={(v) =>
+																setTimeoutSec(v === "none" ? null : Number(v))
+															}
+															className="gap-1.5"
+														>
+															{TIMEOUT_PRESETS.map((p) => {
+																const val =
+																	p.value === null ? "none" : String(p.value);
+																return (
+																	<Label
+																		key={val}
+																		className="flex items-center gap-2 text-sm cursor-pointer"
+																	>
+																		<RadioGroupItem value={val} />
+																		{p.label}
+																	</Label>
+																);
+															})}
+														</RadioGroup>
+													</section>
+
+													<section className="p-4 space-y-2">
+														<Label className="typo-label-xs text-text-tertiary uppercase">
+															Transaction mode
+														</Label>
+														<RadioGroup
+															value={autocommit ? "autocommit" : "transaction"}
+															onValueChange={(v) =>
+																setAutocommit(v === "autocommit")
+															}
+															className="gap-1.5"
+														>
+															<Label className="flex items-start gap-2 text-sm cursor-pointer">
+																<RadioGroupItem
+																	value="autocommit"
+																	className="mt-0.5"
+																/>
+																<div>
+																	<div>Autocommit</div>
+																	<div className="text-xs text-text-secondary">
+																		Each statement commits immediately. Required
+																		for VACUUM, CREATE INDEX CONCURRENTLY.
+																	</div>
+																</div>
+															</Label>
+															<Label className="flex items-start gap-2 text-sm cursor-pointer">
+																<RadioGroupItem
+																	value="transaction"
+																	className="mt-0.5"
+																/>
+																<div>
+																	<div>Transaction</div>
+																	<div className="text-xs text-text-secondary">
+																		Wrap the whole script in a single
+																		transaction.
+																	</div>
+																</div>
+															</Label>
+														</RadioGroup>
+													</section>
+
+													<section className="p-4 space-y-2">
+														<Label className="typo-label-xs text-text-tertiary uppercase">
+															Execution
+														</Label>
+														<RadioGroup
+															value={asyncMode ? "background" : "foreground"}
+															onValueChange={(v) =>
+																setAsyncMode(v === "background")
+															}
+															className="gap-1.5"
+														>
+															<Label className="flex items-start gap-2 text-sm cursor-pointer">
+																<RadioGroupItem
+																	value="foreground"
+																	className="mt-0.5"
+																/>
+																<div>
+																	<div>Foreground</div>
+																	<div className="text-xs text-text-secondary">
+																		Run synchronously; closing the tab aborts
+																		it.
+																	</div>
+																</div>
+															</Label>
+															<Label className="flex items-start gap-2 text-sm cursor-pointer">
+																<RadioGroupItem
+																	value="background"
+																	className="mt-0.5"
+																/>
+																<div>
+																	<div>Background</div>
+																	<div className="text-xs text-text-secondary">
+																		Fire-and-forget on the server. No result
+																		returned to the UI.
+																	</div>
+																</div>
+															</Label>
+														</RadioGroup>
+													</section>
 												</PopoverContent>
 											</Popover>
 										</div>
