@@ -5,10 +5,9 @@ import {
 	Button,
 	CodeEditor,
 	DropdownMenu,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
@@ -953,29 +952,19 @@ function DbConsolePage() {
 															</span>
 														</DropdownMenuSubTrigger>
 														<DropdownMenuSubContent>
-															<DropdownMenuRadioGroup
-																value={
-																	timeoutSec === null
-																		? "none"
-																		: String(timeoutSec)
-																}
-																onValueChange={(v) =>
-																	setTimeoutSec(v === "none" ? null : Number(v))
-																}
-															>
-																{TIMEOUT_PRESETS.map((p) => {
-																	const val =
-																		p.value === null ? "none" : String(p.value);
-																	return (
-																		<DropdownMenuRadioItem
-																			key={val}
-																			value={val}
-																		>
-																			{p.label}
-																		</DropdownMenuRadioItem>
-																	);
-																})}
-															</DropdownMenuRadioGroup>
+															{TIMEOUT_PRESETS.map((p) => (
+																<DropdownMenuCheckboxItem
+																	key={
+																		p.value === null ? "none" : String(p.value)
+																	}
+																	checked={timeoutSec === p.value}
+																	onCheckedChange={(v) => {
+																		if (v) setTimeoutSec(p.value);
+																	}}
+																>
+																	{p.label}
+																</DropdownMenuCheckboxItem>
+															))}
 														</DropdownMenuSubContent>
 													</DropdownMenuSub>
 
@@ -983,37 +972,43 @@ function DbConsolePage() {
 													<DropdownMenuLabel className="typo-label-xs text-text-tertiary uppercase">
 														Transaction mode
 													</DropdownMenuLabel>
-													<DropdownMenuRadioGroup
-														value={autocommit ? "autocommit" : "transaction"}
-														onValueChange={(v) =>
-															setAutocommit(v === "autocommit")
-														}
+													<DropdownMenuCheckboxItem
+														checked={autocommit}
+														onCheckedChange={(v) => {
+															if (v) setAutocommit(true);
+														}}
 													>
-														<DropdownMenuRadioItem value="autocommit">
-															Autocommit
-														</DropdownMenuRadioItem>
-														<DropdownMenuRadioItem value="transaction">
-															Transaction
-														</DropdownMenuRadioItem>
-													</DropdownMenuRadioGroup>
+														Autocommit
+													</DropdownMenuCheckboxItem>
+													<DropdownMenuCheckboxItem
+														checked={!autocommit}
+														onCheckedChange={(v) => {
+															if (v) setAutocommit(false);
+														}}
+													>
+														Transaction
+													</DropdownMenuCheckboxItem>
 
 													<DropdownMenuSeparator />
 													<DropdownMenuLabel className="typo-label-xs text-text-tertiary uppercase">
 														Execution
 													</DropdownMenuLabel>
-													<DropdownMenuRadioGroup
-														value={asyncMode ? "background" : "foreground"}
-														onValueChange={(v) =>
-															setAsyncMode(v === "background")
-														}
+													<DropdownMenuCheckboxItem
+														checked={!asyncMode}
+														onCheckedChange={(v) => {
+															if (v) setAsyncMode(false);
+														}}
 													>
-														<DropdownMenuRadioItem value="foreground">
-															Foreground
-														</DropdownMenuRadioItem>
-														<DropdownMenuRadioItem value="background">
-															Background
-														</DropdownMenuRadioItem>
-													</DropdownMenuRadioGroup>
+														Foreground
+													</DropdownMenuCheckboxItem>
+													<DropdownMenuCheckboxItem
+														checked={asyncMode}
+														onCheckedChange={(v) => {
+															if (v) setAsyncMode(true);
+														}}
+													>
+														Background
+													</DropdownMenuCheckboxItem>
 												</DropdownMenuContent>
 											</DropdownMenu>
 										</div>
