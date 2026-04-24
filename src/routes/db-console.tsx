@@ -178,6 +178,10 @@ export const Route = createFileRoute("/db-console")({
 	component: DbConsolePage,
 	staticData: { title: TITLE },
 	loader: () => ({ breadCrumb: TITLE }),
+	// Accept `?query=...` so legacy /ui/db?query=... links preload SQL.
+	validateSearch: (search: Record<string, unknown>) => ({
+		query: typeof search.query === "string" ? search.query : undefined,
+	}),
 });
 
 type TabResultData = {
@@ -258,6 +262,7 @@ function DbConsolePage() {
 	const queryClient = useQueryClient();
 	const { schemas, functions } = useDbConsoleData();
 	const vimMode = useVimMode();
+	const search = Route.useSearch();
 
 	const sqlConfig = useMemo<SqlConfig>(
 		() => ({
@@ -273,6 +278,28 @@ function DbConsolePage() {
 		defaultValue: [DEFAULT_SQL_TAB],
 		getInitialValueInEffect: false,
 	});
+
+	// If the page was opened via /u/db-console?query=..., preload a tab with
+	// that SQL. Keeps legacy /ui/db?query=... links working after redirect.
+	const appliedQueryRef = useRef(false);
+	useEffect(() => {
+		if (appliedQueryRef.current) return;
+		const incoming = search.query;
+		if (!incoming) return;
+		appliedQueryRef.current = true;
+		setTabs((prev) => {
+			const existing = prev.find((t) => t.query === incoming);
+			if (existing) {
+				return prev.map((t) => ({ ...t, selected: t.id === existing.id }));
+			}
+			const newTab: SqlTab = {
+				id: generateId(),
+				query: incoming,
+				selected: true,
+			};
+			return [...prev.map((t) => ({ ...t, selected: false })), newTab];
+		});
+	}, [search.query, setTabs]);
 	const [leftMenuOpen, setLeftMenuOpen] = useLocalStorage<boolean>({
 		key: "db-console-left-menu-open",
 		defaultValue: true,

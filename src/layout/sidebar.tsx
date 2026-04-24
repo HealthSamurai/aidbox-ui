@@ -59,7 +59,7 @@ const mainMenuItems: {
 		url: "/db-console",
 		title: "SQL console",
 		link: (
-			<Link to="/db-console">
+			<Link to="/db-console" search={{ query: undefined }}>
 				<Database />
 				SQL console
 			</Link>
