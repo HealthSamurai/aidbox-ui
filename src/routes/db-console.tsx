@@ -4,6 +4,9 @@ import { type EditorView, keymap } from "@codemirror/view";
 import {
 	Button,
 	CodeEditor,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
@@ -15,7 +18,7 @@ import {
 } from "@health-samurai/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlignLeft, PlayIcon, Square } from "lucide-react";
+import { AlignLeft, PlayIcon, Settings2, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
@@ -915,25 +918,47 @@ function DbConsolePage() {
 												rowLimit={rowLimit}
 												onRowLimitChange={setRowLimit}
 											/>
-											<TimeoutDropdown
-												timeoutSec={timeoutSec}
-												onTimeoutChange={setTimeoutSec}
-											/>
-											<AutocommitToggle
-												autocommit={autocommit}
-												onAutocommitChange={setAutocommit}
-											/>
-											{/* Read-only toggle hidden — keep state wired so behavior stays on the default (read-write). Re-enable when product decides to expose it. */}
-											{false && (
-												<ReadOnlyToggle
-													readOnly={readOnly}
-													onReadOnlyChange={setReadOnly}
-												/>
-											)}
-											<AsyncToggle
-												async={asyncMode}
-												onAsyncChange={setAsyncMode}
-											/>
+											<Popover>
+												<Tooltip delayDuration={300}>
+													<TooltipTrigger asChild>
+														<PopoverTrigger asChild>
+															<Button
+																variant="link"
+																className="text-text-secondary bg-bg-tertiary rounded-full px-2 h-6"
+															>
+																<Settings2 className="size-3.5" />
+															</Button>
+														</PopoverTrigger>
+													</TooltipTrigger>
+													<TooltipContent side="bottom">
+														SQL execution settings
+													</TooltipContent>
+												</Tooltip>
+												<PopoverContent
+													align="start"
+													className="w-auto p-3 flex flex-col gap-2"
+												>
+													<TimeoutDropdown
+														timeoutSec={timeoutSec}
+														onTimeoutChange={setTimeoutSec}
+													/>
+													<AutocommitToggle
+														autocommit={autocommit}
+														onAutocommitChange={setAutocommit}
+													/>
+													{/* Read-only toggle hidden — keep state wired so behavior stays on the default (read-write). Re-enable when product decides to expose it. */}
+													{false && (
+														<ReadOnlyToggle
+															readOnly={readOnly}
+															onReadOnlyChange={setReadOnly}
+														/>
+													)}
+													<AsyncToggle
+														async={asyncMode}
+														onAsyncChange={setAsyncMode}
+													/>
+												</PopoverContent>
+											</Popover>
 										</div>
 									</div>
 									<div className="flex-1 min-h-0">
