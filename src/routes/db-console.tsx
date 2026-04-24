@@ -283,7 +283,14 @@ function DbConsolePage() {
 	const [tabResults, setTabResults] = useState<Map<string, TabResultData>>(
 		() => new Map(),
 	);
-	const [isLoading, setIsLoading] = useState(false);
+	// Per-tab running state: keyed on tabId so switching tabs preserves
+	// the other tab's in-flight query and its STOP button.
+	type RunningState = { queryId: string; controller: AbortController };
+	const [runningTabs, setRunningTabs] = useState<Map<string, RunningState>>(
+		() => new Map(),
+	);
+	const selectedTabId = selectedTab?.id;
+	const isLoading = !!(selectedTabId && runningTabs.has(selectedTabId));
 	const [showStop, setShowStop] = useState(false);
 	useEffect(() => {
 		if (!isLoading) {
@@ -355,9 +362,33 @@ function DbConsolePage() {
 	const asyncModeRef = useRef(asyncMode);
 	asyncModeRef.current = asyncMode;
 
-	const cancelledTabRef = useRef<string | null>(null);
-	const runningQueryIdRef = useRef<string | null>(null);
-	const abortControllerRef = useRef<AbortController | null>(null);
+	const runningTabsRef = useRef(runningTabs);
+	runningTabsRef.current = runningTabs;
+
+	const startRunning = useCallback(
+		(tabId: string, queryId: string, controller: AbortController) => {
+			setRunningTabs((prev) => {
+				// Abort any previous run on the same tab so we don't leak it.
+				const previous = prev.get(tabId);
+				if (previous) previous.controller.abort();
+				const next = new Map(prev);
+				next.set(tabId, { queryId, controller });
+				return next;
+			});
+		},
+		[],
+	);
+
+	const clearRunning = useCallback((tabId: string, queryId: string) => {
+		setRunningTabs((prev) => {
+			// Only clear if the entry still matches this run — otherwise a
+			// newer run on the same tab is already registered.
+			if (prev.get(tabId)?.queryId !== queryId) return prev;
+			const next = new Map(prev);
+			next.delete(tabId);
+			return next;
+		});
+	}, []);
 
 	const handleQueryChange = useCallback(
 		(value: string) => {
@@ -390,14 +421,9 @@ function DbConsolePage() {
 				return;
 			}
 
-			abortControllerRef.current?.abort();
-			const controller = new AbortController();
-			abortControllerRef.current = controller;
-
 			const queryId = generateId();
-			cancelledTabRef.current = null;
-			runningQueryIdRef.current = queryId;
-			setIsLoading(true);
+			const controller = new AbortController();
+			startRunning(tabId, queryId, controller);
 			const queryToSave = queryRef.current;
 			updateTabResult(tabId, { results: null, error: null });
 
@@ -421,7 +447,7 @@ function DbConsolePage() {
 						controller.signal,
 						runOpts,
 					);
-					if (cancelledTabRef.current === tabId) return;
+					if (controller.signal.aborted) return;
 					saveSqlHistory(queryToSave, queryClient, client);
 					updateTabResult(tabId, {
 						results: null,
@@ -439,7 +465,7 @@ function DbConsolePage() {
 					runOpts,
 				);
 
-				if (cancelledTabRef.current === tabId) return;
+				if (controller.signal.aborted) return;
 
 				if (!allItems.some((item) => item.error)) {
 					saveSqlHistory(queryToSave, queryClient, client);
@@ -447,47 +473,46 @@ function DbConsolePage() {
 
 				updateTabResult(tabId, { results: allItems, error: null });
 			} catch (err) {
-				if (cancelledTabRef.current === tabId) return;
+				if (controller.signal.aborted) return;
 				if (err instanceof DOMException && err.name === "AbortError") return;
 
 				const errorMsg = await extractErrorMessage(err);
 				updateTabResult(tabId, { results: null, error: errorMsg });
 			} finally {
-				runningQueryIdRef.current = null;
-				if (cancelledTabRef.current !== tabId) {
-					setIsLoading(false);
-				}
+				clearRunning(tabId, queryId);
 			}
 		},
-		[client, queryClient, handleQueryChange, updateTabResult],
+		[
+			client,
+			queryClient,
+			handleQueryChange,
+			updateTabResult,
+			startRunning,
+			clearRunning,
+		],
 	);
 
 	const cancelQuery = useCallback(async () => {
 		const tabId = selectedTabRef.current?.id;
 		if (!tabId) return;
+		const running = runningTabsRef.current.get(tabId);
+		if (!running) return;
 
-		abortControllerRef.current?.abort();
-		abortControllerRef.current = null;
-
-		const queryId = runningQueryIdRef.current;
-		cancelledTabRef.current = tabId;
-		runningQueryIdRef.current = null;
-		setIsLoading(false);
+		running.controller.abort();
+		clearRunning(tabId, running.queryId);
 		updateTabResult(tabId, { results: null, error: "Query cancelled" });
 
-		if (queryId) {
-			try {
-				await client.rawRequest({
-					method: "POST",
-					url: "/$psql-cancel",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ "query-id": queryId }),
-				});
-			} catch {
-				// best-effort cancel
-			}
+		try {
+			await client.rawRequest({
+				method: "POST",
+				url: "/$psql-cancel",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ "query-id": running.queryId }),
+			});
+		} catch {
+			// best-effort cancel
 		}
-	}, [client, updateTabResult]);
+	}, [client, updateTabResult, clearRunning]);
 
 	const { data: historyData } = useSqlHistory();
 
