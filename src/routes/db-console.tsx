@@ -36,6 +36,8 @@ import {
 	forceSelectedTab,
 	SqlActiveTabs,
 	type SqlTab,
+	type SqlTabSettings,
+	tabSettings,
 } from "../components/db-console/active-tabs";
 import {
 	SqlLeftMenu,
@@ -52,7 +54,6 @@ import {
 	transformToQueryResultItems,
 } from "../components/db-console/tables-view";
 import {
-	DEFAULT_TIMEOUT_SEC,
 	type FunctionsMap,
 	isAidboxError,
 	type SchemaMap,
@@ -304,34 +305,39 @@ function DbConsolePage() {
 		const timer = setTimeout(() => setShowStop(true), 100);
 		return () => clearTimeout(timer);
 	}, [isLoading]);
-	const [rowLimit, setRowLimit] = useLocalStorage<number | null>({
-		key: "db-console-row-limit",
-		defaultValue: 10,
-		getInitialValueInEffect: false,
-	});
-	const [timeoutSec, setTimeoutSec] = useLocalStorage<number | null>({
-		key: "db-console-timeout-sec",
-		defaultValue: DEFAULT_TIMEOUT_SEC,
-		getInitialValueInEffect: false,
-	});
-	const [autocommit, setAutocommit] = useLocalStorage<boolean>({
-		key: "db-console-autocommit",
-		defaultValue: true,
-		getInitialValueInEffect: false,
-	});
-	// Read-only mode state is wired through to the backend headers but the UI
-	// toggle is hidden for now — see Hide read-only toggle commit. Value stays
-	// at the default (false / read-write).
-	const [readOnly, _setReadOnly] = useLocalStorage<boolean>({
-		key: "db-console-read-only",
-		defaultValue: false,
-		getInitialValueInEffect: false,
-	});
-	const [asyncMode, setAsyncMode] = useLocalStorage<boolean>({
-		key: "db-console-async-mode",
-		defaultValue: false,
-		getInitialValueInEffect: false,
-	});
+	// Settings live on the selected tab (SqlTabSettings). Switching tabs or
+	// creating a new tab does not leak settings across tabs; new tabs start
+	// with DEFAULT_SQL_TAB_SETTINGS.
+	const { rowLimit, timeoutSec, autocommit, readOnly, asyncMode } =
+		tabSettings(selectedTab);
+
+	const updateSelectedTabSettings = useCallback(
+		(patch: Partial<SqlTabSettings>) => {
+			setTabs((prev) =>
+				prev.map((t) =>
+					t.selected ? { ...t, settings: { ...tabSettings(t), ...patch } } : t,
+				),
+			);
+		},
+		[setTabs],
+	);
+
+	const setRowLimit = useCallback(
+		(v: number | null) => updateSelectedTabSettings({ rowLimit: v }),
+		[updateSelectedTabSettings],
+	);
+	const setTimeoutSec = useCallback(
+		(v: number | null) => updateSelectedTabSettings({ timeoutSec: v }),
+		[updateSelectedTabSettings],
+	);
+	const setAutocommit = useCallback(
+		(v: boolean) => updateSelectedTabSettings({ autocommit: v }),
+		[updateSelectedTabSettings],
+	);
+	const setAsyncMode = useCallback(
+		(v: boolean) => updateSelectedTabSettings({ asyncMode: v }),
+		[updateSelectedTabSettings],
+	);
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
