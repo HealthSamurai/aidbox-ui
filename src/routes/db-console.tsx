@@ -1,4 +1,4 @@
-import { indentWithTab } from "@codemirror/commands";
+import { indentLess, insertTab } from "@codemirror/commands";
 import { Prec } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import {
@@ -645,7 +645,9 @@ function DbConsolePage() {
 							return true;
 						},
 					},
-					indentWithTab,
+					// Tab inserts a literal tab at the cursor (or indents the
+					// selection if multi-line). Shift-Tab unindents.
+					{ key: "Tab", run: insertTab, shift: indentLess },
 				]),
 			),
 		],
