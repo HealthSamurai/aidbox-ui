@@ -99,7 +99,7 @@ async function fetchBlock(
 ): Promise<QueryResultItem[]> {
 	const body: { query: string; limit?: number } = { query: block };
 	if (limit !== null) body.limit = limit;
-	const response = await fetch(`${baseUrl}/$notebook-psql`, {
+	const response = await fetch(`${baseUrl}/$psql`, {
 		method: "POST",
 		headers: buildSqlHeaders(opts),
 		credentials: "include",
@@ -124,7 +124,7 @@ async function kickOffAsync(
 	if (limit !== null) body.limit = limit;
 	const headers = buildSqlHeaders(opts);
 	headers["X-Aidbox-Sql-Async"] = "true";
-	const response = await fetch(`${baseUrl}/$notebook-psql`, {
+	const response = await fetch(`${baseUrl}/$psql`, {
 		method: "POST",
 		headers,
 		credentials: "include",
