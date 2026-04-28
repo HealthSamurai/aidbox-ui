@@ -1,6 +1,6 @@
 import { indentLess, insertTab } from "@codemirror/commands";
 import { Prec } from "@codemirror/state";
-import { type EditorView, keymap } from "@codemirror/view";
+import { type Command, type EditorView, keymap } from "@codemirror/view";
 import {
 	Button,
 	CodeEditor,
@@ -69,6 +69,25 @@ import type {
 import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "SQL console";
+
+/**
+ * Shift-Tab handler that de-indents only when the cursor is in the leading
+ * whitespace of the current line (or the line is empty / whitespace-only).
+ * Outdenting from the middle of a token is rarely what users want, so consume
+ * the keystroke as a no-op in that case. Multi-line selections always de-indent.
+ */
+const smartIndentLess: Command = (view) => {
+	const { state } = view;
+	const sel = state.selection.main;
+	if (!sel.empty) return indentLess(view);
+	const line = state.doc.lineAt(sel.head);
+	const firstNonWs = line.text.search(/\S/);
+	const cursorCol = sel.head - line.from;
+	if (firstNonWs === -1 || cursorCol <= firstNonWs) {
+		return indentLess(view);
+	}
+	return true;
+};
 
 type SqlRunOpts = {
 	autocommit: boolean;
@@ -646,8 +665,11 @@ function DbConsolePage() {
 						},
 					},
 					// Tab inserts a literal tab at the cursor (or indents the
-					// selection if multi-line). Shift-Tab unindents.
-					{ key: "Tab", run: insertTab, shift: indentLess },
+					// selection if multi-line). Shift-Tab de-indents the line
+					// only when the cursor sits in its leading whitespace
+					// (logical start of the line) — otherwise it's a no-op so
+					// users mid-token don't accidentally outdent.
+					{ key: "Tab", run: insertTab, shift: smartIndentLess },
 				]),
 			),
 		],
