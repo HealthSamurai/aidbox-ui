@@ -1,4 +1,5 @@
 import { indentLess, insertTab } from "@codemirror/commands";
+import { indentUnit } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
 import { type Command, type EditorView, keymap } from "@codemirror/view";
 import {
@@ -635,6 +636,10 @@ function DbConsolePage() {
 
 	const sqlEditorExtensions = useMemo(
 		() => [
+			// Use a literal tab as the indent unit so indentMore / indentLess
+			// (multi-line Tab and Shift-Tab) work in tabs, matching what
+			// insertTab does for single-cursor Tab.
+			indentUnit.of("\t"),
 			Prec.highest(
 				keymap.of([
 					{
