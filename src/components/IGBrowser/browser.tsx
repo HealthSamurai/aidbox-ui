@@ -34,11 +34,7 @@ type PackageItem = {
 	descriptionMatches?: readonly MatchRange[];
 };
 
-const SYSTEM_PREFIXES = [
-	"io.health-samurai.core",
-	"io.health-samurai.sdc",
-	"io.health-samurai.mdm",
-];
+const SYSTEM_PREFIXES = ["io.health-samurai.core", "io.health-samurai.sdc"];
 
 function getPackageTag(name: string, installation: Installation[]): PackageTag {
 	if (SYSTEM_PREFIXES.some((prefix) => name.startsWith(prefix))) {
