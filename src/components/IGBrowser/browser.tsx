@@ -28,7 +28,6 @@ function capitalize(s: string): string {
 const SYSTEM_PREFIXES = [
 	"io.health-samurai.core",
 	"io.health-samurai.sdc",
-	"io.health-samurai.mdm",
 ];
 
 function getPackageType(name: string, installation: Installation[]): string {
