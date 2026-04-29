@@ -381,7 +381,7 @@ export function LimitDropdown({
 					variant="link"
 					className="text-text-secondary bg-bg-tertiary rounded-full px-2.5 h-6"
 				>
-					<span className="text-text-tertiary uppercase">Limit</span>
+					<span className="text-text-tertiary uppercase">Fetch size</span>
 					<span className="text-text-secondary">
 						{rowLimit === null ? "No limit" : rowLimit}
 					</span>
