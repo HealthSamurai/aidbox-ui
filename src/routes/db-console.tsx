@@ -101,12 +101,12 @@ function buildSqlHeaders(opts: SqlRunOpts): Record<string, string> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 		Accept: "application/json",
-		"X-Aidbox-Sql-Query-Id": opts.queryId,
+		"Aidbox-Sql-Query-Id": opts.queryId,
 	};
-	if (opts.autocommit) headers["X-Aidbox-Sql-Autocommit"] = "true";
+	if (opts.autocommit) headers["Aidbox-Sql-Autocommit"] = "true";
 	if (opts.timeoutSec !== null)
-		headers["X-Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
-	if (opts.readOnly) headers["X-Aidbox-Sql-Read-Only"] = "true";
+		headers["Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
+	if (opts.readOnly) headers["Aidbox-Sql-Read-Only"] = "true";
 	return headers;
 }
 
@@ -143,7 +143,7 @@ async function kickOffAsync(
 	const body: { query: string; limit?: number } = { query: block };
 	if (limit !== null) body.limit = limit;
 	const headers = buildSqlHeaders(opts);
-	headers["X-Aidbox-Sql-Async"] = "true";
+	headers["Aidbox-Sql-Async"] = "true";
 	const response = await fetch(`${baseUrl}/$psql`, {
 		method: "POST",
 		headers,
