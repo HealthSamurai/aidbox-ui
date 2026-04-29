@@ -1,6 +1,7 @@
 import type { TreeViewItem } from "@health-samurai/react-components";
 import type { Header, Tab } from "./components/rest/active-tabs";
 import type { Meta, Snapshot } from "./components/ViewDefinition/types";
+import { getCookie } from "./utils/cookie";
 
 export function generateId(): string {
 	if (
@@ -49,8 +50,11 @@ export function syncPathFromParams(params: Header[], path: string): string {
 }
 
 export function getAidboxBaseURL(): string {
+	if (import.meta.env.VITE_AIDBOX_BASE_URL) {
+		return import.meta.env.VITE_AIDBOX_BASE_URL;
+	}
 	return (
-		import.meta.env.VITE_AIDBOX_BASE_URL ||
+		getCookie("aidbox-base-url") ??
 		`${window.location.protocol}//${window.location.host}`
 	);
 }
