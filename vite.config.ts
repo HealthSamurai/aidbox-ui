@@ -7,6 +7,7 @@ import claudeChat from "./vite-plugin-claude-chat.ts";
 const ReactCompilerConfig = {};
 
 export default defineConfig({
+	base: "./",
 	optimizeDeps: {
 		exclude: ["@health-samurai/aidbox-fhirpath-lsp"],
 	},
@@ -16,6 +17,16 @@ export default defineConfig({
 	// 	},
 	// },
 	plugins: [
+		{
+			name: "inject-base-href",
+			transformIndexHtml: {
+				order: "pre",
+				handler(html, ctx) {
+					const href = ctx.server ? "/" : "/static/aidbox-ui/";
+					return html.replace("<head>", `<head>\n\t<base href="${href}">`);
+				},
+			},
+		},
 		claudeChat(),
 		tailwindcss(),
 		tanstackRouter({

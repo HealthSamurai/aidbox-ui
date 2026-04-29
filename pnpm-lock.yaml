@@ -22,8 +22,8 @@ importers:
         specifier: ^0.0.30
         version: 0.0.30(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@health-samurai/aidbox-client':
-        specifier: 0.0.0-alpha.5
-        version: 0.0.0-alpha.5
+        specifier: file:aidbox-ts-sdk/packages/aidbox-client
+        version: file:aidbox-ts-sdk/packages/aidbox-client
       '@health-samurai/aidbox-fhirpath-lsp':
         specifier: 0.0.0-alpha.7
         version: 0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
@@ -569,6 +569,9 @@ packages:
 
   '@health-samurai/aidbox-client@0.0.0-alpha.5':
     resolution: {integrity: sha512-WYXfTgMAMRRvJPhnSjB7KiOMhgQ7CDEOS7IUJDvPsjWUbIrRVzfjl89UzyDw6Rv/kum3nDIcVZHyHjVoWbms6g==}
+
+  '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
+    resolution: {directory: aidbox-ts-sdk/packages/aidbox-client, type: directory}
 
   '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7':
     resolution: {integrity: sha512-AX3f07EMoZg8OWduVWq6rx5HOk+h7ISj6dIgMmaHLLZJ3wcH+LHjAfPv1H6Q/Hc1kqMx+xyfX68z1AOaqGnANw==}
@@ -3316,6 +3319,12 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
 
   '@health-samurai/aidbox-client@0.0.0-alpha.5':
+    dependencies:
+      '@types/json-patch': 0.0.33
+      oauth4webapi: 3.8.5
+      yaml: 2.8.3
+
+  '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
     dependencies:
       '@types/json-patch': 0.0.33
       oauth4webapi: 3.8.5
