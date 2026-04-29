@@ -11,12 +11,16 @@ export type FunctionsMap = Record<string, FunctionEntry[]>;
 
 export const LIMIT_PRESETS = [10, 100, 1000];
 
-export function splitSqlStatements(query: string): string[] {
-	return query
-		.split(/\n----\n/)
-		.map((s) => s.trim())
-		.filter(Boolean);
-}
+export const TIMEOUT_PRESETS: { value: number | null; label: string }[] = [
+	{ value: 5, label: "5s" },
+	{ value: 30, label: "30s" },
+	{ value: 60, label: "1m" },
+	{ value: 300, label: "5m" },
+	{ value: 900, label: "15m" },
+	{ value: null, label: "No timeout" },
+];
+
+export const DEFAULT_TIMEOUT_SEC = 60;
 
 export function isAidboxError(
 	err: unknown,

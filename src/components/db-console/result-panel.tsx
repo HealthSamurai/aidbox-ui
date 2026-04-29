@@ -18,6 +18,7 @@ import { ExportDropdown, ResultContent } from "./result-content";
 export function ResultPanel({
 	results,
 	error,
+	asyncStarted,
 	isLoading,
 	onRun,
 	onCancel,
@@ -28,6 +29,7 @@ export function ResultPanel({
 }: {
 	results: QueryResultItem[] | null;
 	error: string | null;
+	asyncStarted?: { operationId: string; startedAt: number };
 	isLoading: boolean;
 	onRun: () => void;
 	onCancel: () => void;
@@ -135,16 +137,29 @@ export function ResultPanel({
 					</Tooltip>
 				</div>
 			</div>
-			{!collapsed && (
-				<ResultContent
-					results={results}
-					error={error}
-					isLoading={isLoading}
-					onRun={onRun}
-					onCancel={onCancel}
-					viewMode={viewMode}
-				/>
-			)}
+			{!collapsed &&
+				(asyncStarted ? (
+					<div className="flex-1 flex items-center justify-center bg-bg-secondary">
+						<div className="text-center px-6 py-8">
+							<div className="typo-label text-text-primary mb-2">
+								Query started in background
+							</div>
+							<div className="typo-body-xs text-text-secondary">
+								Operation ID:{" "}
+								<span className="typo-code">{asyncStarted.operationId}</span>
+							</div>
+						</div>
+					</div>
+				) : (
+					<ResultContent
+						results={results}
+						error={error}
+						isLoading={isLoading}
+						onRun={onRun}
+						onCancel={onCancel}
+						viewMode={viewMode}
+					/>
+				))}
 		</div>
 	);
 }

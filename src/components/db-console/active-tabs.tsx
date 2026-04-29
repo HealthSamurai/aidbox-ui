@@ -11,23 +11,49 @@ import {
 	TabsTrigger,
 } from "@health-samurai/react-components";
 import { generateId } from "../../utils";
+import { DEFAULT_TIMEOUT_SEC } from "./utils";
 
 export type SqlTabId = string;
+
+export interface SqlTabSettings {
+	rowLimit: number | null;
+	timeoutSec: number | null;
+	autocommit: boolean;
+	readOnly: boolean;
+	asyncMode: boolean;
+}
 
 export interface SqlTab {
 	id: SqlTabId;
 	query: string;
 	selected?: boolean;
+	// Per-tab execution settings. Optional for backward compat with tabs
+	// persisted before settings moved onto the tab; read via tabSettings()
+	// which fills in DEFAULT_SQL_TAB_SETTINGS for missing keys.
+	settings?: Partial<SqlTabSettings>;
 }
 
 const DEFAULT_QUERY = "select * from patient";
 
 export const DEFAULT_SQL_TAB_ID: SqlTabId = "sql-tab-default";
 
+export const DEFAULT_SQL_TAB_SETTINGS: SqlTabSettings = {
+	rowLimit: 10,
+	timeoutSec: DEFAULT_TIMEOUT_SEC,
+	autocommit: true,
+	readOnly: false,
+	asyncMode: false,
+};
+
+export function tabSettings(tab: SqlTab | undefined): SqlTabSettings {
+	return { ...DEFAULT_SQL_TAB_SETTINGS, ...(tab?.settings ?? {}) };
+}
+
 export const DEFAULT_SQL_TAB: SqlTab = {
 	id: DEFAULT_SQL_TAB_ID,
 	query: DEFAULT_QUERY,
 	selected: true,
+	settings: DEFAULT_SQL_TAB_SETTINGS,
 };
 
 export function addSqlTab(
@@ -38,6 +64,7 @@ export function addSqlTab(
 		id: generateId(),
 		query: DEFAULT_QUERY,
 		selected: true,
+		settings: DEFAULT_SQL_TAB_SETTINGS,
 	};
 	setTabs([...tabs.map((t) => ({ ...t, selected: false })), newTab]);
 	return newTab;
