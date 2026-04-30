@@ -555,9 +555,9 @@ const sampleAppsData: CardData[] = [
 		],
 	},
 	{
-		heading: "Aidbox Forms React",
+		heading: "FormBox React",
 		icon: <FileText className="size-5" />,
-		description: "Example of integration Aidbox Forms Renderer with React.js",
+		description: "Example of integration FormBox Renderer with React.js",
 		buttons: [
 			{
 				text: "GitHub",
