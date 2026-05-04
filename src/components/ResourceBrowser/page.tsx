@@ -5,6 +5,7 @@ import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
+import { format as formatSQL } from "sql-formatter";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import {
 	fetchProfileElements,
@@ -16,6 +17,7 @@ import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
+import { appendSqlTabs } from "../db-console/active-tabs";
 import { EmptyState } from "../empty-state";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
 import * as Constants from "./constants";
@@ -1176,6 +1178,156 @@ type SearchParameterBundle = {
 	entry?: { resource: SearchParameterResource }[];
 };
 
+type SuggestedIndex = {
+	"index-name": string;
+	type?: string;
+	statement: string;
+	"resource-type"?: string;
+	subtypes?: (string | null)[];
+};
+
+async function rpcCall(
+	client: AidboxClientR5,
+	method: string,
+	params: Record<string, unknown>,
+) {
+	const response = await client.rawRequest({
+		method: "POST",
+		url: `/rpc?_m=${method}`,
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ method, params }),
+	});
+	const json = await response.response.json();
+	if (json.error) throw new Error(json.error.message || "RPC error");
+	return json;
+}
+
+function formatStatement(sql: string): string {
+	try {
+		return formatSQL(sql, { language: "postgresql" });
+	} catch {
+		return sql;
+	}
+}
+
+const SuggestIndexButton = ({
+	client,
+	resourceType,
+	searchParam,
+}: {
+	client: AidboxClientR5;
+	resourceType: string;
+	searchParam: string;
+}) => {
+	const [open, setOpen] = React.useState(false);
+	const navigate = Router.useNavigate();
+	const mutation = ReactQuery.useMutation({
+		mutationFn: async () => {
+			const json = await rpcCall(client, "aidbox.index/suggest-index", {
+				"resource-type": resourceType,
+				"search-param": searchParam,
+			});
+			return (json.result ?? []) as SuggestedIndex[];
+		},
+		onError: ApiUtils.onMutationError,
+	});
+
+	const formattedStatements = React.useMemo(
+		() =>
+			mutation.data?.map((idx) => ({
+				name: idx["index-name"],
+				statement: formatStatement(idx.statement),
+			})) ?? [],
+		[mutation.data],
+	);
+
+	const handleClick = () => {
+		setOpen(true);
+		mutation.mutate();
+	};
+
+	const handleOpenInConsole = () => {
+		appendSqlTabs(formattedStatements.map((s) => s.statement));
+		setOpen(false);
+		navigate({ to: "/db-console", search: { query: undefined } });
+	};
+
+	return (
+		<>
+			<HSComp.Button
+				variant="ghost"
+				size="small"
+				onClick={handleClick}
+				disabled={!searchParam}
+			>
+				<Lucide.DatabaseIcon size={14} />
+				Suggest index
+			</HSComp.Button>
+
+			<HSComp.Dialog open={open} onOpenChange={setOpen}>
+				<HSComp.DialogContent className="sm:max-w-[90vw] w-[90vw]">
+					<HSComp.DialogHeader>
+						<HSComp.DialogTitle>
+							Suggested indexes for {resourceType}.{searchParam}
+						</HSComp.DialogTitle>
+					</HSComp.DialogHeader>
+					{mutation.isPending && (
+						<div className="text-text-secondary">Loading...</div>
+					)}
+					{mutation.isError && (
+						<div className="text-text-danger">{mutation.error.message}</div>
+					)}
+					{mutation.isSuccess && formattedStatements.length === 0 && (
+						<div className="text-text-secondary">No indexes suggested.</div>
+					)}
+					{formattedStatements.length > 0 && (
+						<>
+							<div className="space-y-3 max-h-[60vh] overflow-y-auto">
+								{formattedStatements.map((s) => {
+									const lineCount = s.statement.split("\n").length;
+									const height = Math.min(Math.max(lineCount, 2), 12) * 22 + 16;
+									return (
+										<div
+											key={s.name}
+											className="rounded border border-border-secondary overflow-hidden"
+										>
+											<div className="px-3 py-1.5 text-xs text-text-secondary bg-bg-secondary border-b border-border-secondary">
+												{s.name}
+											</div>
+											<div
+												style={{ height }}
+												className="[&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent"
+											>
+												<HSComp.CodeEditor
+													readOnly
+													isReadOnlyTheme
+													lineNumbers={false}
+													foldGutter={false}
+													currentValue={s.statement}
+													mode="sql"
+													viewCallback={(view) => {
+														view.contentDOM.contentEditable = "false";
+													}}
+												/>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+							<HSComp.DialogFooter>
+								<HSComp.Button variant="primary" onClick={handleOpenInConsole}>
+									<Lucide.SquareTerminalIcon size={14} />
+									Edit in SQL Console
+								</HSComp.Button>
+							</HSComp.DialogFooter>
+						</>
+					)}
+				</HSComp.DialogContent>
+			</HSComp.Dialog>
+		</>
+	);
+};
+
 const SearchParametersTabContent = ({
 	client,
 	resourceType,
@@ -1220,6 +1372,7 @@ const SearchParametersTabContent = ({
 			<HSComp.Table zebra stickyHeader className="typo-code">
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
+						<HSComp.TableHead className="w-0">Index</HSComp.TableHead>
 						<HSComp.TableHead>Definition</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Code</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Name</HSComp.TableHead>
@@ -1230,6 +1383,13 @@ const SearchParametersTabContent = ({
 				<HSComp.TableBody>
 					{data.map((param, index) => (
 						<HSComp.TableRow key={param.id} zebra index={index}>
+							<HSComp.TableCell>
+								<SuggestIndexButton
+									client={client}
+									resourceType={resourceType}
+									searchParam={param.code ?? ""}
+								/>
+							</HSComp.TableCell>
 							<HSComp.TableCell type="link">
 								<Router.Link
 									className="text-text-link hover:underline"

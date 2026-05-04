@@ -56,6 +56,41 @@ export const DEFAULT_SQL_TAB: SqlTab = {
 	settings: DEFAULT_SQL_TAB_SETTINGS,
 };
 
+export const DB_CONSOLE_TABS_STORAGE_KEY = "dbConsole.tabs";
+
+/**
+ * Append one tab per query to the persisted db-console tab list, selecting
+ * the last appended tab. Used by other parts of the UI (e.g. ResourceBrowser
+ * "Suggest index") to deep-link into db-console with prepared SQL.
+ *
+ * Writes synchronously to localStorage so the next mount of `db-console`
+ * reads the updated list (mantine's `useLocalStorage` hook with
+ * `getInitialValueInEffect: false` reads on mount).
+ */
+export function appendSqlTabs(queries: string[]): void {
+	if (queries.length === 0) return;
+	const raw = localStorage.getItem(DB_CONSOLE_TABS_STORAGE_KEY);
+	let existing: SqlTab[] = [];
+	try {
+		const parsed = raw ? JSON.parse(raw) : null;
+		if (Array.isArray(parsed)) existing = parsed as SqlTab[];
+	} catch {
+		existing = [];
+	}
+	if (existing.length === 0) existing = [DEFAULT_SQL_TAB];
+	const newTabs: SqlTab[] = queries.map((q, i) => ({
+		id: generateId(),
+		query: q,
+		selected: i === queries.length - 1,
+		settings: DEFAULT_SQL_TAB_SETTINGS,
+	}));
+	const merged = [
+		...existing.map((t) => ({ ...t, selected: false })),
+		...newTabs,
+	];
+	localStorage.setItem(DB_CONSOLE_TABS_STORAGE_KEY, JSON.stringify(merged));
+}
+
 export function addSqlTab(
 	tabs: SqlTab[],
 	setTabs: (val: SqlTab[] | ((prev: SqlTab[]) => SqlTab[])) => void,
