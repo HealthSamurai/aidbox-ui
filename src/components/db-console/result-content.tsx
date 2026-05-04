@@ -203,6 +203,9 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 	URL.revokeObjectURL(url);
 }
 
+// QueryResultHeader (33px) + Table header h-8 (32px) + 3 rows h-7 (3 * 28 = 84px)
+const MIN_PANEL_PX = 33 + 32 + 3 * 28;
+
 // ── Components ──
 
 function QueryResultHeader({
@@ -774,18 +777,26 @@ export function ResultContent({
 		);
 	}
 
+	const n = results.length;
+
 	return (
 		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-			<div className="flex-1 min-h-0">
-				<ResizablePanelGroup direction="vertical">
+			<div className="flex-1 min-h-0 overflow-auto">
+				<ResizablePanelGroup
+					direction="vertical"
+					style={{ minHeight: `${n * MIN_PANEL_PX}px` }}
+				>
 					{results.flatMap((result, index) => {
 						const key = `${result.query}-${index}`;
 						const panel = (
-							<ResizablePanel key={`panel-${key}`} minSize={10}>
+							<ResizablePanel
+								key={`panel-${key}`}
+								style={{ minHeight: `${MIN_PANEL_PX}px` }}
+							>
 								<QueryResult
 									result={result}
 									index={index}
-									totalCount={results.length}
+									totalCount={n}
 									isMaximized={false}
 									onToggleMaximize={() => setMaximizedIndex(index)}
 									viewMode={viewMode}
