@@ -4,6 +4,7 @@ import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
+	CopyIcon,
 	type GetStructureDefinitions,
 	PlayIcon,
 	RequestLineEditor,
@@ -839,6 +840,43 @@ function ResponseView({
 	}
 
 	if (response) {
+		const contentLocationRaw = Object.entries(response.headers).find(
+			([key]) => key.toLowerCase() === "content-location",
+		)?.[1];
+
+		if (
+			activeResponseTab === "body" &&
+			!response.body.trim() &&
+			contentLocationRaw
+		) {
+			let path = contentLocationRaw;
+			try {
+				const url = new URL(contentLocationRaw);
+				path = url.pathname + url.search;
+			} catch {
+				// already a relative path
+			}
+
+			return (
+				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+					<div className="text-center">
+						<div className="mb-2">Response body is empty</div>
+						<div className="text-sm">
+							Follow the <code>content-location</code> header to get the result:
+						</div>
+						<div className="mt-2 inline-flex items-center gap-2 rounded bg-bg-tertiary px-3 py-1.5">
+							<code className="typo-code">GET {path}</code>
+							<CopyIcon
+								text={`GET ${path}`}
+								tooltipText="Copy snippet"
+								showToast={false}
+							/>
+						</div>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<CodeEditor
 				readOnly={true}
