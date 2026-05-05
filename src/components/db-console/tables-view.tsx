@@ -93,7 +93,7 @@ export function psqlRequest<T = Record<string, unknown>>(
 	return client
 		.rawRequest({
 			method: "POST",
-			url: "/$notebook-psql",
+			url: "/$psql",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ query }),
 		})

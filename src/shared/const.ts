@@ -1,6 +1,8 @@
+import { getPathPrefix } from "../utils/path-prefix";
+
 export const SIDEBAR_MODE_KEY = "aidbox-sidebar-mode";
 export const REST_CONSOLE_TABS_KEY = "aidbox-rest-console-tabs";
-export const UI_BASE_PATH = "/u";
+export const UI_BASE_PATH = `${getPathPrefix()}/u`;
 export const PREFERRED_UI_KEY = "aidbox-preferred-ui";
 export const THEME_KEY = "aidbox-theme";
 export const VIM_MODE_KEY = "aidbox-vim-mode";

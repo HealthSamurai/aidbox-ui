@@ -1,8 +1,19 @@
+import { indentLess, insertTab } from "@codemirror/commands";
+import { indentUnit } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
-import { type EditorView, keymap } from "@codemirror/view";
+import { type Command, type EditorView, keymap } from "@codemirror/view";
 import {
 	Button,
 	CodeEditor,
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
@@ -14,7 +25,7 @@ import {
 } from "@health-samurai/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlignLeft, PlayIcon, Square } from "lucide-react";
+import { AlignLeft, PlayIcon, Settings2, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
@@ -26,6 +37,8 @@ import {
 	forceSelectedTab,
 	SqlActiveTabs,
 	type SqlTab,
+	type SqlTabSettings,
+	tabSettings,
 } from "../components/db-console/active-tabs";
 import {
 	SqlLeftMenu,
@@ -45,7 +58,7 @@ import {
 	type FunctionsMap,
 	isAidboxError,
 	type SchemaMap,
-	splitSqlStatements,
+	TIMEOUT_PRESETS,
 } from "../components/db-console/utils";
 import { useLocalStorage } from "../hooks";
 import { useVimMode } from "../shared/vim-mode";
@@ -58,20 +71,57 @@ import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "SQL console";
 
+/**
+ * Shift-Tab handler that de-indents only when the cursor is in the leading
+ * whitespace of the current line (or the line is empty / whitespace-only).
+ * Outdenting from the middle of a token is rarely what users want, so consume
+ * the keystroke as a no-op in that case. Multi-line selections always de-indent.
+ */
+const smartIndentLess: Command = (view) => {
+	const { state } = view;
+	const sel = state.selection.main;
+	if (!sel.empty) return indentLess(view);
+	const line = state.doc.lineAt(sel.head);
+	const firstNonWs = line.text.search(/\S/);
+	const cursorCol = sel.head - line.from;
+	if (firstNonWs === -1 || cursorCol <= firstNonWs) {
+		return indentLess(view);
+	}
+	return true;
+};
+
+type SqlRunOpts = {
+	autocommit: boolean;
+	timeoutSec: number | null;
+	readOnly: boolean;
+	queryId: string;
+};
+
+function buildSqlHeaders(opts: SqlRunOpts): Record<string, string> {
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+		Accept: "application/json",
+		"Aidbox-Sql-Query-Id": opts.queryId,
+	};
+	if (opts.autocommit) headers["Aidbox-Sql-Autocommit"] = "true";
+	if (opts.timeoutSec !== null)
+		headers["Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
+	if (opts.readOnly) headers["Aidbox-Sql-Read-Only"] = "true";
+	return headers;
+}
+
 async function fetchBlock(
 	baseUrl: string,
 	block: string,
 	limit: number | null,
 	signal: AbortSignal,
+	opts: SqlRunOpts,
 ): Promise<QueryResultItem[]> {
 	const body: { query: string; limit?: number } = { query: block };
 	if (limit !== null) body.limit = limit;
-	const response = await fetch(`${baseUrl}/$notebook-psql`, {
+	const response = await fetch(`${baseUrl}/$psql`, {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
+		headers: buildSqlHeaders(opts),
 		credentials: "include",
 		body: JSON.stringify(body),
 		signal,
@@ -83,6 +133,34 @@ async function fetchBlock(
 	return transformToQueryResultItems(await response.json());
 }
 
+async function kickOffAsync(
+	baseUrl: string,
+	block: string,
+	limit: number | null,
+	signal: AbortSignal,
+	opts: SqlRunOpts,
+): Promise<string> {
+	const body: { query: string; limit?: number } = { query: block };
+	if (limit !== null) body.limit = limit;
+	const headers = buildSqlHeaders(opts);
+	headers["Aidbox-Sql-Async"] = "true";
+	const response = await fetch(`${baseUrl}/$psql`, {
+		method: "POST",
+		headers,
+		credentials: "include",
+		body: JSON.stringify(body),
+		signal,
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`HTTP ${response.status}: ${text}`);
+	}
+	const json = (await response.json()) as { "operation-id"?: string };
+	const id = json["operation-id"];
+	if (!id) throw new Error("Missing operation-id in async kick-off response");
+	return id;
+}
+
 const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
 
 const FUNCTIONS_QUERY = `SELECT n.nspname AS function_schema, p.proname AS function_name, pg_get_function_identity_arguments(p.oid) AS arguments, CASE p.prokind WHEN 'f' THEN 'function' WHEN 'p' THEN 'procedure' WHEN 'a' THEN 'aggregate' WHEN 'w' THEN 'window' END AS function_type, t.typname AS return_type FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_type t ON t.oid = p.prorettype WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY n.nspname, p.proname`;
@@ -91,11 +169,18 @@ export const Route = createFileRoute("/db-console")({
 	component: DbConsolePage,
 	staticData: { title: TITLE },
 	loader: () => ({ breadCrumb: TITLE }),
+	// Accept `?query=...` so legacy /ui/db?query=... links preload SQL.
+	validateSearch: (search: Record<string, unknown>) => ({
+		query: typeof search.query === "string" ? search.query : undefined,
+	}),
 });
 
 type TabResultData = {
 	results: QueryResultItem[] | null;
 	error: string | null;
+	// Fire-and-forget async: set once on kick-off, shown as a one-shot
+	// confirmation. No polling, no result surfacing.
+	asyncStarted?: { operationId: string; startedAt: number };
 };
 
 /** Extract a human-readable error message from a caught error. */
@@ -171,6 +256,7 @@ function DbConsolePage() {
 	const queryClient = useQueryClient();
 	const { schemas, functions } = useDbConsoleData();
 	const vimMode = useVimMode();
+	const search = Route.useSearch();
 
 	const sqlConfig = useMemo<SqlConfig>(
 		() => ({
@@ -186,6 +272,28 @@ function DbConsolePage() {
 		defaultValue: [DEFAULT_SQL_TAB],
 		getInitialValueInEffect: false,
 	});
+
+	// If the page was opened via /u/db-console?query=..., preload a tab with
+	// that SQL. Keeps legacy /ui/db?query=... links working after redirect.
+	const appliedQueryRef = useRef(false);
+	useEffect(() => {
+		if (appliedQueryRef.current) return;
+		const incoming = search.query;
+		if (!incoming) return;
+		appliedQueryRef.current = true;
+		setTabs((prev) => {
+			const existing = prev.find((t) => t.query === incoming);
+			if (existing) {
+				return prev.map((t) => ({ ...t, selected: t.id === existing.id }));
+			}
+			const newTab: SqlTab = {
+				id: generateId(),
+				query: incoming,
+				selected: true,
+			};
+			return [...prev.map((t) => ({ ...t, selected: false })), newTab];
+		});
+	}, [search.query, setTabs]);
 	const [leftMenuOpen, setLeftMenuOpen] = useLocalStorage<boolean>({
 		key: "db-console-left-menu-open",
 		defaultValue: true,
@@ -200,7 +308,14 @@ function DbConsolePage() {
 	const [tabResults, setTabResults] = useState<Map<string, TabResultData>>(
 		() => new Map(),
 	);
-	const [isLoading, setIsLoading] = useState(false);
+	// Per-tab running state: keyed on tabId so switching tabs preserves
+	// the other tab's in-flight query and its STOP button.
+	type RunningState = { queryId: string; controller: AbortController };
+	const [runningTabs, setRunningTabs] = useState<Map<string, RunningState>>(
+		() => new Map(),
+	);
+	const selectedTabId = selectedTab?.id;
+	const isLoading = !!(selectedTabId && runningTabs.has(selectedTabId));
 	const [showStop, setShowStop] = useState(false);
 	useEffect(() => {
 		if (!isLoading) {
@@ -210,11 +325,39 @@ function DbConsolePage() {
 		const timer = setTimeout(() => setShowStop(true), 100);
 		return () => clearTimeout(timer);
 	}, [isLoading]);
-	const [rowLimit, setRowLimit] = useLocalStorage<number | null>({
-		key: "db-console-row-limit",
-		defaultValue: 10,
-		getInitialValueInEffect: false,
-	});
+	// Settings live on the selected tab (SqlTabSettings). Switching tabs or
+	// creating a new tab does not leak settings across tabs; new tabs start
+	// with DEFAULT_SQL_TAB_SETTINGS.
+	const { rowLimit, timeoutSec, autocommit, readOnly, asyncMode } =
+		tabSettings(selectedTab);
+
+	const updateSelectedTabSettings = useCallback(
+		(patch: Partial<SqlTabSettings>) => {
+			setTabs((prev) =>
+				prev.map((t) =>
+					t.selected ? { ...t, settings: { ...tabSettings(t), ...patch } } : t,
+				),
+			);
+		},
+		[setTabs],
+	);
+
+	const setRowLimit = useCallback(
+		(v: number | null) => updateSelectedTabSettings({ rowLimit: v }),
+		[updateSelectedTabSettings],
+	);
+	const setTimeoutSec = useCallback(
+		(v: number | null) => updateSelectedTabSettings({ timeoutSec: v }),
+		[updateSelectedTabSettings],
+	);
+	const setAutocommit = useCallback(
+		(v: boolean) => updateSelectedTabSettings({ autocommit: v }),
+		[updateSelectedTabSettings],
+	);
+	const setAsyncMode = useCallback(
+		(v: boolean) => updateSelectedTabSettings({ asyncMode: v }),
+		[updateSelectedTabSettings],
+	);
 	const leftPanelRef = useRef<ImperativePanelHandle>(null);
 	const resultPanelRef = useRef<ImperativePanelHandle>(null);
 	const initialLeftMenuOpen = useRef(leftMenuOpen);
@@ -229,6 +372,7 @@ function DbConsolePage() {
 	const currentResult = tabResults.get(selectedTab?.id ?? "");
 	const results = currentResult?.results ?? null;
 	const error = currentResult?.error ?? null;
+	const asyncStarted = currentResult?.asyncStarted;
 
 	const queryRef = useRef(query);
 	queryRef.current = query;
@@ -239,9 +383,45 @@ function DbConsolePage() {
 	const rowLimitRef = useRef(rowLimit);
 	rowLimitRef.current = rowLimit;
 
-	const cancelledTabRef = useRef<string | null>(null);
-	const runningQueryRef = useRef<string | null>(null);
-	const abortControllerRef = useRef<AbortController | null>(null);
+	const timeoutRef = useRef(timeoutSec);
+	timeoutRef.current = timeoutSec;
+
+	const autocommitRef = useRef(autocommit);
+	autocommitRef.current = autocommit;
+
+	const readOnlyRef = useRef(readOnly);
+	readOnlyRef.current = readOnly;
+
+	const asyncModeRef = useRef(asyncMode);
+	asyncModeRef.current = asyncMode;
+
+	const runningTabsRef = useRef(runningTabs);
+	runningTabsRef.current = runningTabs;
+
+	const startRunning = useCallback(
+		(tabId: string, queryId: string, controller: AbortController) => {
+			setRunningTabs((prev) => {
+				// Abort any previous run on the same tab so we don't leak it.
+				const previous = prev.get(tabId);
+				if (previous) previous.controller.abort();
+				const next = new Map(prev);
+				next.set(tabId, { queryId, controller });
+				return next;
+			});
+		},
+		[],
+	);
+
+	const clearRunning = useCallback((tabId: string, queryId: string) => {
+		setRunningTabs((prev) => {
+			// Only clear if the entry still matches this run — otherwise a
+			// newer run on the same tab is already registered.
+			if (prev.get(tabId)?.queryId !== queryId) return prev;
+			const next = new Map(prev);
+			next.delete(tabId);
+			return next;
+		});
+	}, []);
 
 	const handleQueryChange = useCallback(
 		(value: string) => {
@@ -274,32 +454,51 @@ function DbConsolePage() {
 				return;
 			}
 
-			abortControllerRef.current?.abort();
+			const queryId = generateId();
 			const controller = new AbortController();
-			abortControllerRef.current = controller;
-
-			cancelledTabRef.current = null;
-			runningQueryRef.current = queryRef.current;
-			setIsLoading(true);
+			startRunning(tabId, queryId, controller);
 			const queryToSave = queryRef.current;
 			updateTabResult(tabId, { results: null, error: null });
 
+			const runOpts: SqlRunOpts = {
+				autocommit: autocommitRef.current,
+				timeoutSec: timeoutRef.current,
+				readOnly: readOnlyRef.current,
+				queryId,
+			};
+
 			try {
 				const baseUrl = client.getBaseUrl();
-				const blocks = splitSqlStatements(rawQuery);
-				const allItems: QueryResultItem[] = [];
 
-				for (const block of blocks) {
-					if (cancelledTabRef.current === tabId) return;
-					allItems.push(
-						...(await fetchBlock(
-							baseUrl,
-							block,
-							rowLimitRef.current,
-							controller.signal,
-						)),
+				if (asyncModeRef.current) {
+					// Fire-and-forget: kick off, confirm, don't poll. Results
+					// live on the server; background jobs execute on their own.
+					const operationId = await kickOffAsync(
+						baseUrl,
+						rawQuery,
+						rowLimitRef.current,
+						controller.signal,
+						runOpts,
 					);
+					if (controller.signal.aborted) return;
+					saveSqlHistory(queryToSave, queryClient, client);
+					updateTabResult(tabId, {
+						results: null,
+						error: null,
+						asyncStarted: { operationId, startedAt: Date.now() },
+					});
+					return;
 				}
+
+				const allItems = await fetchBlock(
+					baseUrl,
+					rawQuery,
+					rowLimitRef.current,
+					controller.signal,
+					runOpts,
+				);
+
+				if (controller.signal.aborted) return;
 
 				if (!allItems.some((item) => item.error)) {
 					saveSqlHistory(queryToSave, queryClient, client);
@@ -307,50 +506,46 @@ function DbConsolePage() {
 
 				updateTabResult(tabId, { results: allItems, error: null });
 			} catch (err) {
-				if (cancelledTabRef.current === tabId) return;
+				if (controller.signal.aborted) return;
 				if (err instanceof DOMException && err.name === "AbortError") return;
 
 				const errorMsg = await extractErrorMessage(err);
 				updateTabResult(tabId, { results: null, error: errorMsg });
 			} finally {
-				if (cancelledTabRef.current !== tabId) {
-					setIsLoading(false);
-				}
-				runningQueryRef.current = null;
+				clearRunning(tabId, queryId);
 			}
 		},
-		[client, queryClient, handleQueryChange, updateTabResult],
+		[
+			client,
+			queryClient,
+			handleQueryChange,
+			updateTabResult,
+			startRunning,
+			clearRunning,
+		],
 	);
 
 	const cancelQuery = useCallback(async () => {
 		const tabId = selectedTabRef.current?.id;
 		if (!tabId) return;
+		const running = runningTabsRef.current.get(tabId);
+		if (!running) return;
 
-		abortControllerRef.current?.abort();
-		abortControllerRef.current = null;
-
-		const queryText = runningQueryRef.current;
-		cancelledTabRef.current = tabId;
-		runningQueryRef.current = null;
-		setIsLoading(false);
+		running.controller.abort();
+		clearRunning(tabId, running.queryId);
 		updateTabResult(tabId, { results: null, error: "Query cancelled" });
 
-		if (queryText) {
-			try {
-				const escaped = queryText.slice(0, 200).replace(/'/g, "''");
-				await client.rawRequest({
-					method: "POST",
-					url: "/$notebook-psql",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						query: `SELECT pg_cancel_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND query LIKE '%${escaped}%' AND pid != pg_backend_pid()`,
-					}),
-				});
-			} catch {
-				// best-effort cancel
-			}
+		try {
+			await client.rawRequest({
+				method: "POST",
+				url: "/$psql-cancel",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ "query-id": running.queryId }),
+			});
+		} catch {
+			// best-effort cancel
 		}
-	}, [client, updateTabResult]);
+	}, [client, updateTabResult, clearRunning]);
 
 	const { data: historyData } = useSqlHistory();
 
@@ -441,6 +636,10 @@ function DbConsolePage() {
 
 	const sqlEditorExtensions = useMemo(
 		() => [
+			// Use a literal tab as the indent unit so indentMore / indentLess
+			// (multi-line Tab and Shift-Tab) work in tabs, matching what
+			// insertTab does for single-cursor Tab.
+			indentUnit.of("\t"),
 			Prec.highest(
 				keymap.of([
 					{
@@ -470,6 +669,12 @@ function DbConsolePage() {
 							return true;
 						},
 					},
+					// Tab inserts a literal tab at the cursor (or indents the
+					// selection if multi-line). Shift-Tab de-indents the line
+					// only when the cursor sits in its leading whitespace
+					// (logical start of the line) — otherwise it's a no-op so
+					// users mid-token don't accidentally outdent.
+					{ key: "Tab", run: insertTab, shift: smartIndentLess },
 				]),
 			),
 		],
@@ -747,11 +952,100 @@ function DbConsolePage() {
 												</Tooltip>
 											)}
 										</div>
-										<div>
+										<div className="flex items-center gap-2">
 											<LimitDropdown
 												rowLimit={rowLimit}
 												onRowLimitChange={setRowLimit}
 											/>
+											<DropdownMenu>
+												<Tooltip delayDuration={300}>
+													<TooltipTrigger asChild>
+														<DropdownMenuTrigger asChild>
+															<Button
+																variant="link"
+																className="text-text-secondary bg-bg-tertiary rounded-full px-2 h-6"
+															>
+																<Settings2 className="size-3.5" />
+															</Button>
+														</DropdownMenuTrigger>
+													</TooltipTrigger>
+													<TooltipContent side="bottom">
+														SQL execution settings
+													</TooltipContent>
+												</Tooltip>
+												<DropdownMenuContent align="start" className="w-56">
+													<DropdownMenuSub>
+														<DropdownMenuSubTrigger>
+															<span className="flex-1">Timeout</span>
+															<span className="text-text-tertiary">
+																{TIMEOUT_PRESETS.find(
+																	(p) => p.value === timeoutSec,
+																)?.label ??
+																	(timeoutSec === null
+																		? "No timeout"
+																		: `${timeoutSec}s`)}
+															</span>
+														</DropdownMenuSubTrigger>
+														<DropdownMenuSubContent>
+															{TIMEOUT_PRESETS.map((p) => (
+																<DropdownMenuCheckboxItem
+																	key={
+																		p.value === null ? "none" : String(p.value)
+																	}
+																	checked={timeoutSec === p.value}
+																	onCheckedChange={(v) => {
+																		if (v) setTimeoutSec(p.value);
+																	}}
+																>
+																	{p.label}
+																</DropdownMenuCheckboxItem>
+															))}
+														</DropdownMenuSubContent>
+													</DropdownMenuSub>
+
+													<DropdownMenuSeparator />
+													<DropdownMenuLabel className="typo-label-xs text-text-tertiary uppercase">
+														Transaction mode
+													</DropdownMenuLabel>
+													<DropdownMenuCheckboxItem
+														checked={autocommit}
+														onCheckedChange={(v) => {
+															if (v) setAutocommit(true);
+														}}
+													>
+														Autocommit
+													</DropdownMenuCheckboxItem>
+													<DropdownMenuCheckboxItem
+														checked={!autocommit}
+														onCheckedChange={(v) => {
+															if (v) setAutocommit(false);
+														}}
+													>
+														Transaction
+													</DropdownMenuCheckboxItem>
+
+													<DropdownMenuSeparator />
+													<DropdownMenuLabel className="typo-label-xs text-text-tertiary uppercase">
+														Execution
+													</DropdownMenuLabel>
+													<DropdownMenuCheckboxItem
+														checked={!asyncMode}
+														onCheckedChange={(v) => {
+															if (v) setAsyncMode(false);
+														}}
+													>
+														Foreground
+													</DropdownMenuCheckboxItem>
+													<DropdownMenuCheckboxItem
+														checked={asyncMode}
+														onCheckedChange={(v) => {
+															if (v) setAsyncMode(true);
+														}}
+													>
+														Background
+													</DropdownMenuCheckboxItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
 										</div>
 									</div>
 									<div className="flex-1 min-h-0">
@@ -771,7 +1065,7 @@ function DbConsolePage() {
 								</div>
 							</ResizablePanel>
 
-							{(results || error || isLoading) && (
+							{(results || error || asyncStarted || isLoading) && (
 								<>
 									<ResizableHandle />
 
@@ -788,6 +1082,7 @@ function DbConsolePage() {
 											key={selectedTab?.id}
 											results={results}
 											error={error}
+											asyncStarted={asyncStarted}
 											isLoading={isLoading}
 											onRun={executeQuery}
 											onCancel={cancelQuery}

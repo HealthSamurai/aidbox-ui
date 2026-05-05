@@ -10,6 +10,8 @@ overrides:
   picomatch@>=4: ^4.0.4
   yaml: ^2.8.3
   diff: ^8.0.3
+  fast-xml-parser@<5.7.0: '>=5.7.0'
+  postcss@<8.5.10: '>=8.5.10'
 
 importers:
 
@@ -22,8 +24,8 @@ importers:
         specifier: ^0.0.30
         version: 0.0.30(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@health-samurai/aidbox-client':
-        specifier: 0.0.0-alpha.5
-        version: 0.0.0-alpha.5
+        specifier: file:aidbox-ts-sdk/packages/aidbox-client
+        version: file:aidbox-ts-sdk/packages/aidbox-client
       '@health-samurai/aidbox-fhirpath-lsp':
         specifier: 0.0.0-alpha.7
         version: 0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
@@ -570,6 +572,9 @@ packages:
   '@health-samurai/aidbox-client@0.0.0-alpha.5':
     resolution: {integrity: sha512-WYXfTgMAMRRvJPhnSjB7KiOMhgQ7CDEOS7IUJDvPsjWUbIrRVzfjl89UzyDw6Rv/kum3nDIcVZHyHjVoWbms6g==}
 
+  '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
+    resolution: {directory: aidbox-ts-sdk/packages/aidbox-client, type: directory}
+
   '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7':
     resolution: {integrity: sha512-AX3f07EMoZg8OWduVWq6rx5HOk+h7ISj6dIgMmaHLLZJ3wcH+LHjAfPv1H6Q/Hc1kqMx+xyfX68z1AOaqGnANw==}
     peerDependencies:
@@ -744,6 +749,9 @@ packages:
 
   '@mcp-b/webmcp-types@2.2.0':
     resolution: {integrity: sha512-1/UYAwQKBkqRgK18GkbGR4m6Cn9vz6Qy6pTL5LIIinUOhR5dMLaNl/blH/tJT+nJleMmgDoFZWGAmmr+fAz2PQ==}
+
+  '@nodable/entities@2.1.0':
+    resolution: {integrity: sha512-nyT7T3nbMyBI/lvr6L5TyWbFJAI9FTgVRakNoBqCD+PmID8DzFrrNdLLtHMwMszOtqZa8PAOV24ZqDnQrhQINA==}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -2192,11 +2200,11 @@ packages:
   fast-diff@1.3.0:
     resolution: {integrity: sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==}
 
-  fast-xml-builder@1.1.4:
-    resolution: {integrity: sha512-f2jhpN4Eccy0/Uz9csxh3Nu6q4ErKxf0XIsasomfOihuSUa3/xw6w8dnOtCDgEItQFJG8KyXPzQXzcODDrrbOg==}
+  fast-xml-builder@1.1.5:
+    resolution: {integrity: sha512-4TJn/8FKLeslLAH3dnohXqE3QSoxkhvaMzepOIZytwJXZO69Bfz0HBdDHzOTOon6G59Zrk6VQ2bEiv1t61rfkA==}
 
-  fast-xml-parser@5.5.9:
-    resolution: {integrity: sha512-jldvxr1MC6rtiZKgrFnDSvT8xuH+eJqxqOBThUVjYrxssYTo1avZLGql5l0a0BAERR01CadYzZ83kVEkbyDg+g==}
+  fast-xml-parser@5.7.2:
+    resolution: {integrity: sha512-P7oW7tLbYnhOLQk/Gv7cZgzgMPP/XN03K02/Jy6Y/NHzyIAIpxuZIM/YqAkfiXFPxA2CTm7NtCijK9EDu09u2w==}
     hasBin: true
 
   fdir@6.5.0:
@@ -2436,8 +2444,8 @@ packages:
   oauth4webapi@3.8.5:
     resolution: {integrity: sha512-A8jmyUckVhRJj5lspguklcl90Ydqk61H3dcU0oLhH3Yv13KpAliKTt5hknpGGPZSSfOwGyraNEFmofDYH+1kSg==}
 
-  path-expression-matcher@1.2.0:
-    resolution: {integrity: sha512-DwmPWeFn+tq7TiyJ2CxezCAirXjFxvaiD03npak3cRjlP9+OjTmSy1EpIrEbh+l6JgUundniloMLDQ/6VTdhLQ==}
+  path-expression-matcher@1.5.0:
+    resolution: {integrity: sha512-cbrerZV+6rvdQrrD+iGMcZFEiiSrbv9Tfdkvnusy6y0x0GKBXREFg/Y65GhIfm0tnLntThhzCnfKwp1WRjeCyQ==}
     engines: {node: '>=14.0.0'}
 
   pathe@2.0.3:
@@ -2454,8 +2462,8 @@ packages:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
 
-  postcss@8.5.8:
-    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
+  postcss@8.5.13:
+    resolution: {integrity: sha512-qif0+jGGZoLWdHey3UFHHWP0H7Gbmsk8T5VEqyYFbWqPr1XqvLGBbk/sl8V5exGmcYJklJOhOQq1pV9IcsiFag==}
     engines: {node: ^10 || ^12 || >=14}
 
   prettier@3.8.1:
@@ -2650,8 +2658,8 @@ packages:
     resolution: {integrity: sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w==}
     engines: {node: '>=12'}
 
-  strnum@2.2.2:
-    resolution: {integrity: sha512-DnR90I+jtXNSTXWdwrEy9FakW7UX+qUZg28gj5fk2vxxl7uS/3bpI4fjFYVmdK9etptYBPNkpahuQnEwhwECqA==}
+  strnum@2.2.3:
+    resolution: {integrity: sha512-oKx6RUCuHfT3oyVjtnrmn19H1SiCqgJSg+54XqURKp5aCMbrXrhLjRN9TjuwMjiYstZ0MzDrHqkGZ5dFTKd+zg==}
 
   style-mod@4.1.3:
     resolution: {integrity: sha512-i/n8VsZydrugj3Iuzll8+x/00GH2vnYsk1eomD8QiRrSAeW6ItbCQDtfXCeJHd0iwiNagqjQkvpvREEPtW3IoQ==}
@@ -2915,7 +2923,7 @@ snapshots:
       '@atomic-ehr/fhir-canonical-manager': 0.0.11(typescript@5.9.3)
       '@atomic-ehr/fhirschema': 0.0.2(typescript@5.9.3)
       '@atomic-ehr/ucum': 0.2.5(typescript@5.9.3)
-      fast-xml-parser: 5.5.9
+      fast-xml-parser: 5.7.2
       typescript: 5.9.3
 
   '@atomic-ehr/fhirschema@0.0.2(typescript@5.9.3)':
@@ -3321,6 +3329,12 @@ snapshots:
       oauth4webapi: 3.8.5
       yaml: 2.8.3
 
+  '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
+    dependencies:
+      '@types/json-patch': 0.0.33
+      oauth4webapi: 3.8.5
+      yaml: 2.8.3
+
   '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
       '@atomic-ehr/fhirpath': 0.1.4(typescript@5.9.3)
@@ -3554,6 +3568,8 @@ snapshots:
       zod-to-json-schema: 3.25.1(zod@4.3.6)
 
   '@mcp-b/webmcp-types@2.2.0': {}
+
+  '@nodable/entities@2.1.0': {}
 
   '@radix-ui/number@1.1.1': {}
 
@@ -4977,15 +4993,16 @@ snapshots:
 
   fast-diff@1.3.0: {}
 
-  fast-xml-builder@1.1.4:
+  fast-xml-builder@1.1.5:
     dependencies:
-      path-expression-matcher: 1.2.0
+      path-expression-matcher: 1.5.0
 
-  fast-xml-parser@5.5.9:
+  fast-xml-parser@5.7.2:
     dependencies:
-      fast-xml-builder: 1.1.4
-      path-expression-matcher: 1.2.0
-      strnum: 2.2.2
+      '@nodable/entities': 2.1.0
+      fast-xml-builder: 1.1.5
+      path-expression-matcher: 1.5.0
+      strnum: 2.2.3
 
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
@@ -5152,7 +5169,7 @@ snapshots:
 
   oauth4webapi@3.8.5: {}
 
-  path-expression-matcher@1.2.0: {}
+  path-expression-matcher@1.5.0: {}
 
   pathe@2.0.3: {}
 
@@ -5162,7 +5179,7 @@ snapshots:
 
   picomatch@4.0.4: {}
 
-  postcss@8.5.8:
+  postcss@8.5.13:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -5422,7 +5439,7 @@ snapshots:
     dependencies:
       ansi-regex: 6.2.2
 
-  strnum@2.2.2: {}
+  strnum@2.2.3: {}
 
   style-mod@4.1.3: {}
 
@@ -5523,7 +5540,7 @@ snapshots:
       esbuild: 0.27.4
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.8
+      postcss: 8.5.13
       rollup: 4.59.0
       tinyglobby: 0.2.15
     optionalDependencies:

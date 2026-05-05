@@ -59,7 +59,7 @@ const mainMenuItems: {
 		url: "/db-console",
 		title: "SQL console",
 		link: (
-			<Link to="/db-console">
+			<Link to="/db-console" search={{ query: undefined }}>
 				<Database />
 				SQL console
 			</Link>
@@ -77,7 +77,7 @@ const mainMenuItems: {
 	},
 	{
 		url: `${getAidboxBaseURL()}/ui/sdc`,
-		title: "Aidbox Forms",
+		title: "FormBox",
 		link: (
 			<a
 				href={`${getAidboxBaseURL()}/ui/sdc`}
@@ -85,7 +85,7 @@ const mainMenuItems: {
 				rel="noopener noreferrer"
 			>
 				<ClipboardList />
-				Aidbox Forms
+				FormBox
 				<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
 			</a>
 		),

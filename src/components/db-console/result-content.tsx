@@ -28,7 +28,7 @@ import {
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
-import { LIMIT_PRESETS } from "./utils";
+import { LIMIT_PRESETS, TIMEOUT_PRESETS } from "./utils";
 
 // ── JSON highlighting ──
 
@@ -203,6 +203,9 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 	URL.revokeObjectURL(url);
 }
 
+// QueryResultHeader (33px) + Table header h-8 (32px) + 3 rows h-7 (3 * 28 = 84px)
+const MIN_PANEL_PX = 33 + 32 + 3 * 28;
+
 // ── Components ──
 
 function QueryResultHeader({
@@ -250,6 +253,9 @@ function QueryResult({
 }) {
 	const rows = result.result ?? [];
 	const columns = extractColumns(rows);
+	const isExplain =
+		columns.length === 1 && columns[0]?.toLowerCase() === "query plan";
+	const explainColumn = isExplain ? columns[0] : undefined;
 
 	if (result.error) {
 		return (
@@ -285,6 +291,12 @@ function QueryResult({
 						<div className="text-lg mb-2">No results</div>
 						<div className="text-sm">Query returned no rows</div>
 					</div>
+				</div>
+			) : isExplain && explainColumn ? (
+				<div className="flex-1 overflow-auto min-h-0 p-4">
+					<pre className="typo-code whitespace-pre text-text-primary">
+						{rows.map((row) => String(row[explainColumn] ?? "")).join("\n")}
+					</pre>
 				</div>
 			) : viewMode === "list" ? (
 				<div className="flex-1 overflow-auto min-h-0 divide-y divide-border-secondary">
@@ -372,7 +384,7 @@ export function LimitDropdown({
 					variant="link"
 					className="text-text-secondary bg-bg-tertiary rounded-full px-2.5 h-6"
 				>
-					<span className="text-text-tertiary uppercase">Limit</span>
+					<span className="text-text-tertiary uppercase">Fetch size</span>
 					<span className="text-text-secondary">
 						{rowLimit === null ? "No limit" : rowLimit}
 					</span>
@@ -397,6 +409,144 @@ export function LimitDropdown({
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+export function TimeoutDropdown({
+	timeoutSec,
+	onTimeoutChange,
+}: {
+	timeoutSec: number | null;
+	onTimeoutChange: (timeout: number | null) => void;
+}) {
+	const currentLabel = useMemo(() => {
+		const preset = TIMEOUT_PRESETS.find((p) => p.value === timeoutSec);
+		if (preset) return preset.label;
+		return timeoutSec === null ? "No timeout" : `${timeoutSec}s`;
+	}, [timeoutSec]);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="link"
+					className="text-text-secondary bg-bg-tertiary rounded-full px-2.5 h-6"
+				>
+					<span className="text-text-tertiary uppercase">Timeout</span>
+					<span className="text-text-secondary">{currentLabel}</span>
+					<ChevronDown className="size-3 text-text-tertiary" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start">
+				{TIMEOUT_PRESETS.map((option) => (
+					<DropdownMenuItem
+						key={option.label}
+						onSelect={() => onTimeoutChange(option.value)}
+					>
+						{option.label}
+						{option.value === timeoutSec && (
+							<Check className="ml-auto size-4" />
+						)}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+export function AutocommitToggle({
+	autocommit,
+	onAutocommitChange,
+}: {
+	autocommit: boolean;
+	onAutocommitChange: (next: boolean) => void;
+}) {
+	return (
+		<Tooltip delayDuration={300}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="link"
+					className={`rounded-full px-2.5 h-6 ${
+						autocommit
+							? "text-text-link bg-bg-tertiary"
+							: "text-text-secondary bg-bg-tertiary"
+					}`}
+					onClick={() => onAutocommitChange(!autocommit)}
+				>
+					<span className="text-text-tertiary uppercase">Tx</span>
+					<span>{autocommit ? "Autocommit" : "Transaction"}</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				{autocommit
+					? "Each statement commits immediately. Required for VACUUM, CREATE INDEX CONCURRENTLY."
+					: "Wrap the whole script in a single transaction."}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+export function ReadOnlyToggle({
+	readOnly,
+	onReadOnlyChange,
+}: {
+	readOnly: boolean;
+	onReadOnlyChange: (next: boolean) => void;
+}) {
+	return (
+		<Tooltip delayDuration={300}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="link"
+					className={`rounded-full px-2.5 h-6 ${
+						readOnly
+							? "text-text-link bg-bg-tertiary"
+							: "text-text-secondary bg-bg-tertiary"
+					}`}
+					onClick={() => onReadOnlyChange(!readOnly)}
+				>
+					<span className="text-text-tertiary uppercase">RO</span>
+					<span>{readOnly ? "Read-only" : "Read-write"}</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				{readOnly
+					? "Writes and DDL rejected by the server."
+					: "Statements can modify data and schema."}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+export function AsyncToggle({
+	async,
+	onAsyncChange,
+}: {
+	async: boolean;
+	onAsyncChange: (next: boolean) => void;
+}) {
+	return (
+		<Tooltip delayDuration={300}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="link"
+					className={`rounded-full px-2.5 h-6 ${
+						async
+							? "text-text-link bg-bg-tertiary"
+							: "text-text-secondary bg-bg-tertiary"
+					}`}
+					onClick={() => onAsyncChange(!async)}
+				>
+					<span className="text-text-tertiary uppercase">Mode</span>
+					<span>{async ? "Background" : "Foreground"}</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				{async
+					? "Query runs server-side; UI polls for status. Closing the tab does not stop it."
+					: "Query runs synchronously; closing the tab aborts it."}
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -627,18 +777,26 @@ export function ResultContent({
 		);
 	}
 
+	const n = results.length;
+
 	return (
 		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-			<div className="flex-1 min-h-0">
-				<ResizablePanelGroup direction="vertical">
+			<div className="flex-1 min-h-0 overflow-auto">
+				<ResizablePanelGroup
+					direction="vertical"
+					style={{ minHeight: `${n * MIN_PANEL_PX}px` }}
+				>
 					{results.flatMap((result, index) => {
 						const key = `${result.query}-${index}`;
 						const panel = (
-							<ResizablePanel key={`panel-${key}`} minSize={10}>
+							<ResizablePanel
+								key={`panel-${key}`}
+								style={{ minHeight: `${MIN_PANEL_PX}px` }}
+							>
 								<QueryResult
 									result={result}
 									index={index}
-									totalCount={results.length}
+									totalCount={n}
 									isMaximized={false}
 									onToggleMaximize={() => setMaximizedIndex(index)}
 									viewMode={viewMode}
