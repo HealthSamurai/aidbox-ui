@@ -13,7 +13,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Install node
         uses: actions/setup-node@v6
         with:
@@ -34,7 +34,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Install node
         uses: actions/setup-node@v6
         with:
@@ -55,7 +55,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Install node
         uses: actions/setup-node@v6
         with:
@@ -73,7 +73,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Install node
         uses: actions/setup-node@v6
         with:
