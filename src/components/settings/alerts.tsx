@@ -41,7 +41,7 @@ export function DeprecatedCapabilitiesAlert({
 	if (deprecatedItems.length === 0) return null;
 
 	return (
-		<Alert variant="critical" className="mb-4">
+		<Alert variant="critical" className="mx-8 mb-4">
 			<AlertDescription>
 				<div>
 					<p className="font-medium">
