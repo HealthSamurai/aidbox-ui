@@ -114,7 +114,7 @@ function NavbarButtons() {
 					htmlFor="new-ui-toggle"
 					className="typo-label text-text-secondary cursor-pointer"
 				>
-					New UI
+					New&nbsp;UI
 				</label>
 				<Switch
 					id="new-ui-toggle"
