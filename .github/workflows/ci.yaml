@@ -2,6 +2,8 @@ name: Aidbox UI
 
 on:
   push:
+    branches: [master]
+  pull_request:
 
 jobs:
   lint:
