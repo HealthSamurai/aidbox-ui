@@ -1434,11 +1434,11 @@ const SearchParametersTabContent = ({
 									: null;
 						return (
 							<HSComp.TableRow key={param.id} zebra index={index}>
-								<HSComp.TableCell className="w-6 px-1">
+								<HSComp.TableCell className="w-6 px-1 align-middle">
 									{alert ? (
 										<HSComp.Tooltip>
 											<HSComp.TooltipTrigger asChild>
-												<span className="text-[var(--color-illustrations-solid)] inline-flex">
+												<span className="text-[var(--color-illustrations-solid)] inline-flex items-center align-middle">
 													<Lucide.TriangleAlertIcon size={16} />
 												</span>
 											</HSComp.TooltipTrigger>
