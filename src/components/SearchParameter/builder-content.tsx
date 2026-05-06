@@ -7,11 +7,323 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import { rpcCall, SuggestIndexButton } from "./suggest-index";
 
+type SearchParameterStatus = "draft" | "active" | "retired" | "unknown";
+type SearchParameterType =
+	| "number"
+	| "date"
+	| "string"
+	| "token"
+	| "reference"
+	| "composite"
+	| "quantity"
+	| "uri"
+	| "special";
+type XPathUsage = "normal" | "phonetic" | "nearby" | "distance" | "other";
+
 type SearchParameterResource = Resource & {
 	code?: string;
 	base?: string[];
 	name?: string;
 	description?: string;
+	status?: SearchParameterStatus;
+	type?: SearchParameterType;
+	url?: string;
+	expression?: string;
+	target?: string[];
+	version?: string;
+	experimental?: boolean;
+	xpath?: string;
+	xpathUsage?: XPathUsage;
+};
+
+const STATUS_OPTIONS: SearchParameterStatus[] = [
+	"draft",
+	"active",
+	"retired",
+	"unknown",
+];
+
+const TYPE_OPTIONS: SearchParameterType[] = [
+	"string",
+	"token",
+	"reference",
+	"date",
+	"number",
+	"quantity",
+	"uri",
+	"composite",
+	"special",
+];
+
+const XPATH_USAGE_OPTIONS: XPathUsage[] = [
+	"normal",
+	"phonetic",
+	"nearby",
+	"distance",
+	"other",
+];
+
+const Field = ({
+	label,
+	required,
+	hint,
+	htmlFor,
+	children,
+}: {
+	label: string;
+	required?: boolean;
+	hint?: React.ReactNode;
+	htmlFor?: string;
+	children: React.ReactNode;
+}) => (
+	<div className="flex flex-col gap-1">
+		<label
+			htmlFor={htmlFor}
+			className="text-xs font-medium text-text-secondary"
+		>
+			{label}
+			{required ? <span className="text-text-danger ml-0.5">*</span> : null}
+		</label>
+		{children}
+		{hint ? <div className="text-xs text-text-tertiary">{hint}</div> : null}
+	</div>
+);
+
+const splitTokens = (s: string): string[] =>
+	s
+		.split(/[\s,]+/)
+		.map((x) => x.trim())
+		.filter(Boolean);
+
+const BuilderTab = ({
+	resource,
+	onResourceChange,
+}: {
+	resource: Resource;
+	onResourceChange?: (next: Resource) => void;
+}) => {
+	const sp = resource as SearchParameterResource;
+	const update = (patch: Partial<SearchParameterResource>) => {
+		if (!onResourceChange) return;
+		// Strip keys whose new value is "" / undefined / [] so the JSON stays clean.
+		const next: Record<string, unknown> = {
+			...(resource as unknown as Record<string, unknown>),
+			...patch,
+		};
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
+				delete next[k];
+			}
+		}
+		onResourceChange(next as unknown as Resource);
+	};
+
+	const isReference = sp.type === "reference";
+
+	return (
+		<div className="p-4 flex flex-col gap-6 max-w-3xl">
+			{!onResourceChange && (
+				<div className="text-xs text-text-tertiary">
+					Editing disabled — no resource setter is wired.
+				</div>
+			)}
+
+			<section className="flex flex-col gap-3">
+				<h3 className="text-sm font-semibold">Identification</h3>
+
+				<Field label="URL" required htmlFor="sp-url">
+					<HSComp.Input
+						id="sp-url"
+						value={sp.url ?? ""}
+						placeholder="http://example.org/SearchParameter/Patient-name"
+						onChange={(e) => update({ url: e.target.value })}
+					/>
+				</Field>
+
+				<div className="grid grid-cols-2 gap-3">
+					<Field label="Name" required htmlFor="sp-name">
+						<HSComp.Input
+							id="sp-name"
+							value={sp.name ?? ""}
+							placeholder="name"
+							onChange={(e) => update({ name: e.target.value })}
+						/>
+					</Field>
+
+					<Field
+						label="Code"
+						required
+						htmlFor="sp-code"
+						hint="The code used in the search URL: ?<code>=…"
+					>
+						<HSComp.Input
+							id="sp-code"
+							value={sp.code ?? ""}
+							placeholder="name"
+							onChange={(e) => update({ code: e.target.value })}
+						/>
+					</Field>
+				</div>
+
+				<div className="grid grid-cols-2 gap-3">
+					<Field label="Status" required>
+						<HSComp.Select
+							value={sp.status ?? ""}
+							onValueChange={(v) =>
+								update({ status: v as SearchParameterStatus })
+							}
+						>
+							<HSComp.SelectTrigger className="w-full">
+								<HSComp.SelectValue placeholder="Pick status" />
+							</HSComp.SelectTrigger>
+							<HSComp.SelectContent>
+								{STATUS_OPTIONS.map((s) => (
+									<HSComp.SelectItem key={s} value={s}>
+										{s}
+									</HSComp.SelectItem>
+								))}
+							</HSComp.SelectContent>
+						</HSComp.Select>
+					</Field>
+
+					<Field label="Version" htmlFor="sp-version">
+						<HSComp.Input
+							id="sp-version"
+							value={sp.version ?? ""}
+							placeholder="1.0.0"
+							onChange={(e) => update({ version: e.target.value })}
+						/>
+					</Field>
+				</div>
+
+				<Field label="Description" required htmlFor="sp-description">
+					<HSComp.Textarea
+						id="sp-description"
+						value={sp.description ?? ""}
+						rows={3}
+						placeholder="What this search parameter does."
+						onChange={(e) => update({ description: e.target.value })}
+					/>
+				</Field>
+			</section>
+
+			<section className="flex flex-col gap-3">
+				<h3 className="text-sm font-semibold">Definition</h3>
+
+				<div className="grid grid-cols-2 gap-3">
+					<Field label="Type" required>
+						<HSComp.Select
+							value={sp.type ?? ""}
+							onValueChange={(v) => update({ type: v as SearchParameterType })}
+						>
+							<HSComp.SelectTrigger className="w-full">
+								<HSComp.SelectValue placeholder="Pick type" />
+							</HSComp.SelectTrigger>
+							<HSComp.SelectContent>
+								{TYPE_OPTIONS.map((t) => (
+									<HSComp.SelectItem key={t} value={t}>
+										{t}
+									</HSComp.SelectItem>
+								))}
+							</HSComp.SelectContent>
+						</HSComp.Select>
+					</Field>
+
+					<Field
+						label="Base"
+						required
+						htmlFor="sp-base"
+						hint="Resource types this parameter applies to. Comma-separated."
+					>
+						<HSComp.Input
+							id="sp-base"
+							value={(sp.base ?? []).join(", ")}
+							placeholder="Patient, Practitioner"
+							onChange={(e) => update({ base: splitTokens(e.target.value) })}
+						/>
+					</Field>
+				</div>
+
+				<Field
+					label="Expression"
+					htmlFor="sp-expression"
+					hint="FHIRPath expression that extracts the value to index, e.g. Patient.name"
+				>
+					<HSComp.Textarea
+						id="sp-expression"
+						value={sp.expression ?? ""}
+						rows={2}
+						placeholder="Patient.name"
+						onChange={(e) => update({ expression: e.target.value })}
+						className="font-mono text-xs"
+					/>
+				</Field>
+
+				{isReference && (
+					<Field
+						label="Target"
+						htmlFor="sp-target"
+						hint="Allowed referenced resource types (only for type = reference). Comma-separated."
+					>
+						<HSComp.Input
+							id="sp-target"
+							value={(sp.target ?? []).join(", ")}
+							placeholder="Patient, Group"
+							onChange={(e) => update({ target: splitTokens(e.target.value) })}
+						/>
+					</Field>
+				)}
+			</section>
+
+			<section className="flex flex-col gap-3">
+				<h3 className="text-sm font-semibold">Optional</h3>
+
+				<div className="flex items-center gap-2">
+					<HSComp.Checkbox
+						id="sp-experimental"
+						checked={Boolean(sp.experimental)}
+						onCheckedChange={(v) => update({ experimental: v === true })}
+					/>
+					<label htmlFor="sp-experimental" className="text-sm">
+						Experimental
+					</label>
+				</div>
+
+				<div className="grid grid-cols-2 gap-3">
+					<Field
+						label="XPath"
+						htmlFor="sp-xpath"
+						hint="Legacy XPath expression."
+					>
+						<HSComp.Input
+							id="sp-xpath"
+							value={sp.xpath ?? ""}
+							placeholder="f:Patient/f:name"
+							onChange={(e) => update({ xpath: e.target.value })}
+						/>
+					</Field>
+
+					<Field label="XPath usage">
+						<HSComp.Select
+							value={sp.xpathUsage ?? ""}
+							onValueChange={(v) => update({ xpathUsage: v as XPathUsage })}
+						>
+							<HSComp.SelectTrigger className="w-full">
+								<HSComp.SelectValue placeholder="(none)" />
+							</HSComp.SelectTrigger>
+							<HSComp.SelectContent>
+								{XPATH_USAGE_OPTIONS.map((u) => (
+									<HSComp.SelectItem key={u} value={u}>
+										{u}
+									</HSComp.SelectItem>
+								))}
+							</HSComp.SelectContent>
+						</HSComp.Select>
+					</Field>
+				</div>
+			</section>
+		</div>
+	);
 };
 
 type ShapeRow = {
@@ -213,9 +525,11 @@ const StatsTab = ({
 export const SearchParameterBuilderContent = ({
 	client,
 	resource,
+	onResourceChange,
 }: {
 	client: AidboxClientR5;
 	resource: Resource;
+	onResourceChange?: (next: Resource) => void;
 }) => {
 	const sp = resource as SearchParameterResource;
 	const code = sp.code ?? "";
@@ -237,9 +551,10 @@ export const SearchParameterBuilderContent = ({
 						value="builder"
 						className="grow min-h-0 overflow-auto"
 					>
-						<div className="p-4 text-text-secondary text-sm">
-							Form builder — slice B (in progress).
-						</div>
+						<BuilderTab
+							resource={resource}
+							onResourceChange={onResourceChange}
+						/>
 					</HSComp.TabsContent>
 					<HSComp.TabsContent value="stats" className="grow min-h-0">
 						<StatsTab client={client} base={base} code={code} />

@@ -175,6 +175,17 @@ export const ResourceEditorPage = ({
 		}
 	};
 
+	const handleResourceChange = (next: Resource) => {
+		setResource(next);
+		setSaveError(null);
+		const text =
+			mode === "yaml"
+				? YAML.dump(next, { indent })
+				: JSON.stringify(next, null, indent);
+		setResourceText(text);
+		setEditDirty(text !== initialTextRef.current);
+	};
+
 	const editorViewRef = React.useRef<CodeEditorView | null>(null);
 	const saveRef = React.useRef<SaveHandle>(null);
 
@@ -388,7 +399,11 @@ export const ResourceEditorPage = ({
 					value="builder"
 					className="grow min-h-0 flex flex-col"
 				>
-					<SearchParameterBuilderContent client={client} resource={resource} />
+					<SearchParameterBuilderContent
+						client={client}
+						resource={resource}
+						onResourceChange={handleResourceChange}
+					/>
 				</HSComp.TabsContent>
 			),
 		});
