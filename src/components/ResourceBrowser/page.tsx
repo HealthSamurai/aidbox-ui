@@ -1379,7 +1379,9 @@ const SearchParametersTabContent = ({
 			<HSComp.Table zebra stickyHeader className="typo-code">
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
-						<HSComp.TableHead className="w-6 px-1" />
+						<HSComp.TableHead className="w-6 px-1">
+							<span className="sr-only">Alert</span>
+						</HSComp.TableHead>
 						<HSComp.TableHead>Definition</HSComp.TableHead>
 						<HSComp.TableHead
 							className="w-0 text-right"
