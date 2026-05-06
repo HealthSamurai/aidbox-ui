@@ -5,7 +5,6 @@ import * as ReactQuery from "@tanstack/react-query";
 import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
-import { format as formatSQL } from "sql-formatter";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import {
 	fetchProfileElements,
@@ -17,9 +16,9 @@ import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
-import { appendSqlTabs } from "../db-console/active-tabs";
 import { EmptyState } from "../empty-state";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
+import { rpcCall } from "../SearchParameter/suggest-index";
 import * as Constants from "./constants";
 import type * as Types from "./types";
 
@@ -1178,155 +1177,45 @@ type SearchParameterBundle = {
 	entry?: { resource: SearchParameterResource }[];
 };
 
-type SuggestedIndex = {
-	"index-name": string;
-	type?: string;
-	statement: string;
-	"resource-type"?: string;
-	subtypes?: (string | null)[];
+type SearchParamStat = {
+	resource_type: string;
+	search_param: string;
+	calls: number;
+	total_time_ms: number;
+	min_time_ms: number | null;
+	max_time_ms: number | null;
+	mean_time_ms: number;
+	last_used_at: string | null;
+	has_index: boolean;
 };
 
-async function rpcCall(
-	client: AidboxClientR5,
-	method: string,
-	params: Record<string, unknown>,
-) {
-	const response = await client.rawRequest({
-		method: "POST",
-		url: `/rpc?_m=${method}`,
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ method, params }),
-	});
-	const json = await response.response.json();
-	if (json.error) throw new Error(json.error.message || "RPC error");
-	return json;
+function formatCount(n: number): string {
+	return n.toLocaleString();
 }
 
-function formatStatement(sql: string): string {
-	try {
-		return formatSQL(sql, { language: "postgresql" });
-	} catch {
-		return sql;
-	}
+function formatMs(ms: number | null | undefined): string {
+	if (ms == null) return "—";
+	if (ms < 1) return ms.toFixed(2);
+	if (ms < 100) return ms.toFixed(1);
+	return Math.round(ms).toString();
 }
 
-const SuggestIndexButton = ({
-	client,
-	resourceType,
-	searchParam,
-}: {
-	client: AidboxClientR5;
-	resourceType: string;
-	searchParam: string;
-}) => {
-	const [open, setOpen] = React.useState(false);
-	const navigate = Router.useNavigate();
-	const mutation = ReactQuery.useMutation({
-		mutationFn: async () => {
-			const json = await rpcCall(client, "aidbox.index/suggest-index", {
-				"resource-type": resourceType,
-				"search-param": searchParam,
-			});
-			return (json.result ?? []) as SuggestedIndex[];
-		},
-		onError: ApiUtils.onMutationError,
-	});
-
-	const formattedStatements = React.useMemo(
-		() =>
-			mutation.data?.map((idx) => ({
-				name: idx["index-name"],
-				statement: formatStatement(idx.statement),
-			})) ?? [],
-		[mutation.data],
-	);
-
-	const handleClick = () => {
-		setOpen(true);
-		mutation.mutate();
-	};
-
-	const handleOpenInConsole = () => {
-		appendSqlTabs(formattedStatements.map((s) => s.statement));
-		setOpen(false);
-		navigate({ to: "/db-console", search: { query: undefined } });
-	};
-
-	return (
-		<>
-			<HSComp.Button
-				variant="ghost"
-				size="small"
-				onClick={handleClick}
-				disabled={!searchParam}
-			>
-				<Lucide.DatabaseIcon size={14} />
-				Suggest index
-			</HSComp.Button>
-
-			<HSComp.Dialog open={open} onOpenChange={setOpen}>
-				<HSComp.DialogContent className="sm:max-w-[90vw] w-[90vw]">
-					<HSComp.DialogHeader>
-						<HSComp.DialogTitle>
-							Suggested indexes for {resourceType}.{searchParam}
-						</HSComp.DialogTitle>
-					</HSComp.DialogHeader>
-					{mutation.isPending && (
-						<div className="text-text-secondary">Loading...</div>
-					)}
-					{mutation.isError && (
-						<div className="text-text-danger">{mutation.error.message}</div>
-					)}
-					{mutation.isSuccess && formattedStatements.length === 0 && (
-						<div className="text-text-secondary">No indexes suggested.</div>
-					)}
-					{formattedStatements.length > 0 && (
-						<>
-							<div className="space-y-3 max-h-[60vh] overflow-y-auto">
-								{formattedStatements.map((s) => {
-									const lineCount = s.statement.split("\n").length;
-									const height = Math.min(Math.max(lineCount, 2), 12) * 22 + 16;
-									return (
-										<div
-											key={s.name}
-											className="rounded border border-border-secondary overflow-hidden"
-										>
-											<div className="px-3 py-1.5 text-xs text-text-secondary bg-bg-secondary border-b border-border-secondary">
-												{s.name}
-											</div>
-											<div
-												style={{ height }}
-												className="[&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent"
-											>
-												<HSComp.CodeEditor
-													readOnly
-													isReadOnlyTheme
-													lineNumbers={false}
-													foldGutter={false}
-													currentValue={s.statement}
-													mode="sql"
-													viewCallback={(view) => {
-														view.contentDOM.contentEditable = "false";
-													}}
-												/>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-							<HSComp.DialogFooter>
-								<HSComp.Button variant="primary" onClick={handleOpenInConsole}>
-									<Lucide.SquareTerminalIcon size={14} />
-									Edit in SQL Console
-								</HSComp.Button>
-							</HSComp.DialogFooter>
-						</>
-					)}
-				</HSComp.DialogContent>
-			</HSComp.Dialog>
-		</>
-	);
-};
+function formatRelativeTime(iso: string | null | undefined): string {
+	if (!iso) return "—";
+	const t = Date.parse(iso);
+	if (Number.isNaN(t)) return "—";
+	const diff = Date.now() - t;
+	const sec = Math.floor(diff / 1000);
+	if (sec < 5) return "just now";
+	if (sec < 60) return `${sec}s ago`;
+	const min = Math.floor(sec / 60);
+	if (min < 60) return `${min}m ago`;
+	const hr = Math.floor(min / 60);
+	if (hr < 24) return `${hr}h ago`;
+	const day = Math.floor(hr / 24);
+	if (day < 30) return `${day}d ago`;
+	return new Date(t).toISOString().slice(0, 10);
+}
 
 const SearchParametersTabContent = ({
 	client,
@@ -1353,6 +1242,35 @@ const SearchParametersTabContent = ({
 		retry: false,
 	});
 
+	const statsQuery = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "resource-search-param-stats", resourceType],
+		queryFn: async () => {
+			try {
+				const json = await rpcCall(
+					client,
+					"aidbox.index/get-search-param-stats",
+					{
+						"resource-type": resourceType,
+						by: "param",
+						limit: 1000,
+						"flush-first": true,
+					},
+				);
+				return (json.result ?? []) as SearchParamStat[];
+			} catch {
+				return [] as SearchParamStat[];
+			}
+		},
+		retry: false,
+		refetchInterval: 30_000,
+	});
+
+	const statsByParam = React.useMemo(() => {
+		const m = new Map<string, SearchParamStat>();
+		for (const s of statsQuery.data ?? []) m.set(s.search_param, s);
+		return m;
+	}, [statsQuery.data]);
+
 	if (isLoading) {
 		return <div>Loading...</div>;
 	}
@@ -1372,8 +1290,14 @@ const SearchParametersTabContent = ({
 			<HSComp.Table zebra stickyHeader className="typo-code">
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
-						<HSComp.TableHead className="w-0">Index</HSComp.TableHead>
 						<HSComp.TableHead>Definition</HSComp.TableHead>
+						<HSComp.TableHead className="w-0 text-right">
+							Calls
+						</HSComp.TableHead>
+						<HSComp.TableHead className="w-0 text-right">
+							Mean&nbsp;ms
+						</HSComp.TableHead>
+						<HSComp.TableHead className="w-0">Last used</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Code</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Name</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Type</HSComp.TableHead>
@@ -1381,38 +1305,46 @@ const SearchParametersTabContent = ({
 					</HSComp.TableRow>
 				</HSComp.TableHeader>
 				<HSComp.TableBody>
-					{data.map((param, index) => (
-						<HSComp.TableRow key={param.id} zebra index={index}>
-							<HSComp.TableCell>
-								<SuggestIndexButton
-									client={client}
-									resourceType={resourceType}
-									searchParam={param.code ?? ""}
-								/>
-							</HSComp.TableCell>
-							<HSComp.TableCell type="link">
-								<Router.Link
-									className="text-text-link hover:underline"
-									to="/resource/$resourceType/edit/$id"
-									params={{
-										resourceType: "SearchParameter",
-										id: param.id,
-									}}
-									search={{
-										tab: "edit" as const,
-										mode: "json" as const,
-										builderTab: "form" as const,
-									}}
+					{data.map((param, index) => {
+						const stats = param.code ? statsByParam.get(param.code) : undefined;
+						return (
+							<HSComp.TableRow key={param.id} zebra index={index}>
+								<HSComp.TableCell type="link">
+									<Router.Link
+										className="text-text-link hover:underline"
+										to="/resource/$resourceType/edit/$id"
+										params={{
+											resourceType: "SearchParameter",
+											id: param.id,
+										}}
+										search={{
+											tab: "edit" as const,
+											mode: "json" as const,
+											builderTab: "form" as const,
+										}}
+									>
+										{param.url || "-"}
+									</Router.Link>
+								</HSComp.TableCell>
+								<HSComp.TableCell className="text-right tabular-nums">
+									{stats ? formatCount(stats.calls) : "—"}
+								</HSComp.TableCell>
+								<HSComp.TableCell className="text-right tabular-nums">
+									{stats ? formatMs(stats.mean_time_ms) : "—"}
+								</HSComp.TableCell>
+								<HSComp.TableCell
+									title={stats?.last_used_at ?? undefined}
+									className="whitespace-nowrap"
 								>
-									{param.url || "-"}
-								</Router.Link>
-							</HSComp.TableCell>
-							<HSComp.TableCell>{param.code || "-"}</HSComp.TableCell>
-							<HSComp.TableCell>{param.name || "-"}</HSComp.TableCell>
-							<HSComp.TableCell>{param.type || "-"}</HSComp.TableCell>
-							<HSComp.TableCell>{param.description || "-"}</HSComp.TableCell>
-						</HSComp.TableRow>
-					))}
+									{formatRelativeTime(stats?.last_used_at)}
+								</HSComp.TableCell>
+								<HSComp.TableCell>{param.code || "-"}</HSComp.TableCell>
+								<HSComp.TableCell>{param.name || "-"}</HSComp.TableCell>
+								<HSComp.TableCell>{param.type || "-"}</HSComp.TableCell>
+								<HSComp.TableCell>{param.description || "-"}</HSComp.TableCell>
+							</HSComp.TableRow>
+						);
+					})}
 				</HSComp.TableBody>
 			</HSComp.Table>
 		</div>
