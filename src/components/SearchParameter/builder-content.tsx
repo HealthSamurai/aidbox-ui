@@ -700,9 +700,16 @@ export const StatsTab = ({
 export const SearchParameterBuilderContent = ({
 	resource,
 	onResourceChange,
+	actions,
 }: {
 	resource: Resource;
 	onResourceChange?: (next: Resource) => void;
+	/**
+	 * Toolbar slot rendered at the top of the left pane — typically the
+	 * `<SaveButton/> <DeleteButton/>` pair from `ResourceEditor`. Mirrors
+	 * VD's `editor-panel-content` top bar.
+	 */
+	actions?: React.ReactNode;
 }) => {
 	return (
 		<HSComp.ResizablePanelGroup
@@ -713,9 +720,16 @@ export const SearchParameterBuilderContent = ({
 			<HSComp.ResizablePanel
 				minSize={30}
 				defaultSize={50}
-				className="overflow-auto"
+				className="flex flex-col"
 			>
-				<BuilderTab resource={resource} onResourceChange={onResourceChange} />
+				{actions ? (
+					<div className="flex items-center justify-end gap-2 bg-bg-secondary flex-none h-10 border-b px-2">
+						{actions}
+					</div>
+				) : null}
+				<div className="grow min-h-0 overflow-auto">
+					<BuilderTab resource={resource} onResourceChange={onResourceChange} />
+				</div>
 			</HSComp.ResizablePanel>
 			<HSComp.ResizableHandle />
 			<HSComp.ResizablePanel minSize={20} defaultSize={50}>

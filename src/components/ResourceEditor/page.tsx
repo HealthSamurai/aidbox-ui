@@ -405,6 +405,7 @@ export const ResourceEditorPage = ({
 					<SearchParameterBuilderContent
 						resource={resource}
 						onResourceChange={handleResourceChange}
+						actions={editActions}
 					/>
 				</HSComp.TabsContent>
 			),
