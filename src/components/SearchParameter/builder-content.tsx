@@ -1,9 +1,14 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
+import {
+	type ItemInstance,
+	TreeView,
+	type TreeViewItem,
+} from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import { useDebounce } from "../../hooks";
@@ -72,50 +77,6 @@ const splitTokens = (s: string): string[] =>
 		.split(/[\s,]+/)
 		.map((x) => x.trim())
 		.filter(Boolean);
-
-/**
- * Section header rendered as an uppercase badge — matches the
- * `properties` / `select` / `where` headers in the VD builder tree.
- */
-const SectionHeader = ({ label }: { label: string }) => (
-	<div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-0">
-		<span className="uppercase text-text-info-primary text-xs font-medium px-1">
-			{label}
-		</span>
-	</div>
-);
-
-/**
- * Row with a colored badge label on the left and an editor on the right.
- * Mirrors the VD builder's tree-row style (e.g. `name`, `status` rows).
- */
-const Row = ({
-	label,
-	required,
-	hint,
-	children,
-}: {
-	label: string;
-	required?: boolean;
-	hint?: React.ReactNode;
-	children: React.ReactNode;
-}) => (
-	<div className="group/tree-item-label flex w-full items-start gap-2 px-2 py-1 hover:bg-bg-tertiary rounded-md transition-colors">
-		<span
-			className={`uppercase px-1.5 py-0.5 rounded-md text-xs font-medium shrink-0 mt-0.5 min-w-[140px] ${
-				required
-					? "text-text-info-primary bg-bg-info-primary"
-					: "text-text-secondary bg-bg-secondary"
-			}`}
-		>
-			{label}
-		</span>
-		<div className="flex-1 min-w-0 flex flex-col gap-1">
-			{children}
-			{hint ? <div className="text-xs text-text-tertiary">{hint}</div> : null}
-		</div>
-	</div>
-);
 
 /** Debounced single-line input, styled to match VD's `InputView`. */
 const InlineInput = ({
@@ -215,6 +176,34 @@ const InlineSelect = <T extends string>({
 	</HSComp.Select>
 );
 
+type SpItemType =
+	| "properties"
+	| "definition"
+	| "optional"
+	| "url"
+	| "name"
+	| "code"
+	| "status"
+	| "description"
+	| "type"
+	| "base"
+	| "expression"
+	| "target"
+	| "version"
+	| "experimental"
+	| "xpath"
+	| "xpath-usage";
+
+interface SpItemMeta {
+	type: SpItemType;
+}
+
+const FOLDER_TYPES = new Set<SpItemType>([
+	"properties",
+	"definition",
+	"optional",
+]);
+
 const BuilderTab = ({
 	resource,
 	onResourceChange,
@@ -241,99 +230,175 @@ const BuilderTab = ({
 	const isReference = sp.type === "reference";
 	const fhirPathContext = sp.base?.[0] ?? "";
 
-	return (
-		<FhirPathLspProvider resourceType={fhirPathContext || undefined}>
-			<div className="p-4 flex flex-col gap-1 max-w-3xl">
-				{!onResourceChange && (
-					<div className="text-xs text-text-tertiary px-2 pb-2">
-						Editing disabled — no resource setter is wired.
-					</div>
-				)}
+	const tree = useMemo<Record<string, TreeViewItem<SpItemMeta>>>(() => {
+		const definitionChildren = ["_type", "_base", "_expression"];
+		if (isReference) definitionChildren.push("_target");
+		return {
+			root: {
+				name: "root",
+				children: ["_properties", "_definition", "_optional"],
+			},
+			_properties: {
+				name: "_properties",
+				meta: { type: "properties" },
+				children: ["_url", "_name", "_code", "_status", "_description"],
+			},
+			_url: { name: "_url", meta: { type: "url" } },
+			_name: { name: "_name", meta: { type: "name" } },
+			_code: { name: "_code", meta: { type: "code" } },
+			_status: { name: "_status", meta: { type: "status" } },
+			_description: { name: "_description", meta: { type: "description" } },
+			_definition: {
+				name: "_definition",
+				meta: { type: "definition" },
+				children: definitionChildren,
+			},
+			_type: { name: "_type", meta: { type: "type" } },
+			_base: { name: "_base", meta: { type: "base" } },
+			_expression: { name: "_expression", meta: { type: "expression" } },
+			_target: { name: "_target", meta: { type: "target" } },
+			_optional: {
+				name: "_optional",
+				meta: { type: "optional" },
+				children: ["_version", "_experimental", "_xpath", "_xpath_usage"],
+			},
+			_version: { name: "_version", meta: { type: "version" } },
+			_experimental: { name: "_experimental", meta: { type: "experimental" } },
+			_xpath: { name: "_xpath", meta: { type: "xpath" } },
+			_xpath_usage: { name: "_xpath_usage", meta: { type: "xpath-usage" } },
+		};
+	}, [isReference]);
 
-				<SectionHeader label="properties" />
+	const [collapsedItemIds, setCollapsedItemIds] = useState<string[]>([
+		"_optional",
+	]);
+	const expandedItems = useMemo(
+		() =>
+			Object.keys(tree).filter(
+				(id) => id !== "root" && !collapsedItemIds.includes(id),
+			),
+		[tree, collapsedItemIds],
+	);
+	const onExpandedItemsChange = (items: string[]) => {
+		const allIds = Object.keys(tree).filter((id) => id !== "root");
+		setCollapsedItemIds(allIds.filter((id) => !items.includes(id)));
+	};
 
-				<Row label="url" required>
+	const labelView = (item: ItemInstance<TreeViewItem<SpItemMeta>>) => {
+		const meta = item.getItemData()?.meta;
+		const t = meta?.type;
+		const isFolder = t ? FOLDER_TYPES.has(t) : false;
+		const label =
+			t === "xpath-usage" ? "xpath usage" : (t as string | undefined);
+		const cls = isFolder
+			? "text-text-info-primary px-1!"
+			: "text-text-info-primary bg-bg-info-primary";
+		return (
+			<button
+				type="button"
+				className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${cls}`}
+				onClick={() => {
+					if (!isFolder) return;
+					if (item.isExpanded()) item.collapse();
+					else item.expand();
+				}}
+			>
+				{label}
+			</button>
+		);
+	};
+
+	const renderEditorRow = (
+		item: ItemInstance<TreeViewItem<SpItemMeta>>,
+		editor: React.ReactNode,
+	) => (
+		<div className="flex w-full items-center justify-between gap-2">
+			{labelView(item)}
+			<div className="w-[60%] min-w-0">{editor}</div>
+		</div>
+	);
+
+	const customItemView = (item: ItemInstance<TreeViewItem<SpItemMeta>>) => {
+		const t = item.getItemData()?.meta?.type;
+		switch (t) {
+			case "properties":
+			case "definition":
+			case "optional":
+				return <div>{labelView(item)}</div>;
+			case "url":
+				return renderEditorRow(
+					item,
 					<InlineInput
 						id="sp-url"
 						value={sp.url}
 						placeholder="http://example.org/SearchParameter/Patient-name"
 						onChange={(v) => update({ url: v })}
-					/>
-				</Row>
-
-				<Row label="name" required>
+					/>,
+				);
+			case "name":
+				return renderEditorRow(
+					item,
 					<InlineInput
 						id="sp-name"
 						value={sp.name}
 						placeholder="name"
 						onChange={(v) => update({ name: v })}
-					/>
-				</Row>
-
-				<Row
-					label="code"
-					required
-					hint="The code used in the search URL: ?<code>=…"
-				>
+					/>,
+				);
+			case "code":
+				return renderEditorRow(
+					item,
 					<InlineInput
 						id="sp-code"
 						value={sp.code}
 						placeholder="name"
 						onChange={(v) => update({ code: v })}
-					/>
-				</Row>
-
-				<Row label="status" required>
+					/>,
+				);
+			case "status":
+				return renderEditorRow(
+					item,
 					<InlineSelect
 						value={sp.status}
 						options={STATUS_OPTIONS}
 						placeholder="Pick status"
 						onChange={(v) => update({ status: v })}
-					/>
-				</Row>
-
-				<Row label="description" required>
+					/>,
+				);
+			case "description":
+				return renderEditorRow(
+					item,
 					<InlineTextarea
 						id="sp-description"
 						value={sp.description}
 						placeholder="What this search parameter does."
 						rows={3}
 						onChange={(v) => update({ description: v })}
-					/>
-				</Row>
-
-				<SectionHeader label="definition" />
-
-				<Row label="type" required>
+					/>,
+				);
+			case "type":
+				return renderEditorRow(
+					item,
 					<InlineSelect
 						value={sp.type}
 						options={TYPE_OPTIONS}
 						placeholder="Pick type"
 						onChange={(v) => update({ type: v })}
-					/>
-				</Row>
-
-				<Row
-					label="base"
-					required
-					hint="Resource types this parameter applies to. Comma-separated."
-				>
+					/>,
+				);
+			case "base":
+				return renderEditorRow(
+					item,
 					<InlineInput
 						id="sp-base"
 						value={(sp.base ?? []).join(", ")}
 						placeholder="Patient, Practitioner"
 						onChange={(v) => update({ base: splitTokens(v) })}
-					/>
-				</Row>
-
-				<Row
-					label="expression"
-					hint={
-						fhirPathContext
-							? `FHIRPath context: ${fhirPathContext}`
-							: "Set 'base' to enable FHIRPath autocomplete."
-					}
-				>
+					/>,
+				);
+			case "expression":
+				return renderEditorRow(
+					item,
 					<FhirPathInput
 						id="sp-expression"
 						value={sp.expression}
@@ -342,61 +407,95 @@ const BuilderTab = ({
 						}
 						contextPath={fhirPathContext}
 						onChange={(v) => update({ expression: v })}
-					/>
-				</Row>
-
-				{isReference && (
-					<Row
-						label="target"
-						hint="Allowed referenced resource types (when type = reference). Comma-separated."
-					>
-						<InlineInput
-							id="sp-target"
-							value={(sp.target ?? []).join(", ")}
-							placeholder="Patient, Group"
-							onChange={(v) => update({ target: splitTokens(v) })}
-						/>
-					</Row>
-				)}
-
-				<SectionHeader label="optional" />
-
-				<Row label="version">
+					/>,
+				);
+			case "target":
+				return renderEditorRow(
+					item,
+					<InlineInput
+						id="sp-target"
+						value={(sp.target ?? []).join(", ")}
+						placeholder="Patient, Group"
+						onChange={(v) => update({ target: splitTokens(v) })}
+					/>,
+				);
+			case "version":
+				return renderEditorRow(
+					item,
 					<InlineInput
 						id="sp-version"
 						value={sp.version}
 						placeholder="1.0.0"
 						onChange={(v) => update({ version: v })}
-					/>
-				</Row>
-
-				<Row label="experimental">
+					/>,
+				);
+			case "experimental":
+				return renderEditorRow(
+					item,
 					<div className="flex items-center h-7">
 						<HSComp.Checkbox
 							id="sp-experimental"
 							checked={Boolean(sp.experimental)}
 							onCheckedChange={(v) => update({ experimental: v === true })}
 						/>
-					</div>
-				</Row>
-
-				<Row label="xpath" hint="Legacy XPath expression.">
+					</div>,
+				);
+			case "xpath":
+				return renderEditorRow(
+					item,
 					<InlineInput
 						id="sp-xpath"
 						value={sp.xpath}
 						placeholder="f:Patient/f:name"
 						onChange={(v) => update({ xpath: v })}
-					/>
-				</Row>
-
-				<Row label="xpath usage">
+					/>,
+				);
+			case "xpath-usage":
+				return renderEditorRow(
+					item,
 					<InlineSelect
 						value={sp.xpathUsage}
 						options={XPATH_USAGE_OPTIONS}
 						placeholder="(none)"
 						onChange={(v) => update({ xpathUsage: v })}
-					/>
-				</Row>
+					/>,
+				);
+			default:
+				return <div>{labelView(item)}</div>;
+		}
+	};
+
+	return (
+		<FhirPathLspProvider resourceType={fhirPathContext || undefined}>
+			<div className="p-4 max-w-3xl">
+				{!onResourceChange && (
+					<div className="text-xs text-text-tertiary px-2 pb-2">
+						Editing disabled — no resource setter is wired.
+					</div>
+				)}
+				<TreeView
+					itemLabelClassFn={(item) => {
+						const t = item.getItemData()?.meta?.type;
+						if (t && FOLDER_TYPES.has(t)) {
+							return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
+						}
+						return "pr-0";
+					}}
+					items={tree}
+					rootItemId="root"
+					customItemView={customItemView}
+					disableHover={true}
+					chevronClassName="self-center cursor-pointer"
+					onItemLabelClick={(item) => {
+						if (item.isFolder()) {
+							if (item.isExpanded()) item.collapse();
+							else item.expand();
+						}
+					}}
+					canReorder={false}
+					expandedItems={expandedItems}
+					onExpandedItemsChange={onExpandedItemsChange}
+				/>
 			</div>
 		</FhirPathLspProvider>
 	);
