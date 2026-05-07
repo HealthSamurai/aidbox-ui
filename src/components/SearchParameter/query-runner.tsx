@@ -265,24 +265,18 @@ export type SpType =
 	| "composite"
 	| "special";
 
-// Which modifiers each FHIR search-parameter type accepts. Sourced from the
-// R4 modifiers table (https://hl7.org/fhir/R4/search.html#modifiers).
-// `missing` and `not` apply to every non-composite type and we always allow
-// them when nothing else fits.
+// Which modifiers each FHIR search-parameter type accepts. Diverges from the
+// R4 spec table (https://hl7.org/fhir/R4/search.html#modifiers) where Aidbox
+// rejects them in practice:
+//   - string does NOT accept `:not` in Aidbox.
+//   - token does NOT accept `:not-in`, `:above`, `:below`.
+//   - reference does NOT accept `:above`, `:below`.
+//   - uri does NOT accept `:below`.
 const MODIFIERS_BY_TYPE: Record<SpType, readonly Modifier[]> = {
-	string: ["not", "missing", "exact", "contains"],
-	token: [
-		"not",
-		"missing",
-		"text",
-		"in",
-		"not-in",
-		"of-type",
-		"above",
-		"below",
-	],
-	reference: ["not", "missing", "text", "identifier", "above", "below"],
-	uri: ["not", "missing", "above", "below"],
+	string: ["missing", "exact", "contains"],
+	token: ["not", "missing", "text", "in", "of-type"],
+	reference: ["not", "missing", "text", "identifier"],
+	uri: ["not", "missing", "above"],
 	date: ["not", "missing"],
 	number: ["not", "missing"],
 	quantity: ["not", "missing"],
