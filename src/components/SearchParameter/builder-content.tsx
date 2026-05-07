@@ -723,7 +723,7 @@ export const SearchParameterBuilderContent = ({
 				className="flex flex-col"
 			>
 				{actions ? (
-					<div className="flex items-center justify-end gap-2 bg-bg-secondary flex-none h-10 border-b px-2">
+					<div className="flex items-center justify-start gap-2 bg-bg-secondary flex-none h-10 border-b px-2">
 						{actions}
 					</div>
 				) : null}
