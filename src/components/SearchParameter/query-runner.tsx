@@ -254,6 +254,48 @@ const MODIFIERS = [
 ] as const;
 type Modifier = (typeof MODIFIERS)[number];
 
+export type SpType =
+	| "string"
+	| "token"
+	| "reference"
+	| "uri"
+	| "date"
+	| "number"
+	| "quantity"
+	| "composite"
+	| "special";
+
+// Which modifiers each FHIR search-parameter type accepts. Sourced from the
+// R4 modifiers table (https://hl7.org/fhir/R4/search.html#modifiers).
+// `missing` and `not` apply to every non-composite type and we always allow
+// them when nothing else fits.
+const MODIFIERS_BY_TYPE: Record<SpType, readonly Modifier[]> = {
+	string: ["not", "missing", "exact", "contains"],
+	token: [
+		"not",
+		"missing",
+		"text",
+		"in",
+		"not-in",
+		"of-type",
+		"above",
+		"below",
+	],
+	reference: ["not", "missing", "text", "identifier", "above", "below"],
+	uri: ["not", "missing", "above", "below"],
+	date: ["not", "missing"],
+	number: ["not", "missing"],
+	quantity: ["not", "missing"],
+	composite: [],
+	special: ["not", "missing"],
+};
+
+function allowedModifiers(type?: string): readonly Modifier[] {
+	if (!type) return MODIFIERS;
+	const t = type as SpType;
+	return MODIFIERS_BY_TYPE[t] ?? MODIFIERS;
+}
+
 async function executeRequest(
 	path: string,
 	headers: Header[],
@@ -348,10 +390,13 @@ export const QueryRunner = ({
 	client,
 	base,
 	code,
+	type,
 }: {
 	client: AidboxClientR5;
 	base?: string;
 	code?: string;
+	/** SP `type` — narrows the modifier picker. */
+	type?: string;
 }) => {
 	// Lock the SP prefix into the GET box so the user can only fill in the
 	// value after `=`. Falls back to a free-form URL input until both `base`
@@ -360,6 +405,12 @@ export const QueryRunner = ({
 
 	const [value, setValue] = React.useState<string>("");
 	const [modifier, setModifier] = React.useState<Modifier | "">("");
+	const visibleModifiers = React.useMemo(() => allowedModifiers(type), [type]);
+	// If the SP type changed and the current modifier is no longer allowed,
+	// drop it so we don't ship a `:missing=` against a string SP, etc.
+	React.useEffect(() => {
+		if (modifier && !visibleModifiers.includes(modifier)) setModifier("");
+	}, [modifier, visibleModifiers]);
 	const [freePath, setFreePath] = React.useState<string>("/fhir/Patient");
 	const [headers] = React.useState<Header[]>(DEFAULT_HEADERS);
 	const [response, setResponse] = React.useState<ResponseData | null>(null);
@@ -427,7 +478,7 @@ export const QueryRunner = ({
 								<HSComp.SelectItem value={NO_MODIFIER}>
 									<span className="text-text-tertiary">(no modifier)</span>
 								</HSComp.SelectItem>
-								{MODIFIERS.map((m) => (
+								{visibleModifiers.map((m) => (
 									<HSComp.SelectItem key={m} value={m}>
 										:{m}
 									</HSComp.SelectItem>
