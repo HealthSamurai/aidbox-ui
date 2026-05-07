@@ -230,10 +230,9 @@ const DEFAULT_HEADERS: Header[] = [
 	{ id: "2", name: "Accept", value: "application/json", enabled: true },
 ];
 
-function buildDefaultPath(base?: string, code?: string): string {
-	if (base && code) return `/fhir/${base}?${code}=`;
-	if (base) return `/fhir/${base}`;
-	return "/fhir/Patient";
+function buildPrefix(base?: string, code?: string): string | null {
+	if (!base || !code) return null;
+	return `/fhir/${base}?${code}=`;
 }
 
 async function executeRequest(
@@ -335,12 +334,13 @@ export const QueryRunner = ({
 	base?: string;
 	code?: string;
 }) => {
-	const defaultPath = React.useMemo(
-		() => buildDefaultPath(base, code),
-		[base, code],
-	);
+	// Lock the SP prefix into the GET box so the user can only fill in the
+	// value after `=`. Falls back to a free-form URL input until both `base`
+	// and `code` are set.
+	const prefix = React.useMemo(() => buildPrefix(base, code), [base, code]);
 
-	const [path, setPath] = React.useState<string>(defaultPath);
+	const [value, setValue] = React.useState<string>("");
+	const [freePath, setFreePath] = React.useState<string>("/fhir/Patient");
 	const [headers] = React.useState<Header[]>(DEFAULT_HEADERS);
 	const [response, setResponse] = React.useState<ResponseData | null>(null);
 	const [isLoading, setIsLoading] = React.useState(false);
@@ -348,15 +348,7 @@ export const QueryRunner = ({
 	const [activeResponseTab, setActiveResponseTab] =
 		React.useState<ResponseTab>("body");
 
-	// Update default path when base/code change AND the user hasn't typed
-	// something that diverges from a previous default.
-	const lastDefaultRef = React.useRef(defaultPath);
-	React.useEffect(() => {
-		if (path === lastDefaultRef.current) {
-			setPath(defaultPath);
-		}
-		lastDefaultRef.current = defaultPath;
-	}, [defaultPath, path]);
+	const path = prefix ? `${prefix}${value}` : freePath;
 
 	const send = React.useCallback(async () => {
 		setIsLoading(true);
@@ -387,24 +379,21 @@ export const QueryRunner = ({
 		<div className="flex flex-col h-full">
 			{/* Request line */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
-				<UrlAutocomplete
-					path={path}
-					method={METHOD}
-					onSelectSuggestion={(p) => setPath(p)}
-					onSubmit={send}
-				>
+				{prefix ? (
 					<div className="flex w-full">
-						<span
-							className="flex h-9 items-center justify-start px-3 py-2 border border-r-0 border-border-primary rounded-md rounded-r-none typo-label w-26 text-utility-green select-none shrink-0"
-							aria-hidden
+						<div
+							role="img"
+							aria-label={`${METHOD} ${prefix}`}
+							className="flex h-9 items-center px-3 py-2 border border-r-0 border-border-primary rounded-md rounded-r-none typo-label gap-2 select-none shrink-0"
 						>
-							{METHOD}
-						</span>
+							<span className="text-utility-green">{METHOD}</span>
+							<span className="text-text-secondary typo-code">{prefix}</span>
+						</div>
 						<HSComp.Input
 							className="rounded-l-none"
-							placeholder="Enter URL"
-							value={path}
-							onChange={(e) => setPath(e.target.value)}
+							placeholder="value"
+							value={value}
+							onChange={(e) => setValue(e.target.value)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter") {
 									e.preventDefault();
@@ -413,7 +402,35 @@ export const QueryRunner = ({
 							}}
 						/>
 					</div>
-				</UrlAutocomplete>
+				) : (
+					<UrlAutocomplete
+						path={freePath}
+						method={METHOD}
+						onSelectSuggestion={(p) => setFreePath(p)}
+						onSubmit={send}
+					>
+						<div className="flex w-full">
+							<span
+								className="flex h-9 items-center justify-start px-3 py-2 border border-r-0 border-border-primary rounded-md rounded-r-none typo-label w-26 text-utility-green select-none shrink-0"
+								aria-hidden
+							>
+								{METHOD}
+							</span>
+							<HSComp.Input
+								className="rounded-l-none"
+								placeholder="Set the SP's base and code, or enter a URL here"
+								value={freePath}
+								onChange={(e) => setFreePath(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										void send();
+									}
+								}}
+							/>
+						</div>
+					</UrlAutocomplete>
+				)}
 				<HSComp.Tooltip delayDuration={600}>
 					<HSComp.TooltipTrigger asChild>
 						<HSComp.Button
