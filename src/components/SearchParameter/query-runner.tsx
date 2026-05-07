@@ -53,8 +53,12 @@ const ExplainView = ({
 	headers: Header[];
 	sendVersion: number;
 }) => {
+	// Re-run only when the user clicks Send (sendVersion bumps), not on every
+	// keystroke in the URL input. Same gating as REST Console — see
+	// `routes/rest.tsx` ExplainView's queryKey.
 	const { isLoading, data, error } = useQuery({
-		queryKey: ["sp-builder-explain", path, sendVersion],
+		queryKey: ["sp-builder-explain", sendVersion],
+		enabled: sendVersion > 0,
 		queryFn: async (): Promise<ExplainResponse> => {
 			const reqHeaders: Record<string, string> = {};
 			for (const h of headers) {
@@ -73,6 +77,17 @@ const ExplainView = ({
 		retry: false,
 		refetchOnWindowFocus: false,
 	});
+
+	if (sendVersion === 0) {
+		return (
+			<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+				<div className="text-center">
+					<div className="text-lg mb-2">No request yet</div>
+					<div className="text-sm">Send a request to see the query plan.</div>
+				</div>
+			</div>
+		);
+	}
 
 	if (isLoading) {
 		return (
@@ -372,29 +387,32 @@ export const QueryRunner = ({
 		<div className="flex flex-col h-full">
 			{/* Request line */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
-				<span
-					className={`${methodColors[METHOD]} px-2 shrink-0 select-none`}
-					aria-hidden
-				>
-					{METHOD}
-				</span>
 				<UrlAutocomplete
 					path={path}
 					method={METHOD}
 					onSelectSuggestion={(p) => setPath(p)}
 					onSubmit={send}
 				>
-					<HSComp.Input
-						placeholder="Enter URL"
-						value={path}
-						onChange={(e) => setPath(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								void send();
-							}
-						}}
-					/>
+					<div className="flex w-full">
+						<span
+							className="flex h-9 items-center justify-start px-3 py-2 border border-r-0 border-border-primary rounded-md rounded-r-none typo-label w-26 text-utility-green select-none shrink-0"
+							aria-hidden
+						>
+							{METHOD}
+						</span>
+						<HSComp.Input
+							className="rounded-l-none"
+							placeholder="Enter URL"
+							value={path}
+							onChange={(e) => setPath(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									void send();
+								}
+							}}
+						/>
+					</div>
 				</UrlAutocomplete>
 				<HSComp.Tooltip delayDuration={600}>
 					<HSComp.TooltipTrigger asChild>
@@ -489,18 +507,12 @@ export const QueryRunner = ({
 				</HSComp.TabsContent>
 				{explainEnabled ? (
 					<HSComp.TabsContent value="explain" className="grow min-h-0">
-						{sendVersion === 0 ? (
-							<div className="flex items-center justify-center h-full text-text-secondary">
-								Send a request, then switch to Explain to see the query plan.
-							</div>
-						) : (
-							<ExplainView
-								client={client}
-								path={path}
-								headers={headers}
-								sendVersion={sendVersion}
-							/>
-						)}
+						<ExplainView
+							client={client}
+							path={path}
+							headers={headers}
+							sendVersion={sendVersion}
+						/>
 					</HSComp.TabsContent>
 				) : null}
 			</HSComp.Tabs>
