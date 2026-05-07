@@ -417,7 +417,7 @@ export const QueryRunner = ({
 						>
 							<HSComp.SelectTrigger
 								aria-label="Modifier"
-								className="border-none shadow-none h-7 px-1 typo-code text-text-secondary bg-transparent focus-visible:ring-0 hover:bg-bg-tertiary rounded-sm gap-0.5 [&_[data-slot=select-value]]:gap-0 [&[data-placeholder]]:text-text-tertiary"
+								className="!w-auto border-none shadow-none h-7 px-1 typo-code text-text-secondary bg-transparent focus-visible:ring-0 hover:bg-bg-tertiary rounded-sm gap-0.5 shrink-0 [&_[data-slot=select-value]]:gap-0 [&[data-placeholder]]:text-text-tertiary"
 							>
 								<HSComp.SelectValue>
 									{modifier ? `:${modifier}` : ""}
