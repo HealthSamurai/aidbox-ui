@@ -403,6 +403,7 @@ export const ResourceEditorPage = ({
 					className="grow min-h-0 flex flex-col"
 				>
 					<SearchParameterBuilderContent
+						client={client}
 						resource={resource}
 						onResourceChange={handleResourceChange}
 						actions={editActions}

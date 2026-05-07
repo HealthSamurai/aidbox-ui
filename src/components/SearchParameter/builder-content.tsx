@@ -14,6 +14,7 @@ import * as ApiUtils from "../../api/utils";
 import { useDebounce } from "../../hooks";
 import { FhirPathInput } from "../ViewDefinition/fhirpath-input";
 import { FhirPathLspProvider } from "../ViewDefinition/fhirpath-lsp-context";
+import { QueryRunner } from "./query-runner";
 import { rpcCall, SuggestIndexButton } from "./suggest-index";
 
 type SearchParameterStatus = "draft" | "active" | "retired" | "unknown";
@@ -700,10 +701,12 @@ export const StatsTab = ({
 };
 
 export const SearchParameterBuilderContent = ({
+	client,
 	resource,
 	onResourceChange,
 	actions,
 }: {
+	client: AidboxClientR5;
 	resource: Resource;
 	onResourceChange?: (next: Resource) => void;
 	/**
@@ -713,6 +716,7 @@ export const SearchParameterBuilderContent = ({
 	 */
 	actions?: React.ReactNode;
 }) => {
+	const sp = resource as SearchParameterResource;
 	return (
 		<HSComp.ResizablePanelGroup
 			direction="horizontal"
@@ -735,9 +739,7 @@ export const SearchParameterBuilderContent = ({
 			</HSComp.ResizablePanel>
 			<HSComp.ResizableHandle />
 			<HSComp.ResizablePanel minSize={20} defaultSize={50}>
-				<div className="p-4 text-text-secondary text-sm h-full">
-					Query runner — slice C.
-				</div>
+				<QueryRunner client={client} base={sp.base?.[0]} code={sp.code} />
 			</HSComp.ResizablePanel>
 		</HSComp.ResizablePanelGroup>
 	);
