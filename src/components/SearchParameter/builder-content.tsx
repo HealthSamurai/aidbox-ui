@@ -365,7 +365,7 @@ function formatRelativeTime(iso: string | null | undefined): string {
 	return new Date(t).toISOString().slice(0, 10);
 }
 
-const StatsTab = ({
+export const StatsTab = ({
 	client,
 	base,
 	code,
@@ -523,43 +523,24 @@ const StatsTab = ({
 };
 
 export const SearchParameterBuilderContent = ({
-	client,
 	resource,
 	onResourceChange,
 }: {
-	client: AidboxClientR5;
 	resource: Resource;
 	onResourceChange?: (next: Resource) => void;
 }) => {
-	const sp = resource as SearchParameterResource;
-	const code = sp.code ?? "";
-	const base = sp.base?.[0] ?? "";
-
 	return (
 		<HSComp.ResizablePanelGroup
 			direction="horizontal"
 			autoSaveId="search-parameter-builder"
 			className="grow min-h-0"
 		>
-			<HSComp.ResizablePanel minSize={30} defaultSize={50}>
-				<HSComp.Tabs defaultValue="builder" className="flex flex-col h-full">
-					<HSComp.TabsList className="px-4 border-b">
-						<HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>
-						<HSComp.TabsTrigger value="stats">Stats</HSComp.TabsTrigger>
-					</HSComp.TabsList>
-					<HSComp.TabsContent
-						value="builder"
-						className="grow min-h-0 overflow-auto"
-					>
-						<BuilderTab
-							resource={resource}
-							onResourceChange={onResourceChange}
-						/>
-					</HSComp.TabsContent>
-					<HSComp.TabsContent value="stats" className="grow min-h-0">
-						<StatsTab client={client} base={base} code={code} />
-					</HSComp.TabsContent>
-				</HSComp.Tabs>
+			<HSComp.ResizablePanel
+				minSize={30}
+				defaultSize={50}
+				className="overflow-auto"
+			>
+				<BuilderTab resource={resource} onResourceChange={onResourceChange} />
 			</HSComp.ResizablePanel>
 			<HSComp.ResizableHandle />
 			<HSComp.ResizablePanel minSize={20} defaultSize={50}>

@@ -25,7 +25,10 @@ import type { ResourceEditorActions } from "../../webmcp/resource-editor-context
 import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
-import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
+import {
+	SearchParameterBuilderContent,
+	StatsTab as SearchParameterStatsTab,
+} from "../SearchParameter/builder-content";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
@@ -400,13 +403,32 @@ export const ResourceEditorPage = ({
 					className="grow min-h-0 flex flex-col"
 				>
 					<SearchParameterBuilderContent
-						client={client}
 						resource={resource}
 						onResourceChange={handleResourceChange}
 					/>
 				</HSComp.TabsContent>
 			),
 		});
+
+		if (id) {
+			const sp = resource as { code?: string; base?: string[] };
+			tabs.push({
+				value: "stats",
+				trigger: <HSComp.TabsTrigger value="stats">Stats</HSComp.TabsTrigger>,
+				content: (
+					<HSComp.TabsContent
+						value="stats"
+						className="grow min-h-0 flex flex-col"
+					>
+						<SearchParameterStatsTab
+							client={client}
+							base={sp.base?.[0] ?? ""}
+							code={sp.code ?? ""}
+						/>
+					</HSComp.TabsContent>
+				),
+			});
+		}
 	}
 
 	tabs.push({

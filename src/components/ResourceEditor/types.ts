@@ -1,4 +1,9 @@
-export const RESOURCE_EDITOR_TABS = ["edit", "history", "builder"] as const;
+export const RESOURCE_EDITOR_TABS = [
+	"edit",
+	"history",
+	"builder",
+	"stats",
+] as const;
 export type ResourceEditorTab = (typeof RESOURCE_EDITOR_TABS)[number];
 const resourceEditorTabSet = new Set(RESOURCE_EDITOR_TABS);
 export const isResourceEditorTab = (x: unknown): x is ResourceEditorTab => {
