@@ -232,8 +232,27 @@ const DEFAULT_HEADERS: Header[] = [
 
 function buildPrefix(base?: string, code?: string): string | null {
 	if (!base || !code) return null;
-	return `/fhir/${base}?${code}=`;
+	return `/fhir/${base}?${code}`;
 }
+
+// FHIR R4 search modifiers (https://hl7.org/fhir/R4/search.html#modifiers).
+// Prefixes (eq/ne/gt/lt/ge/le/sa/eb/ap) live on the value side and are typed
+// inline by the user; only modifiers need a dedicated picker.
+const NO_MODIFIER = "__none";
+const MODIFIERS = [
+	"not",
+	"missing",
+	"exact",
+	"contains",
+	"text",
+	"in",
+	"not-in",
+	"of-type",
+	"identifier",
+	"above",
+	"below",
+] as const;
+type Modifier = (typeof MODIFIERS)[number];
 
 async function executeRequest(
 	path: string,
@@ -340,6 +359,7 @@ export const QueryRunner = ({
 	const prefix = React.useMemo(() => buildPrefix(base, code), [base, code]);
 
 	const [value, setValue] = React.useState<string>("");
+	const [modifier, setModifier] = React.useState<Modifier | "">("");
 	const [freePath, setFreePath] = React.useState<string>("/fhir/Patient");
 	const [headers] = React.useState<Header[]>(DEFAULT_HEADERS);
 	const [response, setResponse] = React.useState<ResponseData | null>(null);
@@ -348,7 +368,9 @@ export const QueryRunner = ({
 	const [activeResponseTab, setActiveResponseTab] =
 		React.useState<ResponseTab>("body");
 
-	const path = prefix ? `${prefix}${value}` : freePath;
+	const path = prefix
+		? `${prefix}${modifier ? `:${modifier}` : ""}=${value}`
+		: freePath;
 
 	const send = React.useCallback(async () => {
 		setIsLoading(true);
@@ -380,17 +402,43 @@ export const QueryRunner = ({
 			{/* Request line */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
 				{prefix ? (
-					<div className="flex w-full">
-						<div
-							role="img"
-							aria-label={`${METHOD} ${prefix}`}
-							className="flex h-9 items-center px-3 py-2 border border-r-0 border-border-primary rounded-md rounded-r-none typo-label gap-2 select-none shrink-0"
+					<div className="flex h-9 w-full items-center border border-border-primary rounded-md bg-bg-primary focus-within:border-border-link transition-colors">
+						<span className="flex h-full items-center px-3 border-r border-border-primary text-utility-green typo-label select-none shrink-0">
+							{METHOD}
+						</span>
+						<span className="pl-3 text-text-secondary typo-code select-none shrink-0">
+							{prefix}
+						</span>
+						<HSComp.Select
+							value={modifier === "" ? NO_MODIFIER : modifier}
+							onValueChange={(v) =>
+								setModifier(v === NO_MODIFIER ? "" : (v as Modifier))
+							}
 						>
-							<span className="text-utility-green">{METHOD}</span>
-							<span className="text-text-secondary typo-code">{prefix}</span>
-						</div>
-						<HSComp.Input
-							className="rounded-l-none"
+							<HSComp.SelectTrigger
+								aria-label="Modifier"
+								className="border-none shadow-none h-7 px-1 typo-code text-text-secondary bg-transparent focus-visible:ring-0 hover:bg-bg-tertiary rounded-sm gap-0.5 [&_[data-slot=select-value]]:gap-0 [&[data-placeholder]]:text-text-tertiary"
+							>
+								<HSComp.SelectValue>
+									{modifier ? `:${modifier}` : ""}
+								</HSComp.SelectValue>
+							</HSComp.SelectTrigger>
+							<HSComp.SelectContent>
+								<HSComp.SelectItem value={NO_MODIFIER}>
+									<span className="text-text-tertiary">(no modifier)</span>
+								</HSComp.SelectItem>
+								{MODIFIERS.map((m) => (
+									<HSComp.SelectItem key={m} value={m}>
+										:{m}
+									</HSComp.SelectItem>
+								))}
+							</HSComp.SelectContent>
+						</HSComp.Select>
+						<span className="text-text-secondary typo-code select-none shrink-0">
+							=
+						</span>
+						<input
+							className="flex-1 min-w-0 px-2 h-full bg-transparent outline-none text-sm typo-code"
 							placeholder="value"
 							value={value}
 							onChange={(e) => setValue(e.target.value)}
