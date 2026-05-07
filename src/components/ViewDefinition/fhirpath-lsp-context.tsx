@@ -16,26 +16,35 @@ export const FhirPathLspContext = React.createContext<
 
 export function FhirPathLspProvider({
 	children,
+	resourceType: explicitResourceType,
 }: {
 	children: React.ReactNode;
+	/**
+	 * When provided, overrides the resource type read from
+	 * `ViewDefinitionResourceTypeContext`. Lets non-VD callers (e.g. the
+	 * SearchParameter builder) wire an LSP provider with their own context.
+	 */
+	resourceType?: string;
 }) {
 	const client = useAidboxClient();
 	const { viewDefinitionResourceType } = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);
+	const effectiveResourceType =
+		explicitResourceType ?? viewDefinitionResourceType ?? undefined;
 
 	const { setContextType, createPlugin } = useCodeMirrorLsp(
 		client as unknown as Parameters<typeof useCodeMirrorLsp>[0],
 		{
-			contextType: viewDefinitionResourceType ?? undefined,
+			contextType: effectiveResourceType,
 			debug: false,
 		},
 	);
 
 	// Update context type when resource type changes
 	React.useEffect(() => {
-		setContextType(viewDefinitionResourceType ?? null);
-	}, [viewDefinitionResourceType, setContextType]);
+		setContextType(effectiveResourceType ?? null);
+	}, [effectiveResourceType, setContextType]);
 
 	const value = React.useMemo(
 		() => ({

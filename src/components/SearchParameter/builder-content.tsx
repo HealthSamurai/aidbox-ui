@@ -3,8 +3,12 @@ import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
 import * as Lucide from "lucide-react";
+import { useEffect, useState } from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
+import { useDebounce } from "../../hooks";
+import { FhirPathInput } from "../ViewDefinition/fhirpath-input";
+import { FhirPathLspProvider } from "../ViewDefinition/fhirpath-lsp-context";
 import { rpcCall, SuggestIndexButton } from "./suggest-index";
 
 type SearchParameterStatus = "draft" | "active" | "retired" | "unknown";
@@ -63,37 +67,153 @@ const XPATH_USAGE_OPTIONS: XPathUsage[] = [
 	"other",
 ];
 
-const Field = ({
-	label,
-	required,
-	hint,
-	htmlFor,
-	children,
-}: {
-	label: string;
-	required?: boolean;
-	hint?: React.ReactNode;
-	htmlFor?: string;
-	children: React.ReactNode;
-}) => (
-	<div className="flex flex-col gap-1">
-		<label
-			htmlFor={htmlFor}
-			className="text-xs font-medium text-text-secondary"
-		>
-			{label}
-			{required ? <span className="text-text-danger ml-0.5">*</span> : null}
-		</label>
-		{children}
-		{hint ? <div className="text-xs text-text-tertiary">{hint}</div> : null}
-	</div>
-);
-
 const splitTokens = (s: string): string[] =>
 	s
 		.split(/[\s,]+/)
 		.map((x) => x.trim())
 		.filter(Boolean);
+
+/**
+ * Section header rendered as an uppercase badge — matches the
+ * `properties` / `select` / `where` headers in the VD builder tree.
+ */
+const SectionHeader = ({ label }: { label: string }) => (
+	<div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-0">
+		<span className="uppercase text-text-info-primary text-xs font-medium px-1">
+			{label}
+		</span>
+	</div>
+);
+
+/**
+ * Row with a colored badge label on the left and an editor on the right.
+ * Mirrors the VD builder's tree-row style (e.g. `name`, `status` rows).
+ */
+const Row = ({
+	label,
+	required,
+	hint,
+	children,
+}: {
+	label: string;
+	required?: boolean;
+	hint?: React.ReactNode;
+	children: React.ReactNode;
+}) => (
+	<div className="group/tree-item-label flex w-full items-start gap-2 px-2 py-1 hover:bg-bg-tertiary rounded-md transition-colors">
+		<span
+			className={`uppercase px-1.5 py-0.5 rounded-md text-xs font-medium shrink-0 mt-0.5 min-w-[140px] ${
+				required
+					? "text-text-info-primary bg-bg-info-primary"
+					: "text-text-secondary bg-bg-secondary"
+			}`}
+		>
+			{label}
+		</span>
+		<div className="flex-1 min-w-0 flex flex-col gap-1">
+			{children}
+			{hint ? <div className="text-xs text-text-tertiary">{hint}</div> : null}
+		</div>
+	</div>
+);
+
+/** Debounced single-line input, styled to match VD's `InputView`. */
+const InlineInput = ({
+	id,
+	value,
+	placeholder,
+	onChange,
+	className,
+}: {
+	id?: string;
+	value?: string;
+	placeholder?: string;
+	onChange: (v: string) => void;
+	className?: string;
+}) => {
+	const [localValue, setLocalValue] = useState(value || "");
+	useEffect(() => {
+		setLocalValue(value || "");
+	}, [value]);
+	const debouncedOnChange = useDebounce((newValue: string) => {
+		if (newValue !== value) onChange(newValue);
+	}, 400);
+	return (
+		<HSComp.Input
+			id={id}
+			value={localValue}
+			placeholder={placeholder}
+			className={`h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary ${className ?? ""}`}
+			onChange={(e) => {
+				setLocalValue(e.target.value);
+				debouncedOnChange(e.target.value);
+			}}
+		/>
+	);
+};
+
+/** Debounced multi-line input, same color treatment as InlineInput. */
+const InlineTextarea = ({
+	id,
+	value,
+	placeholder,
+	onChange,
+	rows = 2,
+	className,
+}: {
+	id?: string;
+	value?: string;
+	placeholder?: string;
+	onChange: (v: string) => void;
+	rows?: number;
+	className?: string;
+}) => {
+	const [localValue, setLocalValue] = useState(value || "");
+	useEffect(() => {
+		setLocalValue(value || "");
+	}, [value]);
+	const debouncedOnChange = useDebounce((newValue: string) => {
+		if (newValue !== value) onChange(newValue);
+	}, 400);
+	return (
+		<HSComp.Textarea
+			id={id}
+			value={localValue}
+			rows={rows}
+			placeholder={placeholder}
+			className={`py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary ${className ?? ""}`}
+			onChange={(e) => {
+				setLocalValue(e.target.value);
+				debouncedOnChange(e.target.value);
+			}}
+		/>
+	);
+};
+
+const InlineSelect = <T extends string>({
+	value,
+	options,
+	placeholder,
+	onChange,
+}: {
+	value?: T;
+	options: readonly T[];
+	placeholder: string;
+	onChange: (v: T) => void;
+}) => (
+	<HSComp.Select value={value ?? ""} onValueChange={(v) => onChange(v as T)}>
+		<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary w-full">
+			<HSComp.SelectValue placeholder={placeholder} />
+		</HSComp.SelectTrigger>
+		<HSComp.SelectContent>
+			{options.map((opt) => (
+				<HSComp.SelectItem key={opt} value={opt}>
+					{opt}
+				</HSComp.SelectItem>
+			))}
+		</HSComp.SelectContent>
+	</HSComp.Select>
+);
 
 const BuilderTab = ({
 	resource,
@@ -119,210 +239,166 @@ const BuilderTab = ({
 	};
 
 	const isReference = sp.type === "reference";
+	const fhirPathContext = sp.base?.[0] ?? "";
 
 	return (
-		<div className="p-4 flex flex-col gap-6 max-w-3xl">
-			{!onResourceChange && (
-				<div className="text-xs text-text-tertiary">
-					Editing disabled — no resource setter is wired.
-				</div>
-			)}
+		<FhirPathLspProvider resourceType={fhirPathContext || undefined}>
+			<div className="p-4 flex flex-col gap-1 max-w-3xl">
+				{!onResourceChange && (
+					<div className="text-xs text-text-tertiary px-2 pb-2">
+						Editing disabled — no resource setter is wired.
+					</div>
+				)}
 
-			<section className="flex flex-col gap-3">
-				<h3 className="text-sm font-semibold">Identification</h3>
+				<SectionHeader label="properties" />
 
-				<Field label="URL" required htmlFor="sp-url">
-					<HSComp.Input
+				<Row label="url" required>
+					<InlineInput
 						id="sp-url"
-						value={sp.url ?? ""}
+						value={sp.url}
 						placeholder="http://example.org/SearchParameter/Patient-name"
-						onChange={(e) => update({ url: e.target.value })}
+						onChange={(v) => update({ url: v })}
 					/>
-				</Field>
+				</Row>
 
-				<div className="grid grid-cols-2 gap-3">
-					<Field label="Name" required htmlFor="sp-name">
-						<HSComp.Input
-							id="sp-name"
-							value={sp.name ?? ""}
-							placeholder="name"
-							onChange={(e) => update({ name: e.target.value })}
-						/>
-					</Field>
-
-					<Field
-						label="Code"
-						required
-						htmlFor="sp-code"
-						hint="The code used in the search URL: ?<code>=…"
-					>
-						<HSComp.Input
-							id="sp-code"
-							value={sp.code ?? ""}
-							placeholder="name"
-							onChange={(e) => update({ code: e.target.value })}
-						/>
-					</Field>
-				</div>
-
-				<div className="grid grid-cols-2 gap-3">
-					<Field label="Status" required>
-						<HSComp.Select
-							value={sp.status ?? ""}
-							onValueChange={(v) =>
-								update({ status: v as SearchParameterStatus })
-							}
-						>
-							<HSComp.SelectTrigger className="w-full">
-								<HSComp.SelectValue placeholder="Pick status" />
-							</HSComp.SelectTrigger>
-							<HSComp.SelectContent>
-								{STATUS_OPTIONS.map((s) => (
-									<HSComp.SelectItem key={s} value={s}>
-										{s}
-									</HSComp.SelectItem>
-								))}
-							</HSComp.SelectContent>
-						</HSComp.Select>
-					</Field>
-
-					<Field label="Version" htmlFor="sp-version">
-						<HSComp.Input
-							id="sp-version"
-							value={sp.version ?? ""}
-							placeholder="1.0.0"
-							onChange={(e) => update({ version: e.target.value })}
-						/>
-					</Field>
-				</div>
-
-				<Field label="Description" required htmlFor="sp-description">
-					<HSComp.Textarea
-						id="sp-description"
-						value={sp.description ?? ""}
-						rows={3}
-						placeholder="What this search parameter does."
-						onChange={(e) => update({ description: e.target.value })}
+				<Row label="name" required>
+					<InlineInput
+						id="sp-name"
+						value={sp.name}
+						placeholder="name"
+						onChange={(v) => update({ name: v })}
 					/>
-				</Field>
-			</section>
+				</Row>
 
-			<section className="flex flex-col gap-3">
-				<h3 className="text-sm font-semibold">Definition</h3>
-
-				<div className="grid grid-cols-2 gap-3">
-					<Field label="Type" required>
-						<HSComp.Select
-							value={sp.type ?? ""}
-							onValueChange={(v) => update({ type: v as SearchParameterType })}
-						>
-							<HSComp.SelectTrigger className="w-full">
-								<HSComp.SelectValue placeholder="Pick type" />
-							</HSComp.SelectTrigger>
-							<HSComp.SelectContent>
-								{TYPE_OPTIONS.map((t) => (
-									<HSComp.SelectItem key={t} value={t}>
-										{t}
-									</HSComp.SelectItem>
-								))}
-							</HSComp.SelectContent>
-						</HSComp.Select>
-					</Field>
-
-					<Field
-						label="Base"
-						required
-						htmlFor="sp-base"
-						hint="Resource types this parameter applies to. Comma-separated."
-					>
-						<HSComp.Input
-							id="sp-base"
-							value={(sp.base ?? []).join(", ")}
-							placeholder="Patient, Practitioner"
-							onChange={(e) => update({ base: splitTokens(e.target.value) })}
-						/>
-					</Field>
-				</div>
-
-				<Field
-					label="Expression"
-					htmlFor="sp-expression"
-					hint="FHIRPath expression that extracts the value to index, e.g. Patient.name"
+				<Row
+					label="code"
+					required
+					hint="The code used in the search URL: ?<code>=…"
 				>
-					<HSComp.Textarea
-						id="sp-expression"
-						value={sp.expression ?? ""}
-						rows={2}
-						placeholder="Patient.name"
-						onChange={(e) => update({ expression: e.target.value })}
-						className="font-mono text-xs"
+					<InlineInput
+						id="sp-code"
+						value={sp.code}
+						placeholder="name"
+						onChange={(v) => update({ code: v })}
 					/>
-				</Field>
+				</Row>
+
+				<Row label="status" required>
+					<InlineSelect
+						value={sp.status}
+						options={STATUS_OPTIONS}
+						placeholder="Pick status"
+						onChange={(v) => update({ status: v })}
+					/>
+				</Row>
+
+				<Row label="description" required>
+					<InlineTextarea
+						id="sp-description"
+						value={sp.description}
+						placeholder="What this search parameter does."
+						rows={3}
+						onChange={(v) => update({ description: v })}
+					/>
+				</Row>
+
+				<SectionHeader label="definition" />
+
+				<Row label="type" required>
+					<InlineSelect
+						value={sp.type}
+						options={TYPE_OPTIONS}
+						placeholder="Pick type"
+						onChange={(v) => update({ type: v })}
+					/>
+				</Row>
+
+				<Row
+					label="base"
+					required
+					hint="Resource types this parameter applies to. Comma-separated."
+				>
+					<InlineInput
+						id="sp-base"
+						value={(sp.base ?? []).join(", ")}
+						placeholder="Patient, Practitioner"
+						onChange={(v) => update({ base: splitTokens(v) })}
+					/>
+				</Row>
+
+				<Row
+					label="expression"
+					hint={
+						fhirPathContext
+							? `FHIRPath context: ${fhirPathContext}`
+							: "Set 'base' to enable FHIRPath autocomplete."
+					}
+				>
+					<FhirPathInput
+						id="sp-expression"
+						value={sp.expression}
+						placeholder={
+							fhirPathContext ? `${fhirPathContext}.name` : "Patient.name"
+						}
+						contextPath={fhirPathContext}
+						onChange={(v) => update({ expression: v })}
+					/>
+				</Row>
 
 				{isReference && (
-					<Field
-						label="Target"
-						htmlFor="sp-target"
-						hint="Allowed referenced resource types (only for type = reference). Comma-separated."
+					<Row
+						label="target"
+						hint="Allowed referenced resource types (when type = reference). Comma-separated."
 					>
-						<HSComp.Input
+						<InlineInput
 							id="sp-target"
 							value={(sp.target ?? []).join(", ")}
 							placeholder="Patient, Group"
-							onChange={(e) => update({ target: splitTokens(e.target.value) })}
+							onChange={(v) => update({ target: splitTokens(v) })}
 						/>
-					</Field>
+					</Row>
 				)}
-			</section>
 
-			<section className="flex flex-col gap-3">
-				<h3 className="text-sm font-semibold">Optional</h3>
+				<SectionHeader label="optional" />
 
-				<div className="flex items-center gap-2">
-					<HSComp.Checkbox
-						id="sp-experimental"
-						checked={Boolean(sp.experimental)}
-						onCheckedChange={(v) => update({ experimental: v === true })}
+				<Row label="version">
+					<InlineInput
+						id="sp-version"
+						value={sp.version}
+						placeholder="1.0.0"
+						onChange={(v) => update({ version: v })}
 					/>
-					<label htmlFor="sp-experimental" className="text-sm">
-						Experimental
-					</label>
-				</div>
+				</Row>
 
-				<div className="grid grid-cols-2 gap-3">
-					<Field
-						label="XPath"
-						htmlFor="sp-xpath"
-						hint="Legacy XPath expression."
-					>
-						<HSComp.Input
-							id="sp-xpath"
-							value={sp.xpath ?? ""}
-							placeholder="f:Patient/f:name"
-							onChange={(e) => update({ xpath: e.target.value })}
+				<Row label="experimental">
+					<div className="flex items-center h-7">
+						<HSComp.Checkbox
+							id="sp-experimental"
+							checked={Boolean(sp.experimental)}
+							onCheckedChange={(v) => update({ experimental: v === true })}
 						/>
-					</Field>
+					</div>
+				</Row>
 
-					<Field label="XPath usage">
-						<HSComp.Select
-							value={sp.xpathUsage ?? ""}
-							onValueChange={(v) => update({ xpathUsage: v as XPathUsage })}
-						>
-							<HSComp.SelectTrigger className="w-full">
-								<HSComp.SelectValue placeholder="(none)" />
-							</HSComp.SelectTrigger>
-							<HSComp.SelectContent>
-								{XPATH_USAGE_OPTIONS.map((u) => (
-									<HSComp.SelectItem key={u} value={u}>
-										{u}
-									</HSComp.SelectItem>
-								))}
-							</HSComp.SelectContent>
-						</HSComp.Select>
-					</Field>
-				</div>
-			</section>
-		</div>
+				<Row label="xpath" hint="Legacy XPath expression.">
+					<InlineInput
+						id="sp-xpath"
+						value={sp.xpath}
+						placeholder="f:Patient/f:name"
+						onChange={(v) => update({ xpath: v })}
+					/>
+				</Row>
+
+				<Row label="xpath usage">
+					<InlineSelect
+						value={sp.xpathUsage}
+						options={XPATH_USAGE_OPTIONS}
+						placeholder="(none)"
+						onChange={(v) => update({ xpathUsage: v })}
+					/>
+				</Row>
+			</div>
+		</FhirPathLspProvider>
 	);
 };
 
