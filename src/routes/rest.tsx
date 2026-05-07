@@ -4,6 +4,7 @@ import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
+	CopyIcon,
 	type GetStructureDefinitions,
 	PlayIcon,
 	RequestLineEditor,
@@ -26,7 +27,7 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
-import { Fullscreen, Minimize2, Timer } from "lucide-react";
+import { Fullscreen, Minimize2, Play, Timer } from "lucide-react";
 import type React from "react";
 import {
 	useCallback,
@@ -739,6 +740,7 @@ type ResponsePaneProps = {
 	selectedTab: Tab;
 	aidboxClient: AidboxClientR5;
 	sendVersion: number;
+	onFollowContentLocation?: (path: string) => void;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -767,6 +769,7 @@ function ResponseView({
 	selectedTab,
 	aidboxClient,
 	sendVersion,
+	onFollowContentLocation,
 }: {
 	response: ResponseData | null;
 	activeResponseTab: ResponseTabs;
@@ -775,6 +778,7 @@ function ResponseView({
 	selectedTab: Tab;
 	aidboxClient: AidboxClientR5;
 	sendVersion: number;
+	onFollowContentLocation?: (path: string) => void;
 }) {
 	if (activeResponseTab === "explain") {
 		return (
@@ -839,6 +843,57 @@ function ResponseView({
 	}
 
 	if (response) {
+		const contentLocationRaw = Object.entries(response.headers).find(
+			([key]) => key.toLowerCase() === "content-location",
+		)?.[1];
+
+		if (
+			activeResponseTab === "body" &&
+			!response.body.trim() &&
+			contentLocationRaw
+		) {
+			let path = contentLocationRaw;
+			try {
+				const url = new URL(contentLocationRaw);
+				path = url.pathname + url.search;
+			} catch {
+				// already a relative path
+			}
+
+			return (
+				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+					<div className="text-center">
+						<div className="mb-2">Response body is empty</div>
+						<div className="text-sm">
+							Follow the <code>content-location</code> header to get the result:
+						</div>
+						<div className="mt-2 inline-flex items-center gap-2 rounded bg-bg-tertiary px-3 py-1.5">
+							<code className="typo-code">{contentLocationRaw}</code>
+							<CopyIcon
+								text={contentLocationRaw}
+								tooltipText="Copy URL"
+								showToast={false}
+							/>
+							{onFollowContentLocation && (
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											className="cursor-pointer text-text-secondary hover:text-text-primary"
+											onClick={() => onFollowContentLocation(path)}
+										>
+											<Play size={16} />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent>Run in console</TooltipContent>
+								</Tooltip>
+							)}
+						</div>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<CodeEditor
 				readOnly={true}
@@ -1064,6 +1119,7 @@ function ResponsePane({
 	selectedTab,
 	aidboxClient,
 	sendVersion,
+	onFollowContentLocation,
 }: ResponsePaneProps) {
 	// Use response mode from the response itself (set at request time)
 	const responseMode = response?.mode || "json";
@@ -1111,6 +1167,7 @@ function ResponsePane({
 					selectedTab={selectedTab}
 					aidboxClient={aidboxClient}
 					sendVersion={sendVersion}
+					onFollowContentLocation={onFollowContentLocation}
 				/>
 			</div>
 		</Tabs>
@@ -2254,6 +2311,27 @@ function RouteComponent() {
 										selectedTab={selectedTab}
 										aidboxClient={client}
 										sendVersion={sendVersion}
+										onFollowContentLocation={(contentPath) => {
+											const updatedTab = {
+												...selectedTab,
+												method: "GET" as const,
+												path: contentPath,
+												body: "",
+												params: parsePathParams(contentPath),
+											};
+											setTabs((prev) =>
+												prev.map((tab) => (tab.selected ? updatedTab : tab)),
+											);
+											setRequestLineVersion(generateId());
+											setSendVersion((v) => v + 1);
+											handleSendRequest(
+												updatedTab,
+												queryClient,
+												setIsLoading,
+												responseStorage.set,
+												client,
+											);
+										}}
 									/>
 								</ResizablePanel>
 							</ResizablePanelGroup>

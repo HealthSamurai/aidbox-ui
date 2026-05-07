@@ -6,6 +6,7 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 	Button,
+	CopyIcon,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
@@ -65,9 +66,18 @@ function Breadcrumbs() {
 							}
 						>
 							{index === breadcrumbs.length - 1 ? (
-								<BreadcrumbPage className="truncate">
-									{crumb.title}
-								</BreadcrumbPage>
+								<>
+									<BreadcrumbPage className="truncate">
+										{crumb.title}
+									</BreadcrumbPage>
+									{/^[0-9a-f-]{36}$/i.test(crumb.title) && (
+										<CopyIcon
+											text={crumb.title}
+											tooltipText="Copy ID"
+											showToast={false}
+										/>
+									)}
+								</>
 							) : (
 								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>
@@ -104,7 +114,7 @@ function NavbarButtons() {
 					htmlFor="new-ui-toggle"
 					className="typo-label text-text-secondary cursor-pointer"
 				>
-					New UI
+					New&nbsp;UI
 				</label>
 				<Switch
 					id="new-ui-toggle"
