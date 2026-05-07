@@ -228,7 +228,11 @@ const BuilderTab = ({
 	};
 
 	const isReference = sp.type === "reference";
-	const fhirPathContext = sp.base?.[0] ?? "";
+	// SearchParameter expressions are conventionally fully-qualified
+	// (`Patient.name`, not `name`). If we set the LSP context to the resource
+	// type, completion treats `Patient.name` as `Patient.Patient.name` and
+	// flags it. Run the LSP at the FHIR root instead.
+	const fhirPathContext = "";
 
 	const tree = useMemo<Record<string, TreeViewItem<SpItemMeta>>>(() => {
 		const definitionChildren = ["_type", "_base", "_expression"];
@@ -402,9 +406,7 @@ const BuilderTab = ({
 					<FhirPathInput
 						id="sp-expression"
 						value={sp.expression}
-						placeholder={
-							fhirPathContext ? `${fhirPathContext}.name` : "Patient.name"
-						}
+						placeholder={sp.base?.[0] ? `${sp.base[0]}.name` : "Patient.name"}
 						contextPath={fhirPathContext}
 						onChange={(v) => update({ expression: v })}
 					/>,
