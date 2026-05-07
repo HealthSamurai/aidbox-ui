@@ -313,16 +313,16 @@ const tryFormat = (body: string, mode: "json" | "yaml"): string => {
 	}
 };
 
-const formatHeaders = (headers: Record<string, string>): string =>
+const formatHeadersBody = (headers: Record<string, string>): string =>
 	Object.entries(headers)
 		.map(([k, v]) => `${k}: ${v}`)
 		.join("\n");
 
 const formatRaw = (response: ResponseData): string => {
 	const statusLine = `HTTP/1.1 ${response.status} ${response.statusText}`;
-	const headerLines = formatHeaders(response.headers);
-	const body = tryFormat(response.body, response.mode);
-	return `${statusLine}\n${headerLines}\n\n${body}`;
+	// Body is left raw — REST Console does the same; pretty-printing belongs
+	// to the Body tab.
+	return `${statusLine}\n${formatHeadersBody(response.headers)}\n\n${response.body}`;
 };
 
 export const QueryRunner = ({
@@ -499,8 +499,8 @@ export const QueryRunner = ({
 						<HSComp.CodeEditor
 							readOnly
 							isReadOnlyTheme
-							currentValue={formatHeaders(response.headers)}
-							mode="json"
+							currentValue={JSON.stringify(response.headers, null, 2)}
+							mode={response.mode}
 						/>
 					) : (
 						<div className="flex items-center justify-center h-full text-text-secondary">
@@ -514,7 +514,7 @@ export const QueryRunner = ({
 							readOnly
 							isReadOnlyTheme
 							currentValue={formatRaw(response)}
-							mode={response.mode}
+							mode="http"
 						/>
 					) : (
 						<div className="flex items-center justify-center h-full text-text-secondary">
