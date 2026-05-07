@@ -467,7 +467,7 @@ const BuilderTab = ({
 
 	return (
 		<FhirPathLspProvider resourceType={fhirPathContext || undefined}>
-			<div className="p-4 max-w-3xl">
+			<div className="p-4 w-full">
 				{!onResourceChange && (
 					<div className="text-xs text-text-tertiary px-2 pb-2">
 						Editing disabled — no resource setter is wired.
