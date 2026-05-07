@@ -739,12 +739,7 @@ export const SearchParameterBuilderContent = ({
 			</HSComp.ResizablePanel>
 			<HSComp.ResizableHandle />
 			<HSComp.ResizablePanel minSize={20} defaultSize={50}>
-				<QueryRunner
-					client={client}
-					base={sp.base?.[0]}
-					code={sp.code}
-					type={sp.type}
-				/>
+				<QueryRunner client={client} base={sp.base?.[0]} code={sp.code} />
 			</HSComp.ResizablePanel>
 		</HSComp.ResizablePanelGroup>
 	);
