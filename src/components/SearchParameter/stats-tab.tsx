@@ -6,7 +6,53 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import { formatCount, formatMs, formatRelativeTime } from "./format";
 import { rpcCall, SuggestIndexButton } from "./suggest-index";
-import type { SearchParamShape } from "./types";
+import type { SearchParamIndex, SearchParamShape } from "./types";
+
+const IndexesSection = ({
+	indexes,
+	isLoading,
+}: {
+	indexes: SearchParamIndex[];
+	isLoading: boolean;
+}) => {
+	if (isLoading) {
+		return <div className="text-sm text-text-secondary">Loading indexes…</div>;
+	}
+	if (indexes.length === 0) {
+		return (
+			<div className="text-sm text-text-tertiary">
+				No Aidbox-managed indexes for this search parameter.
+			</div>
+		);
+	}
+	return (
+		<div className="flex flex-col gap-2">
+			{indexes.map((idx) => (
+				<div
+					key={idx.name}
+					className="rounded border border-border-secondary overflow-hidden"
+				>
+					<div className="px-3 py-1.5 text-xs text-text-secondary bg-bg-secondary border-b border-border-secondary font-mono">
+						{idx.name}
+					</div>
+					<div className="h-20 [&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent">
+						<HSComp.CodeEditor
+							readOnly
+							isReadOnlyTheme
+							lineNumbers={false}
+							foldGutter={false}
+							currentValue={idx.definition}
+							mode="sql"
+							viewCallback={(view) => {
+								view.contentDOM.contentEditable = "false";
+							}}
+						/>
+					</div>
+				</div>
+			))}
+		</div>
+	);
+};
 
 export const StatsTab = ({
 	client,
@@ -19,6 +65,11 @@ export const StatsTab = ({
 }) => {
 	const queryClient = ReactQuery.useQueryClient();
 	const queryKey = ["search-parameter-builder/shapes", base, code] as const;
+	const indexesQueryKey = [
+		"search-parameter-builder/indexes",
+		base,
+		code,
+	] as const;
 
 	const shapesQuery = ReactQuery.useQuery({
 		queryKey,
@@ -36,6 +87,20 @@ export const StatsTab = ({
 				},
 			);
 			return (json.result ?? []) as SearchParamShape[];
+		},
+		retry: false,
+	});
+
+	const indexesQuery = ReactQuery.useQuery({
+		queryKey: indexesQueryKey,
+		enabled: Boolean(base && code),
+		queryFn: async () => {
+			const json = await rpcCall(
+				client,
+				"aidbox.index/list-search-param-indexes",
+				{ "resource-type": base, "search-param": code },
+			);
+			return (json.result ?? []) as SearchParamIndex[];
 		},
 		retry: false,
 	});
@@ -90,6 +155,16 @@ export const StatsTab = ({
 					client={client}
 					resourceType={base}
 					searchParam={code}
+				/>
+			</div>
+
+			<div className="flex flex-col gap-2">
+				<div className="text-sm font-medium text-text-secondary">
+					Existing indexes
+				</div>
+				<IndexesSection
+					indexes={indexesQuery.data ?? []}
+					isLoading={indexesQuery.isLoading}
 				/>
 			</div>
 

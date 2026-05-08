@@ -2,6 +2,12 @@
  * Shapes returned by `aidbox.index/get-search-param-stats`.
  */
 
+/** Index returned by `aidbox.index/list-search-param-indexes`. */
+export type SearchParamIndex = {
+	name: string;
+	definition: string;
+};
+
 /** One row per `(resource_type, search_params)`, returned with `:by :shape`. */
 export type SearchParamShape = {
 	resource_type: string;
