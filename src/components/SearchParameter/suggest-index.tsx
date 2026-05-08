@@ -56,7 +56,9 @@ export const SuggestionCard = ({
 
 	const runMutation = ReactQuery.useMutation({
 		mutationFn: async () => {
-			await psqlRequest(client, suggestion.statement);
+			// `CREATE INDEX CONCURRENTLY` cannot run inside a transaction block;
+			// matches the SQL console's "autocommit" toggle header.
+			await psqlRequest(client, suggestion.statement, { autocommit: true });
 		},
 		onSuccess: () => {
 			HSComp.toast.success(`Created ${suggestion.name}`, defaultToastPlacement);
