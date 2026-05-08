@@ -348,10 +348,12 @@ export const QueryRunner = ({
 	client,
 	base,
 	code,
+	onClose,
 }: {
 	client: AidboxClientR5;
 	base?: string;
 	code?: string;
+	onClose?: () => void;
 }) => {
 	// Lock the SP prefix into the GET box so the user can only fill in the
 	// value after `=`. Falls back to a free-form URL input until both `base`
@@ -399,6 +401,17 @@ export const QueryRunner = ({
 
 	return (
 		<div className="flex flex-col h-full">
+			{onClose ? (
+				<div className="flex items-center justify-between bg-bg-secondary px-4 pr-2 border-b h-10 shrink-0">
+					<span className="typo-label text-text-secondary">Query tool</span>
+					<HSComp.IconButton
+						variant="ghost"
+						aria-label="Close query tool"
+						icon={<Lucide.XIcon className="w-4 h-4" />}
+						onClick={onClose}
+					/>
+				</div>
+			) : null}
 			{/* Request line */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
 				{prefix ? (

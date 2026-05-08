@@ -5,6 +5,7 @@ import {
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
+import * as Lucide from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import { useDebounce } from "../../hooks";
@@ -516,30 +517,48 @@ export const SearchParameterBuilderContent = ({
 	actions?: React.ReactNode;
 }) => {
 	const sp = resource as SearchParameterResource;
+	const [isQueryToolOpen, setIsQueryToolOpen] = useState(true);
 	return (
 		<HSComp.ResizablePanelGroup
 			direction="horizontal"
 			autoSaveId="search-parameter-builder"
 			className="grow min-h-0"
 		>
-			<HSComp.ResizablePanel
-				minSize={30}
-				defaultSize={50}
-				className="flex flex-col"
-			>
-				{actions ? (
+			<HSComp.ResizablePanel minSize={30} className="flex flex-col">
+				{(actions || !isQueryToolOpen) && (
 					<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-						<div className="flex items-center gap-4 px-4">{actions}</div>
+						<div className="flex items-center gap-4 px-4 grow">{actions}</div>
+						{!isQueryToolOpen && (
+							<div className="flex items-center px-2">
+								<HSComp.Toggle
+									variant="outline"
+									pressed={isQueryToolOpen}
+									onPressedChange={setIsQueryToolOpen}
+								>
+									<Lucide.PanelRightIcon className="w-4 h-4" />
+									Query tool
+								</HSComp.Toggle>
+							</div>
+						)}
 					</div>
-				) : null}
+				)}
 				<div className="grow min-h-0 overflow-auto">
 					<BuilderTab resource={resource} onResourceChange={onResourceChange} />
 				</div>
 			</HSComp.ResizablePanel>
-			<HSComp.ResizableHandle />
-			<HSComp.ResizablePanel minSize={20} defaultSize={50}>
-				<QueryRunner client={client} base={sp.base?.[0]} code={sp.code} />
-			</HSComp.ResizablePanel>
+			{isQueryToolOpen && (
+				<>
+					<HSComp.ResizableHandle />
+					<HSComp.ResizablePanel minSize={20} defaultSize={50}>
+						<QueryRunner
+							client={client}
+							base={sp.base?.[0]}
+							code={sp.code}
+							onClose={() => setIsQueryToolOpen(false)}
+						/>
+					</HSComp.ResizablePanel>
+				</>
+			)}
 		</HSComp.ResizablePanelGroup>
 	);
 };
