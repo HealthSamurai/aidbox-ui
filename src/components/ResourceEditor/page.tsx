@@ -25,10 +25,8 @@ import type { ResourceEditorActions } from "../../webmcp/resource-editor-context
 import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
-import {
-	SearchParameterBuilderContent,
-	StatsTab as SearchParameterStatsTab,
-} from "../SearchParameter/builder-content";
+import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
+import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";

@@ -18,7 +18,16 @@ import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
 import { EmptyState } from "../empty-state";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
+import {
+	formatCount,
+	formatMs,
+	formatRelativeTime,
+} from "../SearchParameter/format";
 import { rpcCall } from "../SearchParameter/suggest-index";
+import type {
+	SearchParamShape,
+	SearchParamStat,
+} from "../SearchParameter/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
 
@@ -1177,62 +1186,11 @@ type SearchParameterBundle = {
 	entry?: { resource: SearchParameterResource }[];
 };
 
-type SearchParamStat = {
-	resource_type: string;
-	search_param: string;
-	calls: number;
-	total_time_ms: number;
-	min_time_ms: number | null;
-	max_time_ms: number | null;
-	mean_time_ms: number;
-	last_used_at: string | null;
-	has_index: boolean;
-};
-
-type SearchParamShape = {
-	resource_type: string;
-	search_params: string[];
-	calls: number;
-	total_time_ms: number;
-	min_time_ms: number | null;
-	max_time_ms: number | null;
-	mean_time_ms: number;
-	last_used_at: string | null;
-};
-
 const HOT_CALLS_THRESHOLD = 100;
 const SLOW_MEAN_MS_THRESHOLD = 200;
 
 type StatsSortCol = "calls" | "mean" | "last";
 type StatsSortDir = "asc" | "desc";
-
-function formatCount(n: number): string {
-	return n.toLocaleString();
-}
-
-function formatMs(ms: number | null | undefined): string {
-	if (ms == null) return "—";
-	if (ms < 1) return ms.toFixed(2);
-	if (ms < 100) return ms.toFixed(1);
-	return Math.round(ms).toString();
-}
-
-function formatRelativeTime(iso: string | null | undefined): string {
-	if (!iso) return "—";
-	const t = Date.parse(iso);
-	if (Number.isNaN(t)) return "—";
-	const diff = Date.now() - t;
-	const sec = Math.floor(diff / 1000);
-	if (sec < 5) return "just now";
-	if (sec < 60) return `${sec}s ago`;
-	const min = Math.floor(sec / 60);
-	if (min < 60) return `${min}m ago`;
-	const hr = Math.floor(min / 60);
-	if (hr < 24) return `${hr}h ago`;
-	const day = Math.floor(hr / 24);
-	if (day < 30) return `${day}d ago`;
-	return new Date(t).toISOString().slice(0, 10);
-}
 
 const SearchParametersTabContent = ({
 	client,
