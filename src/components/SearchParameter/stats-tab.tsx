@@ -5,7 +5,7 @@ import * as Lucide from "lucide-react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import { formatCount, formatMs, formatRelativeTime } from "./format";
-import { rpcCall, SuggestIndexButton } from "./suggest-index";
+import { formatStatement, rpcCall, SuggestIndexButton } from "./suggest-index";
 import type { SearchParamIndex, SearchParamShape } from "./types";
 
 const IndexesSection = ({
@@ -21,35 +21,44 @@ const IndexesSection = ({
 	if (indexes.length === 0) {
 		return (
 			<div className="text-sm text-text-tertiary">
-				No Aidbox-managed indexes for this search parameter.
+				No indexes follow the SP-knife naming convention for this search
+				parameter.
 			</div>
 		);
 	}
 	return (
 		<div className="flex flex-col gap-2">
-			{indexes.map((idx) => (
-				<div
-					key={idx.name}
-					className="rounded border border-border-secondary overflow-hidden"
-				>
-					<div className="px-3 py-1.5 text-xs text-text-secondary bg-bg-secondary border-b border-border-secondary font-mono">
-						{idx.name}
+			{indexes.map((idx) => {
+				const formatted = formatStatement(idx.definition);
+				const lineCount = formatted.split("\n").length;
+				const height = Math.min(Math.max(lineCount, 2), 12) * 22 + 16;
+				return (
+					<div
+						key={idx.name}
+						className="rounded border border-border-secondary overflow-hidden"
+					>
+						<div className="px-3 py-1.5 text-xs text-text-secondary bg-bg-secondary border-b border-border-secondary font-mono">
+							{idx.name}
+						</div>
+						<div
+							style={{ height }}
+							className="[&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent"
+						>
+							<HSComp.CodeEditor
+								readOnly
+								isReadOnlyTheme
+								lineNumbers={false}
+								foldGutter={false}
+								currentValue={formatted}
+								mode="sql"
+								viewCallback={(view) => {
+									view.contentDOM.contentEditable = "false";
+								}}
+							/>
+						</div>
 					</div>
-					<div className="h-20 [&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent">
-						<HSComp.CodeEditor
-							readOnly
-							isReadOnlyTheme
-							lineNumbers={false}
-							foldGutter={false}
-							currentValue={idx.definition}
-							mode="sql"
-							viewCallback={(view) => {
-								view.contentDOM.contentEditable = "false";
-							}}
-						/>
-					</div>
-				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 };
@@ -158,16 +167,6 @@ export const StatsTab = ({
 				/>
 			</div>
 
-			<div className="flex flex-col gap-2">
-				<div className="text-sm font-medium text-text-secondary">
-					Existing indexes
-				</div>
-				<IndexesSection
-					indexes={indexesQuery.data ?? []}
-					isLoading={indexesQuery.isLoading}
-				/>
-			</div>
-
 			{shapesQuery.isError && (
 				<div className="text-text-danger text-sm">
 					{(shapesQuery.error as Error).message}
@@ -236,6 +235,16 @@ export const StatsTab = ({
 					</HSComp.TableBody>
 				</HSComp.Table>
 			)}
+
+			<div className="flex flex-col gap-2 pt-2">
+				<div className="text-sm font-medium text-text-secondary">
+					Existing indexes
+				</div>
+				<IndexesSection
+					indexes={indexesQuery.data ?? []}
+					isLoading={indexesQuery.isLoading}
+				/>
+			</div>
 		</div>
 	);
 };
