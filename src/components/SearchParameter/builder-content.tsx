@@ -536,7 +536,7 @@ export const SearchParameterBuilderContent = ({
 									onPressedChange={setIsQueryToolOpen}
 								>
 									<Lucide.PanelRightIcon className="w-4 h-4" />
-									Query tool
+									Debug tool
 								</HSComp.Toggle>
 							</div>
 						)}

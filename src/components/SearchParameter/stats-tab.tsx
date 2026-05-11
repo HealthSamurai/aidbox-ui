@@ -5,11 +5,17 @@ import * as Lucide from "lucide-react";
 import * as React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
+import { EmptyState } from "../empty-state";
 import { formatCount, formatMs, formatRelativeTime } from "./format";
-import { formatStatement, rpcCall, SuggestIndexButton } from "./suggest-index";
+import {
+	formatStatement,
+	rpcCall,
+	type SuggestedIndex,
+	SuggestionCard,
+} from "./suggest-index";
 import type { SearchParamIndex, SearchParamShape } from "./types";
 
-const IndexCard = ({
+const ExistingIndexCard = ({
 	client,
 	resourceType,
 	searchParam,
@@ -22,6 +28,7 @@ const IndexCard = ({
 	index: SearchParamIndex;
 	onDropped: () => void;
 }) => {
+	const [open, setOpen] = React.useState(false);
 	const [confirmOpen, setConfirmOpen] = React.useState(false);
 	const formatted = formatStatement(index.definition);
 	const lineCount = formatted.split("\n").length;
@@ -45,9 +52,19 @@ const IndexCard = ({
 	return (
 		<div className="rounded border border-border-secondary overflow-hidden">
 			<div className="flex items-center justify-between px-3 py-1 bg-bg-secondary border-b border-border-secondary">
-				<span className="text-xs text-text-secondary font-mono truncate">
-					{index.name}
-				</span>
+				<button
+					type="button"
+					className="flex items-center gap-1 text-xs text-text-secondary font-mono truncate min-w-0 hover:text-text-primary"
+					onClick={() => setOpen((v) => !v)}
+					aria-expanded={open}
+				>
+					{open ? (
+						<Lucide.ChevronDownIcon size={12} />
+					) : (
+						<Lucide.ChevronRightIcon size={12} />
+					)}
+					<span className="truncate">{index.name}</span>
+				</button>
 				<HSComp.Button
 					variant="ghost"
 					size="small"
@@ -59,22 +76,24 @@ const IndexCard = ({
 					{dropMutation.isPending ? "Dropping..." : "Drop"}
 				</HSComp.Button>
 			</div>
-			<div
-				style={{ height }}
-				className="[&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent"
-			>
-				<HSComp.CodeEditor
-					readOnly
-					isReadOnlyTheme
-					lineNumbers={false}
-					foldGutter={false}
-					currentValue={formatted}
-					mode="sql"
-					viewCallback={(view) => {
-						view.contentDOM.contentEditable = "false";
-					}}
-				/>
-			</div>
+			{open && (
+				<div
+					style={{ height }}
+					className="[&_.cm-cursor]:!hidden [&_.cm-content]:!caret-transparent [&_.cm-activeLine]:!bg-transparent"
+				>
+					<HSComp.CodeEditor
+						readOnly
+						isReadOnlyTheme
+						lineNumbers={false}
+						foldGutter={false}
+						currentValue={formatted}
+						mode="sql"
+						viewCallback={(view) => {
+							view.contentDOM.contentEditable = "false";
+						}}
+					/>
+				</div>
+			)}
 			<HSComp.AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
@@ -106,44 +125,126 @@ const IndexCard = ({
 	);
 };
 
-const IndexesSection = ({
+const IndexesPanel = ({
 	client,
 	resourceType,
 	searchParam,
-	indexes,
-	isLoading,
-	onDropped,
+	existing,
+	existingIsLoading,
+	suggestionsQuery,
+	onClose,
+	onReloadSuggest,
+	onExistingChanged,
 }: {
 	client: AidboxClientR5;
 	resourceType: string;
 	searchParam: string;
-	indexes: SearchParamIndex[];
-	isLoading: boolean;
-	onDropped: () => void;
+	existing: SearchParamIndex[];
+	existingIsLoading: boolean;
+	suggestionsQuery: ReactQuery.UseQueryResult<SuggestedIndex[], Error>;
+	onClose: () => void;
+	onReloadSuggest: () => void;
+	onExistingChanged: () => void;
 }) => {
-	if (isLoading) {
-		return <div className="text-sm text-text-secondary">Loading indexes…</div>;
-	}
-	if (indexes.length === 0) {
-		return (
-			<div className="text-sm text-text-tertiary">
-				No indexes follow the SP-knife naming convention for this search
-				parameter.
-			</div>
-		);
-	}
+	const existingNames = React.useMemo(
+		() => new Set(existing.map((i) => i.name)),
+		[existing],
+	);
+
+	const suggested = React.useMemo(
+		() =>
+			(suggestionsQuery.data ?? [])
+				.filter((s) => !existingNames.has(s["index-name"]))
+				.map((s) => ({
+					name: s["index-name"],
+					statement: formatStatement(s.statement),
+				})),
+		[suggestionsQuery.data, existingNames],
+	);
+
 	return (
-		<div className="flex flex-col gap-2">
-			{indexes.map((idx) => (
-				<IndexCard
-					key={idx.name}
-					client={client}
-					resourceType={resourceType}
-					searchParam={searchParam}
-					index={idx}
-					onDropped={onDropped}
-				/>
-			))}
+		<div className="flex flex-col h-full">
+			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
+				<div className="flex items-center gap-2 px-4 grow">
+					<span className="typo-label text-text-secondary">Indexes</span>
+				</div>
+				<div className="flex items-center px-2 gap-1">
+					<HSComp.Button
+						variant="ghost"
+						size="small"
+						onClick={onReloadSuggest}
+						disabled={suggestionsQuery.isFetching}
+					>
+						<Lucide.SparklesIcon size={14} />
+						{suggestionsQuery.isFetching ? "Suggesting…" : "Suggest"}
+					</HSComp.Button>
+					<HSComp.IconButton
+						variant="ghost"
+						aria-label="Close indexes panel"
+						icon={<Lucide.XIcon className="w-4 h-4" />}
+						onClick={onClose}
+					/>
+				</div>
+			</div>
+			<div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
+				<section className="flex flex-col gap-2">
+					<div className="text-sm font-medium text-text-secondary">
+						Suggested
+						{suggested.length > 0 ? ` (${suggested.length})` : ""}
+					</div>
+					{suggestionsQuery.isFetching ? (
+						<div className="text-sm text-text-secondary">Loading…</div>
+					) : suggestionsQuery.isError ? (
+						<div className="text-sm text-text-danger">
+							{suggestionsQuery.error.message}
+						</div>
+					) : suggested.length === 0 ? (
+						<div className="text-sm text-text-tertiary">
+							{suggestionsQuery.data
+								? "No new suggestions — all suggested indexes already exist."
+								: "Click Suggest to compute index candidates."}
+						</div>
+					) : (
+						<div className="flex flex-col gap-2">
+							{suggested.map((s) => (
+								<SuggestionCard
+									key={s.name}
+									client={client}
+									suggestion={s}
+									onCreated={onExistingChanged}
+								/>
+							))}
+						</div>
+					)}
+				</section>
+
+				<section className="flex flex-col gap-2">
+					<div className="text-sm font-medium text-text-secondary">
+						Existing{existing.length > 0 ? ` (${existing.length})` : ""}
+					</div>
+					{existingIsLoading ? (
+						<div className="text-sm text-text-secondary">Loading…</div>
+					) : existing.length === 0 ? (
+						<div className="text-sm text-text-tertiary">
+							No indexes follow the SP-knife naming convention for this search
+							parameter.
+						</div>
+					) : (
+						<div className="flex flex-col gap-2">
+							{existing.map((idx) => (
+								<ExistingIndexCard
+									key={idx.name}
+									client={client}
+									resourceType={resourceType}
+									searchParam={searchParam}
+									index={idx}
+									onDropped={onExistingChanged}
+								/>
+							))}
+						</div>
+					)}
+				</section>
+			</div>
 		</div>
 	);
 };
@@ -161,6 +262,11 @@ export const StatsTab = ({
 	const queryKey = ["search-parameter-builder/shapes", base, code] as const;
 	const indexesQueryKey = [
 		"search-parameter-builder/indexes",
+		base,
+		code,
+	] as const;
+	const suggestQueryKey = [
+		"search-parameter-builder/suggest",
 		base,
 		code,
 	] as const;
@@ -199,7 +305,21 @@ export const StatsTab = ({
 		retry: false,
 	});
 
-	const resetMutation = ReactQuery.useMutation({
+	const suggestQuery = ReactQuery.useQuery({
+		queryKey: suggestQueryKey,
+		// Lazy: only fetch when the user clicks "Suggest" in the panel.
+		enabled: false,
+		queryFn: async () => {
+			const json = await rpcCall(client, "aidbox.index/suggest-index", {
+				"resource-type": base,
+				"search-param": code,
+			});
+			return (json.result ?? []) as SuggestedIndex[];
+		},
+		retry: false,
+	});
+
+	const resetAllMutation = ReactQuery.useMutation({
 		mutationFn: async () => {
 			await rpcCall(client, "aidbox.index/reset-search-param-stats", {
 				"resource-type": base,
@@ -211,6 +331,19 @@ export const StatsTab = ({
 				`Reset stats for ${base}.${code}`,
 				defaultToastPlacement,
 			);
+			queryClient.invalidateQueries({ queryKey });
+		},
+		onError: ApiUtils.onMutationError,
+	});
+
+	const resetShapeMutation = ReactQuery.useMutation({
+		mutationFn: async (searchParams: string[]) => {
+			await rpcCall(client, "aidbox.index/reset-search-param-stats", {
+				"resource-type": base,
+				"search-params": searchParams,
+			});
+		},
+		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey });
 		},
 		onError: ApiUtils.onMutationError,
@@ -232,141 +365,139 @@ export const StatsTab = ({
 	const indexes = indexesQuery.data ?? [];
 
 	const statsBody = (
-		<div className="flex flex-col gap-3 p-4 h-full overflow-auto">
-			<div className="flex items-center gap-2">
-				<div className="text-sm text-text-secondary grow">
-					{shapesQuery.isLoading
-						? "Loading…"
-						: `${shapes.length} shape${shapes.length === 1 ? "" : "s"} · ${formatCount(totalCalls)} call${totalCalls === 1 ? "" : "s"}`}
-				</div>
-				<HSComp.Button
-					variant="ghost"
-					size="small"
-					onClick={() => resetMutation.mutate()}
-					disabled={resetMutation.isPending || shapes.length === 0}
-				>
-					<Lucide.RotateCcwIcon size={14} />
-					Reset
-				</HSComp.Button>
-				<SuggestIndexButton
-					client={client}
-					resourceType={base}
-					searchParam={code}
-				/>
-				{!isIndexesOpen && (
-					<HSComp.Toggle
-						variant="outline"
-						pressed={isIndexesOpen}
-						onPressedChange={setIsIndexesOpen}
-					>
-						<Lucide.PanelRightIcon className="w-4 h-4" />
-						Indexes{indexes.length > 0 ? ` (${indexes.length})` : ""}
-					</HSComp.Toggle>
-				)}
-			</div>
-
-			{shapesQuery.isError && (
-				<div className="text-text-danger text-sm">
-					{(shapesQuery.error as Error).message}
-				</div>
-			)}
-
-			{!shapesQuery.isLoading && shapes.length === 0 && (
-				<div className="text-text-secondary text-sm">
-					No usage recorded yet. Issue a few searches that include{" "}
-					<code>{code}</code> on <code>{base}</code> and stats will appear here.
-				</div>
-			)}
-
-			{shapes.length > 0 && (
-				<div className="shrink-0 [&_[data-slot=table-container]]:!h-auto">
-					<HSComp.Table zebra className="typo-code">
-						<HSComp.TableHeader>
-							<HSComp.TableRow>
-								<HSComp.TableHead>Shape</HSComp.TableHead>
-								<HSComp.TableHead className="w-0 text-right">
-									Calls
-								</HSComp.TableHead>
-								<HSComp.TableHead className="w-0 text-right">
-									Mean&nbsp;ms
-								</HSComp.TableHead>
-								<HSComp.TableHead className="w-0 text-right">
-									Min
-								</HSComp.TableHead>
-								<HSComp.TableHead className="w-0 text-right">
-									Max
-								</HSComp.TableHead>
-								<HSComp.TableHead className="w-0 text-right">
-									Total&nbsp;ms
-								</HSComp.TableHead>
-								<HSComp.TableHead className="w-0">Last used</HSComp.TableHead>
-							</HSComp.TableRow>
-						</HSComp.TableHeader>
-						<HSComp.TableBody>
-							{shapes.map((s, i) => (
-								<HSComp.TableRow
-									key={s.search_params.join("|")}
-									zebra
-									index={i}
-								>
-									<HSComp.TableCell>
-										?{s.search_params.join("&")}
-									</HSComp.TableCell>
-									<HSComp.TableCell className="text-right tabular-nums">
-										{formatCount(s.calls)}
-									</HSComp.TableCell>
-									<HSComp.TableCell className="text-right tabular-nums">
-										{formatMs(s.mean_time_ms)}
-									</HSComp.TableCell>
-									<HSComp.TableCell className="text-right tabular-nums">
-										{formatMs(s.min_time_ms)}
-									</HSComp.TableCell>
-									<HSComp.TableCell className="text-right tabular-nums">
-										{formatMs(s.max_time_ms)}
-									</HSComp.TableCell>
-									<HSComp.TableCell className="text-right tabular-nums">
-										{formatMs(s.total_time_ms)}
-									</HSComp.TableCell>
-									<HSComp.TableCell
-										title={s.last_used_at ?? undefined}
-										className="whitespace-nowrap"
-									>
-										{formatRelativeTime(s.last_used_at)}
-									</HSComp.TableCell>
-								</HSComp.TableRow>
-							))}
-						</HSComp.TableBody>
-					</HSComp.Table>
-				</div>
-			)}
-		</div>
-	);
-
-	const indexesPanel = (
 		<div className="flex flex-col h-full">
-			<div className="flex items-center justify-between px-4 py-2 border-b border-border-secondary shrink-0">
-				<span className="text-sm font-medium text-text-secondary">
-					Existing indexes
-					{indexes.length > 0 ? ` (${indexes.length})` : ""}
-				</span>
-				<HSComp.IconButton
-					variant="ghost"
-					aria-label="Close indexes panel"
-					icon={<Lucide.XIcon className="w-4 h-4" />}
-					onClick={() => setIsIndexesOpen(false)}
-				/>
+			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
+				<div className="flex items-center gap-2 px-4 grow">
+					<span className="typo-label text-text-secondary">
+						{shapesQuery.isLoading
+							? "Loading…"
+							: `${shapes.length} shape${shapes.length === 1 ? "" : "s"} · ${formatCount(totalCalls)} call${totalCalls === 1 ? "" : "s"}`}
+					</span>
+				</div>
+				<div className="flex items-center px-2 gap-1">
+					<HSComp.Button
+						variant="ghost"
+						size="small"
+						onClick={() => resetAllMutation.mutate()}
+						disabled={resetAllMutation.isPending || shapes.length === 0}
+					>
+						<Lucide.RotateCcwIcon size={14} />
+						Reset all
+					</HSComp.Button>
+					{!isIndexesOpen && (
+						<HSComp.Toggle
+							variant="outline"
+							pressed={isIndexesOpen}
+							onPressedChange={setIsIndexesOpen}
+						>
+							<Lucide.PanelRightIcon className="w-4 h-4" />
+							Indexes{indexes.length > 0 ? ` (${indexes.length})` : ""}
+						</HSComp.Toggle>
+					)}
+				</div>
 			</div>
-			<div className="flex-1 overflow-auto p-4">
-				<IndexesSection
-					client={client}
-					resourceType={base}
-					searchParam={code}
-					indexes={indexes}
-					isLoading={indexesQuery.isLoading}
-					onDropped={() =>
-						queryClient.invalidateQueries({ queryKey: indexesQueryKey })
-					}
-				/>
+
+			<div className="flex flex-col gap-3 p-4 grow min-h-0 overflow-auto">
+				{shapesQuery.isError && (
+					<div className="text-text-danger text-sm">
+						{(shapesQuery.error as Error).message}
+					</div>
+				)}
+
+				{!shapesQuery.isLoading && shapes.length === 0 && (
+					<EmptyState
+						title="No usage recorded yet"
+						description={
+							<>
+								Issue a few searches that include <code>{code}</code> on{" "}
+								<code>{base}</code> and stats will appear here.
+							</>
+						}
+					/>
+				)}
+
+				{shapes.length > 0 && (
+					<div className="shrink-0 [&_[data-slot=table-container]]:!h-auto">
+						<HSComp.Table zebra className="typo-code">
+							<HSComp.TableHeader>
+								<HSComp.TableRow>
+									<HSComp.TableHead>Shape</HSComp.TableHead>
+									<HSComp.TableHead className="w-0 text-right">
+										Calls
+									</HSComp.TableHead>
+									<HSComp.TableHead className="w-0 text-right">
+										Mean&nbsp;ms
+									</HSComp.TableHead>
+									<HSComp.TableHead className="w-0 text-right">
+										Min&nbsp;ms
+									</HSComp.TableHead>
+									<HSComp.TableHead className="w-0 text-right">
+										Max&nbsp;ms
+									</HSComp.TableHead>
+									<HSComp.TableHead className="w-0 text-right">
+										Total&nbsp;ms
+									</HSComp.TableHead>
+									<HSComp.TableHead className="w-0">Last used</HSComp.TableHead>
+									<HSComp.TableHead className="w-0">
+										<span className="sr-only">Actions</span>
+									</HSComp.TableHead>
+								</HSComp.TableRow>
+							</HSComp.TableHeader>
+							<HSComp.TableBody>
+								{shapes.map((s, i) => (
+									<HSComp.TableRow
+										key={s.search_params.join("|")}
+										zebra
+										index={i}
+									>
+										<HSComp.TableCell>
+											?{s.search_params.join("&")}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-right tabular-nums">
+											{formatCount(s.calls)}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-right tabular-nums">
+											{formatMs(s.mean_time_ms)}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-right tabular-nums">
+											{formatMs(s.min_time_ms)}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-right tabular-nums">
+											{formatMs(s.max_time_ms)}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-right tabular-nums">
+											{formatMs(s.total_time_ms)}
+										</HSComp.TableCell>
+										<HSComp.TableCell
+											title={s.last_used_at ?? undefined}
+											className="whitespace-nowrap"
+										>
+											{formatRelativeTime(s.last_used_at)}
+										</HSComp.TableCell>
+										<HSComp.TableCell className="text-right">
+											<HSComp.Tooltip>
+												<HSComp.TooltipTrigger asChild>
+													<HSComp.IconButton
+														variant="ghost"
+														aria-label={`Reset stats for ?${s.search_params.join("&")}`}
+														disabled={resetShapeMutation.isPending}
+														icon={<Lucide.RotateCcwIcon className="w-4 h-4" />}
+														onClick={() =>
+															resetShapeMutation.mutate(s.search_params)
+														}
+													/>
+												</HSComp.TooltipTrigger>
+												<HSComp.TooltipContent>
+													Reset stats for this shape
+												</HSComp.TooltipContent>
+											</HSComp.Tooltip>
+										</HSComp.TableCell>
+									</HSComp.TableRow>
+								))}
+							</HSComp.TableBody>
+						</HSComp.Table>
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -381,7 +512,19 @@ export const StatsTab = ({
 				<>
 					<HSComp.ResizableHandle />
 					<HSComp.ResizablePanel defaultSize={35} minSize={20}>
-						{indexesPanel}
+						<IndexesPanel
+							client={client}
+							resourceType={base}
+							searchParam={code}
+							existing={indexes}
+							existingIsLoading={indexesQuery.isLoading}
+							suggestionsQuery={suggestQuery}
+							onClose={() => setIsIndexesOpen(false)}
+							onReloadSuggest={() => suggestQuery.refetch()}
+							onExistingChanged={() =>
+								queryClient.invalidateQueries({ queryKey: indexesQueryKey })
+							}
+						/>
 					</HSComp.ResizablePanel>
 				</>
 			)}

@@ -53,6 +53,9 @@ const ExplainView = ({
 	headers: Header[];
 	sendVersion: number;
 }) => {
+	// Persist sub-tab across re-runs. Loading/error states return early and
+	// would unmount `HSComp.Tabs`, dropping uncontrolled state — so we own it.
+	const [subTab, setSubTab] = React.useState<string | undefined>(undefined);
 	// Re-run only when the user clicks Send (sendVersion bumps), not on every
 	// keystroke in the URL input. Same gating as REST Console — see
 	// `routes/rest.tsx` ExplainView's queryKey.
@@ -135,12 +138,18 @@ const ExplainView = ({
 		);
 	}
 
-	const defaultSubTab = inlineSQL ? "query" : querySQL ? "statement" : "plan";
+	const available: string[] = [];
+	if (inlineSQL) available.push("query");
+	if (querySQL) available.push("statement");
+	if (plan) available.push("plan");
+	const effectiveSubTab =
+		subTab && available.includes(subTab) ? subTab : available[0];
 
 	return (
 		<HSComp.Tabs
 			variant="tertiary"
-			defaultValue={defaultSubTab}
+			value={effectiveSubTab}
+			onValueChange={setSubTab}
 			className="flex flex-col grow min-h-0"
 		>
 			<div className="flex items-center bg-bg-secondary h-10 border-b shrink-0">
@@ -403,10 +412,10 @@ export const QueryRunner = ({
 		<div className="flex flex-col h-full">
 			{onClose ? (
 				<div className="flex items-center justify-between bg-bg-secondary px-4 pr-2 border-b h-10 shrink-0">
-					<span className="typo-label text-text-secondary">Query tool</span>
+					<span className="typo-label text-text-secondary">Debug tool</span>
 					<HSComp.IconButton
 						variant="ghost"
-						aria-label="Close query tool"
+						aria-label="Close debug tool"
 						icon={<Lucide.XIcon className="w-4 h-4" />}
 						onClick={onClose}
 					/>
