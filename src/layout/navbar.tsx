@@ -71,11 +71,13 @@ function Breadcrumbs() {
 										{crumb.title}
 									</BreadcrumbPage>
 									{/^[0-9a-f-]{36}$/i.test(crumb.title) && (
-										<CopyIcon
-											text={crumb.title}
-											tooltipText="Copy ID"
-											showToast={false}
-										/>
+										<span className="ml-1 [&_svg]:size-4 text-text-tertiary hover:text-text-primary">
+											<CopyIcon
+												text={crumb.title}
+												tooltipText="Copy ID"
+												showToast={false}
+											/>
+										</span>
 									)}
 								</>
 							) : (
