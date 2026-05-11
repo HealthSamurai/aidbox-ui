@@ -315,7 +315,7 @@ const BuilderTab = ({
 	) => (
 		<div className="flex w-full items-center justify-between gap-2">
 			{labelView(item)}
-			<div className="w-[60%] min-w-0">{editor}</div>
+			<div className="w-[80%] min-w-0">{editor}</div>
 		</div>
 	);
 
