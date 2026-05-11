@@ -1,6 +1,7 @@
 import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
 	type BuilderTab,
+	defaultTabFor,
 	type EditorMode,
 	isBuilderTab,
 	isEditorMode,
@@ -53,11 +54,11 @@ export function storeSelectedBuilderTab(builderTab: BuilderTab) {
 	} catch {}
 }
 
-function isSearchParameterPath(): boolean {
-	return (
-		typeof window !== "undefined" &&
-		window.location.pathname.includes("/resource/SearchParameter/")
-	);
+function resourceTypeFromPath(): string | null {
+	if (typeof window === "undefined") return null;
+	// Routes are `/resource/<rt>/(edit|create)/...`. Match defensively.
+	const m = window.location.pathname.match(/\/resource\/([^/]+)\//);
+	return m ? decodeURIComponent(m[1] ?? "") : null;
 }
 
 export function validateSearch(
@@ -67,9 +68,11 @@ export function validateSearch(
 	if (isResourceEditorTab(rawSearch.tab)) {
 		tab = rawSearch.tab;
 	} else if (rawSearch.tab === undefined) {
-		// SearchParameter defaults to Builder (form + Debug tool). Other resource
-		// types respect the globally-stored last-used tab.
-		tab = isSearchParameterPath() ? "builder" : (getStoredTab() ?? "edit");
+		// Resource types with a custom builder default to Builder; others respect
+		// the globally-stored last-used tab.
+		const rt = resourceTypeFromPath();
+		const builderDefault = rt && defaultTabFor(rt) === "builder";
+		tab = builderDefault ? "builder" : (getStoredTab() ?? "edit");
 	} else {
 		console.error("Invalid tab", rawSearch.tab, "force to 'edit'");
 		tab = "edit";

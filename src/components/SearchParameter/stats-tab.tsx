@@ -405,7 +405,7 @@ export const StatsTab = ({
 					to="/resource/$resourceType/edit/$id"
 					params={{ resourceType: "SearchParameter", id }}
 					search={{
-						tab: "edit" as const,
+						tab: "builder" as const,
 						mode: "json" as const,
 						builderTab: "form" as const,
 					}}

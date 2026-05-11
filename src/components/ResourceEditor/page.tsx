@@ -103,7 +103,10 @@ export const ResourceEditorPageWithLoader = (
 
 	return (
 		<ResourceEditorPage
-			key={String(meta?.versionId ?? "")}
+			// Remount on id change so `useState(initialResource)` re-initializes —
+			// otherwise navigating to a sibling resource keeps the previous one's
+			// state. VersionId guards against in-place updates of the same id.
+			key={`${id ?? ""}:${String(meta?.versionId ?? "")}`}
 			initialResource={resourceData}
 			{...props}
 		/>

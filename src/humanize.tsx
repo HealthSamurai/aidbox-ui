@@ -8,6 +8,7 @@ import {
 } from "@health-samurai/react-components";
 import { Link } from "@tanstack/react-router";
 import type React from "react";
+import { defaultTabFor } from "./components/ResourceEditor/types";
 
 // Helper function to stop event propagation
 const stopPropagation = (e: React.MouseEvent) => {
@@ -510,7 +511,11 @@ function humanizeReference(
 					resourceType: resourceType as string,
 					id: id as string,
 				}}
-				search={{ tab: "edit", mode: "json", builderTab: "form" }}
+				search={{
+					tab: defaultTabFor(resourceType as string),
+					mode: "json",
+					builderTab: "form",
+				}}
 				onClick={stopPropagation}
 				className="text-text-link hover:underline"
 			>
@@ -575,7 +580,11 @@ function humanizeBackboneElementRef(
 					resourceType: resourceType as string,
 					id: id as string,
 				}}
-				search={{ tab: "edit", mode: "json", builderTab: "form" }}
+				search={{
+					tab: defaultTabFor(resourceType as string),
+					mode: "json",
+					builderTab: "form",
+				}}
 				onClick={stopPropagation}
 				className="text-text-link hover:underline"
 			>

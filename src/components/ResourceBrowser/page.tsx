@@ -17,6 +17,7 @@ import * as Utils from "../../utils";
 import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
 import { EmptyState } from "../empty-state";
+import { defaultTabFor } from "../ResourceEditor/types";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
 import {
 	formatCount,
@@ -142,7 +143,7 @@ export const ResourcesTabCreateButton = () => {
 			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
 			search={{
-				tab: "edit" as const,
+				tab: defaultTabFor(resourcesPageContext.resourceType),
 				mode: "json" as const,
 				builderTab: "form" as const,
 			}}
@@ -376,7 +377,7 @@ export const ResourcesTabTable = ({
 										id,
 									}}
 									search={{
-										tab: "edit" as const,
+										tab: defaultTabFor(resourcesPageContext.resourceType),
 										mode: "json" as const,
 										builderTab: "form" as const,
 									}}
@@ -1418,7 +1419,7 @@ const SearchParametersTabContent = ({
 											id: param.id,
 										}}
 										search={{
-											tab: "edit" as const,
+											tab: "builder" as const,
 											mode: "json" as const,
 											builderTab: "form" as const,
 										}}
@@ -1581,7 +1582,7 @@ export const ResourcesPage = ({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType, id },
 				search: {
-					tab: "edit" as const,
+					tab: defaultTabFor(resourceType),
 					mode: "json" as const,
 					builderTab: "form" as const,
 				},
@@ -1592,7 +1593,7 @@ export const ResourcesPage = ({
 				to: "/resource/$resourceType/create",
 				params: { resourceType },
 				search: {
-					tab: "edit" as const,
+					tab: defaultTabFor(resourceType),
 					mode: "json" as const,
 					builderTab: "form" as const,
 				},

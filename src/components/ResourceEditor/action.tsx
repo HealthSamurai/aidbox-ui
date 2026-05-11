@@ -10,7 +10,7 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { createResource, deleteResource, updateResource } from "./api";
 import type { EditorMode } from "./types";
-import { pageId } from "./types";
+import { defaultTabFor, pageId } from "./types";
 
 export interface SaveHandle {
 	save: () => Promise<Resource>;
@@ -64,7 +64,7 @@ export const SaveButton = ({
 					to: `/resource/$resourceType/edit/$id`,
 					params: { resourceType, id: resource.id },
 					search: {
-						tab: "edit" as const,
+						tab: defaultTabFor(resourceType),
 						mode: "json" as const,
 						builderTab: "form" as const,
 					},
