@@ -6,6 +6,7 @@ import type { CodeableConcept } from "../hl7-fhir-r5-core/CodeableConcept";
 import type { Coding } from "../hl7-fhir-r5-core/Coding";
 import type { ContactDetail } from "../hl7-fhir-r5-core/ContactDetail";
 import type { DomainResource } from "../hl7-fhir-r5-core/DomainResource";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Identifier } from "../hl7-fhir-r5-core/Identifier";
 import type { UsageContext } from "../hl7-fhir-r5-core/UsageContext";
 
@@ -15,9 +16,9 @@ export type { ContactDetail } from "../hl7-fhir-r5-core/ContactDetail";
 export type { Identifier } from "../hl7-fhir-r5-core/Identifier";
 export type { UsageContext } from "../hl7-fhir-r5-core/UsageContext";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/CanonicalResource
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/CanonicalResource (pkg: hl7.fhir.r5.core#5.0.0)
 export interface CanonicalResource extends DomainResource {
-	resourceType: "CanonicalResource" | "ViewDefinition" | string;
+	resourceType: "CanonicalResource";
 
 	contact?: ContactDetail[];
 	copyright?: string;

@@ -64,10 +64,29 @@ export interface TimingRepeat extends Element {
 	)[];
 }
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Timing
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Timing (pkg: hl7.fhir.r5.core#5.0.0)
 export interface Timing extends BackboneType {
-	code?: CodeableConcept;
+	code?: CodeableConcept<
+		| "C"
+		| "BID"
+		| "TID"
+		| "QID"
+		| "AM"
+		| "PM"
+		| "QD"
+		| "QOD"
+		| "Q1H"
+		| "Q2H"
+		| "Q3H"
+		| "Q4H"
+		| "Q6H"
+		| "Q8H"
+		| "BED"
+		| "WK"
+		| "MO"
+		| string
+	>;
 	event?: string[];
-	_event?: Element;
-	repeat?: Element;
+	_event?: (Element | null)[];
+	repeat?: TimingRepeat;
 }

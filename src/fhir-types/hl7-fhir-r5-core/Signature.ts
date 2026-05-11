@@ -4,13 +4,14 @@
 
 import type { Coding } from "../hl7-fhir-r5-core/Coding";
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 export type { Coding } from "../hl7-fhir-r5-core/Coding";
 export type { DataType } from "../hl7-fhir-r5-core/DataType";
 export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Signature
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Signature (pkg: hl7.fhir.r5.core#5.0.0)
 export interface Signature extends DataType {
 	data?: string;
 	_data?: Element;
@@ -26,7 +27,33 @@ export interface Signature extends DataType {
 	_sigFormat?: Element;
 	targetFormat?: string;
 	_targetFormat?: Element;
-	type?: Coding[];
+	type?: Coding<
+		| "ProofOfOrigin"
+		| "ProofOfReceipt"
+		| "ProofOfDelivery"
+		| "ProofOfSender"
+		| "ProofOfapproval"
+		| "ProofOfCreation"
+		| "1.2.840.10065.1.12.1.1"
+		| "1.2.840.10065.1.12.1.2"
+		| "1.2.840.10065.1.12.1.3"
+		| "1.2.840.10065.1.12.1.4"
+		| "1.2.840.10065.1.12.1.5"
+		| "1.2.840.10065.1.12.1.6"
+		| "1.2.840.10065.1.12.1.7"
+		| "1.2.840.10065.1.12.1.8"
+		| "1.2.840.10065.1.12.1.9"
+		| "1.2.840.10065.1.12.1.10"
+		| "1.2.840.10065.1.12.1.11"
+		| "1.2.840.10065.1.12.1.12"
+		| "1.2.840.10065.1.12.1.13"
+		| "1.2.840.10065.1.12.1.14"
+		| "1.2.840.10065.1.12.1.15"
+		| "1.2.840.10065.1.12.1.16"
+		| "1.2.840.10065.1.12.1.17"
+		| "1.2.840.10065.1.12.1.18"
+		| string
+	>[];
 	when?: string;
 	_when?: Element;
 	who?: Reference<

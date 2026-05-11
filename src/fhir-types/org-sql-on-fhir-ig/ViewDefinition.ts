@@ -5,6 +5,8 @@
 import type { BackboneElement } from "../hl7-fhir-r5-core/BackboneElement";
 import type { CanonicalResource } from "../hl7-fhir-r5-core/CanonicalResource";
 
+import type { Element } from "../hl7-fhir-r5-core/Element";
+
 export type { BackboneElement } from "../hl7-fhir-r5-core/BackboneElement";
 
 export interface ViewDefinitionConstant extends BackboneElement {
@@ -58,10 +60,8 @@ export interface ViewDefinitionWhere extends BackboneElement {
 	path: string;
 }
 
-// CanonicalURL: https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition
+// CanonicalURL: https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition (pkg: org.sql-on-fhir.ig#2.1.0-pre)
 export interface ViewDefinition extends CanonicalResource {
-	resourceType: "ViewDefinition";
-
 	constant?: ViewDefinitionConstant[];
 	fhirVersion?: (
 		| "0.01"
@@ -122,18 +122,13 @@ export interface ViewDefinition extends CanonicalResource {
 		| "5.0.0-snapshot3"
 		| "5.0.0-draft-final"
 	)[];
+	_fhirVersion?: (Element | null)[];
 	name?: string;
+	_name?: Element;
 	profile?: string[];
+	_profile?: (Element | null)[];
 	resource: string;
+	_resource?: Element;
 	select: ViewDefinitionSelect[];
 	where?: ViewDefinitionWhere[];
 }
-export const isViewDefinition = (
-	resource: unknown,
-): resource is ViewDefinition => {
-	return (
-		resource !== null &&
-		typeof resource === "object" &&
-		(resource as { resourceType: string }).resourceType === "ViewDefinition"
-	);
-};

@@ -3,6 +3,7 @@
 // Any manual changes made to this file may be overwritten.
 
 import type { BackboneElement } from "../hl7-fhir-r5-core/BackboneElement";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Identifier } from "../hl7-fhir-r5-core/Identifier";
 import type { Resource } from "../hl7-fhir-r5-core/Resource";
 import type { Signature } from "../hl7-fhir-r5-core/Signature";
@@ -11,12 +12,15 @@ export type { BackboneElement } from "../hl7-fhir-r5-core/BackboneElement";
 export type { Identifier } from "../hl7-fhir-r5-core/Identifier";
 export type { Signature } from "../hl7-fhir-r5-core/Signature";
 
-export interface BundleEntry extends BackboneElement {
+export interface BundleEntry<
+	T1 extends Resource = Resource,
+	T2 extends Resource = Resource,
+> extends BackboneElement {
 	fullUrl?: string;
 	link?: BundleLink[];
 	request?: BundleEntryRequest;
-	resource?: Resource;
-	response?: BundleEntryResponse;
+	resource?: T1;
+	response?: BundleEntryResponse<T2>;
 	search?: BundleEntrySearch;
 }
 
@@ -29,11 +33,12 @@ export interface BundleEntryRequest extends BackboneElement {
 	url: string;
 }
 
-export interface BundleEntryResponse extends BackboneElement {
+export interface BundleEntryResponse<T extends Resource = Resource>
+	extends BackboneElement {
 	etag?: string;
 	lastModified?: string;
 	location?: string;
-	outcome?: Resource;
+	outcome?: T;
 	status: string;
 }
 
@@ -47,13 +52,17 @@ export interface BundleLink extends BackboneElement {
 	url: string;
 }
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Bundle
-export interface Bundle extends Resource {
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Bundle (pkg: hl7.fhir.r5.core#5.0.0)
+export interface Bundle<
+	T1 extends Resource = Resource,
+	T2 extends Resource = Resource,
+	T3 extends Resource = Resource,
+> extends Resource {
 	resourceType: "Bundle";
 
-	entry?: BundleEntry[];
+	entry?: BundleEntry<T1, T2>[];
 	identifier?: Identifier;
-	issues?: Resource;
+	issues?: T3;
 	link?: BundleLink[];
 	signature?: Signature;
 	timestamp?: string;
