@@ -5,6 +5,7 @@
 import type { CodeableConcept } from "../hl7-fhir-r5-core/CodeableConcept";
 import type { DataRequirement } from "../hl7-fhir-r5-core/DataRequirement";
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Expression } from "../hl7-fhir-r5-core/Expression";
 import type { Reference } from "../hl7-fhir-r5-core/Reference";
 import type { Timing } from "../hl7-fhir-r5-core/Timing";
@@ -16,7 +17,7 @@ export type { Expression } from "../hl7-fhir-r5-core/Expression";
 export type { Reference } from "../hl7-fhir-r5-core/Reference";
 export type { Timing } from "../hl7-fhir-r5-core/Timing";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/TriggerDefinition
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/TriggerDefinition (pkg: hl7.fhir.r5.core#5.0.0)
 export interface TriggerDefinition extends DataType {
 	code?: CodeableConcept;
 	condition?: Expression;

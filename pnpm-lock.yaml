@@ -37,7 +37,7 @@ importers:
         version: 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
       '@replit/codemirror-vim':
         specifier: ^6.3.0
-        version: 6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)
+        version: 6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.42.1)
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.90.21(react@19.2.4)
@@ -70,8 +70,8 @@ importers:
         specifier: ^0.14.1
         version: 0.14.1(zod@4.3.6)
       '@atomic-ehr/codegen':
-        specifier: canary
-        version: 0.0.9-canary.20260316141949.3b1c0ea(typescript@5.9.3)
+        specifier: latest
+        version: 0.0.14(typescript@5.9.3)
       '@biomejs/biome':
         specifier: 2.1.3
         version: 2.1.3
@@ -140,8 +140,8 @@ packages:
     peerDependencies:
       zod: ^4.0.0
 
-  '@atomic-ehr/codegen@0.0.9-canary.20260316141949.3b1c0ea':
-    resolution: {integrity: sha512-PVegfbE58uRVdXSw9+k1nD2otnxrjWyqEfgOh9pEfva0VXv641s6d2MUeTLrFMruWnYqw/VJDrageaOAP+JM0Q==}
+  '@atomic-ehr/codegen@0.0.14':
+    resolution: {integrity: sha512-VBamrvDXN3FBA5IMyjA0rn6hs2lP7kTiXS834+yGb7vHDv0Q8nA6EIclyK7HQORyxIOHufF22YprRpDDckb+jw==}
     hasBin: true
 
   '@atomic-ehr/fhir-canonical-manager@0.0.11':
@@ -150,8 +150,8 @@ packages:
     peerDependencies:
       typescript: ^5
 
-  '@atomic-ehr/fhir-canonical-manager@0.0.21':
-    resolution: {integrity: sha512-MTmPXWixNJ6Wa2b9AqTeo4wg37w9u9ebDnVj0eRDwspDrNHhcgM/XYtEV3Oio7Mnzam3n9m0IPsto8iPQ87ilA==}
+  '@atomic-ehr/fhir-canonical-manager@0.0.24':
+    resolution: {integrity: sha512-3h+uGf3qqxNX2oClVx+Fz1NZ2Jm2h2dXKrbhA77gURmX5TUYYQKxdTh58a7N/tteLLsig5fW8q41wfeUqy7GdQ==}
     hasBin: true
     peerDependencies:
       typescript: ^5
@@ -164,13 +164,13 @@ packages:
     peerDependencies:
       typescript: ^5
 
-  '@atomic-ehr/fhirschema@0.0.2':
-    resolution: {integrity: sha512-OA4CVjTUEdw43Efg5I5rj95je4GC3lRiLM/kUqadcK3Po24vnINUsB8YdOP/F3ffdUYKQcJ+z09sWQVeAC2z/A==}
+  '@atomic-ehr/fhirschema@0.0.11':
+    resolution: {integrity: sha512-oMNxhncEGspGI+QlK/FPjc7akLbfwMYw/hDfW6SbO8xF1KvSSH7NWqc3CJg/k5/309ZuJ6lKsHkgmgVDxo80sQ==}
     peerDependencies:
       typescript: ^5
 
-  '@atomic-ehr/fhirschema@0.0.8':
-    resolution: {integrity: sha512-RB3ZlFHYYfP4ZaOA0YStGaxrm3T1MzpJLPAzAxW/7u2yfdmQz160e3mGYVv0mglHKtGhZ0fuuk2qqhDwUiGncg==}
+  '@atomic-ehr/fhirschema@0.0.2':
+    resolution: {integrity: sha512-OA4CVjTUEdw43Efg5I5rj95je4GC3lRiLM/kUqadcK3Po24vnINUsB8YdOP/F3ffdUYKQcJ+z09sWQVeAC2z/A==}
     peerDependencies:
       typescript: ^5
 
@@ -337,6 +337,9 @@ packages:
   '@codemirror/autocomplete@6.20.1':
     resolution: {integrity: sha512-1cvg3Vz1dSSToCNlJfRA2WSI4ht3K+WplO0UMOgmUYPivCyy2oueZY6Lx7M9wThm7SDUBViRmuT+OG/i8+ON9A==}
 
+  '@codemirror/autocomplete@6.20.2':
+    resolution: {integrity: sha512-G5FPkgIiLjOgZMjqVjvuKQ1rGPtHogLldJr33eFJdVLtmwY+giGrlv/ewljLz6b9BSQLkjxuwBc6g6omDM+YxQ==}
+
   '@codemirror/commands@6.10.3':
     resolution: {integrity: sha512-JFRiqhKu+bvSkDLI+rUhJwSxQxYb759W5GBezE8Uc8mHLqC9aV/9aTC7yJSqCtB3F00pylrLCwnyS91Ap5ej4Q==}
 
@@ -355,6 +358,9 @@ packages:
   '@codemirror/lint@6.9.5':
     resolution: {integrity: sha512-GElsbU9G7QT9xXhpUg1zWGmftA/7jamh+7+ydKRuT0ORpWS3wOSP0yT1FOlIZa7mIJjpVPipErsyvVqB9cfTFA==}
 
+  '@codemirror/lint@6.9.6':
+    resolution: {integrity: sha512-6Kp7r6XfCi/D/5sdXieMfg9pJU1bUEx96WITuLU6ESaKizCz0QHFMjY/TaFSbigDdEAIgi93itLBIUETP4oK+A==}
+
   '@codemirror/lsp-client@6.2.2':
     resolution: {integrity: sha512-swTF98necGzfwswEIc9hAFWpNKa/Qe1PzTi8rqJ/5pKnvCwN8nbhXsROtjz2kwgkC+MBoL+OEcSKILa60xUaZw==}
 
@@ -369,6 +375,9 @@ packages:
 
   '@codemirror/view@6.40.0':
     resolution: {integrity: sha512-WA0zdU7xfF10+5I3HhUUq3kqOx3KjqmtQ9lqZjfK7jtYk4G72YW9rezcSywpaUMCWOMlq+6E0pO1IWg1TNIhtg==}
+
+  '@codemirror/view@6.42.1':
+    resolution: {integrity: sha512-ToN3oFc0nsxNUYVF5P0ztLgbC4UPPjPtA9aKYhkOKQaZASpOUo6ISXyQLP66ctVwlDc+j6Jv0uK5IFALkiXztg==}
 
   '@date-fns/tz@1.4.1':
     resolution: {integrity: sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA==}
@@ -708,6 +717,9 @@ packages:
 
   '@lezer/common@1.5.1':
     resolution: {integrity: sha512-6YRVG9vBkaY7p1IVxL4s44n5nUnaNnGM2/AckNgYOnxTG2kWh1vR8BMxPseWPjRNpb5VtXnMpeYAEAADoRV1Iw==}
+
+  '@lezer/common@1.5.2':
+    resolution: {integrity: sha512-sxQE460fPZyU3sdc8lafxiPwJHBzZRy/udNFynGQky1SePYBdhkBl1kOagA9uT3pxR8K09bOrmTUqA9wb/PjSQ==}
 
   '@lezer/highlight@1.2.3':
     resolution: {integrity: sha512-qXdH7UqTvGfdVBINrgKhDsVTJTxactNNxLk7+UMwZhU13lMHaOBlJe9Vqp907ya56Y3+ed2tlqzys7jDkTmW0g==}
@@ -2885,13 +2897,12 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
 
-  '@atomic-ehr/codegen@0.0.9-canary.20260316141949.3b1c0ea(typescript@5.9.3)':
+  '@atomic-ehr/codegen@0.0.14(typescript@5.9.3)':
     dependencies:
-      '@atomic-ehr/fhir-canonical-manager': 0.0.21(typescript@5.9.3)
-      '@atomic-ehr/fhirschema': 0.0.8(typescript@5.9.3)
+      '@atomic-ehr/fhir-canonical-manager': 0.0.24(typescript@5.9.3)
+      '@atomic-ehr/fhirschema': 0.0.11(typescript@5.9.3)
       mustache: 4.2.0
       picocolors: 1.1.1
-      tinyglobby: 0.2.15
       yaml: 2.8.3
       yargs: 18.0.0
     transitivePeerDependencies:
@@ -2901,7 +2912,7 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  '@atomic-ehr/fhir-canonical-manager@0.0.21(typescript@5.9.3)':
+  '@atomic-ehr/fhir-canonical-manager@0.0.24(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 
@@ -2930,11 +2941,11 @@ snapshots:
       fast-xml-parser: 5.7.3
       typescript: 5.9.3
 
-  '@atomic-ehr/fhirschema@0.0.2(typescript@5.9.3)':
+  '@atomic-ehr/fhirschema@0.0.11(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 
-  '@atomic-ehr/fhirschema@0.0.8(typescript@5.9.3)':
+  '@atomic-ehr/fhirschema@0.0.2(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 
@@ -3108,6 +3119,13 @@ snapshots:
       '@codemirror/view': 6.40.0
       '@lezer/common': 1.5.1
 
+  '@codemirror/autocomplete@6.20.2':
+    dependencies:
+      '@codemirror/language': 6.12.2
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.42.1
+      '@lezer/common': 1.5.2
+
   '@codemirror/commands@6.10.3':
     dependencies:
       '@codemirror/language': 6.12.2
@@ -3154,13 +3172,19 @@ snapshots:
       '@codemirror/view': 6.40.0
       crelt: 1.0.6
 
+  '@codemirror/lint@6.9.6':
+    dependencies:
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.42.1
+      crelt: 1.0.6
+
   '@codemirror/lsp-client@6.2.2':
     dependencies:
-      '@codemirror/autocomplete': 6.20.1
+      '@codemirror/autocomplete': 6.20.2
       '@codemirror/language': 6.12.2
-      '@codemirror/lint': 6.9.5
+      '@codemirror/lint': 6.9.6
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.40.0
+      '@codemirror/view': 6.42.1
       '@lezer/highlight': 1.2.3
       marked: 15.0.12
       vscode-languageserver-protocol: 3.17.5
@@ -3183,6 +3207,13 @@ snapshots:
       '@lezer/highlight': 1.2.3
 
   '@codemirror/view@6.40.0':
+    dependencies:
+      '@codemirror/state': 6.6.0
+      crelt: 1.0.6
+      style-mod: 4.1.3
+      w3c-keyname: 2.2.8
+
+  '@codemirror/view@6.42.1':
     dependencies:
       '@codemirror/state': 6.6.0
       crelt: 1.0.6
@@ -3509,6 +3540,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@lezer/common@1.5.1': {}
+
+  '@lezer/common@1.5.2': {}
 
   '@lezer/highlight@1.2.3':
     dependencies:
@@ -4413,6 +4446,14 @@ snapshots:
       '@codemirror/search': 6.6.0
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.40.0
+
+  '@replit/codemirror-vim@6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.42.1)':
+    dependencies:
+      '@codemirror/commands': 6.10.3
+      '@codemirror/language': 6.12.2
+      '@codemirror/search': 6.6.0
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.42.1
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 

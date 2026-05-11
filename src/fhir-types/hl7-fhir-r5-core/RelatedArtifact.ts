@@ -5,6 +5,7 @@
 import type { Attachment } from "../hl7-fhir-r5-core/Attachment";
 import type { CodeableConcept } from "../hl7-fhir-r5-core/CodeableConcept";
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Reference } from "../hl7-fhir-r5-core/Reference";
 
 export type { Attachment } from "../hl7-fhir-r5-core/Attachment";
@@ -12,7 +13,7 @@ export type { CodeableConcept } from "../hl7-fhir-r5-core/CodeableConcept";
 export type { DataType } from "../hl7-fhir-r5-core/DataType";
 export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/RelatedArtifact
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/RelatedArtifact (pkg: hl7.fhir.r5.core#5.0.0)
 export interface RelatedArtifact extends DataType {
 	citation?: string;
 	_citation?: Element;
@@ -28,7 +29,7 @@ export interface RelatedArtifact extends DataType {
 	_publicationStatus?: Element;
 	resource?: string;
 	_resource?: Element;
-	resourceReference?: Reference<"Resource">;
+	resourceReference?: Reference<string /* Resource */>;
 	type:
 		| "documentation"
 		| "justification"

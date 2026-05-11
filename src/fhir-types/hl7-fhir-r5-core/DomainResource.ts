@@ -9,16 +9,16 @@ import type { Resource } from "../hl7-fhir-r5-core/Resource";
 export type { Extension } from "../hl7-fhir-r5-core/Extension";
 export type { Narrative } from "../hl7-fhir-r5-core/Narrative";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/DomainResource
-export interface DomainResource extends Resource {
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/DomainResource (pkg: hl7.fhir.r5.core#5.0.0)
+export interface DomainResource<T extends Resource = Resource>
+	extends Resource {
 	resourceType:
 		| "CanonicalResource"
 		| "DomainResource"
 		| "OperationOutcome"
-		| "ViewDefinition"
 		| string;
 
-	contained?: Resource[];
+	contained?: T[];
 	extension?: Extension[];
 	modifierExtension?: Extension[];
 	text?: Narrative;

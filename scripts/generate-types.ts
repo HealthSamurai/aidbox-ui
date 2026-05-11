@@ -3,7 +3,6 @@ import { APIBuilder } from "@atomic-ehr/codegen";
 console.log("📦 Generating FHIR R4 Core Types...");
 
 const builder = new APIBuilder()
-	.verbose()
 	.throwException()
 	.typescript({
 		withDebugComment: false,
@@ -12,15 +11,16 @@ const builder = new APIBuilder()
 	})
 	.fromPackageRef("https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/package.tgz")
 	.outputTo("./src/fhir-types")
-	// .writeTypeTree("./src/fhir-types/tree.yaml")
-	.treeShake({
-		"hl7.fhir.r5.core": {
-			"http://hl7.org/fhir/StructureDefinition/OperationOutcome": {},
-			"http://hl7.org/fhir/StructureDefinition/Bundle": {},
-			"http://hl7.org/fhir/StructureDefinition/Resource": {},
-		},
-		"org.sql-on-fhir.ig": {
-			"https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition": {},
+	.typeSchema({
+		treeShake: {
+			"hl7.fhir.r5.core": {
+				"http://hl7.org/fhir/StructureDefinition/OperationOutcome": {},
+				"http://hl7.org/fhir/StructureDefinition/Bundle": {},
+				"http://hl7.org/fhir/StructureDefinition/Resource": {},
+			},
+			"org.sql-on-fhir.ig": {
+				"https://sql-on-fhir.org/ig/StructureDefinition/ViewDefinition": {},
+			},
 		},
 	})
 	.cleanOutput(true);

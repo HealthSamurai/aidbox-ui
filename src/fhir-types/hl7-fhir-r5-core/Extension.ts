@@ -18,6 +18,7 @@ import type { DataType } from "../hl7-fhir-r5-core/DataType";
 import type { Distance } from "../hl7-fhir-r5-core/Distance";
 import type { Dosage } from "../hl7-fhir-r5-core/Dosage";
 import type { Duration } from "../hl7-fhir-r5-core/Duration";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Expression } from "../hl7-fhir-r5-core/Expression";
 import type { ExtendedContactDetail } from "../hl7-fhir-r5-core/ExtendedContactDetail";
 import type { HumanName } from "../hl7-fhir-r5-core/HumanName";
@@ -74,7 +75,7 @@ export type { Timing } from "../hl7-fhir-r5-core/Timing";
 export type { TriggerDefinition } from "../hl7-fhir-r5-core/TriggerDefinition";
 export type { UsageContext } from "../hl7-fhir-r5-core/UsageContext";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Extension
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Extension (pkg: hl7.fhir.r5.core#5.0.0)
 export interface Extension extends DataType {
 	url: string;
 	_url?: Element;
