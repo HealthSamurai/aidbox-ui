@@ -53,6 +53,13 @@ export function storeSelectedBuilderTab(builderTab: BuilderTab) {
 	} catch {}
 }
 
+function isSearchParameterPath(): boolean {
+	return (
+		typeof window !== "undefined" &&
+		window.location.pathname.includes("/resource/SearchParameter/")
+	);
+}
+
 export function validateSearch(
 	rawSearch: Record<string, unknown>,
 ): ResourceEditorSearch {
@@ -60,7 +67,9 @@ export function validateSearch(
 	if (isResourceEditorTab(rawSearch.tab)) {
 		tab = rawSearch.tab;
 	} else if (rawSearch.tab === undefined) {
-		tab = getStoredTab() ?? "edit";
+		// SearchParameter defaults to Builder (form + Debug tool). Other resource
+		// types respect the globally-stored last-used tab.
+		tab = isSearchParameterPath() ? "builder" : (getStoredTab() ?? "edit");
 	} else {
 		console.error("Invalid tab", rawSearch.tab, "force to 'edit'");
 		tab = "edit";

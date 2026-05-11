@@ -1,6 +1,7 @@
 import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import * as HSComp from "@health-samurai/react-components";
 import * as ReactQuery from "@tanstack/react-query";
+import * as Router from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
@@ -271,6 +272,36 @@ export const StatsTab = ({
 		code,
 	] as const;
 
+	const paramsLookupQueryKey = [
+		"search-parameter-builder/param-lookup",
+		base,
+	] as const;
+
+	const paramsLookupQuery = ReactQuery.useQuery({
+		queryKey: paramsLookupQueryKey,
+		enabled: Boolean(base),
+		queryFn: async () => {
+			const resp = await client.rawRequest({
+				method: "GET",
+				url: `/fhir/SearchParameter?base=${base}&_count=500&_elements=id,code`,
+				headers: { "Content-Type": "application/json" },
+			});
+			const json = (await resp.response.json()) as {
+				entry?: { resource?: { id?: string; code?: string } }[];
+			};
+			const map: Record<string, string> = {};
+			for (const e of json.entry ?? []) {
+				const id = e.resource?.id;
+				const c = e.resource?.code;
+				// Last-write-wins when several SPs share a code; acceptable since this
+				// is just a "jump to definition" affordance.
+				if (id && c) map[c] = id;
+			}
+			return map;
+		},
+		retry: false,
+	});
+
 	const shapesQuery = ReactQuery.useQuery({
 		queryKey,
 		enabled: Boolean(base && code),
@@ -361,20 +392,42 @@ export const StatsTab = ({
 	}
 
 	const shapes = shapesQuery.data ?? [];
-	const totalCalls = shapes.reduce((acc, s) => acc + s.calls, 0);
 	const indexes = indexesQuery.data ?? [];
+	const paramIdByCode = paramsLookupQuery.data ?? {};
+
+	const renderShapeParams = (params: string[]) =>
+		// `params` is the per-shape sorted+distinct array from the backend, so
+		// each name appears at most once — safe as a React key.
+		params.map((p, i) => {
+			const id = paramIdByCode[p];
+			const node = id ? (
+				<Router.Link
+					to="/resource/$resourceType/edit/$id"
+					params={{ resourceType: "SearchParameter", id }}
+					search={{
+						tab: "edit" as const,
+						mode: "json" as const,
+						builderTab: "form" as const,
+					}}
+					className="text-text-link hover:underline"
+				>
+					{p}
+				</Router.Link>
+			) : (
+				<span>{p}</span>
+			);
+			return (
+				<React.Fragment key={p}>
+					{i > 0 ? ", " : ""}
+					{node}
+				</React.Fragment>
+			);
+		});
 
 	const statsBody = (
 		<div className="flex flex-col h-full">
 			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b">
-				<div className="flex items-center gap-2 px-4 grow">
-					<span className="typo-label text-text-secondary">
-						{shapesQuery.isLoading
-							? "Loading…"
-							: `${shapes.length} shape${shapes.length === 1 ? "" : "s"} · ${formatCount(totalCalls)} call${totalCalls === 1 ? "" : "s"}`}
-					</span>
-				</div>
-				<div className="flex items-center px-2 gap-1">
+				<div className="flex items-center gap-1 px-2 grow">
 					<HSComp.Button
 						variant="ghost"
 						size="small"
@@ -384,7 +437,9 @@ export const StatsTab = ({
 						<Lucide.RotateCcwIcon size={14} />
 						Reset all
 					</HSComp.Button>
-					{!isIndexesOpen && (
+				</div>
+				{!isIndexesOpen && (
+					<div className="flex items-center px-2">
 						<HSComp.Toggle
 							variant="outline"
 							pressed={isIndexesOpen}
@@ -393,8 +448,8 @@ export const StatsTab = ({
 							<Lucide.PanelRightIcon className="w-4 h-4" />
 							Indexes{indexes.length > 0 ? ` (${indexes.length})` : ""}
 						</HSComp.Toggle>
-					)}
-				</div>
+					</div>
+				)}
 			</div>
 
 			<div className="flex flex-col gap-3 p-4 grow min-h-0 overflow-auto">
@@ -421,7 +476,10 @@ export const StatsTab = ({
 						<HSComp.Table zebra className="typo-code">
 							<HSComp.TableHeader>
 								<HSComp.TableRow>
-									<HSComp.TableHead>Shape</HSComp.TableHead>
+									<HSComp.TableHead className="w-0">
+										<span className="sr-only">Actions</span>
+									</HSComp.TableHead>
+									<HSComp.TableHead>Search Parameters</HSComp.TableHead>
 									<HSComp.TableHead className="w-0 text-right">
 										Calls
 									</HSComp.TableHead>
@@ -438,9 +496,6 @@ export const StatsTab = ({
 										Total&nbsp;ms
 									</HSComp.TableHead>
 									<HSComp.TableHead className="w-0">Last used</HSComp.TableHead>
-									<HSComp.TableHead className="w-0">
-										<span className="sr-only">Actions</span>
-									</HSComp.TableHead>
 								</HSComp.TableRow>
 							</HSComp.TableHeader>
 							<HSComp.TableBody>
@@ -451,7 +506,25 @@ export const StatsTab = ({
 										index={i}
 									>
 										<HSComp.TableCell>
-											?{s.search_params.join("&")}
+											<HSComp.Tooltip>
+												<HSComp.TooltipTrigger asChild>
+													<HSComp.IconButton
+														variant="ghost"
+														aria-label={`Reset stats for ${s.search_params.join(", ")}`}
+														disabled={resetShapeMutation.isPending}
+														icon={<Lucide.RotateCcwIcon className="w-4 h-4" />}
+														onClick={() =>
+															resetShapeMutation.mutate(s.search_params)
+														}
+													/>
+												</HSComp.TooltipTrigger>
+												<HSComp.TooltipContent>
+													Reset stats for this combination
+												</HSComp.TooltipContent>
+											</HSComp.Tooltip>
+										</HSComp.TableCell>
+										<HSComp.TableCell>
+											{renderShapeParams(s.search_params)}
 										</HSComp.TableCell>
 										<HSComp.TableCell className="text-right tabular-nums">
 											{formatCount(s.calls)}
@@ -473,24 +546,6 @@ export const StatsTab = ({
 											className="whitespace-nowrap"
 										>
 											{formatRelativeTime(s.last_used_at)}
-										</HSComp.TableCell>
-										<HSComp.TableCell className="text-right">
-											<HSComp.Tooltip>
-												<HSComp.TooltipTrigger asChild>
-													<HSComp.IconButton
-														variant="ghost"
-														aria-label={`Reset stats for ?${s.search_params.join("&")}`}
-														disabled={resetShapeMutation.isPending}
-														icon={<Lucide.RotateCcwIcon className="w-4 h-4" />}
-														onClick={() =>
-															resetShapeMutation.mutate(s.search_params)
-														}
-													/>
-												</HSComp.TooltipTrigger>
-												<HSComp.TooltipContent>
-													Reset stats for this shape
-												</HSComp.TooltipContent>
-											</HSComp.Tooltip>
 										</HSComp.TableCell>
 									</HSComp.TableRow>
 								))}
