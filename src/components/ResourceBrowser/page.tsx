@@ -358,21 +358,30 @@ export const ResourcesTabTable = ({
 								/>
 							</HSComp.TableCell>
 							<HSComp.TableCell type="link">
-								<Router.Link
-									className="text-text-link hover:underline"
-									to="/resource/$resourceType/edit/$id"
-									params={{
-										resourceType: resourcesPageContext.resourceType,
-										id,
-									}}
-									search={{
-										tab: "edit" as const,
-										mode: "json" as const,
-										builderTab: "form" as const,
-									}}
-								>
-									{id}
-								</Router.Link>
+								<div className="group/id flex items-center gap-1">
+									<Router.Link
+										className="text-text-link hover:underline"
+										to="/resource/$resourceType/edit/$id"
+										params={{
+											resourceType: resourcesPageContext.resourceType,
+											id,
+										}}
+										search={{
+											tab: "edit" as const,
+											mode: "json" as const,
+											builderTab: "form" as const,
+										}}
+									>
+										{id}
+									</Router.Link>
+									<span className="opacity-0 group-hover/id:opacity-100 transition-opacity [&_svg]:size-3.5 text-text-tertiary hover:text-text-primary">
+										<HSComp.CopyIcon
+											text={id}
+											tooltipText="Copy ID"
+											showToast={false}
+										/>
+									</span>
+								</div>
 							</HSComp.TableCell>
 							<HSComp.TableCell>
 								{Humanize.humanizeValue(
