@@ -360,19 +360,35 @@ const formatRaw = (response: ResponseData): string => {
 
 export const QueryRunner = ({
 	client,
-	base,
+	bases,
 	code,
 	onClose,
 }: {
 	client: AidboxClientR5;
-	base?: string;
+	bases: string[];
 	code?: string;
 	onClose?: () => void;
 }) => {
+	// Pick which base the request runs against. Multi-base SPs (e.g.
+	// `clinical-encounter`) need this — otherwise the user is locked to the
+	// first base in the array.
+	const [selectedBase, setSelectedBase] = React.useState<string>(
+		bases[0] ?? "",
+	);
+	React.useEffect(() => {
+		// If the SP's bases change (e.g. user edits the resource), keep
+		// selection valid.
+		if (selectedBase && !bases.includes(selectedBase) && bases[0]) {
+			setSelectedBase(bases[0]);
+		}
+	}, [bases, selectedBase]);
 	// Lock the SP prefix into the GET box so the user can only fill in the
 	// value after `=`. Falls back to a free-form URL input until both `base`
 	// and `code` are set.
-	const prefix = React.useMemo(() => buildPrefix(base, code), [base, code]);
+	const prefix = React.useMemo(
+		() => buildPrefix(selectedBase, code),
+		[selectedBase, code],
+	);
 
 	const [value, setValue] = React.useState<string>("");
 	const [modifier, setModifier] = React.useState<Modifier | "">("");
@@ -434,7 +450,34 @@ export const QueryRunner = ({
 							{METHOD}
 						</span>
 						<span className="pl-3 text-text-secondary typo-code select-none shrink-0">
-							{prefix}
+							/fhir/
+						</span>
+						{bases.length > 1 ? (
+							<HSComp.Select
+								value={selectedBase}
+								onValueChange={setSelectedBase}
+							>
+								<HSComp.SelectTrigger
+									aria-label="Base resource type"
+									className="!w-auto border-none shadow-none h-7 px-1 typo-code text-text-secondary bg-transparent focus-visible:ring-0 hover:bg-bg-tertiary rounded-sm gap-0.5 shrink-0"
+								>
+									<HSComp.SelectValue>{selectedBase}</HSComp.SelectValue>
+								</HSComp.SelectTrigger>
+								<HSComp.SelectContent>
+									{bases.map((b) => (
+										<HSComp.SelectItem key={b} value={b}>
+											{b}
+										</HSComp.SelectItem>
+									))}
+								</HSComp.SelectContent>
+							</HSComp.Select>
+						) : (
+							<span className="text-text-secondary typo-code select-none shrink-0">
+								{selectedBase}
+							</span>
+						)}
+						<span className="text-text-secondary typo-code select-none shrink-0">
+							?{code}
 						</span>
 						<HSComp.Select
 							value={modifier === "" ? NO_MODIFIER : modifier}

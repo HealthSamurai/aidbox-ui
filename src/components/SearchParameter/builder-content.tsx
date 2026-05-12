@@ -552,7 +552,7 @@ export const SearchParameterBuilderContent = ({
 					<HSComp.ResizablePanel minSize={20} defaultSize={50}>
 						<QueryRunner
 							client={client}
-							base={sp.base?.[0]}
+							bases={sp.base ?? []}
 							code={sp.code}
 							onClose={() => setIsQueryToolOpen(false)}
 						/>
