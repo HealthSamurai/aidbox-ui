@@ -10,43 +10,56 @@ import { formatCount, formatMs, formatRelativeTime } from "./format";
 import { rpcCall } from "./suggest-index";
 import type { SearchParamShape } from "./types";
 
-const shapeKey = (s: SearchParamShape) => s.search_params.join("|");
+// Multi-base SPs surface separate rows per base for the same param set;
+// include the resource type so selection state doesn't collide.
+const shapeKey = (s: SearchParamShape) =>
+	`${s.resource_type}::${s.search_params.join("|")}`;
 
 export const StatsTab = ({
 	client,
-	base,
+	bases,
 	code,
 }: {
 	client: AidboxClientR5;
-	base: string;
+	bases: string[];
 	code: string;
 }) => {
 	const queryClient = ReactQuery.useQueryClient();
-	const queryKey = ["search-parameter-builder/shapes", base, code] as const;
+	// Sort so reordering `base` in the resource doesn't break query caching.
+	const sortedBases = React.useMemo(() => [...bases].sort(), [bases]);
+	const basesKey = sortedBases.join(",");
+	const queryKey = ["search-parameter-builder/shapes", basesKey, code] as const;
 
 	const paramsLookupQueryKey = [
 		"search-parameter-builder/param-lookup",
-		base,
+		basesKey,
 	] as const;
 
 	const paramsLookupQuery = ReactQuery.useQuery({
 		queryKey: paramsLookupQueryKey,
-		enabled: Boolean(base),
+		enabled: bases.length > 0,
 		queryFn: async () => {
-			const resp = await client.rawRequest({
-				method: "GET",
-				url: `/fhir/SearchParameter?base=${base}&_count=500&_elements=id,code`,
-				headers: { "Content-Type": "application/json" },
-			});
-			const json = (await resp.response.json()) as {
-				entry?: { resource?: { id?: string; code?: string } }[];
-			};
+			// One request per base — small N. Merge codes into a single map;
+			// later writes win, which is fine since the link is just a "jump
+			// to definition" affordance.
 			const map: Record<string, string> = {};
-			for (const e of json.entry ?? []) {
-				const id = e.resource?.id;
-				const c = e.resource?.code;
-				if (id && c) map[c] = id;
-			}
+			await Promise.all(
+				bases.map(async (b) => {
+					const resp = await client.rawRequest({
+						method: "GET",
+						url: `/fhir/SearchParameter?base=${b}&_count=500&_elements=id,code`,
+						headers: { "Content-Type": "application/json" },
+					});
+					const json = (await resp.response.json()) as {
+						entry?: { resource?: { id?: string; code?: string } }[];
+					};
+					for (const e of json.entry ?? []) {
+						const id = e.resource?.id;
+						const c = e.resource?.code;
+						if (id && c) map[c] = id;
+					}
+				}),
+			);
 			return map;
 		},
 		retry: false,
@@ -54,13 +67,13 @@ export const StatsTab = ({
 
 	const shapesQuery = ReactQuery.useQuery({
 		queryKey,
-		enabled: Boolean(base && code),
+		enabled: bases.length > 0 && Boolean(code),
 		queryFn: async () => {
 			const json = await rpcCall(
 				client,
 				"aidbox.index/get-search-param-stats",
 				{
-					"resource-type": base,
+					"resource-types": bases,
 					"search-param": code,
 					by: "shape",
 					limit: 200,
@@ -73,13 +86,15 @@ export const StatsTab = ({
 	});
 
 	const resetShapesMutation = ReactQuery.useMutation({
-		mutationFn: async (paramsList: string[][]) => {
+		mutationFn: async (
+			rows: { resource_type: string; search_params: string[] }[],
+		) => {
 			// Backend takes one (rt, search-params) per call; loop client-side.
 			// Small N (selection bound by UI), so a sequential loop is fine.
-			for (const params of paramsList) {
+			for (const row of rows) {
 				await rpcCall(client, "aidbox.index/reset-search-param-stats", {
-					"resource-type": base,
-					"search-params": params,
+					"resource-type": row.resource_type,
+					"search-params": row.search_params,
 				});
 			}
 		},
@@ -92,7 +107,7 @@ export const StatsTab = ({
 
 	const [selected, setSelected] = React.useState<Set<string>>(new Set());
 
-	if (!base || !code) {
+	if (bases.length === 0 || !code) {
 		return (
 			<div className="p-4 text-text-secondary text-sm">
 				Stats require both <code>base</code> and <code>code</code> on the
@@ -168,7 +183,7 @@ export const StatsTab = ({
 						description={
 							<>
 								Issue a few searches that include <code>{code}</code> on{" "}
-								<code>{base}</code> and stats will appear here.
+								<code>{bases.join(", ")}</code> and stats will appear here.
 							</>
 						}
 					/>
@@ -193,6 +208,9 @@ export const StatsTab = ({
 										aria-label="Select all"
 									/>
 								</HSComp.TableHead>
+								{bases.length > 1 && (
+									<HSComp.TableHead className="w-0">Base</HSComp.TableHead>
+								)}
 								<HSComp.TableHead>Search Parameters</HSComp.TableHead>
 								<HSComp.TableHead className="w-0 text-right">
 									Calls
@@ -232,6 +250,11 @@ export const StatsTab = ({
 												aria-label={`Select ${s.search_params.join(", ")}`}
 											/>
 										</HSComp.TableCell>
+										{bases.length > 1 && (
+											<HSComp.TableCell className="whitespace-nowrap">
+												{s.resource_type}
+											</HSComp.TableCell>
+										)}
 										<HSComp.TableCell>
 											{renderShapeParams(s.search_params)}
 										</HSComp.TableCell>
@@ -277,7 +300,10 @@ export const StatsTab = ({
 						onClick={() => {
 							const targets = shapes
 								.filter((s) => selected.has(shapeKey(s)))
-								.map((s) => s.search_params);
+								.map((s) => ({
+									resource_type: s.resource_type,
+									search_params: s.search_params,
+								}));
 							resetShapesMutation.mutate(targets);
 						}}
 					>

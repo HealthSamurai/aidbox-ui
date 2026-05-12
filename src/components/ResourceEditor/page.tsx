@@ -441,7 +441,7 @@ export const ResourceEditorPage = ({
 					>
 						<SearchParameterStatsTab
 							client={client}
-							base={sp.base?.[0] ?? ""}
+							bases={sp.base ?? []}
 							code={sp.code ?? ""}
 						/>
 					</HSComp.TabsContent>
