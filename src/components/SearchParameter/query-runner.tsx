@@ -175,7 +175,6 @@ const ExplainView = ({
 					<HSComp.CodeEditor
 						key={`explain-query-${sendVersion}`}
 						readOnly
-						isReadOnlyTheme
 						currentValue={inlineSQL}
 						mode="sql"
 					/>
@@ -192,7 +191,6 @@ const ExplainView = ({
 								<HSComp.CodeEditor
 									key={`explain-statement-${sendVersion}`}
 									readOnly
-									isReadOnlyTheme
 									currentValue={querySQL}
 									mode="sql"
 								/>
@@ -215,7 +213,6 @@ const ExplainView = ({
 						<HSComp.CodeEditor
 							key={`explain-statement-${sendVersion}`}
 							readOnly
-							isReadOnlyTheme
 							currentValue={querySQL}
 							mode="sql"
 						/>
@@ -626,7 +623,6 @@ export const QueryRunner = ({
 					) : (
 						<HSComp.CodeEditor
 							readOnly
-							isReadOnlyTheme
 							currentValue={responseBody}
 							mode={response.mode}
 						/>
@@ -639,7 +635,6 @@ export const QueryRunner = ({
 					{response ? (
 						<HSComp.CodeEditor
 							readOnly
-							isReadOnlyTheme
 							currentValue={JSON.stringify(response.headers, null, 2)}
 							mode={response.mode}
 						/>
@@ -653,7 +648,6 @@ export const QueryRunner = ({
 					{response ? (
 						<HSComp.CodeEditor
 							readOnly
-							isReadOnlyTheme
 							currentValue={formatRaw(response)}
 							mode="http"
 						/>
