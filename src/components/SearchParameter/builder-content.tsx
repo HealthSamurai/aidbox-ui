@@ -597,7 +597,10 @@ export const SearchParameterBuilderContent = ({
 	saveError?: OperationOutcome | null;
 }) => {
 	const sp = resource as SearchParameterResource;
-	const [isQueryToolOpen, setIsQueryToolOpen] = useState(true);
+	// Closed by default for brand-new SPs — there's no persisted resource to
+	// debug yet, and an unsaved SP can't be exercised via FHIR search.
+	const isPersisted = Boolean(sp.id);
+	const [isQueryToolOpen, setIsQueryToolOpen] = useState(isPersisted);
 	// When the user clicks an issue in `OperationOutcomeView`, scroll the
 	// owning input into view and focus it. Each input in `BuilderTab` carries
 	// `id="sp-<field>"` (e.g. `sp-expression`), so resolution is a direct
