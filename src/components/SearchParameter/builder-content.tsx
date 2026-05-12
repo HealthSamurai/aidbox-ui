@@ -579,6 +579,7 @@ export const SearchParameterBuilderContent = ({
 	onResourceChange,
 	actions,
 	saveError,
+	isDirty,
 }: {
 	client: AidboxClientR5;
 	resource: Resource;
@@ -595,6 +596,11 @@ export const SearchParameterBuilderContent = ({
 	 * the VD builder and Edit tab patterns.
 	 */
 	saveError?: OperationOutcome | null;
+	/**
+	 * True when the editor has unsaved changes. Surfaces a banner in the
+	 * Debug tool so the user knows requests still hit the persisted version.
+	 */
+	isDirty?: boolean;
 }) => {
 	const sp = resource as SearchParameterResource;
 	// Closed by default for brand-new SPs — there's no persisted resource to
@@ -686,6 +692,11 @@ export const SearchParameterBuilderContent = ({
 								isPersisted
 									? undefined
 									: "Save the SearchParameter before debugging — searches won't reflect the unsaved version."
+							}
+							staleWarning={
+								isPersisted && isDirty
+									? "Unsaved changes — searches still hit the previously-saved version of this SearchParameter."
+									: undefined
 							}
 						/>
 					</HSComp.ResizablePanel>

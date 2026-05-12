@@ -162,6 +162,7 @@ export const ResourceEditorPage = ({
 	};
 
 	const {
+		isDirty: editDirty,
 		setIsDirty: setEditDirty,
 		proceed: editProceed,
 		reset: editReset,
@@ -422,6 +423,7 @@ export const ResourceEditorPage = ({
 						onResourceChange={handleResourceChange}
 						actions={editActions}
 						saveError={saveError}
+						isDirty={editDirty}
 					/>
 				</HSComp.TabsContent>
 			),

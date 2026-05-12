@@ -364,6 +364,7 @@ export const QueryRunner = ({
 	code,
 	onClose,
 	disabledReason,
+	staleWarning,
 }: {
 	client: AidboxClientR5;
 	bases: string[];
@@ -374,6 +375,12 @@ export const QueryRunner = ({
 	 * Use for "SP not persisted yet — save first" style messaging.
 	 */
 	disabledReason?: string;
+	/**
+	 * Non-blocking banner shown above the request line. Use to communicate
+	 * "unsaved changes" — the user can still Send, but the response reflects
+	 * the previously-persisted version.
+	 */
+	staleWarning?: string;
 }) => {
 	// Pick which base the request runs against. Multi-base SPs (e.g.
 	// `clinical-encounter`) need this — otherwise the user is locked to the
@@ -449,6 +456,15 @@ export const QueryRunner = ({
 					/>
 				</div>
 			) : null}
+			{staleWarning && (
+				<div className="flex items-start gap-2 px-4 py-2 border-b bg-bg-warning-secondary text-text-warning-primary shrink-0">
+					<Lucide.AlertTriangleIcon
+						className="w-4 h-4 mt-0.5 shrink-0"
+						aria-hidden
+					/>
+					<span className="text-xs">{staleWarning}</span>
+				</div>
+			)}
 			{/* Request line */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
 				{prefix ? (
