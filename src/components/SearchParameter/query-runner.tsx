@@ -456,15 +456,6 @@ export const QueryRunner = ({
 					/>
 				</div>
 			) : null}
-			{staleWarning && (
-				<div className="flex items-start gap-2 px-4 py-2 border-b bg-bg-warning-secondary text-text-warning-primary shrink-0">
-					<Lucide.AlertTriangleIcon
-						className="w-4 h-4 mt-0.5 shrink-0"
-						aria-hidden
-					/>
-					<span className="text-xs">{staleWarning}</span>
-				</div>
-			)}
 			{/* Request line */}
 			<div className="px-4 py-3 flex items-center border-b gap-2 shrink-0">
 				{prefix ? (
@@ -674,6 +665,15 @@ export const QueryRunner = ({
 					</HSComp.TabsContent>
 				) : null}
 			</HSComp.Tabs>
+			{staleWarning && (
+				<div className="flex items-start gap-2 px-4 py-2 border-t bg-bg-warning-secondary text-text-warning-primary shrink-0">
+					<Lucide.AlertTriangleIcon
+						className="w-4 h-4 mt-0.5 shrink-0"
+						aria-hidden
+					/>
+					<span className="text-xs">{staleWarning}</span>
+				</div>
+			)}
 		</div>
 	);
 };
