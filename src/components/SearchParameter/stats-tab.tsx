@@ -106,7 +106,11 @@ export const StatsTab = ({
 
 	const renderShapeParams = (params: string[]) =>
 		params.map((p, i) => {
-			const id = paramIdByCode[p];
+			// Backend encodes modifiers into the key (`gender:in`); the SP
+			// lookup map is keyed on the bare `code`, so split before lookup.
+			const colonAt = p.indexOf(":");
+			const baseName = colonAt < 0 ? p : p.slice(0, colonAt);
+			const id = paramIdByCode[baseName];
 			const node = id ? (
 				<Router.Link
 					to="/resource/$resourceType/edit/$id"
