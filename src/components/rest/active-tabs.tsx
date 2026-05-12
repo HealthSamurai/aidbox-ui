@@ -54,6 +54,12 @@ export interface Tab {
 	historyId?: string;
 	response?: ResponseData;
 	activeResponseTab?: "body" | "headers" | "raw" | "explain";
+	/**
+	 * Explain pane's inner Tabs (Query / Statement / Execution Plan). Per-tab
+	 * so a chosen sub-tab survives Send (which re-mounts ExplainView) and
+	 * switching the outer response tab away and back.
+	 */
+	activeExplainSubTab?: "query" | "statement" | "plan";
 }
 
 export const DEFAULT_TAB_ID: TabId = "active-tab-example";
