@@ -682,6 +682,11 @@ export const SearchParameterBuilderContent = ({
 							bases={sp.base ?? []}
 							code={sp.code}
 							onClose={() => setIsQueryToolOpen(false)}
+							disabledReason={
+								isPersisted
+									? undefined
+									: "Save the SearchParameter before debugging — searches won't reflect the unsaved version."
+							}
 						/>
 					</HSComp.ResizablePanel>
 				</>

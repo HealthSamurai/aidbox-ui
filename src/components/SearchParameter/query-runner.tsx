@@ -363,11 +363,17 @@ export const QueryRunner = ({
 	bases,
 	code,
 	onClose,
+	disabledReason,
 }: {
 	client: AidboxClientR5;
 	bases: string[];
 	code?: string;
 	onClose?: () => void;
+	/**
+	 * When set, the Send button is disabled and a tooltip explains why.
+	 * Use for "SP not persisted yet — save first" style messaging.
+	 */
+	disabledReason?: string;
 }) => {
 	// Pick which base the request runs against. Multi-base SPs (e.g.
 	// `clinical-encounter`) need this — otherwise the user is locked to the
@@ -405,6 +411,7 @@ export const QueryRunner = ({
 		: freePath;
 
 	const send = React.useCallback(async () => {
+		if (disabledReason) return;
 		setIsLoading(true);
 		setSendVersion((v) => v + 1);
 		try {
@@ -413,7 +420,7 @@ export const QueryRunner = ({
 		} finally {
 			setIsLoading(false);
 		}
-	}, [path, headers, client]);
+	}, [path, headers, client, disabledReason]);
 
 	React.useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
@@ -554,14 +561,14 @@ export const QueryRunner = ({
 						<HSComp.Button
 							variant="primary"
 							onClick={send}
-							disabled={isLoading}
+							disabled={isLoading || Boolean(disabledReason)}
 						>
 							<Lucide.PlayIcon size={14} />
 							Send
 						</HSComp.Button>
 					</HSComp.TooltipTrigger>
 					<HSComp.TooltipContent>
-						Send request (Ctrl+Enter / ⌘+Enter)
+						{disabledReason ?? "Send request (Ctrl+Enter / ⌘+Enter)"}
 					</HSComp.TooltipContent>
 				</HSComp.Tooltip>
 			</div>
