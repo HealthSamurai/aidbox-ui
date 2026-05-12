@@ -1,8 +1,8 @@
 import type { OperationOutcomeIssue } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 
 export interface ResourceEditorActions {
-	switchTab: (tab: "edit" | "history" | "builder") => void;
-	getTab: () => "edit" | "history" | "builder";
+	switchTab: (tab: "edit" | "history" | "builder" | "sqlquery") => void;
+	getTab: () => "edit" | "history" | "builder" | "sqlquery";
 	editorSwitchMode: (mode: "json" | "yaml") => void;
 	editorGetMode: () => "json" | "yaml";
 	editorGetValue: () => string;

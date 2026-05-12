@@ -16,6 +16,13 @@ import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
 import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
+import {
+	type BulkAction,
+	type ColumnDef,
+	DataTable,
+	DataTableFooter,
+	type SortState,
+} from "../data-table";
 import { EmptyState } from "../empty-state";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
 import * as Constants from "./constants";
@@ -218,383 +225,6 @@ const resourcesWithKeys = (
 		),
 		...(snapshot ? { snapshot: snapshot as Humanize.Snapshot } : {}),
 	};
-};
-
-const sortedColumn = (
-	sort: Types.SortState,
-	column: string,
-): "asc" | "desc" | false => {
-	const sortKey = columnToSortKey(column);
-	if (sort?.column === sortKey) return sort.direction;
-	return false;
-};
-
-export const ResourcesTabTable = ({
-	data,
-	selectedIds,
-	setSelectedIds,
-	sort,
-	onSortToggle,
-	hasIndex,
-}: Types.ResourcesTabTableProps) => {
-	const resourcesPageContext = React.useContext(ResourcesPageContext);
-	const resourcesTabContentContext = React.useContext(
-		ResourcesTabContentContext,
-	);
-
-	if (resourcesTabContentContext.resourcesLoading) {
-		return (
-			<div className="flex items-center justify-center h-full text-text-secondary">
-				<div className="text-center">
-					<div className="text-lg mb-2">Loading...</div>
-				</div>
-			</div>
-		);
-	}
-
-	if (!data || !data.resources || data.resources.length === 0) {
-		return (
-			<EmptyState
-				title="No resources found"
-				description="If you feel lonely create a new resource"
-			/>
-		);
-	}
-
-	const { resources, resourceKeys, snapshot } = data;
-
-	const allIds = resources.map((r) => r.id).filter(Boolean) as string[];
-	const allSelected =
-		allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
-	const someSelected = !allSelected && allIds.some((id) => selectedIds.has(id));
-
-	const toggleAll = () => {
-		if (allSelected) {
-			setSelectedIds(new Set());
-		} else {
-			setSelectedIds(new Set(allIds));
-		}
-	};
-
-	const toggleOne = (id: string) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) {
-				next.delete(id);
-			} else {
-				next.add(id);
-			}
-			return next;
-		});
-	};
-
-	const dynamicKeys = resourceKeys.filter((k) => k !== "id" && k !== "meta");
-
-	return (
-		<HSComp.Table zebra stickyHeader className="typo-code">
-			<HSComp.TableHeader>
-				<HSComp.TableRow>
-					<HSComp.TableHead className="w-[52px] min-w-[52px]">
-						<HSComp.Checkbox
-							size="small"
-							className="border-border-primary"
-							checked={
-								allSelected ? true : someSelected ? "indeterminate" : false
-							}
-							onCheckedChange={toggleAll}
-							aria-label="Select all"
-						/>
-					</HSComp.TableHead>
-					<HSComp.TableHead className="w-0">Id</HSComp.TableHead>
-					<HSComp.Tooltip>
-						<HSComp.TooltipTrigger asChild>
-							<HSComp.TableHead
-								className={dynamicKeys.length > 0 ? "w-0" : undefined}
-								sortable
-								sorted={sortedColumn(sort, "lastUpdated")}
-								onClick={() => onSortToggle("lastUpdated")}
-							>
-								LastUpdated
-							</HSComp.TableHead>
-						</HSComp.TooltipTrigger>
-						{hasIndex === false && (
-							<HSComp.TooltipContent
-								side="bottom"
-								align="start"
-								className="bg-bg-warning-primary_inverse text-neutral-900"
-							>
-								Sort might be slow — no index for &apos;_lastUpdated&apos;
-							</HSComp.TooltipContent>
-						)}
-					</HSComp.Tooltip>
-					{dynamicKeys.map((k, i) => (
-						<HSComp.TableHead
-							key={k}
-							className={i < dynamicKeys.length - 1 ? "w-0" : undefined}
-						>
-							{k}
-						</HSComp.TableHead>
-					))}
-				</HSComp.TableRow>
-			</HSComp.TableHeader>
-			<HSComp.TableBody>
-				{resources.map((resource, index) => {
-					const id = resource.id ?? "";
-					const isSelected = selectedIds.has(id);
-					return (
-						<HSComp.TableRow
-							key={id || index}
-							zebra
-							index={index}
-							selected={isSelected}
-						>
-							<HSComp.TableCell>
-								<HSComp.Checkbox
-									size="small"
-									className="border-border-primary"
-									checked={isSelected}
-									onCheckedChange={() => toggleOne(id)}
-									aria-label={`Select ${id}`}
-								/>
-							</HSComp.TableCell>
-							<HSComp.TableCell type="link">
-								<div className="group/id flex items-center gap-1">
-									<Router.Link
-										className="text-text-link hover:underline"
-										to="/resource/$resourceType/edit/$id"
-										params={{
-											resourceType: resourcesPageContext.resourceType,
-											id,
-										}}
-										search={{
-											tab: "edit" as const,
-											mode: "json" as const,
-											builderTab: "form" as const,
-										}}
-									>
-										{id}
-									</Router.Link>
-									<span className="opacity-0 group-hover/id:opacity-100 transition-opacity [&_svg]:size-3.5 text-text-tertiary hover:text-text-primary">
-										<HSComp.CopyIcon
-											text={id}
-											tooltipText="Copy ID"
-											showToast={false}
-										/>
-									</span>
-								</div>
-							</HSComp.TableCell>
-							<HSComp.TableCell>
-								{Humanize.humanizeValue(
-									"lastUpdated",
-									resource.meta?.lastUpdated,
-									{},
-								)}
-							</HSComp.TableCell>
-							{dynamicKeys.map((k) => {
-								const v = (resource as unknown as Record<string, unknown>)[k];
-								const hasValue = v != null;
-								return (
-									<HSComp.TableCell key={k} className="max-w-[300px]">
-										<HSComp.Tooltip
-											delayDuration={250}
-											disableHoverableContent
-											open={hasValue ? undefined : false}
-										>
-											<HSComp.TooltipTrigger asChild>
-												<span className="block truncate">
-													{Humanize.humanizeValue(k, v, snapshot ?? {})}
-												</span>
-											</HSComp.TooltipTrigger>
-											<HSComp.TooltipContent
-												collisionPadding={8}
-												className="max-w-[500px] typo-code pointer-events-none"
-											>
-												<pre className="whitespace-pre-wrap break-all text-xs">
-													{typeof v === "object"
-														? JSON.stringify(v, null, 2)
-														: String(v ?? "")}
-												</pre>
-											</HSComp.TooltipContent>
-										</HSComp.Tooltip>
-									</HSComp.TableCell>
-								);
-							})}
-						</HSComp.TableRow>
-					);
-				})}
-			</HSComp.TableBody>
-		</HSComp.Table>
-	);
-};
-
-const PaginationPages = ({
-	currentPage,
-	totalPages,
-	onPageChange,
-}: {
-	currentPage: number;
-	totalPages: number;
-	onPageChange: (page: number) => void;
-}) => {
-	const pages: (number | string)[] = [];
-
-	if (totalPages <= 7) {
-		for (let i = 1; i <= totalPages; i++) pages.push(i);
-	} else {
-		pages.push(1);
-		if (currentPage > 3) pages.push("ellipsis-start");
-		const start = Math.max(2, currentPage - 1);
-		const end = Math.min(totalPages - 1, currentPage + 1);
-		for (let i = start; i <= end; i++) pages.push(i);
-		if (currentPage < totalPages - 2) pages.push("ellipsis-end");
-		pages.push(totalPages);
-	}
-
-	return (
-		<div className="flex items-center gap-1">
-			<HSComp.Button
-				variant="ghost"
-				size="small"
-				disabled={currentPage <= 1}
-				onClick={() => onPageChange(currentPage - 1)}
-			>
-				<Lucide.ChevronLeftIcon size={16} />
-			</HSComp.Button>
-			{pages.map((page) =>
-				typeof page === "string" ? (
-					<span key={page} className="px-1 text-elements-assistive">
-						...
-					</span>
-				) : (
-					<HSComp.Button
-						key={page}
-						variant={page === currentPage ? "secondary" : "ghost"}
-						size="small"
-						onClick={() => onPageChange(page)}
-					>
-						{page}
-					</HSComp.Button>
-				),
-			)}
-			<HSComp.Button
-				variant="ghost"
-				size="small"
-				disabled={currentPage >= totalPages}
-				onClick={() => onPageChange(currentPage + 1)}
-			>
-				<Lucide.ChevronRightIcon size={16} />
-			</HSComp.Button>
-		</div>
-	);
-};
-
-const PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 100];
-
-const ResourcesTabFooter = ({
-	total,
-	currentPage,
-	pageSize,
-	selectedIds,
-	onPageChange,
-	onPageSizeChange,
-	onExport,
-	onDelete,
-	isDeleting,
-}: Types.ResourcesTabFooterProps) => {
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-	const selectionCount = selectedIds.size;
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-
-	return (
-		<div className="flex items-center justify-between border-t bg-bg-secondary px-4 h-10">
-			<div className="flex items-center gap-4">
-				{selectionCount > 0 && (
-					<>
-						<span className="typo-default text-text-primary">
-							{selectionCount} selected:
-						</span>
-						<HSComp.Button
-							variant="ghost"
-							size="small"
-							className="text-text-secondary!"
-							onClick={onExport}
-						>
-							<Lucide.DownloadIcon size={16} />
-							Export
-							<Lucide.ChevronDownIcon size={16} />
-						</HSComp.Button>
-						<HSComp.Button
-							variant="ghost"
-							size="small"
-							className="text-text-secondary!"
-							disabled={isDeleting}
-							onClick={() => setIsDeleteDialogOpen(true)}
-						>
-							<Lucide.Trash2Icon size={16} />
-							Delete
-						</HSComp.Button>
-						<HSComp.AlertDialog
-							open={isDeleteDialogOpen}
-							onOpenChange={setIsDeleteDialogOpen}
-						>
-							<HSComp.AlertDialogContent>
-								<HSComp.AlertDialogHeader>
-									<HSComp.AlertDialogTitle>
-										Delete {selectionCount}{" "}
-										{selectionCount === 1 ? "resource" : "resources"}?
-									</HSComp.AlertDialogTitle>
-								</HSComp.AlertDialogHeader>
-								<HSComp.AlertDialogDescription>
-									Are you sure you want to delete the selected{" "}
-									{selectionCount === 1 ? "resource" : "resources"}? This action
-									cannot be undone.
-								</HSComp.AlertDialogDescription>
-								<HSComp.AlertDialogFooter>
-									<HSComp.AlertDialogCancel>Cancel</HSComp.AlertDialogCancel>
-									<HSComp.AlertDialogAction
-										variant="primary"
-										danger
-										onClick={() => {
-											onDelete();
-											setIsDeleteDialogOpen(false);
-										}}
-									>
-										<Lucide.Trash2Icon className="w-4 h-4" />
-										Delete
-									</HSComp.AlertDialogAction>
-								</HSComp.AlertDialogFooter>
-							</HSComp.AlertDialogContent>
-						</HSComp.AlertDialog>
-					</>
-				)}
-			</div>
-			<div className="flex items-center gap-4">
-				<HSComp.DropdownMenu>
-					<HSComp.DropdownMenuTrigger asChild>
-						<HSComp.Button variant="ghost" size="small">
-							{pageSize}/page
-							<Lucide.ChevronDownIcon size={14} />
-						</HSComp.Button>
-					</HSComp.DropdownMenuTrigger>
-					<HSComp.DropdownMenuContent align="end">
-						{PAGE_SIZE_OPTIONS.map((size) => (
-							<HSComp.DropdownMenuItem
-								key={size}
-								onClick={() => onPageSizeChange(size)}
-							>
-								{size}/page
-							</HSComp.DropdownMenuItem>
-						))}
-					</HSComp.DropdownMenuContent>
-				</HSComp.DropdownMenu>
-				<PaginationPages
-					currentPage={currentPage}
-					totalPages={totalPages}
-					onPageChange={onPageChange}
-				/>
-			</div>
-		</div>
-	);
 };
 
 const parseSearchParam = (
@@ -856,6 +486,131 @@ const ResourcesTabContent = ({
 		};
 	}
 
+	const dynamicKeys =
+		data?.resourceKeys.filter((k) => k !== "id" && k !== "meta") ?? [];
+	const snapshot = data?.snapshot;
+
+	const columns: ColumnDef<Resource>[] = [
+		{
+			id: "id",
+			header: "Id",
+			width: "w-0",
+			cell: (resource) => (
+				<div className="group/id flex items-center gap-1">
+					<Router.Link
+						className="text-text-link hover:underline"
+						to="/resource/$resourceType/edit/$id"
+						params={{
+							resourceType: resourcesPageContext.resourceType,
+							id: resource.id ?? "",
+						}}
+						search={{
+							tab: "edit" as const,
+							mode: "json" as const,
+							builderTab: "form" as const,
+						}}
+					>
+						{resource.id}
+					</Router.Link>
+					<span className="opacity-0 group-hover/id:opacity-100 transition-opacity [&_svg]:size-3.5 text-text-tertiary hover:text-text-primary">
+						<HSComp.CopyIcon
+							text={resource.id ?? ""}
+							tooltipText="Copy ID"
+							showToast={false}
+						/>
+					</span>
+				</div>
+			),
+		},
+		{
+			id: "lastUpdated",
+			header: "LastUpdated",
+			width: dynamicKeys.length > 0 ? "w-0" : undefined,
+			sortable: true,
+			headerTooltip:
+				indexData === false ? (
+					<span className="bg-bg-warning-primary_inverse text-neutral-900 px-2 py-1 rounded">
+						Sort might be slow — no index for &apos;_lastUpdated&apos;
+					</span>
+				) : undefined,
+			cell: (resource) =>
+				Humanize.humanizeValue("lastUpdated", resource.meta?.lastUpdated, {}),
+		},
+		...dynamicKeys.map<ColumnDef<Resource>>((k, i) => ({
+			id: k,
+			header: k,
+			width: i < dynamicKeys.length - 1 ? "w-0" : undefined,
+			className: "max-w-[300px]",
+			cell: (resource) => {
+				const v = (resource as unknown as Record<string, unknown>)[k];
+				const hasValue = v != null;
+				return (
+					<HSComp.Tooltip
+						delayDuration={250}
+						disableHoverableContent
+						open={hasValue ? undefined : false}
+					>
+						<HSComp.TooltipTrigger asChild>
+							<span className="block truncate">
+								{Humanize.humanizeValue(k, v, snapshot ?? {})}
+							</span>
+						</HSComp.TooltipTrigger>
+						<HSComp.TooltipContent
+							collisionPadding={8}
+							className="max-w-[500px] typo-code pointer-events-none"
+						>
+							<pre className="whitespace-pre-wrap break-all text-xs">
+								{typeof v === "object"
+									? JSON.stringify(v, null, 2)
+									: String(v ?? "")}
+							</pre>
+						</HSComp.TooltipContent>
+					</HSComp.Tooltip>
+				);
+			},
+		})),
+	];
+
+	const apiToColumnId: Record<string, string> = {
+		_id: "id",
+		_lastUpdated: "lastUpdated",
+	};
+	const tableSort: SortState = sort
+		? {
+				column: apiToColumnId[sort.column] ?? sort.column,
+				direction: sort.direction,
+			}
+		: null;
+
+	const bulkActions: BulkAction[] = [
+		{
+			id: "export",
+			label: (
+				<>
+					Export <Lucide.ChevronDownIcon size={16} />
+				</>
+			),
+			icon: <Lucide.DownloadIcon size={16} />,
+			onClick: handleExport,
+		},
+		{
+			id: "delete",
+			label: "Delete",
+			icon: <Lucide.Trash2Icon size={16} />,
+			variant: "danger",
+			disabled: deleteMutation.isPending,
+			onClick: () => deleteMutation.mutate(),
+			confirm: {
+				title: `Delete ${selectedIds.size} ${
+					selectedIds.size === 1 ? "resource" : "resources"
+				}?`,
+				description:
+					"Are you sure you want to delete the selected resources? This action cannot be undone.",
+				actionLabel: "Delete",
+			},
+		},
+	];
+
 	return (
 		<ResourcesTabContentContext.Provider
 			value={{ resourcesLoading: isLoading }}
@@ -863,26 +618,32 @@ const ResourcesTabContent = ({
 			<div className="flex flex-col h-full">
 				<ResourcesTabHeader handleSearch={handleSearch} />
 				<div className="flex-1 overflow-auto">
-					<ResourcesTabTable
-						data={data}
-						total={total}
+					<DataTable<Resource>
+						data={data?.resources ?? []}
+						columns={columns}
+						rowKey={(r) => r.id ?? ""}
+						loading={isLoading}
+						selectable
 						selectedIds={selectedIds}
-						setSelectedIds={setSelectedIds}
-						sort={sort}
+						onSelectionChange={setSelectedIds}
+						sort={tableSort}
 						onSortToggle={handleSortToggle}
-						hasIndex={indexData}
+						emptyState={
+							<EmptyState
+								title="No resources found"
+								description="If you feel lonely create a new resource"
+							/>
+						}
 					/>
 				</div>
-				<ResourcesTabFooter
+				<DataTableFooter
 					total={total}
 					currentPage={currentPage}
 					pageSize={pageSize}
-					selectedIds={selectedIds}
+					selectedCount={selectedIds.size}
+					bulkActions={bulkActions}
 					onPageChange={handlePageChange}
 					onPageSizeChange={handlePageSizeChange}
-					onExport={handleExport}
-					onDelete={() => deleteMutation.mutate()}
-					isDeleting={deleteMutation.isPending}
 				/>
 			</div>
 		</ResourcesTabContentContext.Provider>

@@ -322,6 +322,7 @@ export const ResourceEditorPage = ({
 
 	const isViewDefinition = resourceType === "ViewDefinition";
 	const isAccessPolicy = resourceType === "AccessPolicy";
+	const isLibrary = resourceType === "Library";
 
 	const tabs: {
 		value: string;
@@ -342,6 +343,18 @@ export const ResourceEditorPage = ({
 					<BuilderContent />
 				</HSComp.TabsContent>
 			),
+		});
+	}
+
+	if (isLibrary) {
+		tabs.push({
+			value: "sqlquery",
+			trigger: (
+				<HSComp.TabsTrigger value="sqlquery">
+					SQLQuery Builder
+				</HSComp.TabsTrigger>
+			),
+			content: <HSComp.TabsContent value="sqlquery" className="grow min-h-0" />,
 		});
 	}
 
@@ -425,7 +438,8 @@ export const ResourceEditorPage = ({
 		),
 	});
 
-	if (id) {
+	const hasHistoryTab = !isLibrary && !isViewDefinition;
+	if (id && hasHistoryTab) {
 		tabs.push({
 			value: "history",
 			trigger: <HSComp.TabsTrigger value="history">History</HSComp.TabsTrigger>,
