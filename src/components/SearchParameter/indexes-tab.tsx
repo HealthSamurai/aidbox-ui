@@ -208,7 +208,10 @@ export const IndexesTab = ({
 		<div className="flex flex-col h-full">
 			<div className="grow min-h-0 overflow-y-auto overflow-x-hidden">
 				{isLoading && (
-					<div className="text-text-secondary text-sm">Loading indexes…</div>
+					<div className="flex items-center justify-center h-full gap-2 text-text-secondary">
+						<Lucide.LoaderIcon className="w-4 h-4 animate-spin" />
+						<span>Loading indexes…</span>
+					</div>
 				)}
 				{!isLoading && rows.length === 0 && (
 					<EmptyState
