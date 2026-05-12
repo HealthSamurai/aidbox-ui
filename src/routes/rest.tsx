@@ -1022,7 +1022,14 @@ function ExplainView({
 			</div>
 			{inlineSQL && (
 				<TabsContent value="query" className="grow min-h-0">
-					<CodeEditor readOnly currentValue={inlineSQL} mode="sql" />
+					{/* HSComp.CodeEditor only consumes `currentValue` once. Force a
+					    remount when the SQL changes so re-Sends actually update. */}
+					<CodeEditor
+						key={`explain-query-${sendVersion}`}
+						readOnly
+						currentValue={inlineSQL}
+						mode="sql"
+					/>
 				</TabsContent>
 			)}
 			{querySQL && (
@@ -1030,7 +1037,12 @@ function ExplainView({
 					{queryParams.length > 0 ? (
 						<ResizablePanelGroup direction="vertical">
 							<ResizablePanel minSize={20}>
-								<CodeEditor readOnly currentValue={querySQL} mode="sql" />
+								<CodeEditor
+									key={`explain-statement-${sendVersion}`}
+									readOnly
+									currentValue={querySQL}
+									mode="sql"
+								/>
 							</ResizablePanel>
 							<ResizableHandle />
 							<ResizablePanel defaultSize={30} minSize={10}>
@@ -1047,7 +1059,12 @@ function ExplainView({
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					) : (
-						<CodeEditor readOnly currentValue={querySQL} mode="sql" />
+						<CodeEditor
+							key={`explain-statement-${sendVersion}`}
+							readOnly
+							currentValue={querySQL}
+							mode="sql"
+						/>
 					)}
 				</TabsContent>
 			)}

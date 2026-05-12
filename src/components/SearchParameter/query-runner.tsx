@@ -167,7 +167,10 @@ const ExplainView = ({
 			</div>
 			{inlineSQL ? (
 				<HSComp.TabsContent value="query" className="grow min-h-0">
+					{/* HSComp.CodeEditor only consumes `currentValue` once. Force a
+					    remount when the SQL changes so re-Sends actually update. */}
 					<HSComp.CodeEditor
+						key={`explain-query-${sendVersion}`}
 						readOnly
 						isReadOnlyTheme
 						currentValue={inlineSQL}
@@ -181,6 +184,7 @@ const ExplainView = ({
 						<HSComp.ResizablePanelGroup direction="vertical">
 							<HSComp.ResizablePanel minSize={20}>
 								<HSComp.CodeEditor
+									key={`explain-statement-${sendVersion}`}
 									readOnly
 									isReadOnlyTheme
 									currentValue={querySQL}
@@ -203,6 +207,7 @@ const ExplainView = ({
 						</HSComp.ResizablePanelGroup>
 					) : (
 						<HSComp.CodeEditor
+							key={`explain-statement-${sendVersion}`}
 							readOnly
 							isReadOnlyTheme
 							currentValue={querySQL}
