@@ -24,9 +24,9 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
-import { Fullscreen, Minimize2, Timer } from "lucide-react";
+import { Fullscreen, Minimize2, SquareTerminalIcon, Timer } from "lucide-react";
 import type React from "react";
 import {
 	useCallback,
@@ -40,6 +40,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import { fetchUIHistory } from "../api/auth";
+import { appendSqlTabs } from "../components/db-console/active-tabs";
 import {
 	ActiveTabs,
 	addTab,
@@ -931,6 +932,7 @@ function ExplainView({
 	sendVersion: number;
 	onSubTabChange: (subTab: "query" | "statement" | "plan") => void;
 }) {
+	const navigate = useNavigate();
 	const { isLoading, data, error } = useQuery({
 		queryKey: ["rest-console-explain", selectedTab.id, sendVersion],
 		queryFn: async (): Promise<ExplainResponse> => {
@@ -1006,6 +1008,17 @@ function ExplainView({
 	const effectiveSubTab =
 		persisted && available.includes(persisted) ? persisted : available[0];
 
+	// Only the Query sub-tab has self-contained, runnable SQL (values
+	// already inlined). Statement is parameterized — pasting it into the
+	// SQL Console without the params block would error.
+	const sqlForActiveSubTab = effectiveSubTab === "query" ? inlineSQL : "";
+
+	const openInSqlConsole = () => {
+		if (!sqlForActiveSubTab) return;
+		appendSqlTabs([sqlForActiveSubTab]);
+		navigate({ to: "/db-console", search: { query: undefined } });
+	};
+
 	return (
 		<Tabs
 			variant="tertiary"
@@ -1013,12 +1026,20 @@ function ExplainView({
 			onValueChange={(v) => onSubTabChange(v as "query" | "statement" | "plan")}
 			className="flex flex-col grow min-h-0"
 		>
-			<div className="flex items-center bg-bg-secondary h-10 border-b shrink-0">
+			<div className="flex items-center justify-between bg-bg-secondary h-10 border-b shrink-0">
 				<TabsList className="py-0! border-b-0!">
 					{inlineSQL && <TabsTrigger value="query">Query</TabsTrigger>}
 					{querySQL && <TabsTrigger value="statement">Statement</TabsTrigger>}
 					{plan && <TabsTrigger value="plan">Execution Plan</TabsTrigger>}
 				</TabsList>
+				{sqlForActiveSubTab && (
+					<div className="px-2">
+						<Button variant="ghost" size="small" onClick={openInSqlConsole}>
+							<SquareTerminalIcon className="w-4 h-4" />
+							Open in SQL Console
+						</Button>
+					</div>
+				)}
 			</div>
 			{inlineSQL && (
 				<TabsContent value="query" className="grow min-h-0">
