@@ -4,8 +4,16 @@
 
 /** Index returned by `aidbox.index/list-search-param-indexes`. */
 export type SearchParamIndex = {
+	base: string;
 	name: string;
 	definition: string;
+	/** `:subtypes` from suggest-index, e.g. ["eq","exact"] or [null]. */
+	subtypes: (string | null)[];
+	exists: boolean;
+	scans: number;
+	tuples_read: number;
+	tuples_fetched: number;
+	size_bytes: number;
 };
 
 /** One row per `(resource_type, search_params)`, returned with `:by :shape`. */

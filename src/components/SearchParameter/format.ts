@@ -14,6 +14,19 @@ export function formatMs(ms: number | null | undefined): string {
 	return Math.round(ms).toString();
 }
 
+export function formatBytes(n: number | null | undefined): string {
+	if (n == null) return "—";
+	if (n < 1024) return `${n} B`;
+	const units = ["KB", "MB", "GB", "TB"];
+	let v = n / 1024;
+	let u = 0;
+	while (v >= 1024 && u < units.length - 1) {
+		v /= 1024;
+		u++;
+	}
+	return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[u]}`;
+}
+
 export function formatRelativeTime(iso: string | null | undefined): string {
 	if (!iso) return "—";
 	const t = Date.parse(iso);

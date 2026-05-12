@@ -26,6 +26,7 @@ import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
+import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
 import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
@@ -426,6 +427,24 @@ export const ResourceEditorPage = ({
 						<SearchParameterStatsTab
 							client={client}
 							base={sp.base?.[0] ?? ""}
+							code={sp.code ?? ""}
+						/>
+					</HSComp.TabsContent>
+				),
+			});
+			tabs.push({
+				value: "indexes",
+				trigger: (
+					<HSComp.TabsTrigger value="indexes">Indexes</HSComp.TabsTrigger>
+				),
+				content: (
+					<HSComp.TabsContent
+						value="indexes"
+						className="grow min-h-0 flex flex-col"
+					>
+						<SearchParameterIndexesTab
+							client={client}
+							bases={sp.base ?? []}
 							code={sp.code ?? ""}
 						/>
 					</HSComp.TabsContent>
