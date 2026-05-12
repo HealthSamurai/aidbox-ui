@@ -40,17 +40,10 @@ type LibraryResource = Resource & {
 	parameter?: ParameterDefinition[];
 };
 
-type Dependency = {
-	kind: "ViewDefinition" | "Library" | "Other";
-	id?: string;
-	label: string;
-	raw: string;
-};
-
 type QueryRow = {
 	id: string;
 	name: string;
-	dependsOn: Dependency[];
+	dependsOn: string[];
 	parameters: ParameterDefinition[];
 	sql: string;
 };
@@ -59,19 +52,6 @@ type QueriesPageResult = {
 	rows: QueryRow[];
 	total: number;
 };
-
-function parseDependency(ra: RelatedArtifact): Dependency | null {
-	const ref = ra.resource ?? "";
-	const display = ra.display ?? ra.label ?? "";
-	if (!ref && !display) return null;
-	const match = ref.match(/^(ViewDefinition|Library)\/(.+)$/);
-	if (match) {
-		const kind = match[1] as "ViewDefinition" | "Library";
-		const id = match[2] ?? "";
-		return { kind, id, label: display || id, raw: ref };
-	}
-	return { kind: "Other", label: display || ref, raw: ref };
-}
 
 function decodeBase64(b64: string): string {
 	try {
@@ -85,10 +65,8 @@ function libraryToRow(lib: LibraryResource): QueryRow | null {
 	if (!lib.id) return null;
 	const dependsOn = (lib.relatedArtifact ?? [])
 		.filter((ra) => ra.type === "depends-on")
-		.flatMap((ra) => {
-			const dep = parseDependency(ra);
-			return dep ? [dep] : [];
-		});
+		.map((ra) => ra.resource ?? "")
+		.filter(Boolean);
 	const sql = lib.content?.[0]?.data ? decodeBase64(lib.content[0].data) : "";
 	return {
 		id: lib.id,
@@ -139,42 +117,6 @@ function useLibraries(params: {
 		},
 		placeholderData: (prev) => prev,
 	});
-}
-
-function DependencyLink({ dep }: { dep: Dependency }) {
-	if (dep.kind === "ViewDefinition" && dep.id) {
-		return (
-			<Link
-				to="/data-lineage/views/edit/$id"
-				params={{ id: dep.id }}
-				search={{
-					tab: "builder" as const,
-					mode: "json" as const,
-					builderTab: "form" as const,
-				}}
-				className="text-text-link hover:underline"
-			>
-				{dep.raw}
-			</Link>
-		);
-	}
-	if (dep.kind === "Library" && dep.id) {
-		return (
-			<Link
-				to="/data-lineage/queries/edit/$id"
-				params={{ id: dep.id }}
-				search={{
-					tab: "sqlquery" as const,
-					mode: "json" as const,
-					builderTab: "form" as const,
-				}}
-				className="text-text-link hover:underline"
-			>
-				{dep.raw}
-			</Link>
-		);
-	}
-	return <span>{dep.raw}</span>;
 }
 
 function CollapsedCell({
@@ -356,9 +298,9 @@ export function DataLineageQueries() {
 					content={
 						row.dependsOn.length === 0 ? null : (
 							<ul className="list-disc pl-4 space-y-0.5">
-								{row.dependsOn.map((d) => (
-									<li key={d.raw} className="text-xs">
-										<DependencyLink dep={d} />
+								{row.dependsOn.map((url) => (
+									<li key={url} className="text-xs font-mono">
+										{url}
 									</li>
 								))}
 							</ul>

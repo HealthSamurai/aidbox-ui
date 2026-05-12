@@ -25,6 +25,8 @@ import type { ResourceEditorActions } from "../../webmcp/resource-editor-context
 import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
+import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
+import { SQLQueryProvider } from "../SQLQueryBuilder/page";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
@@ -354,7 +356,11 @@ export const ResourceEditorPage = ({
 					SQLQuery Builder
 				</HSComp.TabsTrigger>
 			),
-			content: <HSComp.TabsContent value="sqlquery" className="grow min-h-0" />,
+			content: (
+				<HSComp.TabsContent value="sqlquery" className="grow min-h-0 flex">
+					<SQLQueryBuilderContent />
+				</HSComp.TabsContent>
+			),
 		});
 	}
 
@@ -511,6 +517,14 @@ export const ResourceEditorPage = ({
 			<ViewDefinitionProvider id={id} initialResource={initialResource}>
 				{content}
 			</ViewDefinitionProvider>
+		);
+	}
+
+	if (isLibrary) {
+		return (
+			<SQLQueryProvider initialResource={initialResource}>
+				{content}
+			</SQLQueryProvider>
 		);
 	}
 
