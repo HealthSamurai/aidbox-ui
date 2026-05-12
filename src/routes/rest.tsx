@@ -2180,15 +2180,7 @@ function RouteComponent() {
 										setRequestLineVersion(generateId());
 										handleTabRequestPathChange(path, tabs, setTabs);
 									}}
-									onSubmit={() =>
-										handleSendRequest(
-											selectedTab,
-											queryClient,
-											setIsLoading,
-											responseStorage.set,
-											client,
-										)
-									}
+									onSubmit={doSendRequest}
 								>
 									<RequestLineEditor
 										key={`request-line-editor-${selectedTab.id}`}
@@ -2208,17 +2200,7 @@ function RouteComponent() {
 										}}
 									/>
 								</UrlAutocomplete>
-								<SendButton
-									onClick={() =>
-										handleSendRequest(
-											selectedTab,
-											queryClient,
-											setIsLoading,
-											responseStorage.set,
-											client,
-										)
-									}
-								/>
+								<SendButton onClick={doSendRequest} />
 								<RestCollections.SaveButton
 									tab={selectedTab}
 									collectionEntries={collectionEntries}
