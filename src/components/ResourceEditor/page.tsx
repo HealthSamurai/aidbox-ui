@@ -13,6 +13,7 @@ import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import * as ApiUtils from "../../api/utils";
 import { useUnsavedChangesBlocker } from "../../hooks/useUnsavedChangesBlocker";
 import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
 import {
@@ -199,9 +200,20 @@ export const ResourceEditorPage = ({
 	);
 
 	const handleSaveError = React.useCallback((error: Error) => {
+		// Toast first — the inline OperationOutcome panel only shows on the
+		// Edit tab, so on Builder/Stats/Indexes the user would otherwise see
+		// no feedback at all when a save fails.
 		if (isOperationOutcome(error.cause)) {
-			setSaveError(error.cause);
+			const oo = error.cause;
+			const issues = ApiUtils.parseOperationOutcome(oo);
+			const first = issues[0];
+			ApiUtils.toastError(
+				first?.expression || "Failed to save",
+				first?.diagnostics || error.message,
+			);
+			setSaveError(oo);
 		} else {
+			ApiUtils.toastError("Failed to save", error.message);
 			setSaveError({
 				resourceType: "OperationOutcome",
 				issue: [
