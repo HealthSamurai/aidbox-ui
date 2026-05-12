@@ -13,6 +13,45 @@ import type { SearchParamIndex } from "./types";
 
 const formatSubtype = (s: string | null) => (s == null ? "(default)" : s);
 
+/**
+ * Human-readable explanation of each FHIR/Aidbox search modifier and numeric
+ * prefix. Keys are the same symbols that `suggest-index` reports in `:subtypes`
+ * (kebab-case, null → default). Used to demystify cards in the Indexes tab.
+ * Add new entries here as new modifiers are surfaced by the suggester.
+ */
+const SUBTYPE_DESCRIPTIONS: Record<string, string> = {
+	"(default)":
+		"Default match: starts-with for strings, exact for tokens, equality for everything else.",
+	eq: "Equality. For strings, exact match; for numbers/dates, identical value.",
+	ne: "Not equal.",
+	exact: "Exact, case- and accent-sensitive string match.",
+	starts: "Case-insensitive starts-with match (string).",
+	sw: "Same as `:starts` — case-insensitive starts-with (string).",
+	ends: "Case-insensitive ends-with match (string).",
+	ew: "Same as `:ends` — case-insensitive ends-with (string).",
+	contains:
+		"Case-insensitive contains-anywhere match (string). Powered by gin_trgm_ops.",
+	co: "Same as `:contains`.",
+	text: "Free-text search across multiple element paths of the resource.",
+	otherwise: "Fallback path when no modifier matches.",
+	not: "Excludes matches with the given value (token).",
+	"not-in": "Excludes codes that belong to the given ValueSet (token).",
+	in: "Limits results to codes in the given ValueSet (token).",
+	above: "Token/reference value is an ancestor of the given code/reference.",
+	below: "Token/reference value is a descendant of the given code/reference.",
+	"of-type": "Token typed-match: system + code + value (e.g. identifier).",
+	identifier: "Match reference by `Identifier` instead of literal reference.",
+	type: "Match reference by `Reference.type`.",
+	missing: "Matches resources where the element is missing or present.",
+	lt: "Numeric/date prefix: less than.",
+	le: "Numeric/date prefix: less than or equal.",
+	gt: "Numeric/date prefix: greater than.",
+	ge: "Numeric/date prefix: greater than or equal.",
+	ap: "Numeric/date prefix: approximately equal (within 10%).",
+	sa: "Date prefix: starts after.",
+	eb: "Date prefix: ends before.",
+};
+
 const SqlRow = ({ definition }: { definition: string }) => {
 	const formatted = React.useMemo(
 		() => formatStatement(definition),
@@ -282,6 +321,33 @@ export const IndexesTab = ({
 													className="p-4 border-b border-border-secondary"
 												>
 													<SqlRow definition={r.definition} />
+													{r.subtypes.length > 0 && (
+														<div className="mt-3">
+															<div className="text-xs font-medium text-text-secondary mb-1">
+																Covers
+															</div>
+															<dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+																{r.subtypes.map((st) => {
+																	const label = formatSubtype(st);
+																	const desc = SUBTYPE_DESCRIPTIONS[label];
+																	return (
+																		<React.Fragment key={label}>
+																			<dt className="font-mono text-text-secondary">
+																				{label}
+																			</dt>
+																			<dd className="text-text-secondary">
+																				{desc ?? (
+																					<span className="text-text-tertiary">
+																						(no description)
+																					</span>
+																				)}
+																			</dd>
+																		</React.Fragment>
+																	);
+																})}
+															</dl>
+														</div>
+													)}
 												</td>
 											</tr>
 										)}
