@@ -1,4 +1,5 @@
 import type {
+	OperationOutcome,
 	OperationOutcomeIssue,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
@@ -577,7 +578,7 @@ export const SearchParameterBuilderContent = ({
 	resource,
 	onResourceChange,
 	actions,
-	saveErrorIssues,
+	saveError,
 }: {
 	client: AidboxClientR5;
 	resource: Resource;
@@ -589,14 +590,33 @@ export const SearchParameterBuilderContent = ({
 	 */
 	actions?: React.ReactNode;
 	/**
-	 * Validation issues from the last failed save. Drives the per-field
-	 * highlight inside `BuilderTab` so the user sees which inputs need fixing
-	 * without leaving the Builder tab for the OperationOutcome panel.
+	 * OperationOutcome from the last failed save. Drives per-field red rings
+	 * in `BuilderTab` and the `OperationOutcomeView` panel below — matching
+	 * the VD builder and Edit tab patterns.
 	 */
-	saveErrorIssues?: OperationOutcomeIssue[] | null;
+	saveError?: OperationOutcome | null;
 }) => {
 	const sp = resource as SearchParameterResource;
 	const [isQueryToolOpen, setIsQueryToolOpen] = useState(true);
+	// When the user clicks an issue in `OperationOutcomeView`, scroll the
+	// owning input into view and focus it. Each input in `BuilderTab` carries
+	// `id="sp-<field>"` (e.g. `sp-expression`), so resolution is a direct
+	// document lookup.
+	const onIssueClick = (issue: OperationOutcomeIssue) => {
+		const raw = issue.expression?.[0];
+		if (!raw) return;
+		const path = raw.replace(/^SearchParameter\./, "").split(".")[0] ?? "";
+		const field = path.replace(/\[.*$/, "");
+		const itemType = FIELD_TO_ITEM_TYPE[field];
+		if (!itemType) return;
+		// Most editors use `id="sp-<itemType>"`; `xpath-usage` is the odd one
+		// out — its row has no id, so we silently skip when the lookup fails.
+		const el = document.getElementById(`sp-${itemType}`);
+		if (el && el instanceof HTMLElement) {
+			el.scrollIntoView({ behavior: "smooth", block: "center" });
+			el.focus({ preventScroll: true });
+		}
+	};
 	return (
 		<HSComp.ResizablePanelGroup
 			direction="horizontal"
@@ -621,13 +641,34 @@ export const SearchParameterBuilderContent = ({
 						)}
 					</div>
 				)}
-				<div className="grow min-h-0 overflow-auto">
-					<BuilderTab
-						resource={resource}
-						onResourceChange={onResourceChange}
-						saveErrorIssues={saveErrorIssues ?? null}
-					/>
-				</div>
+				<HSComp.ResizablePanelGroup
+					direction="vertical"
+					className="grow min-h-0"
+				>
+					<HSComp.ResizablePanel minSize={20}>
+						<div className="h-full overflow-auto">
+							<BuilderTab
+								resource={resource}
+								onResourceChange={onResourceChange}
+								saveErrorIssues={saveError?.issue ?? null}
+							/>
+						</div>
+					</HSComp.ResizablePanel>
+					{saveError && (
+						<>
+							<HSComp.ResizableHandle />
+							<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+								<HSComp.OperationOutcomeView
+									resource={saveError as unknown as HSComp.OperationOutcome}
+									onIssueClick={
+										onIssueClick as unknown as HSComp.OperationOutcomeViewProps["onIssueClick"]
+									}
+									className="h-full overflow-auto"
+								/>
+							</HSComp.ResizablePanel>
+						</>
+					)}
+				</HSComp.ResizablePanelGroup>
 			</HSComp.ResizablePanel>
 			{isQueryToolOpen && (
 				<>
