@@ -1,4 +1,7 @@
-import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import type {
+	OperationOutcomeIssue,
+	Resource,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import {
 	type ItemInstance,
@@ -201,14 +204,65 @@ const FOLDER_TYPES = new Set<SpItemType>([
 	"optional",
 ]);
 
+/**
+ * FHIRPath element name → builder `SpItemType`. The OperationOutcome from a
+ * failed save reports `issue.expression` as FHIRPaths like
+ * `SearchParameter.code` or `SearchParameter.base[0]`. Strip the leading
+ * resourceType and any trailing array index, then look up which row in the
+ * tree owns the field.
+ */
+const FIELD_TO_ITEM_TYPE: Record<string, SpItemType> = {
+	url: "url",
+	name: "name",
+	code: "code",
+	status: "status",
+	description: "description",
+	type: "type",
+	base: "base",
+	expression: "expression",
+	target: "target",
+	version: "version",
+	experimental: "experimental",
+	xpath: "xpath",
+	xpathUsage: "xpath-usage",
+};
+
+function errorIndex(
+	issues: OperationOutcomeIssue[] | null | undefined,
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	if (!issues) return out;
+	for (const issue of issues) {
+		for (const raw of issue.expression ?? []) {
+			// `SearchParameter.base[0]` → `base`. `code` → `code`. Best-effort:
+			// we only need the leaf SearchParameter property.
+			const path = raw.replace(/^SearchParameter\./, "").split(".")[0] ?? "";
+			const field = path.replace(/\[.*$/, "");
+			const itemType = FIELD_TO_ITEM_TYPE[field];
+			if (!itemType) continue;
+			const diag = issue.diagnostics ?? issue.details?.text ?? raw;
+			// Last-write-wins is fine — collapsing multiple issues per field to
+			// the most recent diagnostic keeps the tooltip simple.
+			out[itemType] = diag;
+		}
+	}
+	return out;
+}
+
 const BuilderTab = ({
 	resource,
 	onResourceChange,
+	saveErrorIssues,
 }: {
 	resource: Resource;
 	onResourceChange?: (next: Resource) => void;
+	saveErrorIssues: OperationOutcomeIssue[] | null;
 }) => {
 	const sp = resource as SearchParameterResource;
+	const errorsByType = useMemo(
+		() => errorIndex(saveErrorIssues),
+		[saveErrorIssues],
+	);
 	const update = (patch: Partial<SearchParameterResource>) => {
 		if (!onResourceChange) return;
 		// Strip keys whose new value is "" / undefined / [] so the JSON stays clean.
@@ -312,12 +366,30 @@ const BuilderTab = ({
 	const renderEditorRow = (
 		item: ItemInstance<TreeViewItem<SpItemMeta>>,
 		editor: React.ReactNode,
-	) => (
-		<div className="flex w-full items-center justify-between gap-2">
-			{labelView(item)}
-			<div className="w-[80%] min-w-0">{editor}</div>
-		</div>
-	);
+	) => {
+		const t = item.getItemData()?.meta?.type;
+		const errMsg = t ? errorsByType[t] : undefined;
+		const editorNode = errMsg ? (
+			<HSComp.Tooltip>
+				<HSComp.TooltipTrigger asChild>
+					<div className="rounded-md ring-1 ring-utility-red/70 ring-offset-1 ring-offset-bg-primary">
+						{editor}
+					</div>
+				</HSComp.TooltipTrigger>
+				<HSComp.TooltipContent side="left" className="max-w-md">
+					{errMsg}
+				</HSComp.TooltipContent>
+			</HSComp.Tooltip>
+		) : (
+			editor
+		);
+		return (
+			<div className="flex w-full items-center justify-between gap-2">
+				{labelView(item)}
+				<div className="w-[80%] min-w-0">{editorNode}</div>
+			</div>
+		);
+	};
 
 	const customItemView = (item: ItemInstance<TreeViewItem<SpItemMeta>>) => {
 		const t = item.getItemData()?.meta?.type;
@@ -505,6 +577,7 @@ export const SearchParameterBuilderContent = ({
 	resource,
 	onResourceChange,
 	actions,
+	saveErrorIssues,
 }: {
 	client: AidboxClientR5;
 	resource: Resource;
@@ -515,6 +588,12 @@ export const SearchParameterBuilderContent = ({
 	 * VD's `editor-panel-content` top bar.
 	 */
 	actions?: React.ReactNode;
+	/**
+	 * Validation issues from the last failed save. Drives the per-field
+	 * highlight inside `BuilderTab` so the user sees which inputs need fixing
+	 * without leaving the Builder tab for the OperationOutcome panel.
+	 */
+	saveErrorIssues?: OperationOutcomeIssue[] | null;
 }) => {
 	const sp = resource as SearchParameterResource;
 	const [isQueryToolOpen, setIsQueryToolOpen] = useState(true);
@@ -543,7 +622,11 @@ export const SearchParameterBuilderContent = ({
 					</div>
 				)}
 				<div className="grow min-h-0 overflow-auto">
-					<BuilderTab resource={resource} onResourceChange={onResourceChange} />
+					<BuilderTab
+						resource={resource}
+						onResourceChange={onResourceChange}
+						saveErrorIssues={saveErrorIssues ?? null}
+					/>
 				</div>
 			</HSComp.ResizablePanel>
 			{isQueryToolOpen && (

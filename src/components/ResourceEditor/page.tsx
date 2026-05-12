@@ -421,6 +421,7 @@ export const ResourceEditorPage = ({
 						resource={resource}
 						onResourceChange={handleResourceChange}
 						actions={editActions}
+						saveErrorIssues={saveError?.issue ?? null}
 					/>
 				</HSComp.TabsContent>
 			),
