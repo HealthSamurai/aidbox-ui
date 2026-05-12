@@ -166,7 +166,10 @@ const ExplainView = ({
 				</HSComp.TabsList>
 			</div>
 			{inlineSQL ? (
-				<HSComp.TabsContent value="query" className="grow min-h-0">
+				<HSComp.TabsContent
+					value="query"
+					className="grow min-h-0 bg-bg-primary"
+				>
 					{/* HSComp.CodeEditor only consumes `currentValue` once. Force a
 					    remount when the SQL changes so re-Sends actually update. */}
 					<HSComp.CodeEditor
@@ -179,7 +182,10 @@ const ExplainView = ({
 				</HSComp.TabsContent>
 			) : null}
 			{querySQL ? (
-				<HSComp.TabsContent value="statement" className="grow min-h-0">
+				<HSComp.TabsContent
+					value="statement"
+					className="grow min-h-0 bg-bg-primary"
+				>
 					{queryParams.length > 0 ? (
 						<HSComp.ResizablePanelGroup direction="vertical">
 							<HSComp.ResizablePanel minSize={20}>
@@ -608,7 +614,7 @@ export const QueryRunner = ({
 						</div>
 					) : null}
 				</div>
-				<HSComp.TabsContent value="body" className="grow min-h-0">
+				<HSComp.TabsContent value="body" className="grow min-h-0 bg-bg-primary">
 					{isLoading ? (
 						<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
 							Loading...
@@ -626,7 +632,10 @@ export const QueryRunner = ({
 						/>
 					)}
 				</HSComp.TabsContent>
-				<HSComp.TabsContent value="headers" className="grow min-h-0">
+				<HSComp.TabsContent
+					value="headers"
+					className="grow min-h-0 bg-bg-primary"
+				>
 					{response ? (
 						<HSComp.CodeEditor
 							readOnly
@@ -640,7 +649,7 @@ export const QueryRunner = ({
 						</div>
 					)}
 				</HSComp.TabsContent>
-				<HSComp.TabsContent value="raw" className="grow min-h-0">
+				<HSComp.TabsContent value="raw" className="grow min-h-0 bg-bg-primary">
 					{response ? (
 						<HSComp.CodeEditor
 							readOnly
@@ -655,7 +664,10 @@ export const QueryRunner = ({
 					)}
 				</HSComp.TabsContent>
 				{explainEnabled ? (
-					<HSComp.TabsContent value="explain" className="grow min-h-0">
+					<HSComp.TabsContent
+						value="explain"
+						className="grow min-h-0 bg-bg-primary"
+					>
 						<ExplainView
 							client={client}
 							path={path}
