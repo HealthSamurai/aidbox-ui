@@ -126,7 +126,6 @@ const RowActions = ({
 		// `pg_stat_progress_create_index` drops the entry.
 		return (
 			<HSComp.Button variant="secondary" size="small" disabled>
-				<Lucide.LoaderIcon size={14} className="animate-spin" />
 				Building…
 			</HSComp.Button>
 		);
