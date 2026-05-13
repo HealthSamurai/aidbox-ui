@@ -5,7 +5,6 @@ import * as Lucide from "lucide-react";
 import * as React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
-import { psqlRequest } from "../db-console/tables-view";
 import { EmptyState } from "../empty-state";
 import { formatBytes, formatCount, formatRelativeTime } from "./format";
 import { formatStatement, rpcCall } from "./suggest-index";
@@ -121,6 +120,17 @@ const RowActions = ({
 	onDrop: () => void;
 	pending: boolean;
 }) => {
+	if (row.building) {
+		// Postgres is mid-CREATE INDEX. Block the second click and signal
+		// progress; the polling indexes-query will flip this off once
+		// `pg_stat_progress_create_index` drops the entry.
+		return (
+			<HSComp.Button variant="secondary" size="small" disabled>
+				<Lucide.LoaderIcon size={14} className="animate-spin" />
+				Building…
+			</HSComp.Button>
+		);
+	}
 	if (row.exists) {
 		return (
 			<HSComp.Button
@@ -177,6 +187,11 @@ export const IndexesTab = ({
 			);
 			return (json.result ?? []) as SearchParamIndex[];
 		},
+		// Poll while any candidate is mid-build so the row flips from
+		// "Building…" → "Drop" as soon as pg finishes. Otherwise the data is
+		// fresh-on-mount; no need to refetch.
+		refetchInterval: (q) =>
+			(q.state.data ?? []).some((r) => r.building) ? 3000 : false,
 		retry: false,
 	});
 
@@ -196,14 +211,30 @@ export const IndexesTab = ({
 
 	const createMutation = ReactQuery.useMutation({
 		mutationFn: async (statement: string) => {
-			// `CREATE INDEX CONCURRENTLY` rejects transactions; the autocommit
-			// header turns off the SQL handler's tx wrapper.
-			await psqlRequest(client, statement, { autocommit: true });
+			// `CREATE INDEX CONCURRENTLY` rejects transactions, so we send
+			// `Aidbox-Sql-Autocommit: true`. `Aidbox-Sql-Async: true` kicks the
+			// statement off into Aidbox's async-api scheduler so the HTTP call
+			// returns `202` immediately with an operation-id — the browser
+			// doesn't sit on an open connection while pg builds. The indexes
+			// query polls `pg_stat_progress_create_index` (via `:building` on
+			// each row) to know when to refresh.
+			const res = await client.rawRequest({
+				method: "POST",
+				url: "/$psql",
+				headers: {
+					"Content-Type": "application/json",
+					"Aidbox-Sql-Autocommit": "true",
+					"Aidbox-Sql-Async": "true",
+				},
+				body: JSON.stringify({ query: statement }),
+			});
+			if (!res.response.ok)
+				throw new Error(`HTTP ${res.response.status} from /$psql`);
 		},
-		onSuccess: (_data, statement) => {
-			HSComp.toast.success("Index created", defaultToastPlacement);
+		onSuccess: () => {
+			HSComp.toast.success("Index creation started", defaultToastPlacement);
+			// Immediate refetch picks up the `:building` flag from pg.
 			queryClient.invalidateQueries({ queryKey: indexesKey });
-			void statement;
 		},
 		onError: ApiUtils.onMutationError,
 	});

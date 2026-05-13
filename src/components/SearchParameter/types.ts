@@ -10,6 +10,12 @@ export type SearchParamIndex = {
 	/** `:subtypes` from suggest-index, e.g. ["eq","exact"] or [null]. */
 	subtypes: (string | null)[];
 	exists: boolean;
+	/**
+	 * True while Postgres is executing `CREATE INDEX [CONCURRENTLY]` on this
+	 * name (surfaced from `pg_stat_progress_create_index`). The UI uses it to
+	 * disable the Create button mid-build and to drive polling.
+	 */
+	building: boolean;
 	scans: number;
 	tuples_read: number;
 	tuples_fetched: number;
