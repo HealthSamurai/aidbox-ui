@@ -16,7 +16,7 @@ export type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 export type { Range } from "../hl7-fhir-r5-core/Range";
 export type { Reference } from "../hl7-fhir-r5-core/Reference";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/UsageContext
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/UsageContext (pkg: hl7.fhir.r5.core#5.0.0)
 export interface UsageContext extends DataType {
 	code: Coding;
 	valueCodeableConcept?: CodeableConcept;

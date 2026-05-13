@@ -3,12 +3,13 @@
 // Any manual changes made to this file may be overwritten.
 
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 
 export type { DataType } from "../hl7-fhir-r5-core/DataType";
 export type { Quantity } from "../hl7-fhir-r5-core/Quantity";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/SampledData
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/SampledData (pkg: hl7.fhir.r5.core#5.0.0)
 export interface SampledData extends DataType {
 	codeMap?: string;
 	_codeMap?: Element;

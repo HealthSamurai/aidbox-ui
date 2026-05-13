@@ -3,12 +3,13 @@
 // Any manual changes made to this file may be overwritten.
 
 import type { Base } from "../hl7-fhir-r5-core/Base";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Meta } from "../hl7-fhir-r5-core/Meta";
 
 export type { Base } from "../hl7-fhir-r5-core/Base";
 export type { Meta } from "../hl7-fhir-r5-core/Meta";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Resource
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/Resource (pkg: hl7.fhir.r5.core#5.0.0)
 export interface Resource extends Base {
 	resourceType:
 		| "Bundle"
@@ -16,7 +17,6 @@ export interface Resource extends Base {
 		| "DomainResource"
 		| "OperationOutcome"
 		| "Resource"
-		| "ViewDefinition"
 		| string;
 
 	id?: string;

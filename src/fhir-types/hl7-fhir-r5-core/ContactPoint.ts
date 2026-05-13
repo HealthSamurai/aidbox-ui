@@ -3,12 +3,13 @@
 // Any manual changes made to this file may be overwritten.
 
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
+import type { Element } from "../hl7-fhir-r5-core/Element";
 import type { Period } from "../hl7-fhir-r5-core/Period";
 
 export type { DataType } from "../hl7-fhir-r5-core/DataType";
 export type { Period } from "../hl7-fhir-r5-core/Period";
 
-// CanonicalURL: http://hl7.org/fhir/StructureDefinition/ContactPoint
+// CanonicalURL: http://hl7.org/fhir/StructureDefinition/ContactPoint (pkg: hl7.fhir.r5.core#5.0.0)
 export interface ContactPoint extends DataType {
 	period?: Period;
 	rank?: number;
