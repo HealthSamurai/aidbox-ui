@@ -47,7 +47,7 @@ function buildParamValueEntry(
 	type: string,
 	raw: string,
 ): Record<string, unknown> | null {
-	if (raw === "") return null;
+	if (raw === "" && type !== "boolean") return null;
 	const valueField = `value${capitalizeFirstLetter(type)}`;
 	let value: unknown = raw;
 	if (type === "integer") {
@@ -122,8 +122,11 @@ function buildAllParamEntries(
 	}
 	const entries: Record<string, unknown>[] = [];
 	for (const [name, type] of types) {
-		const raw = paramValues[name];
-		if (raw === undefined) continue;
+		let raw = paramValues[name];
+		if (raw === undefined) {
+			if (type !== "boolean") continue;
+			raw = "";
+		}
 		const entry = buildParamValueEntry(name, type, raw);
 		if (entry) entries.push(entry);
 	}
@@ -142,6 +145,7 @@ export function SQLQueryBuilderContent() {
 		runError,
 		setIsRunning,
 		paramValues,
+		onCreated,
 	} = useSQLQueryContext();
 
 	const { tree: resolvedTree } = useResolvedParameterTree(library);
@@ -164,21 +168,25 @@ export function SQLQueryBuilderContent() {
 					headers: { "Content-Type": "application/json" },
 				});
 				if (result.isErr()) throw result.value.resource;
-				return result.value.resource;
+				return { resource: result.value.resource, created: false };
 			}
-			const result = await client.request({
+			const result = await client.request<SQLLibrary>({
 				method: "POST",
 				url: "/fhir/Library",
 				body: JSON.stringify(payload),
 				headers: { "Content-Type": "application/json" },
 			});
 			if (result.isErr()) throw result.value.resource;
-			return result.value.resource;
+			return { resource: result.value.resource, created: true };
 		},
-		onSuccess: () => {
+		onSuccess: ({ resource, created }) => {
 			setIsDirty(false);
 			HSComp.toast.success("Saved");
 			queryClient.invalidateQueries({ queryKey: ["data-lineage-queries"] });
+			if (created && onCreated) {
+				const id = (resource as SQLLibrary).id;
+				if (id) onCreated(id);
+			}
 		},
 		onError: () => {
 			HSComp.toast.error("Failed to save");

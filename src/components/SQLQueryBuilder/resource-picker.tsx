@@ -126,32 +126,34 @@ export function ResourcePicker({
 						value={search}
 						onValueChange={setSearch}
 					/>
-					<HSComp.CommandList>
+					<HSComp.CommandList className="overflow-x-auto">
 						<HSComp.CommandEmpty>No matches</HSComp.CommandEmpty>
-						{candidates.map((c) => {
-							const label = c.title || c.name || c.id;
-							const secondary = c.description || c.url;
-							return (
-								<HSComp.CommandItem
-									key={c.url}
-									value={c.url}
-									onSelect={() => {
-										onChange(c.url);
-										setOpen(false);
-									}}
-								>
-									<div className="flex flex-col gap-0.5 min-w-0 w-full">
-										<span className="typo-label-tiny text-text-tertiary">
-											{c.kind}
-										</span>
-										<span className="truncate">{label}</span>
-										<span className="font-mono text-xs text-text-tertiary truncate">
-											{secondary}
-										</span>
-									</div>
-								</HSComp.CommandItem>
-							);
-						})}
+						<div className="min-w-max">
+							{candidates.map((c) => {
+								const label = c.title || c.name || c.id;
+								const secondary = c.description || c.url;
+								return (
+									<HSComp.CommandItem
+										key={c.url}
+										value={c.url}
+										onSelect={() => {
+											onChange(c.url);
+											setOpen(false);
+										}}
+									>
+										<div className="flex flex-col gap-0.5">
+											<span className="typo-label-tiny text-text-tertiary whitespace-nowrap">
+												{c.kind}
+											</span>
+											<span className="whitespace-nowrap">{label}</span>
+											<span className="font-mono text-xs text-text-tertiary whitespace-nowrap">
+												{secondary}
+											</span>
+										</div>
+									</HSComp.CommandItem>
+								);
+							})}
+						</div>
 					</HSComp.CommandList>
 				</HSComp.Command>
 			</HSComp.PopoverContent>

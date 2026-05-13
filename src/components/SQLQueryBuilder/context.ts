@@ -20,6 +20,8 @@ export type SQLQueryContextValue = {
 	setIsRunning: (running: boolean) => void;
 	paramValues: Record<string, string>;
 	setParamValue: (name: string, value: string) => void;
+	onCreated?: (id: string) => void;
+	onDeleted?: () => void;
 };
 
 export const SQLQueryContext = React.createContext<SQLQueryContextValue | null>(

@@ -19,6 +19,12 @@ const PageComponent = () => {
 			tab={tab}
 			mode={mode}
 			navigate={navigate}
+			onDeleted={() =>
+				navigate({
+					to: "/data-lineage/queries",
+					search: { q: undefined, page: undefined, pageSize: undefined },
+				})
+			}
 		/>
 	);
 };

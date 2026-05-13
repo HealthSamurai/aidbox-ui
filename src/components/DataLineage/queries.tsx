@@ -35,6 +35,8 @@ const SQL_QUERY_TYPE =
 type LibraryResource = Resource & {
 	resourceType: "Library";
 	name?: string;
+	title?: string;
+	description?: string;
 	relatedArtifact?: RelatedArtifact[];
 	content?: Attachment[];
 	parameter?: ParameterDefinition[];
@@ -43,6 +45,8 @@ type LibraryResource = Resource & {
 type QueryRow = {
 	id: string;
 	name: string;
+	title: string;
+	description: string;
 	dependsOn: string[];
 	parameters: ParameterDefinition[];
 	sql: string;
@@ -71,6 +75,8 @@ function libraryToRow(lib: LibraryResource): QueryRow | null {
 	return {
 		id: lib.id,
 		name: lib.name ?? "",
+		title: lib.title ?? "",
+		description: lib.description ?? "",
 		dependsOn,
 		parameters: lib.parameter ?? [],
 		sql,
@@ -271,8 +277,8 @@ export function DataLineageQueries() {
 
 	const columns: ColumnDef<QueryRow>[] = [
 		{
-			id: "id",
-			header: "ID",
+			id: "title",
+			header: "Title",
 			width: "w-64",
 			cell: (row) => (
 				<Link
@@ -285,13 +291,13 @@ export function DataLineageQueries() {
 					}}
 					className="text-text-link hover:underline"
 				>
-					{row.id}
+					{row.title || row.name || row.id}
 				</Link>
 			),
 		},
 		{
-			id: "depends-on",
-			header: "Depends on",
+			id: "dependencies",
+			header: "Dependencies",
 			width: "w-40",
 			cell: (row) => (
 				<CollapsedCell
@@ -323,8 +329,8 @@ export function DataLineageQueries() {
 										key={`${p.type}-${p.name ?? ""}`}
 										className="text-xs font-mono"
 									>
-										<span className="text-text-tertiary">{p.type}</span>{" "}
-										<span>{p.name ?? "—"}</span>
+										<span>{p.name ?? "—"}</span>{" "}
+										<span className="text-text-tertiary">({p.type})</span>
 									</li>
 								))}
 							</ul>
@@ -354,6 +360,19 @@ export function DataLineageQueries() {
 					}
 				/>
 			),
+		},
+		{
+			id: "description",
+			header: "Description",
+			width: "w-64",
+			cell: (row) =>
+				row.description ? (
+					<span className="block truncate" title={row.description}>
+						{row.description}
+					</span>
+				) : (
+					<span className="text-text-tertiary">—</span>
+				),
 		},
 	];
 

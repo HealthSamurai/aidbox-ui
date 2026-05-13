@@ -24,38 +24,27 @@ function ParamField({
 	onChange: (value: string) => void;
 }) {
 	const inputId = `run-input-${field.name}`;
-	const namePrefix = (
-		<span className="flex items-center gap-1.5 font-mono text-text-tertiary bg-bg-tertiary -mx-3 -my-1 px-3 py-1 self-stretch rounded-l-md">
-			{field.source !== "own" && <SourceTag field={field} />}
-			<span>{field.name}</span>
-		</span>
-	);
 	return (
-		<div className="flex items-center gap-2 min-w-0">
+		<div className="flex flex-col gap-1 min-w-0">
+			<label
+				htmlFor={inputId}
+				className="flex items-center gap-1.5 text-xs font-mono text-text-tertiary"
+			>
+				{field.source !== "own" && <SourceTag field={field} />}
+				<span className="truncate">{field.name}</span>
+			</label>
 			{field.type === "boolean" ? (
-				<>
-					{namePrefix}
-					<HSComp.Select
-						value={value || "_unset"}
-						onValueChange={(v) => onChange(v === "_unset" ? "" : v)}
-					>
-						<HSComp.SelectTrigger className="flex-1">
-							<HSComp.SelectValue placeholder="(unset)" />
-						</HSComp.SelectTrigger>
-						<HSComp.SelectContent>
-							<HSComp.SelectItem value="_unset">(unset)</HSComp.SelectItem>
-							<HSComp.SelectItem value="true">true</HSComp.SelectItem>
-							<HSComp.SelectItem value="false">false</HSComp.SelectItem>
-						</HSComp.SelectContent>
-					</HSComp.Select>
-				</>
+				<HSComp.Switch
+					id={inputId}
+					checked={value === "true"}
+					onCheckedChange={(c) => onChange(c ? "true" : "false")}
+				/>
 			) : (
 				<HSComp.Input
 					id={inputId}
 					type="text"
-					prefixValue={namePrefix}
 					placeholder={field.type}
-					className="flex-1 font-mono text-xs"
+					className="font-mono text-xs"
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 				/>

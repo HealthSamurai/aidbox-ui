@@ -25,6 +25,17 @@ const PageComponent = () => {
 			tab={tab}
 			mode={mode}
 			navigate={navigate}
+			onCreated={(id) =>
+				navigate({
+					to: "/data-lineage/views/edit/$id",
+					params: { id },
+					search: {
+						tab: "builder" as const,
+						mode: "json" as const,
+						builderTab: "form" as const,
+					},
+				})
+			}
 		/>
 	);
 };

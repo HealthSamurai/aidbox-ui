@@ -55,10 +55,14 @@ export const ViewDefinitionErrorPage = ({
 export const ViewDefinitionProvider = ({
 	id,
 	initialResource,
+	onCreated,
+	onDeleted,
 	children,
 }: {
 	id?: string;
 	initialResource: Resource;
+	onCreated?: (id: string) => void;
+	onDeleted?: () => void;
 	children: React.ReactNode;
 }) => {
 	const [resourceTypeForVD, setResourceTypeForVD] = React.useState<
@@ -119,6 +123,8 @@ export const ViewDefinitionProvider = ({
 				runError,
 				setRunError,
 				issueClickRef,
+				onCreated,
+				onDeleted,
 			}}
 		>
 			<ViewDefinitionResourceTypeContext.Provider

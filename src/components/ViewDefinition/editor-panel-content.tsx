@@ -332,6 +332,11 @@ export const useViewDefinitionActions = (
 					"Missing an ID field in response",
 				);
 
+			if (viewDefinitionContext.onCreated) {
+				viewDefinitionContext.onCreated(id);
+				return;
+			}
+
 			navigate({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "ViewDefinition", id: id },
@@ -509,6 +514,10 @@ export const useViewDefinitionActions = (
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
+			if (viewDefinitionContext.onDeleted) {
+				viewDefinitionContext.onDeleted();
+				return;
+			}
 			navigate({
 				to: "/resource/$resourceType",
 				params: { resourceType: "ViewDefinition" },

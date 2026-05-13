@@ -231,6 +231,26 @@ export function PropertiesTree() {
 
 	const { tree: resolvedTree } = useResolvedParameterTree(library);
 
+	const [focusRequest, setFocusRequest] = React.useState<{
+		key: string;
+		nonce: number;
+	} | null>(null);
+
+	const requestFocus = React.useCallback((key: string) => {
+		setFocusRequest({ key, nonce: Date.now() });
+	}, []);
+
+	React.useEffect(() => {
+		if (!focusRequest) return;
+		const frame = requestAnimationFrame(() => {
+			const container = document.querySelector<HTMLElement>(
+				`[data-focus-key="${focusRequest.key}"]`,
+			);
+			container?.querySelector<HTMLInputElement>("input")?.focus();
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [focusRequest]);
+
 	const ownNames = React.useMemo(
 		() =>
 			new Set(parameters.map((p) => p.name).filter((n): n is string => !!n)),
@@ -349,10 +369,12 @@ export function PropertiesTree() {
 	};
 
 	const addDependsOn = () => {
+		const newIndex = dependsOn.length;
 		replaceDependsOn([
 			...dependsOn,
 			{ type: "depends-on", label: "", resource: "" },
 		]);
+		requestFocus(`depends-on-${newIndex}`);
 	};
 
 	const updateDependsOnLabel = (i: number, label: string) => {
@@ -379,7 +401,9 @@ export function PropertiesTree() {
 	};
 
 	const addParameter = () => {
+		const newIndex = parameters.length;
 		setParameters([...parameters, { use: "in", name: "", type: "string" }]);
+		requestFocus(`parameter-${newIndex}`);
 	};
 
 	const updateParameterName = (i: number, name: string) => {
@@ -437,7 +461,7 @@ export function PropertiesTree() {
 				return (
 					<div className="flex w-full items-center gap-2">
 						<div className="w-44 shrink-0">{labelView(item)}</div>
-						<div className="w-[50%]">
+						<div className="flex-1 min-w-0">
 							<InputView
 								placeholder="Natural language description of the library"
 								value={library.description}
@@ -454,7 +478,10 @@ export function PropertiesTree() {
 				const labelInvalid =
 					labelValue.length > 0 && !LABEL_REGEX.test(labelValue);
 				return (
-					<div className="flex w-full items-center gap-2">
+					<div
+						className="flex w-full items-center gap-2"
+						data-focus-key={`depends-on-${idx}`}
+					>
 						<div className="w-44 shrink-0">
 							<InputView
 								placeholder="label"
@@ -504,7 +531,10 @@ export function PropertiesTree() {
 				const entry = parameters[idx];
 				if (!entry) return null;
 				return (
-					<div className="flex w-full items-center gap-2">
+					<div
+						className="flex w-full items-center gap-2"
+						data-focus-key={`parameter-${idx}`}
+					>
 						<div className="w-44 shrink-0">
 							<InputView
 								placeholder="name"

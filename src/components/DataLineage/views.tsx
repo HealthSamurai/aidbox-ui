@@ -18,6 +18,8 @@ import { EmptyState } from "../empty-state";
 type ViewRow = {
 	id: string;
 	name: string;
+	title: string;
+	description: string;
 	resource: string;
 };
 
@@ -62,6 +64,8 @@ function useViewDefinitions(params: {
 					{
 						id: vd.id,
 						name: vd.name ?? "",
+						title: vd.title ?? "",
+						description: vd.description ?? "",
 						resource: vd.resource ?? "",
 					},
 				];
@@ -194,8 +198,8 @@ export function DataLineageViews() {
 
 	const columns: ColumnDef<ViewRow>[] = [
 		{
-			id: "id",
-			header: "ID",
+			id: "title",
+			header: "Title",
 			width: "w-64",
 			cell: (row) => (
 				<Link
@@ -208,15 +212,28 @@ export function DataLineageViews() {
 					}}
 					className="text-text-link hover:underline"
 				>
-					{row.name || row.id}
+					{row.title || row.name || row.id}
 				</Link>
 			),
 		},
 		{
 			id: "resource",
 			header: "Resource",
-			width: "w-full",
+			width: "w-40",
 			cell: (row) => row.resource,
+		},
+		{
+			id: "description",
+			header: "Description",
+			width: "w-full",
+			cell: (row) =>
+				row.description ? (
+					<span className="block truncate" title={row.description}>
+						{row.description}
+					</span>
+				) : (
+					<span className="text-text-tertiary">—</span>
+				),
 		},
 	];
 

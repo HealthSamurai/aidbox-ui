@@ -6,9 +6,13 @@ import type { SQLLibrary } from "./types";
 
 export function SQLQueryProvider({
 	initialResource,
+	onCreated,
+	onDeleted,
 	children,
 }: {
 	initialResource: Resource;
+	onCreated?: (id: string) => void;
+	onDeleted?: () => void;
 	children: React.ReactNode;
 }) {
 	const [library, setLibrary] = React.useState<SQLLibrary>(
@@ -53,6 +57,8 @@ export function SQLQueryProvider({
 				setIsRunning,
 				paramValues,
 				setParamValue,
+				onCreated,
+				onDeleted,
 			}}
 		>
 			{children}

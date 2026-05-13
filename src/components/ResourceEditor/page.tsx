@@ -26,7 +26,9 @@ import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
 import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
+import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
+import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
@@ -44,6 +46,8 @@ interface ResourceEditorPageProps {
 	navigate: <T extends string>(
 		opts: Router.NavigateOptions<Router.RegisteredRouter, T, T>,
 	) => Promise<void>;
+	onCreated?: (id: string) => void;
+	onDeleted?: () => void;
 }
 
 export const ResourceEditorPageWithLoader = (
@@ -117,6 +121,8 @@ export const ResourceEditorPage = ({
 	mode,
 	indent = 2,
 	navigate,
+	onCreated,
+	onDeleted,
 	initialResource,
 }: ResourceEditorPageProps & { initialResource: Resource }) => {
 	const client = useAidboxClient();
@@ -289,10 +295,14 @@ export const ResourceEditorPage = ({
 				};
 			try {
 				await deleteResource(client, resourceType, id);
-				navigate({
-					to: "/resource/$resourceType",
-					params: { resourceType },
-				});
+				if (onDeleted) {
+					onDeleted();
+				} else {
+					navigate({
+						to: "/resource/$resourceType",
+						params: { resourceType },
+					});
+				}
 				return { status: "ok" };
 			} catch (e) {
 				return {
@@ -325,6 +335,13 @@ export const ResourceEditorPage = ({
 	const isViewDefinition = resourceType === "ViewDefinition";
 	const isAccessPolicy = resourceType === "AccessPolicy";
 	const isLibrary = resourceType === "Library";
+	const isSQLQuery =
+		isLibrary &&
+		Boolean(
+			(
+				initialResource as { meta?: { profile?: string[] } }
+			).meta?.profile?.includes(SQL_QUERY_PROFILE),
+		);
 
 	const tabs: {
 		value: string;
@@ -364,6 +381,18 @@ export const ResourceEditorPage = ({
 		});
 	}
 
+	if (isSQLQuery) {
+		tabs.push({
+			value: "lineage",
+			trigger: <HSComp.TabsTrigger value="lineage">Lineage</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent value="lineage" className="grow min-h-0 flex">
+					<LineageTab />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
 	const editActions = (
 		<>
 			<SaveButton
@@ -374,10 +403,16 @@ export const ResourceEditorPage = ({
 				client={client}
 				onError={handleSaveError}
 				onSuccess={() => setEditDirty(false)}
+				onCreated={onCreated}
 				saveRef={saveRef}
 			/>
 			{id && (
-				<DeleteButton client={client} resourceType={resourceType} id={id} />
+				<DeleteButton
+					client={client}
+					resourceType={resourceType}
+					id={id}
+					onDeleted={onDeleted}
+				/>
 			)}
 		</>
 	);
@@ -514,7 +549,12 @@ export const ResourceEditorPage = ({
 
 	if (isViewDefinition) {
 		return (
-			<ViewDefinitionProvider id={id} initialResource={initialResource}>
+			<ViewDefinitionProvider
+				id={id}
+				initialResource={initialResource}
+				onCreated={onCreated}
+				onDeleted={onDeleted}
+			>
 				{content}
 			</ViewDefinitionProvider>
 		);
@@ -522,7 +562,11 @@ export const ResourceEditorPage = ({
 
 	if (isLibrary) {
 		return (
-			<SQLQueryProvider initialResource={initialResource}>
+			<SQLQueryProvider
+				initialResource={initialResource}
+				onCreated={onCreated}
+				onDeleted={onDeleted}
+			>
 				{content}
 			</SQLQueryProvider>
 		);
