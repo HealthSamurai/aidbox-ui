@@ -196,6 +196,7 @@ type SpItemType =
 	| "base"
 	| "expression"
 	| "target"
+	| "modifier"
 	| "version"
 	| "experimental"
 	| "xpath"
@@ -232,6 +233,7 @@ const FIELD_TO_ITEM_TYPE: Record<string, SpItemType> = {
 	experimental: "experimental",
 	xpath: "xpath",
 	xpathUsage: "xpath-usage",
+	modifier: "modifier",
 };
 
 function errorIndex(
@@ -322,8 +324,15 @@ const BuilderTab = ({
 			_optional: {
 				name: "_optional",
 				meta: { type: "optional" },
-				children: ["_version", "_experimental", "_xpath", "_xpath_usage"],
+				children: [
+					"_modifier",
+					"_version",
+					"_experimental",
+					"_xpath",
+					"_xpath_usage",
+				],
 			},
+			_modifier: { name: "_modifier", meta: { type: "modifier" } },
 			_version: { name: "_version", meta: { type: "version" } },
 			_experimental: { name: "_experimental", meta: { type: "experimental" } },
 			_xpath: { name: "_xpath", meta: { type: "xpath" } },
@@ -495,6 +504,19 @@ const BuilderTab = ({
 						value={(sp.target ?? []).join(", ")}
 						placeholder="Patient, Group"
 						onChange={(v) => update({ target: splitTokens(v) })}
+					/>,
+				);
+			case "modifier":
+				return renderEditorRow(
+					item,
+					<InlineInput
+						id="sp-modifier"
+						value={(sp.modifier ?? []).join(", ")}
+						// `:above` and `:below` are the typical entries — they're
+						// the modifiers FHIR R4 advertises per-SP rather than as
+						// type defaults.
+						placeholder="above, below"
+						onChange={(v) => update({ modifier: splitTokens(v) })}
 					/>,
 				);
 			case "version":
