@@ -272,8 +272,10 @@ const ALL_MODIFIERS = [
 type Modifier = (typeof ALL_MODIFIERS)[number];
 
 /**
- * Which modifiers the FHIR R4 spec allows per SP `type`. Drives the picker
- * in the Debug tool so users can't pick a modifier the server will reject.
+ * Type-default modifiers per FHIR R4. `:above` and `:below` are *not*
+ * defaults — the spec says servers advertise per-SP support via
+ * `SearchParameter.modifier`, so they're unioned in from the SP itself
+ * when declared (see `allowedModifiers` below).
  *
  * Source: https://hl7.org/fhir/R4/search.html#modifiers (per-type tables).
  * Notes:
@@ -286,20 +288,11 @@ type Modifier = (typeof ALL_MODIFIERS)[number];
  *     not a value-side modifier; intentionally absent.
  *   - `null` (no type set) returns an empty list.
  */
-const MODIFIERS_BY_TYPE: Record<string, readonly Modifier[]> = {
+const TYPE_DEFAULT_MODIFIERS: Record<string, readonly Modifier[]> = {
 	string: ["missing", "exact", "contains", "text"],
-	token: [
-		"missing",
-		"text",
-		"not",
-		"above",
-		"below",
-		"in",
-		"not-in",
-		"of-type",
-	],
-	reference: ["missing", "identifier", "above", "below"],
-	uri: ["missing", "above", "below"],
+	token: ["missing", "text", "not", "in", "not-in", "of-type"],
+	reference: ["missing", "identifier"],
+	uri: ["missing"],
 	number: ["missing"],
 	date: ["missing"],
 	quantity: ["missing"],
@@ -402,6 +395,7 @@ export const QueryRunner = ({
 	bases,
 	code,
 	spType,
+	spDeclaredModifiers,
 	onClose,
 	disabledReason,
 	staleWarning,
@@ -415,6 +409,12 @@ export const QueryRunner = ({
 	 * modifiers).
 	 */
 	spType?: string;
+	/**
+	 * `SearchParameter.modifier` from the resource. Per R4, modifiers like
+	 * `:above` / `:below` are advertised per-SP rather than inferred from
+	 * the type, so we union them on top of the type defaults.
+	 */
+	spDeclaredModifiers?: string[];
 	onClose?: () => void;
 	/**
 	 * When set, the Send button is disabled and a tooltip explains why.
@@ -428,9 +428,23 @@ export const QueryRunner = ({
 	 */
 	staleWarning?: string;
 }) => {
-	const allowedModifiers: readonly Modifier[] = spType
-		? (MODIFIERS_BY_TYPE[spType] ?? [])
-		: [];
+	const allowedModifiers: readonly Modifier[] = React.useMemo(() => {
+		if (!spType) return [];
+		const defaults = TYPE_DEFAULT_MODIFIERS[spType] ?? [];
+		// Per R4 §3.1.1.5.4: `:above` and `:below` (and any other modifier the
+		// server elects to support) are declared on the SP itself — pull from
+		// `SearchParameter.modifier` and union. Ignore anything outside the
+		// `ALL_MODIFIERS` whitelist (no-op for unsupported codes; the picker
+		// only knows about the codes we typecheck).
+		const declared = (spDeclaredModifiers ?? []).filter((m): m is Modifier =>
+			(ALL_MODIFIERS as readonly string[]).includes(m),
+		);
+		// Preserve type-default ordering; then append any declared not already
+		// covered, in declaration order.
+		const seen = new Set<Modifier>(defaults);
+		const extras = declared.filter((m) => !seen.has(m));
+		return [...defaults, ...extras];
+	}, [spType, spDeclaredModifiers]);
 	// Pick which base the request runs against. Multi-base SPs (e.g.
 	// `clinical-encounter`) need this — otherwise the user is locked to the
 	// first base in the array.

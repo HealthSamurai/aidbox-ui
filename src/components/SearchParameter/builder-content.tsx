@@ -44,6 +44,12 @@ type SearchParameterResource = Resource & {
 	experimental?: boolean;
 	xpath?: string;
 	xpathUsage?: XPathUsage;
+	/**
+	 * `SearchParameter.modifier`: declares per-SP modifier support beyond
+	 * the type defaults (typically `above` / `below`). Each entry is a
+	 * `SearchModifierCode` (`missing | exact | contains | not | …`).
+	 */
+	modifier?: string[];
 };
 
 const STATUS_OPTIONS: SearchParameterStatus[] = [
@@ -688,6 +694,7 @@ export const SearchParameterBuilderContent = ({
 							bases={sp.base ?? []}
 							code={sp.code}
 							spType={sp.type}
+							spDeclaredModifiers={sp.modifier ?? undefined}
 							onClose={() => setIsQueryToolOpen(false)}
 							disabledReason={
 								isPersisted
