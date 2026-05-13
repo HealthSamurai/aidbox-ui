@@ -7,7 +7,7 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import * as ApiUtils from "../../api/utils";
 import { psqlRequest } from "../db-console/tables-view";
 import { EmptyState } from "../empty-state";
-import { formatBytes, formatCount } from "./format";
+import { formatBytes, formatCount, formatRelativeTime } from "./format";
 import { formatStatement, rpcCall } from "./suggest-index";
 import type { SearchParamIndex } from "./types";
 
@@ -235,8 +235,14 @@ export const IndexesTab = ({
 								<HSComp.TableHead>Base</HSComp.TableHead>
 								<HSComp.TableHead>Name</HSComp.TableHead>
 								<HSComp.TableHead>Modifiers</HSComp.TableHead>
-								<HSComp.TableHead className="text-right" style={{ width: 100 }}>
+								<HSComp.TableHead className="text-right" style={{ width: 80 }}>
 									Calls
+								</HSComp.TableHead>
+								<HSComp.TableHead className="text-right" style={{ width: 80 }}>
+									Shapes
+								</HSComp.TableHead>
+								<HSComp.TableHead style={{ width: 110 }}>
+									Last hit
 								</HSComp.TableHead>
 								<HSComp.TableHead className="text-right" style={{ width: 80 }}>
 									Scans
@@ -301,25 +307,28 @@ export const IndexesTab = ({
 													</div>
 												)}
 											</HSComp.TableCell>
-											<HSComp.TableCell
-												className="text-right tabular-nums align-top whitespace-nowrap"
-												title={
-													r.hit_last_used_at
-														? `Last hit ${r.hit_last_used_at}`
-														: undefined
-												}
-											>
+											<HSComp.TableCell className="text-right tabular-nums align-top">
 												{r.hit_calls > 0 ? (
-													<>
-														{formatCount(r.hit_calls)}
-														{r.hit_shapes > 1 && (
-															<span className="text-text-tertiary ml-1">
-																/{r.hit_shapes}
-															</span>
-														)}
-													</>
+													formatCount(r.hit_calls)
 												) : (
 													<span className="text-text-tertiary">0</span>
+												)}
+											</HSComp.TableCell>
+											<HSComp.TableCell className="text-right tabular-nums align-top">
+												{r.hit_shapes > 0 ? (
+													formatCount(r.hit_shapes)
+												) : (
+													<span className="text-text-tertiary">0</span>
+												)}
+											</HSComp.TableCell>
+											<HSComp.TableCell
+												className="whitespace-nowrap align-top"
+												title={r.hit_last_used_at ?? undefined}
+											>
+												{r.hit_last_used_at ? (
+													formatRelativeTime(r.hit_last_used_at)
+												) : (
+													<span className="text-text-tertiary">—</span>
 												)}
 											</HSComp.TableCell>
 											<HSComp.TableCell className="text-right tabular-nums align-top">
@@ -349,7 +358,7 @@ export const IndexesTab = ({
 										{isExpanded && (
 											<tr className="hover:bg-transparent">
 												<td
-													colSpan={10}
+													colSpan={12}
 													className="p-4 border-b border-border-secondary"
 												>
 													<SqlRow definition={r.definition} />
