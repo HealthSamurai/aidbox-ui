@@ -182,7 +182,13 @@ export const IndexesTab = ({
 			const json = await rpcCall(
 				client,
 				"aidbox.index/list-search-param-indexes",
-				{ "resource-types": bases, "search-param": code },
+				{
+					"resource-types": bases,
+					"search-param": code,
+					// Drain the in-memory stats buffer first so `Calls` matches
+					// what the Stats tab shows (both request `flush-first`).
+					"flush-first": true,
+				},
 			);
 			return (json.result ?? []) as SearchParamIndex[];
 		},
