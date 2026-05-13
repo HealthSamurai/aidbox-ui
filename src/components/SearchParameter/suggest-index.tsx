@@ -58,7 +58,10 @@ export const SuggestionCard = ({
 			await psqlRequest(client, suggestion.statement, { autocommit: true });
 		},
 		onSuccess: () => {
-			HSComp.toast.success(`Created ${suggestion.name}`, defaultToastPlacement);
+			HSComp.toast.success(
+				`Index created: ${suggestion.name}`,
+				defaultToastPlacement,
+			);
 			onCreated?.();
 		},
 		onError: (err: Error) => {

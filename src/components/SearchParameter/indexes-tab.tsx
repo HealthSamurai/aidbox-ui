@@ -170,7 +170,7 @@ export const IndexesTab = ({
 			await psqlRequest(client, statement, { autocommit: true });
 		},
 		onSuccess: (_data, statement) => {
-			HSComp.toast.success(`Created index`, defaultToastPlacement);
+			HSComp.toast.success("Index created", defaultToastPlacement);
 			queryClient.invalidateQueries({ queryKey: indexesKey });
 			void statement;
 		},
