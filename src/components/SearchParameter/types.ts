@@ -14,6 +14,14 @@ export type SearchParamIndex = {
 	tuples_read: number;
 	tuples_fetched: number;
 	size_bytes: number;
+	/**
+	 * Aidbox-side counters joined from `_aidbox_search_param_stats`:
+	 * how many recorded calls / how many distinct shapes this candidate
+	 * would handle, and when the latest such call landed.
+	 */
+	hit_calls: number;
+	hit_shapes: number;
+	hit_last_used_at: string | null;
 };
 
 /** One row per `(resource_type, search_params)`, returned with `:by :shape`. */

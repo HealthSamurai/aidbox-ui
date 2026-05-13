@@ -235,6 +235,9 @@ export const IndexesTab = ({
 								<HSComp.TableHead>Base</HSComp.TableHead>
 								<HSComp.TableHead>Name</HSComp.TableHead>
 								<HSComp.TableHead>Modifiers</HSComp.TableHead>
+								<HSComp.TableHead className="text-right" style={{ width: 100 }}>
+									Calls
+								</HSComp.TableHead>
 								<HSComp.TableHead className="text-right" style={{ width: 80 }}>
 									Scans
 								</HSComp.TableHead>
@@ -256,10 +259,14 @@ export const IndexesTab = ({
 							{rows.map((r) => {
 								const rowKey = `${r.base}::${r.name}`;
 								const isExpanded = expanded.has(rowKey);
+								// Hot unindexed candidate — searches are happening that
+								// would benefit from this index, but it doesn't exist.
+								// Yellow tint draws the user to "create me first".
+								const isHotMissing = !r.exists && r.hit_calls > 0;
 								return (
 									<React.Fragment key={rowKey}>
 										<HSComp.TableRow
-											className={`cursor-pointer ${isExpanded ? "border-b-0" : ""}`}
+											className={`cursor-pointer ${isExpanded ? "border-b-0" : ""} ${isHotMissing ? "bg-bg-warning-secondary" : ""}`}
 											onClick={() => toggleExpanded(rowKey)}
 										>
 											<HSComp.TableCell className="px-2 align-top">
@@ -294,6 +301,27 @@ export const IndexesTab = ({
 													</div>
 												)}
 											</HSComp.TableCell>
+											<HSComp.TableCell
+												className="text-right tabular-nums align-top whitespace-nowrap"
+												title={
+													r.hit_last_used_at
+														? `Last hit ${r.hit_last_used_at}`
+														: undefined
+												}
+											>
+												{r.hit_calls > 0 ? (
+													<>
+														{formatCount(r.hit_calls)}
+														{r.hit_shapes > 1 && (
+															<span className="text-text-tertiary ml-1">
+																/{r.hit_shapes}
+															</span>
+														)}
+													</>
+												) : (
+													<span className="text-text-tertiary">0</span>
+												)}
+											</HSComp.TableCell>
 											<HSComp.TableCell className="text-right tabular-nums align-top">
 												{r.exists ? formatCount(r.scans) : "—"}
 											</HSComp.TableCell>
@@ -321,7 +349,7 @@ export const IndexesTab = ({
 										{isExpanded && (
 											<tr className="hover:bg-transparent">
 												<td
-													colSpan={9}
+													colSpan={10}
 													className="p-4 border-b border-border-secondary"
 												>
 													<SqlRow definition={r.definition} />
