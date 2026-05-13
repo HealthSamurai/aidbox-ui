@@ -1,9 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { useSQLQueryContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
+import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
 import { RunInputs } from "./run-inputs";
 import {
@@ -32,7 +34,7 @@ function ensureSQLQueryShape(lib: SQLLibrary): SQLLibrary {
 						{ system: SQL_QUERY_TYPE_SYSTEM, code: SQL_QUERY_TYPE_CODE },
 					],
 				},
-		status: lib.status ?? "draft",
+		status: lib.status ?? "active",
 	};
 }
 
@@ -106,6 +108,28 @@ function fhirParametersToRunResult(body: FhirParametersResponse): {
 	return { columns, rows };
 }
 
+function buildAllParamEntries(
+	library: SQLLibrary,
+	inheritedTypes: Map<string, string>,
+	paramValues: Record<string, string>,
+): Record<string, unknown>[] {
+	const types = new Map<string, string>();
+	for (const p of library.parameter ?? []) {
+		if (p.name) types.set(p.name, p.type ?? "string");
+	}
+	for (const [name, type] of inheritedTypes) {
+		if (!types.has(name)) types.set(name, type);
+	}
+	const entries: Record<string, unknown>[] = [];
+	for (const [name, type] of types) {
+		const raw = paramValues[name];
+		if (raw === undefined) continue;
+		const entry = buildParamValueEntry(name, type, raw);
+		if (entry) entries.push(entry);
+	}
+	return entries;
+}
+
 export function SQLQueryBuilderContent() {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -119,6 +143,15 @@ export function SQLQueryBuilderContent() {
 		setIsRunning,
 		paramValues,
 	} = useSQLQueryContext();
+
+	const { tree: resolvedTree } = useResolvedParameterTree(library);
+	const inheritedTypes = React.useMemo(() => {
+		const m = new Map<string, string>();
+		for (const p of resolvedTree.inherited) {
+			if (!m.has(p.name)) m.set(p.name, p.type ?? "string");
+		}
+		return m;
+	}, [resolvedTree.inherited]);
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
@@ -158,17 +191,11 @@ export function SQLQueryBuilderContent() {
 			setRunResult(null);
 			setIsRunning(true);
 			const payload = ensureSQLQueryShape(library);
-			const valueEntries = (payload.parameter ?? [])
-				.map((p) =>
-					p.name
-						? buildParamValueEntry(
-								p.name,
-								p.type ?? "string",
-								paramValues[p.name] ?? "",
-							)
-						: null,
-				)
-				.filter((e): e is Record<string, unknown> => e !== null);
+			const valueEntries = buildAllParamEntries(
+				payload,
+				inheritedTypes,
+				paramValues,
+			);
 			const topLevelParameters: Record<string, unknown>[] = [
 				{ name: "_format", valueCode: "fhir" },
 			];
@@ -228,6 +255,21 @@ export function SQLQueryBuilderContent() {
 			);
 		},
 	});
+
+	const runMutationRef = React.useRef(runMutation);
+	runMutationRef.current = runMutation;
+
+	React.useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+				e.preventDefault();
+				const m = runMutationRef.current;
+				if (!m.isPending) m.mutate();
+			}
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, []);
 
 	return (
 		<HSComp.ResizablePanelGroup

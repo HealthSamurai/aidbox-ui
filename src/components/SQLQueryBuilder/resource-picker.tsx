@@ -4,14 +4,28 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { SQL_QUERY_TYPE_CODE, SQL_QUERY_TYPE_SYSTEM } from "./types";
+
+type CandidateKind = "ViewDefinition" | "SQLQuery";
 
 type CandidateOption = {
 	url: string;
-	resourceType: "ViewDefinition" | "Library";
+	kind: CandidateKind;
 	id: string;
 	name?: string;
 	title?: string;
+	description?: string;
 };
+
+type RawCandidate = {
+	id: string;
+	url: string;
+	name?: string;
+	title?: string;
+	description?: string;
+};
+
+const SQL_QUERY_TYPE_TOKEN = `${SQL_QUERY_TYPE_SYSTEM}|${SQL_QUERY_TYPE_CODE}`;
 
 function useDebouncedValue<T>(value: T, delay: number): T {
 	const [v, setV] = React.useState(value);
@@ -28,7 +42,10 @@ function useCandidates(search: string) {
 	return useQuery<CandidateOption[]>({
 		queryKey: ["sqlquery-depends-on-candidates", debouncedSearch],
 		queryFn: async () => {
-			const baseParams: Array<[string, string]> = [["_count", "30"]];
+			const baseParams: Array<[string, string]> = [
+				["_count", "30"],
+				["url:missing", "false"],
+			];
 			if (debouncedSearch) baseParams.push(["_ilike", debouncedSearch]);
 			const [vd, lib] = await Promise.all([
 				client.request<Bundle>({
@@ -39,46 +56,34 @@ function useCandidates(search: string) {
 				client.request<Bundle>({
 					method: "GET",
 					url: "/fhir/Library",
-					params: baseParams,
+					params: [...baseParams, ["type", SQL_QUERY_TYPE_TOKEN]],
 				}),
 			]);
 			const out: CandidateOption[] = [];
 			if (vd.isOk()) {
 				for (const entry of vd.value.resource.entry ?? []) {
-					const r = entry.resource as {
-						id?: string;
-						url?: string;
-						name?: string;
-						title?: string;
-					};
-					if (r?.id) {
-						out.push({
-							url: r.url ?? `urn:sof:ViewDefinition:${r.id}`,
-							resourceType: "ViewDefinition",
-							id: r.id,
-							name: r.name,
-							title: r.title,
-						});
-					}
+					const r = entry.resource as unknown as RawCandidate;
+					out.push({
+						url: r.url,
+						kind: "ViewDefinition",
+						id: r.id,
+						name: r.name,
+						title: r.title,
+						description: r.description,
+					});
 				}
 			}
 			if (lib.isOk()) {
 				for (const entry of lib.value.resource.entry ?? []) {
-					const r = entry.resource as {
-						id?: string;
-						url?: string;
-						name?: string;
-						title?: string;
-					};
-					if (r?.id) {
-						out.push({
-							url: r.url ?? `urn:sof:Library:${r.id}`,
-							resourceType: "Library",
-							id: r.id,
-							name: r.name,
-							title: r.title,
-						});
-					}
+					const r = entry.resource as unknown as RawCandidate;
+					out.push({
+						url: r.url,
+						kind: "SQLQuery",
+						id: r.id,
+						name: r.name,
+						title: r.title,
+						description: r.description,
+					});
 				}
 			}
 			return out;
@@ -123,23 +128,30 @@ export function ResourcePicker({
 					/>
 					<HSComp.CommandList>
 						<HSComp.CommandEmpty>No matches</HSComp.CommandEmpty>
-						{candidates.map((c) => (
-							<HSComp.CommandItem
-								key={c.url}
-								value={c.url}
-								onSelect={() => {
-									onChange(c.url);
-									setOpen(false);
-								}}
-							>
-								<div className="flex flex-col gap-0.5">
-									<span>{c.name || c.id}</span>
-									<span className="font-mono text-xs text-text-tertiary">
-										{c.url}
-									</span>
-								</div>
-							</HSComp.CommandItem>
-						))}
+						{candidates.map((c) => {
+							const label = c.title || c.name || c.id;
+							const secondary = c.description || c.url;
+							return (
+								<HSComp.CommandItem
+									key={c.url}
+									value={c.url}
+									onSelect={() => {
+										onChange(c.url);
+										setOpen(false);
+									}}
+								>
+									<div className="flex flex-col gap-0.5 min-w-0 w-full">
+										<span className="typo-label-tiny text-text-tertiary">
+											{c.kind}
+										</span>
+										<span className="truncate">{label}</span>
+										<span className="font-mono text-xs text-text-tertiary truncate">
+											{secondary}
+										</span>
+									</div>
+								</HSComp.CommandItem>
+							);
+						})}
 					</HSComp.CommandList>
 				</HSComp.Command>
 			</HSComp.PopoverContent>

@@ -4,9 +4,13 @@ import {
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import { Plus, X } from "lucide-react";
+import { AlertTriangle, Link, Plus, X } from "lucide-react";
 import * as React from "react";
 import { useSQLQueryContext } from "./context";
+import {
+	type ResolvedParameter,
+	useResolvedParameterTree,
+} from "./resolve-tree";
 import { ResourcePicker } from "./resource-picker";
 import { SqlEditor } from "./sql-editor";
 import {
@@ -19,19 +23,21 @@ import {
 type ItemMeta = {
 	type:
 		| "properties"
-		| "name"
+		| "title"
+		| "description"
 		| "url"
-		| "status"
 		| "depends-on"
 		| "depends-on-value"
 		| "depends-on-add"
 		| "parameter"
 		| "parameter-value"
+		| "parameter-inherited"
 		| "parameter-add"
 		| "sql"
 		| "sql-value";
 	dependsOnIndex?: number;
 	parameterIndex?: number;
+	inheritedIndex?: number;
 };
 
 function InputView({
@@ -40,12 +46,14 @@ function InputView({
 	onChange,
 	className,
 	invalid,
+	disabled,
 }: {
 	placeholder: string;
 	value?: string;
 	onChange?: (value: string) => void;
 	className?: string;
 	invalid?: boolean;
+	disabled?: boolean;
 }) {
 	const [localValue, setLocalValue] = React.useState(value ?? "");
 
@@ -67,7 +75,8 @@ function InputView({
 
 	return (
 		<HSComp.Input
-			className={`h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary ${invalid ? "ring-1 ring-border-error rounded-md" : ""} ${className ?? ""}`}
+			disabled={disabled}
+			className={`h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary disabled:cursor-not-allowed ${invalid ? "ring-1 ring-border-error rounded-md" : ""} ${className ?? ""}`}
 			placeholder={placeholder}
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
@@ -103,12 +112,109 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 			className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
 			onClick={onLabelClickFn}
 		>
-			{metaType === "depends-on-value"
-				? "depends-on"
-				: metaType === "parameter-value"
-					? "parameter"
-					: metaType}
+			{metaType === "depends-on"
+				? "Dependencies"
+				: metaType === "parameter"
+					? "Parameters"
+					: metaType === "depends-on-value"
+						? "depends-on"
+						: metaType === "parameter-value" ||
+								metaType === "parameter-inherited"
+							? "parameter"
+							: metaType}
 		</button>
+	);
+}
+
+function InheritedParameterRow({
+	entry,
+	hasConflict,
+}: {
+	entry: ResolvedParameter;
+	hasConflict: boolean;
+}) {
+	return (
+		<div className="flex w-full items-center gap-2">
+			<div className="w-44 shrink-0 cursor-not-allowed">
+				<InputView
+					disabled
+					placeholder="name"
+					value={entry.name}
+					className="font-mono text-xs"
+				/>
+			</div>
+			<div className="w-36 cursor-not-allowed">
+				<HSComp.Select value={entry.type ?? "string"} disabled>
+					<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
+						<HSComp.SelectValue />
+					</HSComp.SelectTrigger>
+					<HSComp.SelectContent>
+						{FHIR_PARAMETER_TYPES.map((t) => (
+							<HSComp.SelectItem key={t} value={t}>
+								{t}
+							</HSComp.SelectItem>
+						))}
+					</HSComp.SelectContent>
+				</HSComp.Select>
+			</div>
+			<InheritedSourceTooltip
+				sources={entry.sources}
+				hasConflict={hasConflict}
+			/>
+		</div>
+	);
+}
+
+function InheritedSourceTooltip({
+	sources,
+	hasConflict,
+}: {
+	sources: ResolvedParameter["sources"];
+	hasConflict: boolean;
+}) {
+	return (
+		<HSComp.Tooltip delayDuration={250}>
+			<HSComp.TooltipTrigger asChild>
+				<span
+					className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+						hasConflict ? "text-text-error-primary" : "text-text-link"
+					}`}
+				>
+					{hasConflict ? <AlertTriangle size={14} /> : <Link size={14} />}
+				</span>
+			</HSComp.TooltipTrigger>
+			<HSComp.TooltipContent
+				side="bottom"
+				align="start"
+				className="max-w-md p-0 bg-bg-primary text-text-primary border border-border-primary shadow-md"
+			>
+				<div className="flex flex-col">
+					{hasConflict && (
+						<div className="px-3 py-2 text-xs text-text-error-primary border-b border-border-primary">
+							Type conflict across sources
+						</div>
+					)}
+					{sources.map((s, i) => (
+						<div
+							key={`${s.libraryId ?? s.canonical}-${i}`}
+							className={`flex flex-col gap-0.5 px-3 py-2 min-w-0 ${
+								i > 0 ? "border-t border-border-primary" : ""
+							}`}
+						>
+							<span className="typo-label-tiny text-text-tertiary">
+								SQLQuery
+							</span>
+							<span className="truncate">
+								{s.libraryTitle || s.libraryName || s.libraryId || s.canonical}
+							</span>
+							<span className="font-mono text-xs text-text-tertiary truncate">
+								{s.libraryDescription || s.canonical}
+							</span>
+						</div>
+					))}
+				</div>
+			</HSComp.TooltipContent>
+		</HSComp.Tooltip>
 	);
 }
 
@@ -123,12 +229,31 @@ export function PropertiesTree() {
 
 	const parameters = library.parameter ?? [];
 
+	const { tree: resolvedTree } = useResolvedParameterTree(library);
+
+	const ownNames = React.useMemo(
+		() =>
+			new Set(parameters.map((p) => p.name).filter((n): n is string => !!n)),
+		[parameters],
+	);
+	const inheritedOnly = React.useMemo(
+		() => resolvedTree.inherited.filter((p) => !ownNames.has(p.name)),
+		[resolvedTree.inherited, ownNames],
+	);
+	const conflictNames = React.useMemo(
+		() => new Set(resolvedTree.conflicts.map((c) => c.name)),
+		[resolvedTree.conflicts],
+	);
+
 	const tree: Record<string, TreeViewItem<ItemMeta>> = React.useMemo(() => {
 		const dependsOnChildren = dependsOn.map(
 			(_, i) => `_depends_on_${i}` as const,
 		);
 		const parameterChildren = parameters.map(
 			(_, i) => `_parameter_${i}` as const,
+		);
+		const inheritedChildren = inheritedOnly.map(
+			(_, i) => `_parameter_inherited_${i}` as const,
 		);
 		const out: Record<string, TreeViewItem<ItemMeta>> = {
 			root: {
@@ -138,11 +263,11 @@ export function PropertiesTree() {
 			_properties: {
 				name: "_properties",
 				meta: { type: "properties" },
-				children: ["_name", "_url", "_status"],
+				children: ["_url", "_title", "_description"],
 			},
-			_name: { name: "_name", meta: { type: "name" } },
 			_url: { name: "_url", meta: { type: "url" } },
-			_status: { name: "_status", meta: { type: "status" } },
+			_title: { name: "_title", meta: { type: "title" } },
+			_description: { name: "_description", meta: { type: "description" } },
 			_depends_on: {
 				name: "_depends_on",
 				meta: { type: "depends-on" },
@@ -155,7 +280,11 @@ export function PropertiesTree() {
 			_parameter: {
 				name: "_parameter",
 				meta: { type: "parameter" },
-				children: [...parameterChildren, "_parameter_add"],
+				children: [
+					...inheritedChildren,
+					...parameterChildren,
+					"_parameter_add",
+				],
 			},
 			_parameter_add: {
 				name: "_parameter_add",
@@ -180,8 +309,14 @@ export function PropertiesTree() {
 				meta: { type: "parameter-value", parameterIndex: i },
 			};
 		});
+		inheritedOnly.forEach((_, i) => {
+			out[`_parameter_inherited_${i}`] = {
+				name: `_parameter_inherited_${i}`,
+				meta: { type: "parameter-inherited", inheritedIndex: i },
+			};
+		});
 		return out;
-	}, [dependsOn, parameters]);
+	}, [dependsOn, parameters, inheritedOnly]);
 
 	const [expandedItems, setExpandedItems] = React.useState<string[]>([
 		"_properties",
@@ -190,14 +325,14 @@ export function PropertiesTree() {
 		"_sql",
 	]);
 
-	const updateName = (value: string) => {
-		updateLibrary((lib) => ({ ...lib, name: value || undefined }));
+	const updateTitle = (value: string) => {
+		updateLibrary((lib) => ({ ...lib, title: value || undefined }));
 	};
 	const updateUrl = (value: string) => {
 		updateLibrary((lib) => ({ ...lib, url: value || undefined }));
 	};
-	const updateStatus = (value: "draft" | "active" | "retired" | "unknown") => {
-		updateLibrary((lib) => ({ ...lib, status: value }));
+	const updateDescription = (value: string) => {
+		updateLibrary((lib) => ({ ...lib, description: value || undefined }));
 	};
 
 	const replaceDependsOn = (next: SQLDependsOn[]) => {
@@ -272,53 +407,42 @@ export function PropertiesTree() {
 			case "parameter":
 			case "sql":
 				return <div>{labelView(item)}</div>;
-			case "name":
-				return (
-					<div className="flex w-full items-center gap-3">
-						<div className="w-20 shrink-0">{labelView(item)}</div>
-						<div className="w-[50%]">
-							<InputView
-								placeholder="Library name"
-								value={library.name}
-								onChange={updateName}
-							/>
-						</div>
-					</div>
-				);
 			case "url":
 				return (
-					<div className="flex w-full items-center gap-3">
-						<div className="w-20 shrink-0">{labelView(item)}</div>
+					<div className="flex w-full items-center gap-2">
+						<div className="w-44 shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
-								placeholder="Canonical URL"
-								value={(library as { url?: string }).url}
+								placeholder="Canonical identifier for this library, represented as a URI (globally unique)"
+								value={library.url}
 								onChange={updateUrl}
 							/>
 						</div>
 					</div>
 				);
-			case "status":
+			case "title":
 				return (
-					<div className="flex w-full items-center gap-3">
-						<div className="w-20 shrink-0">{labelView(item)}</div>
-						<div className="w-32">
-							<HSComp.Select
-								value={library.status ?? ""}
-								onValueChange={(v) =>
-									updateStatus(v as "draft" | "active" | "retired" | "unknown")
-								}
-							>
-								<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
-									<HSComp.SelectValue placeholder="Select status" />
-								</HSComp.SelectTrigger>
-								<HSComp.SelectContent>
-									<HSComp.SelectItem value="draft">draft</HSComp.SelectItem>
-									<HSComp.SelectItem value="active">active</HSComp.SelectItem>
-									<HSComp.SelectItem value="retired">retired</HSComp.SelectItem>
-									<HSComp.SelectItem value="unknown">unknown</HSComp.SelectItem>
-								</HSComp.SelectContent>
-							</HSComp.Select>
+					<div className="flex w-full items-center gap-2">
+						<div className="w-44 shrink-0">{labelView(item)}</div>
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Name for this library (human friendly)"
+								value={library.title}
+								onChange={updateTitle}
+							/>
+						</div>
+					</div>
+				);
+			case "description":
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-44 shrink-0">{labelView(item)}</div>
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Natural language description of the library"
+								value={library.description}
+								onChange={updateDescription}
+							/>
 						</div>
 					</div>
 				);
@@ -418,6 +542,17 @@ export function PropertiesTree() {
 							</span>
 						</HSComp.Button>
 					</div>
+				);
+			}
+			case "parameter-inherited": {
+				const idx = meta?.inheritedIndex ?? -1;
+				const entry = inheritedOnly[idx];
+				if (!entry) return null;
+				return (
+					<InheritedParameterRow
+						entry={entry}
+						hasConflict={conflictNames.has(entry.name)}
+					/>
 				);
 			}
 			case "parameter-add":

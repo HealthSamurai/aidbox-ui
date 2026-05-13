@@ -4,6 +4,8 @@ export type SQLLibrary = Resource & {
 	resourceType: "Library";
 	name?: string;
 	title?: string;
+	description?: string;
+	url?: string;
 	status?: "draft" | "active" | "retired" | "unknown";
 	meta?: { profile?: string[] };
 	type?: { coding?: { system?: string; code?: string }[] };

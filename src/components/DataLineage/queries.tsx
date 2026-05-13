@@ -285,7 +285,7 @@ export function DataLineageQueries() {
 					}}
 					className="text-text-link hover:underline"
 				>
-					{row.name || row.id}
+					{row.id}
 				</Link>
 			),
 		},

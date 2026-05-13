@@ -12,7 +12,7 @@ const initialResource: Resource = {
 	meta: {
 		profile: ["https://sql-on-fhir.org/ig/StructureDefinition/SQLQuery"],
 	},
-	status: "draft",
+	status: "active",
 	type: {
 		coding: [
 			{
