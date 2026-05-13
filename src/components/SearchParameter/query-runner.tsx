@@ -276,11 +276,18 @@ type Modifier = (typeof ALL_MODIFIERS)[number];
  * in the Debug tool so users can't pick a modifier the server will reject.
  *
  * Source: https://hl7.org/fhir/R4/search.html#modifiers (per-type tables).
- * `null` (no type set) intentionally returns an empty list — we can't
- * narrow without knowing the type, and the spec doesn't grant a default.
+ * Notes:
+ *   - `:missing` is allowed on every type *except* composite.
+ *   - `string` also accepts `:text` (advanced text handling; server support
+ *     varies, but it's part of the type's modifier list per spec).
+ *   - Reference `[type]` modifier (e.g. `:Patient`) is dynamic — any
+ *     resource type name — so we don't enumerate it here.
+ *   - `:iterate` is only meaningful on `_include`/`_revinclude` chains,
+ *     not a value-side modifier; intentionally absent.
+ *   - `null` (no type set) returns an empty list.
  */
 const MODIFIERS_BY_TYPE: Record<string, readonly Modifier[]> = {
-	string: ["missing", "exact", "contains"],
+	string: ["missing", "exact", "contains", "text"],
 	token: [
 		"missing",
 		"text",
@@ -296,8 +303,8 @@ const MODIFIERS_BY_TYPE: Record<string, readonly Modifier[]> = {
 	number: ["missing"],
 	date: ["missing"],
 	quantity: ["missing"],
-	composite: ["missing"],
 	special: ["missing"],
+	composite: [],
 };
 
 async function executeRequest(
