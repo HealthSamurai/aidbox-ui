@@ -14,43 +14,74 @@ import type { SearchParamIndex } from "./types";
 const formatSubtype = (s: string | null) => (s == null ? "(default)" : s);
 
 /**
- * Human-readable explanation of each FHIR/Aidbox search modifier and numeric
- * prefix. Keys are the same symbols that `suggest-index` reports in `:subtypes`
- * (kebab-case, null → default). Used to demystify cards in the Indexes tab.
- * Add new entries here as new modifiers are surfaced by the suggester.
+ * Example value strings per modifier — pasted after `=` in the URL. Concrete
+ * payloads make it obvious what the modifier actually does at the wire
+ * level. Anything not listed gets a generic `value` placeholder.
+ *
+ * Modifier semantics: https://hl7.org/fhir/R4/search.html#modifiers
  */
-const SUBTYPE_DESCRIPTIONS: Record<string, string> = {
-	"(default)":
-		"Default match: starts-with for strings, exact for tokens, equality for everything else.",
-	eq: "Equality. For strings, exact match; for numbers/dates, identical value.",
-	ne: "Not equal.",
-	exact: "Exact, case- and accent-sensitive string match.",
-	starts: "Case-insensitive starts-with match (string).",
-	sw: "Same as `:starts` — case-insensitive starts-with (string).",
-	ends: "Case-insensitive ends-with match (string).",
-	ew: "Same as `:ends` — case-insensitive ends-with (string).",
-	contains:
-		"Case-insensitive contains-anywhere match (string). Powered by gin_trgm_ops.",
-	co: "Same as `:contains`.",
-	text: "Free-text search across multiple element paths of the resource.",
-	otherwise: "Fallback path when no modifier matches.",
-	not: "Excludes matches with the given value (token).",
-	"not-in": "Excludes codes that belong to the given ValueSet (token).",
-	in: "Limits results to codes in the given ValueSet (token).",
-	above: "Token/reference value is an ancestor of the given code/reference.",
-	below: "Token/reference value is a descendant of the given code/reference.",
-	"of-type": "Token typed-match: system + code + value (e.g. identifier).",
-	identifier: "Match reference by `Identifier` instead of literal reference.",
-	type: "Match reference by `Reference.type`.",
-	missing: "Matches resources where the element is missing or present.",
-	lt: "Numeric/date prefix: less than.",
-	le: "Numeric/date prefix: less than or equal.",
-	gt: "Numeric/date prefix: greater than.",
-	ge: "Numeric/date prefix: greater than or equal.",
-	ap: "Numeric/date prefix: approximately equal (within 10%).",
-	sa: "Date prefix: starts after.",
-	eb: "Date prefix: ends before.",
+const SUBTYPE_VALUE_EXAMPLES: Record<string, string> = {
+	"(default)": "value",
+	eq: "value",
+	ne: "value",
+	exact: "Smith",
+	starts: "Sm",
+	sw: "Sm",
+	ends: "ith",
+	ew: "ith",
+	contains: "ith",
+	co: "ith",
+	text: "diabetes",
+	otherwise: "value",
+	not: "value",
+	"not-in": "http://hl7.org/fhir/ValueSet/example",
+	in: "http://hl7.org/fhir/ValueSet/example",
+	above: "http://snomed.info/sct|73211009",
+	below: "http://snomed.info/sct|73211009",
+	"of-type": "http://terminology.hl7.org/CodeSystem/v2-0203|MR|446053",
+	identifier: "http://acme.org/mrn|446053",
+	type: "Patient",
+	missing: "true",
+	lt: "lt100",
+	le: "le100",
+	gt: "gt100",
+	ge: "ge100",
+	ap: "ap100",
+	sa: "sa2020-01-01",
+	eb: "eb2020-01-01",
 };
+
+/**
+ * Build the example request URL for a given (base, code, subtype) tuple.
+ * Default subtype renders without the colon segment (`?code=value`); any
+ * named modifier appends `:modifier`. Value placeholder comes from
+ * `SUBTYPE_VALUE_EXAMPLES`; falls back to `value`.
+ *
+ * The `lt` / `ge` / `ap` etc. entries above are date/number *prefixes*
+ * (typed inline with the value), not modifiers. They land here too so
+ * indexes that the suggester reports as covering them get an example.
+ */
+const PREFIX_SUBTYPES = new Set([
+	"lt",
+	"le",
+	"gt",
+	"ge",
+	"ap",
+	"sa",
+	"eb",
+	"ne",
+	"eq",
+]);
+
+function subtypeExample(base: string, code: string, subtype: string): string {
+	const example = SUBTYPE_VALUE_EXAMPLES[subtype] ?? "value";
+	if (subtype === "(default)") return `GET /fhir/${base}?${code}=${example}`;
+	if (PREFIX_SUBTYPES.has(subtype)) {
+		// Prefix goes on the value, not the param name.
+		return `GET /fhir/${base}?${code}=${example}`;
+	}
+	return `GET /fhir/${base}?${code}:${subtype}=${example}`;
+}
 
 const SqlRow = ({ definition }: { definition: string }) => {
 	const formatted = React.useMemo(
@@ -370,18 +401,18 @@ export const IndexesTab = ({
 															<dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
 																{r.subtypes.map((st) => {
 																	const label = formatSubtype(st);
-																	const desc = SUBTYPE_DESCRIPTIONS[label];
+																	const example = subtypeExample(
+																		r.base,
+																		code,
+																		label,
+																	);
 																	return (
 																		<React.Fragment key={label}>
 																			<dt className="font-mono text-text-secondary">
 																				{label}
 																			</dt>
-																			<dd className="text-text-secondary">
-																				{desc ?? (
-																					<span className="text-text-tertiary">
-																						(no description)
-																					</span>
-																				)}
+																			<dd className="font-mono text-text-secondary break-all">
+																				{example}
 																			</dd>
 																		</React.Fragment>
 																	);

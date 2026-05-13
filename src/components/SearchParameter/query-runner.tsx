@@ -256,7 +256,7 @@ function buildPrefix(base?: string, code?: string): string | null {
 // Prefixes (eq/ne/gt/lt/ge/le/sa/eb/ap) live on the value side and are typed
 // inline by the user; only modifiers need a dedicated picker.
 const NO_MODIFIER = "__none";
-const MODIFIERS = [
+const ALL_MODIFIERS = [
 	"not",
 	"missing",
 	"exact",
@@ -269,7 +269,36 @@ const MODIFIERS = [
 	"above",
 	"below",
 ] as const;
-type Modifier = (typeof MODIFIERS)[number];
+type Modifier = (typeof ALL_MODIFIERS)[number];
+
+/**
+ * Which modifiers the FHIR R4 spec allows per SP `type`. Drives the picker
+ * in the Debug tool so users can't pick a modifier the server will reject.
+ *
+ * Source: https://hl7.org/fhir/R4/search.html#modifiers (per-type tables).
+ * `null` (no type set) intentionally returns an empty list — we can't
+ * narrow without knowing the type, and the spec doesn't grant a default.
+ */
+const MODIFIERS_BY_TYPE: Record<string, readonly Modifier[]> = {
+	string: ["missing", "exact", "contains"],
+	token: [
+		"missing",
+		"text",
+		"not",
+		"above",
+		"below",
+		"in",
+		"not-in",
+		"of-type",
+	],
+	reference: ["missing", "identifier", "above", "below"],
+	uri: ["missing", "above", "below"],
+	number: ["missing"],
+	date: ["missing"],
+	quantity: ["missing"],
+	composite: ["missing"],
+	special: ["missing"],
+};
 
 async function executeRequest(
 	path: string,
@@ -365,6 +394,7 @@ export const QueryRunner = ({
 	client,
 	bases,
 	code,
+	spType,
 	onClose,
 	disabledReason,
 	staleWarning,
@@ -372,6 +402,12 @@ export const QueryRunner = ({
 	client: AidboxClientR5;
 	bases: string[];
 	code?: string;
+	/**
+	 * SP `type` (string|token|reference|…). Drives the modifier picker —
+	 * undefined hides the picker entirely (no type → no spec-defined
+	 * modifiers).
+	 */
+	spType?: string;
 	onClose?: () => void;
 	/**
 	 * When set, the Send button is disabled and a tooltip explains why.
@@ -385,6 +421,9 @@ export const QueryRunner = ({
 	 */
 	staleWarning?: string;
 }) => {
+	const allowedModifiers: readonly Modifier[] = spType
+		? (MODIFIERS_BY_TYPE[spType] ?? [])
+		: [];
 	// Pick which base the request runs against. Multi-base SPs (e.g.
 	// `clinical-encounter`) need this — otherwise the user is locked to the
 	// first base in the array.
@@ -408,6 +447,12 @@ export const QueryRunner = ({
 
 	const [value, setValue] = React.useState<string>("");
 	const [modifier, setModifier] = React.useState<Modifier | "">("");
+	// If the SP type changes such that the current modifier is no longer
+	// spec-compliant, drop it — otherwise the URL preview keeps showing a
+	// `:contains` after the SP became a `number`.
+	React.useEffect(() => {
+		if (modifier && !allowedModifiers.includes(modifier)) setModifier("");
+	}, [modifier, allowedModifiers]);
 	const [freePath, setFreePath] = React.useState<string>("/fhir/Patient");
 	const [headers] = React.useState<Header[]>(DEFAULT_HEADERS);
 	const [response, setResponse] = React.useState<ResponseData | null>(null);
@@ -496,31 +541,33 @@ export const QueryRunner = ({
 						<span className="text-text-secondary typo-code select-none shrink-0">
 							?{code}
 						</span>
-						<HSComp.Select
-							value={modifier === "" ? NO_MODIFIER : modifier}
-							onValueChange={(v) =>
-								setModifier(v === NO_MODIFIER ? "" : (v as Modifier))
-							}
-						>
-							<HSComp.SelectTrigger
-								aria-label="Modifier"
-								className="!w-auto border-none shadow-none h-7 px-1 typo-code text-text-secondary bg-transparent focus-visible:ring-0 hover:bg-bg-tertiary rounded-sm gap-0.5 shrink-0 [&_[data-slot=select-value]]:gap-0 [&[data-placeholder]]:text-text-tertiary"
+						{allowedModifiers.length > 0 && (
+							<HSComp.Select
+								value={modifier === "" ? NO_MODIFIER : modifier}
+								onValueChange={(v) =>
+									setModifier(v === NO_MODIFIER ? "" : (v as Modifier))
+								}
 							>
-								<HSComp.SelectValue>
-									{modifier ? `:${modifier}` : ""}
-								</HSComp.SelectValue>
-							</HSComp.SelectTrigger>
-							<HSComp.SelectContent>
-								<HSComp.SelectItem value={NO_MODIFIER}>
-									<span className="text-text-tertiary">(no modifier)</span>
-								</HSComp.SelectItem>
-								{MODIFIERS.map((m) => (
-									<HSComp.SelectItem key={m} value={m}>
-										:{m}
+								<HSComp.SelectTrigger
+									aria-label="Modifier"
+									className="!w-auto border-none shadow-none h-7 px-1 typo-code text-text-secondary bg-transparent focus-visible:ring-0 hover:bg-bg-tertiary rounded-sm gap-0.5 shrink-0 [&_[data-slot=select-value]]:gap-0 [&[data-placeholder]]:text-text-tertiary"
+								>
+									<HSComp.SelectValue>
+										{modifier ? `:${modifier}` : ""}
+									</HSComp.SelectValue>
+								</HSComp.SelectTrigger>
+								<HSComp.SelectContent>
+									<HSComp.SelectItem value={NO_MODIFIER}>
+										<span className="text-text-tertiary">(no modifier)</span>
 									</HSComp.SelectItem>
-								))}
-							</HSComp.SelectContent>
-						</HSComp.Select>
+									{allowedModifiers.map((m) => (
+										<HSComp.SelectItem key={m} value={m}>
+											:{m}
+										</HSComp.SelectItem>
+									))}
+								</HSComp.SelectContent>
+							</HSComp.Select>
+						)}
 						<span className="text-text-secondary typo-code select-none shrink-0">
 							=
 						</span>

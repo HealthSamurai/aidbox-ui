@@ -687,6 +687,7 @@ export const SearchParameterBuilderContent = ({
 							client={client}
 							bases={sp.base ?? []}
 							code={sp.code}
+							spType={sp.type}
 							onClose={() => setIsQueryToolOpen(false)}
 							disabledReason={
 								isPersisted
