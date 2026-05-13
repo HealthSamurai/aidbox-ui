@@ -27,6 +27,10 @@ export function formatBytes(n: number | null | undefined): string {
 	return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[u]}`;
 }
 
+function pad2(n: number): string {
+	return n < 10 ? `0${n}` : String(n);
+}
+
 export function formatRelativeTime(iso: string | null | undefined): string {
 	if (!iso) return "—";
 	const t = Date.parse(iso);
@@ -39,7 +43,12 @@ export function formatRelativeTime(iso: string | null | undefined): string {
 	if (min < 60) return `${min}m ago`;
 	const hr = Math.floor(min / 60);
 	if (hr < 24) return `${hr}h ago`;
-	const day = Math.floor(hr / 24);
-	if (day < 30) return `${day}d ago`;
-	return new Date(t).toISOString().slice(0, 10);
+	// ≥ 24h: switch to an absolute timestamp in local time. "5h ago" was
+	// useful while the event was in living memory; once you cross a day the
+	// reader needs a concrete date.
+	const d = new Date(t);
+	return (
+		`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
+		`${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+	);
 }
