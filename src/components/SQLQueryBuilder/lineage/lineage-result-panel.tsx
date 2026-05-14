@@ -1,16 +1,16 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
 import * as React from "react";
-import { DataTableFooter } from "../data-table/footer";
-import { EmptyState } from "../empty-state";
-import { useSQLQueryContext } from "./context";
+import { DataTableFooter } from "../../data-table/footer";
+import { EmptyState } from "../../empty-state";
+import { useLineageRunContext } from "./run-context";
 
 const DEFAULT_PAGE_SIZE = 30;
 
 function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
-	const { runResult, runError, isRunning } = useSQLQueryContext();
+	const { runResult, runError, runningNodeId } = useLineageRunContext();
 
-	if (isRunning) {
+	if (runningNodeId) {
 		return (
 			<div className="flex items-center justify-center h-full text-text-secondary">
 				Running…
@@ -31,7 +31,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 		return (
 			<EmptyState
 				title="No results yet"
-				description="Click Run to execute the query"
+				description="Click Run on a node to execute it"
 				grayscale
 			/>
 		);
@@ -81,7 +81,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 	);
 }
 
-export function ResultPanel({
+export function LineageResultPanel({
 	isMaximized,
 	onToggleMaximize,
 	onToggleCollapse,
@@ -90,7 +90,7 @@ export function ResultPanel({
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
 }) {
-	const { runResult } = useSQLQueryContext();
+	const { runResult } = useLineageRunContext();
 	const [page, setPage] = React.useState(1);
 	const [pageSize, setPageSize] = React.useState(DEFAULT_PAGE_SIZE);
 	const total = runResult?.rows.length ?? 0;

@@ -19,6 +19,7 @@ import {
 	type SQLDependsOn,
 	type SQLParameter,
 } from "./types";
+import { addUrlToHistory, readUrlHistory } from "./url-history";
 
 type ItemMeta = {
 	type:
@@ -49,6 +50,9 @@ function InputView({
 	disabled,
 	leftSlot,
 	dashed,
+	name,
+	autoComplete,
+	list,
 }: {
 	placeholder: string;
 	value?: string;
@@ -58,6 +62,9 @@ function InputView({
 	disabled?: boolean;
 	leftSlot?: React.ReactNode;
 	dashed?: boolean;
+	name?: string;
+	autoComplete?: string;
+	list?: string;
 }) {
 	const [localValue, setLocalValue] = React.useState(value ?? "");
 
@@ -80,7 +87,7 @@ function InputView({
 	const borderCls = dashed
 		? invalid
 			? "border border-dashed border-border-error focus:border-border-error focus-visible:border-border-error hover:border-border-error"
-			: "border border-dashed border-border-secondary"
+			: "border border-dashed border-border-secondary hover:border-border-secondary"
 		: "border-none";
 	const ringCls = invalid
 		? dashed
@@ -92,6 +99,9 @@ function InputView({
 		<HSComp.Input
 			disabled={disabled}
 			leftSlot={leftSlot}
+			name={name}
+			autoComplete={autoComplete}
+			list={list}
 			className={`h-7 py-1 ${paddingCls} bg-bg-primary ${borderCls} hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary disabled:cursor-not-allowed ${ringCls} ${className ?? ""}`}
 			placeholder={placeholder}
 			value={localValue}
@@ -163,14 +173,14 @@ function ParamValueField({
 	if (type === "boolean") {
 		return (
 			<div
-				className={`flex-1 min-w-0 flex items-center gap-2 ${missing ? "ring-1 ring-border-error rounded-md" : ""}`}
+				className={`flex-1 min-w-0 max-w-[200px] flex items-center gap-2 ${missing ? "ring-1 ring-border-error rounded-md" : ""}`}
 				onClick={(e) => e.stopPropagation()}
 				onMouseDown={(e) => e.stopPropagation()}
 				onKeyDown={(e) => e.stopPropagation()}
 				role="presentation"
 				{...wrapperProps}
 			>
-				<Play size={12} className="text-text-tertiary shrink-0" />
+				<Play size={12} className="text-text-link shrink-0" />
 				<HSComp.Switch
 					checked={value === "true"}
 					onCheckedChange={(c) => onChange(c ? "true" : "false")}
@@ -179,10 +189,10 @@ function ParamValueField({
 		);
 	}
 	return (
-		<div className="flex-1 min-w-0 relative" {...wrapperProps}>
+		<div className="flex-1 min-w-0 max-w-[200px] relative" {...wrapperProps}>
 			<Play
 				size={12}
-				className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none z-10"
+				className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-link pointer-events-none z-10"
 			/>
 			<InputView
 				placeholder="RUN parameter value"
@@ -262,7 +272,7 @@ function InheritedParameterRow({
 						>
 							<InputView
 								disabled
-								placeholder="name"
+								placeholder="Name"
 								value={entry.name}
 								className="font-mono text-xs"
 							/>
@@ -300,15 +310,13 @@ function InheritedParameterRow({
 }
 
 export function PropertiesTree() {
-	const {
-		library,
-		updateLibrary,
-		quietUpdateLibrary,
-		paramValues,
-		setParamValue,
-		missingParams,
-	} = useSQLQueryContext();
+	const { library, updateLibrary, paramValues, setParamValue, missingParams } =
+		useSQLQueryContext();
 	const treeContainerRef = React.useRef<HTMLDivElement>(null);
+
+	React.useEffect(() => {
+		addUrlToHistory(library.url);
+	}, [library.url]);
 	const firstMissingName = React.useMemo(() => {
 		for (const n of missingParams) {
 			if ((paramValues[n] ?? "") === "") return n;
@@ -348,35 +356,6 @@ export function PropertiesTree() {
 	);
 
 	const parameters = library.parameter ?? [];
-
-	React.useEffect(() => {
-		quietUpdateLibrary((lib) => {
-			const list = (lib.relatedArtifact ?? []).filter(
-				(ra) => ra.type === "depends-on",
-			);
-			const last = list[list.length - 1];
-			if (last && !last.label && !last.resource) return lib;
-			return {
-				...lib,
-				relatedArtifact: [
-					...(lib.relatedArtifact ?? []),
-					{ type: "depends-on", label: "", resource: "" },
-				],
-			};
-		});
-	}, [quietUpdateLibrary]);
-
-	React.useEffect(() => {
-		quietUpdateLibrary((lib) => {
-			const list = lib.parameter ?? [];
-			const last = list[list.length - 1];
-			if (last && !last.name) return lib;
-			return {
-				...lib,
-				parameter: [...list, { use: "in", name: "" }],
-			};
-		});
-	}, [quietUpdateLibrary]);
 
 	const { tree: resolvedTree } = useResolvedParameterTree(library);
 
@@ -586,6 +565,9 @@ export function PropertiesTree() {
 						<div className="w-44 shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
+								name="sqlquery-library-url"
+								autoComplete="on"
+								list="sqlquery-library-url-history"
 								placeholder="Canonical identifier for this library, represented as a URI (globally unique)"
 								value={library.url}
 								onChange={updateUrl}
@@ -640,7 +622,7 @@ export function PropertiesTree() {
 								className="font-mono text-xs"
 							/>
 						</div>
-						<div className="flex-1 min-w-0">
+						<div className="flex-1 min-w-0 max-w-[500px]">
 							<ResourcePicker
 								value={entry.resource}
 								onChange={(ref) => updateDependsOnResource(idx, ref)}
@@ -686,7 +668,7 @@ export function PropertiesTree() {
 					>
 						<div className="w-44 shrink-0">
 							<InputView
-								placeholder="name"
+								placeholder="Name"
 								value={entry.name ?? ""}
 								onChange={(v) => updateParameterName(idx, v)}
 								className="font-mono text-xs"
@@ -698,7 +680,7 @@ export function PropertiesTree() {
 								onValueChange={(v) => updateParameterType(idx, v)}
 							>
 								<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
-									<HSComp.SelectValue placeholder="type" />
+									<HSComp.SelectValue placeholder="Type" />
 								</HSComp.SelectTrigger>
 								<HSComp.SelectContent>
 									{FHIR_PARAMETER_TYPES.map((t) => (
@@ -784,8 +766,15 @@ export function PropertiesTree() {
 		}
 	};
 
+	const urlHistory = readUrlHistory();
+
 	return (
 		<div ref={treeContainerRef}>
+			<datalist id="sqlquery-library-url-history">
+				{urlHistory.map((u) => (
+					<option key={u} value={u} />
+				))}
+			</datalist>
 			<TreeView
 				items={tree}
 				rootItemId="root"

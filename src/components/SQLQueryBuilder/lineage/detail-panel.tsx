@@ -1,7 +1,21 @@
 import * as HSComp from "@health-samurai/react-components";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Database, ExternalLink, FileCode2, Table, X } from "lucide-react";
-import type { LineageNodeData, ViewSelect } from "./types";
+import type * as React from "react";
+import { useAidboxClient } from "../../../AidboxClient";
+import {
+	extractIndexType,
+	fetchTableDetails,
+	formatColumnType,
+	formatRowCount,
+	type TableDetails,
+} from "../../db-console/tables-view";
+import type {
+	LineageNodeData,
+	ResourceTypeNodeData,
+	ViewSelect,
+} from "./types";
 
 function CloseButton({ onClose }: { onClose: () => void }) {
 	return (
@@ -95,6 +109,181 @@ function FhirPath({ value }: { value: string }) {
 	);
 }
 
+function TableSection({
+	title,
+	children,
+}: {
+	title: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="border-b border-border-secondary">
+			<div className="px-4 h-6 bg-bg-tertiary border-b border-border-secondary flex items-center">
+				<span className="typo-label-xs text-text-tertiary uppercase">
+					{title}
+				</span>
+			</div>
+			{children}
+		</div>
+	);
+}
+
+function ResourceTableInfo({ resourceType }: { resourceType: string }) {
+	const client = useAidboxClient();
+	const tableName = resourceType.toLowerCase();
+	const { data, isLoading, error } = useQuery<TableDetails>({
+		queryKey: ["lineage-resource-table-details", "public", tableName],
+		queryFn: () => fetchTableDetails(client, "public", tableName),
+	});
+
+	if (error) {
+		return (
+			<div className="px-4 py-2 typo-body-xs text-text-error-primary">
+				{error instanceof Error ? error.message : String(error)}
+			</div>
+		);
+	}
+
+	if (isLoading || !data) {
+		return (
+			<>
+				<TableSection title="Columns">
+					<div className="flex flex-col">
+						{Array.from({ length: 5 }, (_, i) => (
+							<div
+								key={`sk${String(i)}`}
+								className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+							>
+								<HSComp.Skeleton className="h-3 w-24" />
+								<HSComp.Skeleton className="h-3 w-16" />
+							</div>
+						))}
+					</div>
+				</TableSection>
+				<TableSection title="Indexes">
+					<div className="flex flex-col">
+						{Array.from({ length: 2 }, (_, i) => (
+							<div
+								key={`sk${String(i)}`}
+								className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+							>
+								<HSComp.Skeleton className="h-3 w-32" />
+								<HSComp.Skeleton className="h-3 w-12" />
+							</div>
+						))}
+					</div>
+				</TableSection>
+			</>
+		);
+	}
+
+	return (
+		<>
+			<TableSection title="Rows">
+				<div className="px-4 py-2">
+					<span className="typo-body-xs text-text-primary">
+						{formatRowCount(data.rowCount)}
+					</span>
+				</div>
+			</TableSection>
+			<TableSection title="Size">
+				<div className="flex flex-col">
+					<div className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary">
+						<span className="typo-body-xs text-text-tertiary">Table data</span>
+						<span className="typo-body-xs text-text-primary">
+							{data.tableSize}
+						</span>
+					</div>
+					<div className="flex items-center justify-between px-4 py-1.5">
+						<span className="typo-body-xs text-text-tertiary">Indexes</span>
+						<span className="typo-body-xs text-text-primary">
+							{data.indexesSize}
+						</span>
+					</div>
+				</div>
+			</TableSection>
+			<TableSection title="Columns">
+				{data.columns.length > 0 ? (
+					<div className="flex flex-col">
+						{data.columns.map((col) => (
+							<div
+								key={col.column_name}
+								className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+							>
+								<span className="typo-body-xs text-text-primary truncate">
+									{col.column_name}
+								</span>
+								<span className="typo-body-xs text-text-tertiary shrink-0 ml-2">
+									{formatColumnType(col)}
+									{col.is_nullable === "YES" && ", null"}
+								</span>
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="px-4 py-2 typo-body-xs text-text-disabled">
+						No columns
+					</div>
+				)}
+			</TableSection>
+			<TableSection title="Indexes">
+				{data.indexes.length > 0 ? (
+					<div className="flex flex-col">
+						{data.indexes.map((idx) => (
+							<div
+								key={idx.indexname}
+								className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+							>
+								<span className="typo-body-xs text-text-primary truncate">
+									{idx.indexname}
+								</span>
+								<span className="typo-body-xs text-text-tertiary shrink-0 ml-2">
+									{extractIndexType(idx.indexdef)}
+								</span>
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="px-4 py-2 typo-body-xs text-text-disabled">
+						No indexes
+					</div>
+				)}
+			</TableSection>
+		</>
+	);
+}
+
+function ResourceDetailContent({
+	data,
+	onClose,
+}: {
+	data: ResourceTypeNodeData;
+	onClose: () => void;
+}) {
+	return (
+		<div className="h-full overflow-auto flex flex-col bg-bg-primary">
+			<div className="p-4 flex flex-col gap-4">
+				<PanelHeader
+					icon={<Database size={14} />}
+					label="Resource"
+					color="text-text-success-primary"
+					onClose={onClose}
+				/>
+				<Field label="Resource type" value={data.resourceType} mono copyable />
+				<Link
+					to="/resource/$resourceType"
+					params={{ resourceType: data.resourceType }}
+					className="inline-flex items-center gap-1 text-text-link hover:underline text-sm w-fit"
+				>
+					<ExternalLink size={14} />
+					Open in Resource Browser
+				</Link>
+			</div>
+			<ResourceTableInfo resourceType={data.resourceType} />
+		</div>
+	);
+}
+
 function SelectTree({ node }: { node: ViewSelect }) {
 	return (
 		<div className="flex flex-col gap-1.5 border-l-2 border-border-secondary pl-3">
@@ -184,25 +373,7 @@ export function LineageDetailPanel({
 	onClose: () => void;
 }) {
 	if (data.kind === "resource-type") {
-		return (
-			<div className="h-full overflow-auto p-4 pb-20 flex flex-col gap-4 bg-bg-primary">
-				<PanelHeader
-					icon={<Database size={14} />}
-					label="Resource"
-					color="text-text-success-primary"
-					onClose={onClose}
-				/>
-				<Field label="Resource type" value={data.resourceType} mono copyable />
-				<Link
-					to="/resource/$resourceType"
-					params={{ resourceType: data.resourceType }}
-					className="inline-flex items-center gap-1 text-text-link hover:underline text-sm w-fit"
-				>
-					<ExternalLink size={14} />
-					Open in Resource Browser
-				</Link>
-			</div>
-		);
+		return <ResourceDetailContent data={data} onClose={onClose} />;
 	}
 
 	if (data.kind === "view-definition") {
@@ -241,7 +412,7 @@ export function LineageDetailPanel({
 				)}
 				{data.description && (
 					<Section title="Description">
-						<p className="text-sm text-text-secondary whitespace-pre-wrap">
+						<p className="text-sm text-text-primary whitespace-pre-wrap">
 							{data.description}
 						</p>
 					</Section>
@@ -317,27 +488,58 @@ export function LineageDetailPanel({
 			)}
 			{data.description && (
 				<Section title="Description">
-					<p className="text-sm text-text-secondary whitespace-pre-wrap">
+					<p className="text-sm text-text-primary whitespace-pre-wrap">
 						{data.description}
 					</p>
 				</Section>
 			)}
-			<Section title={`Parameters (${data.parameters.length})`}>
-				{data.parameters.length === 0 ? (
-					<span className="text-xs text-text-tertiary italic">none</span>
-				) : (
-					<ul className="list-disc pl-4 flex flex-col gap-0.5">
-						{data.parameters.map((p) => (
-							<li key={p.name} className="text-xs font-mono">
-								<span className="text-text-primary">{p.name}</span>
-								{p.type && (
-									<span className="text-text-tertiary"> ({p.type})</span>
-								)}
-							</li>
-						))}
-					</ul>
-				)}
-			</Section>
+			{(() => {
+				const ownNames = new Set(data.parameters.map((p) => p.name));
+				const merged = [
+					...data.parameters.map((p) => ({ ...p, inherited: false })),
+					...data.inheritedParameters
+						.filter((p) => !ownNames.has(p.name))
+						.map((p) => ({ ...p, inherited: true })),
+				];
+				return (
+					<Section title={`Parameters (${merged.length})`}>
+						{merged.length === 0 ? (
+							<span className="text-xs text-text-tertiary italic">none</span>
+						) : (
+							<ul className="list-disc pl-4 flex flex-col gap-0.5">
+								{merged.map((p) => (
+									<li key={p.name} className="text-xs font-mono">
+										<span className="text-text-primary">{p.name}</span>
+										{p.type && (
+											<span className="text-text-tertiary"> ({p.type})</span>
+										)}
+										{p.inherited && (
+											<span className="ml-1 text-[10px] text-text-tertiary italic">
+												inherited
+											</span>
+										)}
+									</li>
+								))}
+							</ul>
+						)}
+					</Section>
+				);
+			})()}
+			{data.sql && (
+				<Section title="SQL">
+					<div
+						className="border border-border-primary rounded overflow-hidden"
+						style={{
+							height: Math.max(
+								160,
+								Math.min(480, data.sql.split("\n").length * 20 + 32),
+							),
+						}}
+					>
+						<HSComp.CodeEditor readOnly currentValue={data.sql} mode="sql" />
+					</div>
+				</Section>
+			)}
 		</div>
 	);
 }

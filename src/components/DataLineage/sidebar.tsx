@@ -3,13 +3,26 @@ import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronRight, FileCode2, Plus, Table } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import * as React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 
 const SQL_QUERY_TYPE_TOKEN =
 	"https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes|sql-query";
+
+type ViewTab = "builder" | "lineage" | "edit";
+type QueryTab = "sqlquery" | "lineage" | "edit";
+
+function mapToViewTab(currentTab: string | undefined): ViewTab {
+	if (currentTab === "lineage" || currentTab === "edit") return currentTab;
+	return "builder";
+}
+
+function mapToQueryTab(currentTab: string | undefined): QueryTab {
+	if (currentTab === "lineage" || currentTab === "edit") return currentTab;
+	return "sqlquery";
+}
 
 type SidebarItem = {
 	id: string;
@@ -118,14 +131,21 @@ function ViewsSection({
 	open,
 	onOpenChange,
 	currentPath,
+	currentTab,
 	items,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	currentPath: string;
+	currentTab: string | undefined;
 	items: SidebarItem[];
 }) {
-	const search = {
+	const editSearch = {
+		tab: mapToViewTab(currentTab),
+		mode: "json" as const,
+		builderTab: "form" as const,
+	};
+	const createSearch = {
 		tab: "builder" as const,
 		mode: "json" as const,
 		builderTab: "form" as const,
@@ -139,9 +159,8 @@ function ViewsSection({
 			>
 				<HSComp.CollapsibleTrigger asChild>
 					<HSComp.SidebarMenuButton className="text-xs font-normal">
-						<Table />
+						<ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
 						<span>Views</span>
-						<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
 					</HSComp.SidebarMenuButton>
 				</HSComp.CollapsibleTrigger>
 				<HSComp.CollapsibleContent>
@@ -162,12 +181,12 @@ function ViewsSection({
 										<HSComp.SidebarMenuSubButton
 											isActive={active}
 											asChild
-											className="text-xs font-normal pl-[11px]"
+											className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
 										>
 											<Link
 												to="/data-lineage/views/edit/$id"
 												params={{ id: it.id }}
-												search={search}
+												search={editSearch}
 											>
 												<span className="truncate">{it.label}</span>
 											</Link>
@@ -183,7 +202,7 @@ function ViewsSection({
 							>
 								<Link
 									to="/data-lineage/views/create"
-									search={search}
+									search={createSearch}
 									className="text-text-link! [&>svg]:text-text-link!"
 								>
 									<Plus />
@@ -202,14 +221,21 @@ function QueriesSection({
 	open,
 	onOpenChange,
 	currentPath,
+	currentTab,
 	items,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	currentPath: string;
+	currentTab: string | undefined;
 	items: SidebarItem[];
 }) {
-	const search = {
+	const editSearch = {
+		tab: mapToQueryTab(currentTab),
+		mode: "json" as const,
+		builderTab: "form" as const,
+	};
+	const createSearch = {
 		tab: "sqlquery" as const,
 		mode: "json" as const,
 		builderTab: "form" as const,
@@ -223,9 +249,8 @@ function QueriesSection({
 			>
 				<HSComp.CollapsibleTrigger asChild>
 					<HSComp.SidebarMenuButton className="text-xs font-normal">
-						<FileCode2 />
+						<ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
 						<span>Queries</span>
-						<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
 					</HSComp.SidebarMenuButton>
 				</HSComp.CollapsibleTrigger>
 				<HSComp.CollapsibleContent>
@@ -246,12 +271,12 @@ function QueriesSection({
 										<HSComp.SidebarMenuSubButton
 											isActive={active}
 											asChild
-											className="text-xs font-normal pl-[11px]"
+											className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
 										>
 											<Link
 												to="/data-lineage/queries/edit/$id"
 												params={{ id: it.id }}
-												search={search}
+												search={editSearch}
 											>
 												<span className="truncate">{it.label}</span>
 											</Link>
@@ -267,7 +292,7 @@ function QueriesSection({
 							>
 								<Link
 									to="/data-lineage/queries/create"
-									search={search}
+									search={createSearch}
 									className="text-text-link! [&>svg]:text-text-link!"
 								>
 									<Plus />
@@ -285,6 +310,7 @@ function QueriesSection({
 export function DataLineageSidebar() {
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
+	const currentTab = (routerState.location.search as { tab?: string }).tab;
 	const client = useAidboxClient();
 	const views = useViewItems();
 	const queries = useQueryItems(client);
@@ -320,12 +346,14 @@ export function DataLineageSidebar() {
 						open={openViews || searchQ.trim() !== ""}
 						onOpenChange={setOpenViews}
 						currentPath={currentPath}
+						currentTab={currentTab}
 						items={filteredViews}
 					/>
 					<QueriesSection
 						open={openQueries || searchQ.trim() !== ""}
 						onOpenChange={setOpenQueries}
 						currentPath={currentPath}
+						currentTab={currentTab}
 						items={filteredQueries}
 					/>
 				</HSComp.SidebarMenu>

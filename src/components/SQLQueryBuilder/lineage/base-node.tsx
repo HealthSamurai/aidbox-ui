@@ -61,3 +61,19 @@ export function BaseNodeRow({
 		</div>
 	);
 }
+
+export function BaseNodeFooter({
+	children,
+	className,
+}: {
+	children: React.ReactNode;
+	className?: string;
+}) {
+	return (
+		<div
+			className={`flex items-center justify-end gap-1 px-3 py-1 border-t border-border-primary bg-bg-secondary ${className ?? ""}`}
+		>
+			{children}
+		</div>
+	);
+}

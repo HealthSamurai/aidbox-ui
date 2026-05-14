@@ -16,6 +16,28 @@ import {
 	SQL_QUERY_TYPE_SYSTEM,
 	type SQLLibrary,
 } from "./types";
+import { addUrlToHistory } from "./url-history";
+
+function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
+	if (
+		typeof err === "object" &&
+		err !== null &&
+		"resourceType" in err &&
+		(err as { resourceType: string }).resourceType === "OperationOutcome"
+	) {
+		return err as unknown as HSComp.OperationOutcome;
+	}
+	return {
+		resourceType: "OperationOutcome",
+		issue: [
+			{
+				severity: "error",
+				code: "exception",
+				diagnostics: err instanceof Error ? err.message : String(err),
+			},
+		],
+	};
+}
 
 function cleanEmptyValues<T>(obj: T): T {
 	if (Array.isArray(obj)) {
@@ -179,7 +201,6 @@ export function SQLQueryBuilderContent() {
 	const {
 		library,
 		setIsDirty,
-		isDirty,
 		runResult,
 		setRunResult,
 		setRunError,
@@ -187,7 +208,9 @@ export function SQLQueryBuilderContent() {
 		isRunning,
 		setIsRunning,
 		paramValues,
+		persistParamValues,
 		setMissingParams,
+		triggerRunRef,
 		onCreated,
 	} = useSQLQueryContext();
 
@@ -233,6 +256,7 @@ export function SQLQueryBuilderContent() {
 		},
 		onSuccess: ({ resource, created }) => {
 			setIsDirty(false);
+			addUrlToHistory(library.url);
 			HSComp.toast.success("SQLQuery saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -244,27 +268,7 @@ export function SQLQueryBuilderContent() {
 			}
 		},
 		onError: (err) => {
-			const isOO =
-				typeof err === "object" &&
-				err !== null &&
-				"resourceType" in err &&
-				(err as { resourceType: string }).resourceType === "OperationOutcome";
-			const oo: HSComp.OperationOutcome = isOO
-				? (err as unknown as HSComp.OperationOutcome)
-				: {
-						resourceType: "OperationOutcome",
-						issue: [
-							{
-								severity: "error",
-								code: "exception",
-								diagnostics:
-									err instanceof Error
-										? err.message
-										: String(err) || "Save failed",
-							},
-						],
-					};
-			setRunError(oo);
+			const oo = toOperationOutcome(err);
 			Utils.toastError(
 				"Failed to save SQLQuery",
 				oo.issue?.[0]?.diagnostics ?? undefined,
@@ -285,10 +289,8 @@ export function SQLQueryBuilderContent() {
 			);
 			const topLevelParameters: Record<string, unknown>[] = [
 				{ name: "_format", valueCode: "fhir" },
+				{ name: "queryResource", resource: payload },
 			];
-			if (!payload.id) {
-				topLevelParameters.push({ name: "queryResource", resource: payload });
-			}
 			if (valueEntries.length > 0) {
 				topLevelParameters.push({
 					name: "parameters",
@@ -300,9 +302,7 @@ export function SQLQueryBuilderContent() {
 			}
 			const result = await client.request<FhirParametersResponse>({
 				method: "POST",
-				url: payload.id
-					? `/fhir/Library/${payload.id}/$sqlquery-run`
-					: "/fhir/$sqlquery-run",
+				url: "/fhir/$sqlquery-run",
 				body: JSON.stringify({
 					resourceType: "Parameters",
 					parameter: topLevelParameters,
@@ -318,28 +318,11 @@ export function SQLQueryBuilderContent() {
 			setIsRunning(false);
 			const body = data as unknown as FhirParametersResponse;
 			setRunResult(fhirParametersToRunResult(body));
+			persistParamValues();
 		},
 		onError: (err) => {
 			setIsRunning(false);
-			const isOO =
-				typeof err === "object" &&
-				err !== null &&
-				"resourceType" in err &&
-				(err as { resourceType: string }).resourceType === "OperationOutcome";
-			setRunError(
-				isOO
-					? (err as unknown as HSComp.OperationOutcome)
-					: {
-							resourceType: "OperationOutcome",
-							issue: [
-								{
-									severity: "error",
-									code: "exception",
-									diagnostics: err instanceof Error ? err.message : String(err),
-								},
-							],
-						},
-			);
+			setRunError(toOperationOutcome(err));
 		},
 	});
 
@@ -411,6 +394,10 @@ export function SQLQueryBuilderContent() {
 	]);
 
 	React.useEffect(() => {
+		triggerRunRef.current = triggerRun;
+	}, [triggerRun, triggerRunRef]);
+
+	React.useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 				e.preventDefault();
@@ -427,41 +414,22 @@ export function SQLQueryBuilderContent() {
 				onRun={triggerRun}
 				onSave={() => saveMutation.mutate()}
 				isRunDisabled={runMutation.isPending}
-				isSaveDisabled={!isDirty || saveMutation.isPending}
+				isSaveDisabled={saveMutation.isPending}
 			/>
 			<div className="flex-1 min-h-0 overflow-auto">
-				<div className="min-h-full bg-bg-primary px-2.5 py-3">
+				<div className="min-h-full bg-bg-primary px-2.5 pt-3 pb-[250px]">
 					<PropertiesTree />
 				</div>
 			</div>
 		</div>
 	);
 
-	const hasResult = runResult !== null || isRunning;
+	const hasResult = runResult !== null || isRunning || runError !== null;
 
 	if (!hasResult) {
 		return (
 			<div className="relative h-full grow min-h-0 flex flex-col">
-				<HSComp.ResizablePanelGroup
-					direction="vertical"
-					autoSaveId="sqlquery-builder-vertical-no-result"
-					className="grow min-h-0"
-				>
-					<HSComp.ResizablePanel minSize={20}>
-						{editorContent}
-					</HSComp.ResizablePanel>
-					{runError && (
-						<>
-							<HSComp.ResizableHandle />
-							<HSComp.ResizablePanel defaultSize={30} minSize={10}>
-								<HSComp.OperationOutcomeView
-									resource={runError}
-									className="h-full overflow-auto"
-								/>
-							</HSComp.ResizablePanel>
-						</>
-					)}
-				</HSComp.ResizablePanelGroup>
+				{editorContent}
 			</div>
 		);
 	}
@@ -469,28 +437,7 @@ export function SQLQueryBuilderContent() {
 	if (isResultCollapsed) {
 		return (
 			<div className="relative h-full grow min-h-0 flex flex-col overflow-hidden">
-				<div className="flex-1 min-h-0">
-					<HSComp.ResizablePanelGroup
-						direction="vertical"
-						autoSaveId="sqlquery-builder-vertical-collapsed"
-						className="grow min-h-0"
-					>
-						<HSComp.ResizablePanel minSize={20}>
-							{editorContent}
-						</HSComp.ResizablePanel>
-						{runError && (
-							<>
-								<HSComp.ResizableHandle />
-								<HSComp.ResizablePanel defaultSize={30} minSize={10}>
-									<HSComp.OperationOutcomeView
-										resource={runError}
-										className="h-full overflow-auto"
-									/>
-								</HSComp.ResizablePanel>
-							</>
-						)}
-					</HSComp.ResizablePanelGroup>
-				</div>
+				<div className="flex-1 min-h-0">{editorContent}</div>
 				<div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-t h-10 flex-none">
 					<span className="typo-label text-text-secondary">Result</span>
 					<HSComp.Tooltip>
@@ -520,17 +467,6 @@ export function SQLQueryBuilderContent() {
 				<HSComp.ResizablePanel minSize={20}>
 					{editorContent}
 				</HSComp.ResizablePanel>
-				{runError && (
-					<>
-						<HSComp.ResizableHandle />
-						<HSComp.ResizablePanel defaultSize={20} minSize={10}>
-							<HSComp.OperationOutcomeView
-								resource={runError}
-								className="h-full overflow-auto"
-							/>
-						</HSComp.ResizablePanel>
-					</>
-				)}
 				<HSComp.ResizableHandle />
 				<HSComp.ResizablePanel defaultSize={30} minSize={10}>
 					<div

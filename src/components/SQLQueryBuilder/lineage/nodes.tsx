@@ -1,15 +1,19 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Handle, Position } from "@xyflow/react";
-import { Database, FileCode2, Table } from "lucide-react";
-import type * as React from "react";
+import { Database, FileCode2, PlayIcon, Table } from "lucide-react";
+import * as React from "react";
 import {
 	BaseNode,
 	BaseNodeBody,
+	BaseNodeFooter,
 	BaseNodeHeader,
 	BaseNodeRow,
 } from "./base-node";
+import { readStoredParamValues } from "./param-storage";
+import { useLineageRunContext } from "./run-context";
 import type {
 	ColumnInfo,
+	ParamSpec,
 	ResourceTypeNodeData,
 	SQLQueryNodeData,
 	ViewDefinitionNodeData,
@@ -30,11 +34,118 @@ function flattenColumns(selects: ViewSelect[]): ColumnInfo[] {
 }
 
 type AnyNodeProps = {
+	id: string;
 	data: Record<string, unknown>;
 	selected?: boolean;
 };
 
-export function ResourceTypeNode({ data, selected }: AnyNodeProps) {
+function ViewNodeFooter({
+	nodeId,
+	viewId,
+}: {
+	nodeId: string;
+	viewId: string;
+}) {
+	const { runView, runningNodeId } = useLineageRunContext();
+	const isRunningThis = runningNodeId === nodeId;
+	const handleClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (!viewId) return;
+		runView(nodeId, viewId);
+	};
+	return (
+		<BaseNodeFooter>
+			<HSComp.Button
+				variant="link"
+				size="small"
+				className="px-0! text-text-link! hover:text-text-link/80! disabled:opacity-50"
+				onClick={handleClick}
+				disabled={runningNodeId !== null || !viewId}
+			>
+				<PlayIcon className="w-3.5 h-3.5 fill-current" />
+				{isRunningThis ? "Running…" : "RUN"}
+			</HSComp.Button>
+		</BaseNodeFooter>
+	);
+}
+
+const stopProp = (e: React.SyntheticEvent) => {
+	e.stopPropagation();
+};
+
+function ParamValueInput({
+	type,
+	value,
+	onChange,
+}: {
+	type: string | undefined;
+	value: string;
+	onChange: (v: string) => void;
+}) {
+	const effectiveType = type ?? "string";
+	if (effectiveType === "boolean") {
+		return (
+			<HSComp.Switch
+				size="small"
+				checked={value === "true"}
+				onCheckedChange={(c) => onChange(c ? "true" : "false")}
+				onClick={stopProp}
+				onMouseDown={stopProp}
+				className="nodrag nopan"
+			/>
+		);
+	}
+	return (
+		<input
+			type="text"
+			value={value}
+			onChange={(e) => onChange(e.target.value)}
+			onClick={stopProp}
+			onMouseDown={stopProp}
+			onKeyDown={stopProp}
+			placeholder="value"
+			className="nodrag nopan h-4 leading-4 w-full text-xs font-mono bg-transparent outline-none placeholder:text-text-tertiary"
+		/>
+	);
+}
+
+function QueryNodeFooter({
+	nodeId,
+	queryId,
+	allParams,
+	paramValues,
+	hasMissing,
+}: {
+	nodeId: string;
+	queryId: string;
+	allParams: ParamSpec[];
+	paramValues: Record<string, string>;
+	hasMissing: boolean;
+}) {
+	const { runQuery, runningNodeId } = useLineageRunContext();
+	const isRunningThis = runningNodeId === nodeId;
+	const handleClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (!queryId) return;
+		runQuery({ nodeId, queryId, allParams, paramValues });
+	};
+	return (
+		<BaseNodeFooter>
+			<HSComp.Button
+				variant="link"
+				size="small"
+				className="px-0! text-text-link! hover:text-text-link/80! disabled:opacity-50"
+				onClick={handleClick}
+				disabled={runningNodeId !== null || !queryId || hasMissing}
+			>
+				<PlayIcon className="w-3.5 h-3.5 fill-current" />
+				{isRunningThis ? "Running…" : "RUN"}
+			</HSComp.Button>
+		</BaseNodeFooter>
+	);
+}
+
+export function ResourceTypeNode({ data, selected }: Omit<AnyNodeProps, "id">) {
 	const d = data as unknown as ResourceTypeNodeData;
 	return (
 		<BaseNode selected={selected}>
@@ -58,107 +169,119 @@ export function ResourceTypeNode({ data, selected }: AnyNodeProps) {
 	);
 }
 
-function NodeWithTooltip({
-	tooltip,
-	children,
-}: {
-	tooltip: string | undefined;
-	children: React.ReactNode;
-}) {
-	if (!tooltip) return <>{children}</>;
-	return (
-		<HSComp.Tooltip delayDuration={200}>
-			<HSComp.TooltipTrigger asChild>
-				<div>{children}</div>
-			</HSComp.TooltipTrigger>
-			<HSComp.TooltipContent
-				side="top"
-				align="start"
-				className="max-w-md p-3 bg-bg-primary text-text-primary border border-border-primary shadow-md"
-			>
-				<span className="text-xs">{tooltip}</span>
-			</HSComp.TooltipContent>
-		</HSComp.Tooltip>
-	);
-}
-
-export function ViewDefinitionNode({ data, selected }: AnyNodeProps) {
+export function ViewDefinitionNode({ id, data, selected }: AnyNodeProps) {
 	const d = data as unknown as ViewDefinitionNodeData;
 	const display = d.title || d.name || d.id;
 	return (
-		<NodeWithTooltip tooltip={d.description}>
-			<BaseNode selected={selected}>
-				<BaseNodeHeader>
-					<div className="flex items-center gap-2">
-						<Table size={14} className="text-text-info-primary shrink-0" />
-						<span className="font-mono text-xs text-text-info-primary uppercase">
-							View
-						</span>
-					</div>
-					<div className="font-mono text-sm font-medium text-text-primary truncate">
-						{display}
-					</div>
-				</BaseNodeHeader>
-				<BaseNodeBody>
-					{(() => {
-						const columns = flattenColumns(d.select);
-						return columns.length === 0 ? (
-							<div className="px-3 py-2 text-xs text-text-tertiary italic">
-								no columns
-							</div>
-						) : (
-							columns.map((c) => (
-								<BaseNodeRow key={c.name}>
-									<span className="font-mono text-xs text-text-primary truncate">
-										{c.name}
-									</span>
-								</BaseNodeRow>
-							))
-						);
-					})()}
-				</BaseNodeBody>
-				<Handle
-					type="target"
-					position={Position.Left}
-					className="w-2 h-2 left-0!"
-				/>
-				<Handle
-					type="source"
-					position={Position.Right}
-					className="w-2 h-2 right-0!"
-				/>
-			</BaseNode>
-		</NodeWithTooltip>
+		<BaseNode selected={selected}>
+			<BaseNodeHeader>
+				<div className="flex items-center gap-2">
+					<Table size={14} className="text-text-info-primary shrink-0" />
+					<span className="font-mono text-xs text-text-info-primary uppercase">
+						View
+					</span>
+				</div>
+				<div className="font-mono text-sm font-medium text-text-primary truncate">
+					{display}
+				</div>
+			</BaseNodeHeader>
+			<BaseNodeBody>
+				{(() => {
+					const columns = flattenColumns(d.select);
+					return columns.length === 0 ? (
+						<div className="px-3 py-2 text-xs text-text-tertiary italic">
+							no columns
+						</div>
+					) : (
+						columns.map((c) => (
+							<BaseNodeRow key={c.name}>
+								<span className="font-mono text-xs text-text-primary truncate">
+									{c.name}
+									{c.collection ? "[]" : ""}
+								</span>
+								<span className="font-mono text-xs text-text-tertiary text-right truncate">
+									{c.type ?? ""}
+								</span>
+							</BaseNodeRow>
+						))
+					);
+				})()}
+			</BaseNodeBody>
+			<ViewNodeFooter nodeId={id} viewId={d.id} />
+			<Handle
+				type="target"
+				position={Position.Left}
+				className="w-2 h-2 left-0!"
+			/>
+			<Handle
+				type="source"
+				position={Position.Right}
+				className="w-2 h-2 right-0!"
+			/>
+		</BaseNode>
 	);
 }
 
-export function SQLQueryNode({ data, selected }: AnyNodeProps) {
+export function SQLQueryNode({ id, data, selected }: AnyNodeProps) {
 	const d = data as unknown as SQLQueryNodeData;
 	const display = d.title || d.name || d.id;
+
+	const allParams = React.useMemo<ParamSpec[]>(() => {
+		const seen = new Set(d.parameters.map((p) => p.name));
+		return [
+			...d.parameters,
+			...d.inheritedParameters.filter((ip) => !seen.has(ip.name)),
+		];
+	}, [d.parameters, d.inheritedParameters]);
+
+	const [paramValues, setParamValues] = React.useState<Record<string, string>>(
+		() => readStoredParamValues(d.id),
+	);
+
+	const setParamValue = React.useCallback((name: string, value: string) => {
+		setParamValues((prev) => ({ ...prev, [name]: value }));
+	}, []);
+
+	const hasMissing = React.useMemo(() => {
+		for (const p of allParams) {
+			const t = p.type ?? "string";
+			if (t === "boolean") continue;
+			const v = paramValues[p.name];
+			if (v === undefined || v === "") return true;
+		}
+		return false;
+	}, [allParams, paramValues]);
+
+	const showInputs = (selected ?? false) && allParams.length > 0;
+
+	const headerInner = (
+		<>
+			<div className="flex items-center gap-2">
+				<FileCode2 size={14} className="text-text-brand-primary shrink-0" />
+				<span className="font-mono text-xs text-text-brand-primary uppercase">
+					Query
+				</span>
+			</div>
+			<div className="font-mono text-sm font-medium text-text-primary truncate">
+				{display}
+			</div>
+		</>
+	);
+
 	return (
-		<NodeWithTooltip tooltip={d.description}>
+		<div className="flex items-start">
 			<BaseNode
 				selected={selected}
 				className={d.isRoot ? "border-border-link" : ""}
 			>
-				<BaseNodeHeader>
-					<div className="flex items-center gap-2">
-						<FileCode2 size={14} className="text-text-brand-primary shrink-0" />
-						<span className="font-mono text-xs text-text-brand-primary uppercase">
-							Query
-						</span>
-					</div>
-					<div className="font-mono text-sm font-medium text-text-primary truncate">
-						{display}
-					</div>
-				</BaseNodeHeader>
+				<BaseNodeHeader>{headerInner}</BaseNodeHeader>
 				<BaseNodeBody>
-					{d.parameters.length === 0 ? (
+					{allParams.length === 0 ? (
 						<div className="px-3 py-2 text-xs text-text-tertiary italic">
 							no parameters
 						</div>
 					) : (
-						d.parameters.map((p) => (
+						allParams.map((p) => (
 							<BaseNodeRow key={p.name}>
 								<span className="font-mono text-xs text-text-primary truncate">
 									{p.name}
@@ -170,6 +293,13 @@ export function SQLQueryNode({ data, selected }: AnyNodeProps) {
 						))
 					)}
 				</BaseNodeBody>
+				<QueryNodeFooter
+					nodeId={id}
+					queryId={d.id}
+					allParams={allParams}
+					paramValues={paramValues}
+					hasMissing={hasMissing}
+				/>
 				<Handle
 					type="target"
 					position={Position.Left}
@@ -183,7 +313,34 @@ export function SQLQueryNode({ data, selected }: AnyNodeProps) {
 					/>
 				)}
 			</BaseNode>
-		</NodeWithTooltip>
+
+			{showInputs && (
+				<div className="flex flex-col ml-2">
+					<div className="invisible pointer-events-none" aria-hidden="true">
+						<BaseNodeHeader>{headerInner}</BaseNodeHeader>
+					</div>
+					<div className="w-[180px] -mt-6 rounded-md bg-bg-primary border border-border-primary shadow-sm overflow-hidden">
+						<div className="px-2 h-6 bg-bg-tertiary border-b border-border-secondary flex items-center">
+							<span className="typo-label-xs text-text-tertiary uppercase">
+								Run parameter values
+							</span>
+						</div>
+						{allParams.map((p) => (
+							<div
+								key={p.name}
+								className="px-2 py-1 border-b border-border-primary last:border-b-0 flex items-center"
+							>
+								<ParamValueInput
+									type={p.type}
+									value={paramValues[p.name] ?? ""}
+									onChange={(v) => setParamValue(p.name, v)}
+								/>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</div>
 	);
 }
 

@@ -40,6 +40,8 @@ export type ViewDefinitionNodeData = {
 	where: { path: string; description?: string }[];
 };
 
+export type ParamSpec = { name: string; type?: string };
+
 export type SQLQueryNodeData = {
 	kind: "sql-query";
 	id: string;
@@ -47,7 +49,9 @@ export type SQLQueryNodeData = {
 	name: string;
 	title?: string;
 	description?: string;
-	parameters: { name: string; type?: string }[];
+	sql?: string;
+	parameters: ParamSpec[];
+	inheritedParameters: ParamSpec[];
 	isRoot: boolean;
 };
 

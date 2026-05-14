@@ -173,6 +173,19 @@ function normalizeConstants(vd: RawViewDefinition): ViewConstant[] {
 	return out;
 }
 
+function decodeBase64(b64: string): string {
+	try {
+		return atob(b64);
+	} catch {
+		return "";
+	}
+}
+
+function librarySql(lib: { content?: Array<{ data?: string }> }): string {
+	const data = lib.content?.[0]?.data;
+	return data ? decodeBase64(data) : "";
+}
+
 function rootLibraryNode(lib: SQLLibrary): ResolvedNode {
 	const id = `library:${lib.id ?? lib.url ?? "root"}`;
 	return {
@@ -185,9 +198,11 @@ function rootLibraryNode(lib: SQLLibrary): ResolvedNode {
 			name: lib.name ?? "",
 			title: lib.title,
 			description: lib.description,
+			sql: librarySql(lib),
 			parameters: (lib.parameter ?? [])
 				.filter((p) => p.name)
 				.map((p) => ({ name: p.name as string, type: p.type })),
+			inheritedParameters: [],
 			isRoot: true,
 		},
 	};
@@ -205,9 +220,11 @@ function libraryNode(lib: RawLibrary, canonical: string): ResolvedNode {
 			name: lib.name ?? "",
 			title: lib.title,
 			description: lib.description,
+			sql: librarySql(lib),
 			parameters: (lib.parameter ?? [])
 				.filter((p) => p.name)
 				.map((p) => ({ name: p.name as string, type: p.type })),
+			inheritedParameters: [],
 			isRoot: false,
 		},
 	};
@@ -345,7 +362,55 @@ async function buildGraph(
 	}
 	const { nodesById, depthById, edges } = state;
 
+	attachInheritedParameters(nodesById, edges);
+
 	return layoutGraph(nodesById, depthById, edges);
+}
+
+function collectDeps(
+	rootId: string,
+	incoming: Map<string, string[]>,
+): Set<string> {
+	const seen = new Set<string>();
+	const queue: string[] = [rootId];
+	while (queue.length > 0) {
+		const id = queue.shift();
+		if (!id) continue;
+		for (const src of incoming.get(id) ?? []) {
+			if (!seen.has(src)) {
+				seen.add(src);
+				queue.push(src);
+			}
+		}
+	}
+	return seen;
+}
+
+function attachInheritedParameters(
+	nodesById: Map<string, ResolvedNode>,
+	edges: Edge[],
+) {
+	const incoming = new Map<string, string[]>();
+	for (const e of edges) {
+		const list = incoming.get(e.target) ?? [];
+		list.push(e.source);
+		incoming.set(e.target, list);
+	}
+	for (const node of nodesById.values()) {
+		if (node.kind !== "sql-query") continue;
+		const depIds = collectDeps(node.id, incoming);
+		const ownNames = new Set(node.data.parameters.map((p) => p.name));
+		const inheritedByName = new Map<string, { name: string; type?: string }>();
+		for (const depId of depIds) {
+			const dep = nodesById.get(depId);
+			if (!dep || dep.kind !== "sql-query") continue;
+			for (const p of dep.data.parameters) {
+				if (ownNames.has(p.name) || inheritedByName.has(p.name)) continue;
+				inheritedByName.set(p.name, p);
+			}
+		}
+		node.data.inheritedParameters = Array.from(inheritedByName.values());
+	}
 }
 
 const COL_WIDTH = 560;
