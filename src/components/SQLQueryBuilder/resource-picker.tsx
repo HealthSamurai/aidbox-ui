@@ -114,7 +114,7 @@ export function ResourcePicker({
 					onClick={(e) => e.stopPropagation()}
 				>
 					<span className={`truncate ${value ? "" : "text-text-tertiary"}`}>
-						{value || "Pick resource…"}
+						{value || "Select view or query…"}
 					</span>
 					<ChevronDown className="size-4 shrink-0 opacity-50" />
 				</HSComp.Button>
@@ -122,7 +122,7 @@ export function ResourcePicker({
 			<HSComp.PopoverContent className="w-[420px] p-0" align="start">
 				<HSComp.Command shouldFilter={false}>
 					<HSComp.CommandInput
-						placeholder="Search ViewDefinition or Library…"
+						placeholder="Search view or query…"
 						value={search}
 						onValueChange={setSearch}
 					/>

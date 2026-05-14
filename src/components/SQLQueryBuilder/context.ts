@@ -10,6 +10,7 @@ export type RunResult = {
 export type SQLQueryContextValue = {
 	library: SQLLibrary;
 	updateLibrary: (updater: (lib: SQLLibrary) => SQLLibrary) => void;
+	quietUpdateLibrary: (updater: (lib: SQLLibrary) => SQLLibrary) => void;
 	isDirty: boolean;
 	setIsDirty: (dirty: boolean) => void;
 	runResult: RunResult | null;
@@ -20,6 +21,8 @@ export type SQLQueryContextValue = {
 	setIsRunning: (running: boolean) => void;
 	paramValues: Record<string, string>;
 	setParamValue: (name: string, value: string) => void;
+	missingParams: Set<string>;
+	setMissingParams: (names: Set<string>) => void;
 	onCreated?: (id: string) => void;
 	onDeleted?: () => void;
 };

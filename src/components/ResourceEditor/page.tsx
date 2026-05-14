@@ -107,7 +107,7 @@ export const ResourceEditorPageWithLoader = (
 
 	return (
 		<ResourceEditorPage
-			key={String(meta?.versionId ?? "")}
+			key={`${resourceType}/${id ?? ""}@${String(meta?.versionId ?? "")}`}
 			initialResource={resourceData}
 			{...props}
 		/>
@@ -516,7 +516,12 @@ export const ResourceEditorPage = ({
 				{tabs.map((t) => t.content)}
 			</HSComp.Tabs>
 
-			<HSComp.AlertDialog open={editBlockerStatus === "blocked"}>
+			<HSComp.AlertDialog
+				open={editBlockerStatus === "blocked"}
+				onOpenChange={(open) => {
+					if (!open) editReset?.();
+				}}
+			>
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
 						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>

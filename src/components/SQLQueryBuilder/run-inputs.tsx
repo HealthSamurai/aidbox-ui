@@ -1,5 +1,6 @@
 import * as HSComp from "@health-samurai/react-components";
 import { AlertTriangle, Link } from "lucide-react";
+import * as React from "react";
 import { useSQLQueryContext } from "./context";
 import {
 	type ResolvedParameter,
@@ -14,7 +15,7 @@ type Field = {
 	conflict?: boolean;
 };
 
-function ParamField({
+function ParamRow({
 	field,
 	value,
 	onChange,
@@ -25,31 +26,33 @@ function ParamField({
 }) {
 	const inputId = `run-input-${field.name}`;
 	return (
-		<div className="flex flex-col gap-1 min-w-0">
+		<React.Fragment>
 			<label
 				htmlFor={inputId}
-				className="flex items-center gap-1.5 text-xs font-mono text-text-tertiary"
+				className="flex items-center gap-1.5 text-xs font-mono text-text-tertiary whitespace-nowrap justify-self-end"
 			>
+				<span>{field.name}</span>
 				{field.source !== "own" && <SourceTag field={field} />}
-				<span className="truncate">{field.name}</span>
 			</label>
-			{field.type === "boolean" ? (
-				<HSComp.Switch
-					id={inputId}
-					checked={value === "true"}
-					onCheckedChange={(c) => onChange(c ? "true" : "false")}
-				/>
-			) : (
-				<HSComp.Input
-					id={inputId}
-					type="text"
-					placeholder={field.type}
-					className="font-mono text-xs"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-				/>
-			)}
-		</div>
+			<div className="min-w-0">
+				{field.type === "boolean" ? (
+					<HSComp.Switch
+						id={inputId}
+						checked={value === "true"}
+						onCheckedChange={(c) => onChange(c ? "true" : "false")}
+					/>
+				) : (
+					<HSComp.Input
+						id={inputId}
+						type="text"
+						placeholder={field.type}
+						className="font-mono text-xs h-7 px-2 py-1"
+						value={value}
+						onChange={(e) => onChange(e.target.value)}
+					/>
+				)}
+			</div>
+		</React.Fragment>
 	);
 }
 
@@ -145,9 +148,9 @@ export function RunInputs() {
 			<div className="flex items-center bg-bg-secondary px-4 h-10 border-b shrink-0">
 				<span className="typo-label text-text-secondary">Parameter values</span>
 			</div>
-			<div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-x-4 gap-y-2 px-4 py-3 bg-bg-primary">
+			<div className="grid grid-cols-[max-content_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 px-4 py-3 bg-bg-primary max-w-2xl">
 				{inherited.map((field) => (
-					<ParamField
+					<ParamRow
 						key={`inh-${field.name}`}
 						field={field}
 						value={paramValues[field.name] ?? ""}
@@ -155,7 +158,7 @@ export function RunInputs() {
 					/>
 				))}
 				{own.map((field) => (
-					<ParamField
+					<ParamRow
 						key={`own-${field.name}`}
 						field={field}
 						value={paramValues[field.name] ?? ""}

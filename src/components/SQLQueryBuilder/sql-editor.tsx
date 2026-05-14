@@ -36,7 +36,16 @@ export function SqlEditor() {
 		});
 	};
 
+	const lineCount = Math.max(1, sql.split("\n").length);
+	const heightPx = Math.max(240, lineCount * 22 + 40);
+
 	return (
-		<HSComp.CodeEditor currentValue={sql} onChange={handleChange} mode="sql" />
+		<div style={{ height: heightPx }} className="w-full">
+			<HSComp.CodeEditor
+				currentValue={sql}
+				onChange={handleChange}
+				mode="sql"
+			/>
+		</div>
 	);
 }

@@ -1,4 +1,3 @@
-import * as HSComp from "@health-samurai/react-components";
 import {
 	Background,
 	Controls,
@@ -102,6 +101,13 @@ export function LineageTab() {
 		});
 	}, [edges, selectedId]);
 
+	const clearSelection = React.useCallback(() => {
+		setSelectedId(null);
+		setNodes((nds) =>
+			nds.map((n) => (n.selected ? { ...n, selected: false } : n)),
+		);
+	}, [setNodes]);
+
 	if (isLoading && nodes.length === 0) {
 		return (
 			<div className="flex items-center justify-center h-full text-text-secondary">
@@ -125,42 +131,37 @@ export function LineageTab() {
 			| undefined) ?? null;
 
 	return (
-		<HSComp.ResizablePanelGroup
-			direction="horizontal"
-			autoSaveId="lineage-tab-horizontal"
-			className="h-full w-full"
-		>
-			<HSComp.ResizablePanel minSize={40}>
-				<div className="h-full w-full bg-bg-primary">
-					<ReactFlow
-						nodes={nodes}
-						edges={styledEdges}
-						onNodesChange={onNodesChange}
-						onEdgesChange={onEdgesChange}
-						onNodeClick={(_, node) => setSelectedId(node.id)}
-						onPaneClick={() => setSelectedId(null)}
-						nodeTypes={nodeTypes}
-						nodesDraggable={false}
-						nodesConnectable={false}
-						fitView
-						fitViewOptions={{ padding: 0.2 }}
-						defaultEdgeOptions={{
-							type: "default",
-							markerEnd: { type: MarkerType.ArrowClosed },
-						}}
-						minZoom={0.2}
-						proOptions={{ hideAttribution: true }}
-					>
-						<Background />
-						<Controls showFitView={false} />
-						<NodeSearch onSelect={setSelectedId} />
-					</ReactFlow>
+		<div className="relative h-full w-full">
+			<div className="h-full w-full bg-bg-primary">
+				<ReactFlow
+					nodes={nodes}
+					edges={styledEdges}
+					onNodesChange={onNodesChange}
+					onEdgesChange={onEdgesChange}
+					onNodeClick={(_, node) => setSelectedId(node.id)}
+					onPaneClick={clearSelection}
+					nodeTypes={nodeTypes}
+					nodesDraggable={false}
+					nodesConnectable={false}
+					fitView
+					fitViewOptions={{ padding: 0.2 }}
+					defaultEdgeOptions={{
+						type: "default",
+						markerEnd: { type: MarkerType.ArrowClosed },
+					}}
+					minZoom={0.2}
+					proOptions={{ hideAttribution: true }}
+				>
+					<Background />
+					<Controls showFitView={false} />
+					<NodeSearch onSelect={setSelectedId} />
+				</ReactFlow>
+			</div>
+			{selectedData && (
+				<div className="absolute top-0 right-0 bottom-0 w-[440px] z-20 border-l border-border-primary shadow-lg bg-bg-primary">
+					<LineageDetailPanel data={selectedData} onClose={clearSelection} />
 				</div>
-			</HSComp.ResizablePanel>
-			<HSComp.ResizableHandle />
-			<HSComp.ResizablePanel defaultSize={28} minSize={20} maxSize={50}>
-				<LineageDetailPanel data={selectedData} />
-			</HSComp.ResizablePanel>
-		</HSComp.ResizablePanelGroup>
+			)}
+		</div>
 	);
 }

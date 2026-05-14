@@ -1,19 +1,59 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { PanelBottomOpen } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import * as Utils from "../../api/utils";
+import { useLocalStorage } from "../../hooks";
 import { useSQLQueryContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
 import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
-import { RunInputs } from "./run-inputs";
 import {
 	SQL_QUERY_PROFILE,
 	SQL_QUERY_TYPE_CODE,
 	SQL_QUERY_TYPE_SYSTEM,
 	type SQLLibrary,
 } from "./types";
+
+function cleanEmptyValues<T>(obj: T): T {
+	if (Array.isArray(obj)) {
+		const cleanedArray = obj
+			.map((item) => cleanEmptyValues(item))
+			.filter((item) => {
+				if (item === null || item === undefined) return false;
+				if (typeof item === "string" && item === "") return false;
+				if (Array.isArray(item) && item.length === 0) return false;
+				if (
+					typeof item === "object" &&
+					!Array.isArray(item) &&
+					Object.keys(item as Record<string, unknown>).length === 0
+				)
+					return false;
+				return true;
+			});
+		return cleanedArray as T;
+	}
+	if (obj !== null && typeof obj === "object") {
+		const cleanedObj: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(obj)) {
+			const cleanedValue = cleanEmptyValues(value);
+			if (cleanedValue === null || cleanedValue === undefined) continue;
+			if (typeof cleanedValue === "string" && cleanedValue === "") continue;
+			if (Array.isArray(cleanedValue) && cleanedValue.length === 0) continue;
+			if (
+				typeof cleanedValue === "object" &&
+				!Array.isArray(cleanedValue) &&
+				Object.keys(cleanedValue as Record<string, unknown>).length === 0
+			)
+				continue;
+			cleanedObj[key] = cleanedValue;
+		}
+		return cleanedObj as T;
+	}
+	return obj;
+}
 
 function ensureSQLQueryShape(lib: SQLLibrary): SQLLibrary {
 	const profiles = lib.meta?.profile ?? [];
@@ -140,11 +180,14 @@ export function SQLQueryBuilderContent() {
 		library,
 		setIsDirty,
 		isDirty,
+		runResult,
 		setRunResult,
 		setRunError,
 		runError,
+		isRunning,
 		setIsRunning,
 		paramValues,
+		setMissingParams,
 		onCreated,
 	} = useSQLQueryContext();
 
@@ -159,7 +202,16 @@ export function SQLQueryBuilderContent() {
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
-			const payload = ensureSQLQueryShape(library);
+			setRunError(null);
+			const shaped = ensureSQLQueryShape(library);
+			const trimmed: SQLLibrary = {
+				...shaped,
+				relatedArtifact: (shaped.relatedArtifact ?? []).filter(
+					(ra) => ra.label || ra.resource,
+				),
+				parameter: (shaped.parameter ?? []).filter((p) => p.name),
+			};
+			const payload = cleanEmptyValues(trimmed);
 			if (payload.id) {
 				const result = await client.request({
 					method: "PUT",
@@ -181,15 +233,42 @@ export function SQLQueryBuilderContent() {
 		},
 		onSuccess: ({ resource, created }) => {
 			setIsDirty(false);
-			HSComp.toast.success("Saved");
+			HSComp.toast.success("SQLQuery saved successfully", {
+				position: "bottom-right",
+				style: { margin: "1rem" },
+			});
 			queryClient.invalidateQueries({ queryKey: ["data-lineage-queries"] });
 			if (created && onCreated) {
 				const id = (resource as SQLLibrary).id;
 				if (id) onCreated(id);
 			}
 		},
-		onError: () => {
-			HSComp.toast.error("Failed to save");
+		onError: (err) => {
+			const isOO =
+				typeof err === "object" &&
+				err !== null &&
+				"resourceType" in err &&
+				(err as { resourceType: string }).resourceType === "OperationOutcome";
+			const oo: HSComp.OperationOutcome = isOO
+				? (err as unknown as HSComp.OperationOutcome)
+				: {
+						resourceType: "OperationOutcome",
+						issue: [
+							{
+								severity: "error",
+								code: "exception",
+								diagnostics:
+									err instanceof Error
+										? err.message
+										: String(err) || "Save failed",
+							},
+						],
+					};
+			setRunError(oo);
+			Utils.toastError(
+				"Failed to save SQLQuery",
+				oo.issue?.[0]?.diagnostics ?? undefined,
+			);
 		},
 	});
 
@@ -264,62 +343,209 @@ export function SQLQueryBuilderContent() {
 		},
 	});
 
+	const [isResultCollapsed, setIsResultCollapsed] = useLocalStorage<boolean>({
+		key: "sqlquery-builder:result-collapsed",
+		defaultValue: true,
+		getInitialValueInEffect: false,
+	});
+	const [isMaximized, setIsMaximized] = React.useState(false);
+
+	const handleToggleCollapse = React.useCallback(() => {
+		setIsResultCollapsed((prev) => !prev);
+		setIsMaximized(false);
+	}, [setIsResultCollapsed]);
+
+	const handleToggleMaximize = React.useCallback(() => {
+		setIsMaximized((prev) => !prev);
+	}, []);
+
+	const handleExpandResult = React.useCallback(() => {
+		setIsResultCollapsed(false);
+	}, [setIsResultCollapsed]);
+
+	React.useEffect(() => {
+		if (!isMaximized) return;
+		const onEscape = (e: KeyboardEvent) => {
+			if (e.key === "Escape") setIsMaximized(false);
+		};
+		document.addEventListener("keydown", onEscape);
+		return () => document.removeEventListener("keydown", onEscape);
+	}, [isMaximized]);
+
 	const runMutationRef = React.useRef(runMutation);
 	runMutationRef.current = runMutation;
+
+	const triggerRun = React.useCallback(() => {
+		const m = runMutationRef.current;
+		if (m.isPending) return;
+		const types = new Map<string, string>();
+		for (const p of library.parameter ?? []) {
+			if (p.name) types.set(p.name, p.type ?? "string");
+		}
+		for (const [n, t] of inheritedTypes) {
+			if (!types.has(n)) types.set(n, t);
+		}
+		const missing = new Set<string>();
+		for (const [name, type] of types) {
+			if (type === "boolean") continue;
+			const v = paramValues[name];
+			if (v === undefined || v === "") missing.add(name);
+		}
+		if (missing.size > 0) {
+			setMissingParams(missing);
+			Utils.toastError(
+				"Missing parameters",
+				`Please provide values for: ${Array.from(missing).join(", ")}`,
+			);
+			return;
+		}
+		setMissingParams(new Set());
+		handleExpandResult();
+		m.mutate();
+	}, [
+		library.parameter,
+		inheritedTypes,
+		paramValues,
+		setMissingParams,
+		handleExpandResult,
+	]);
 
 	React.useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 				e.preventDefault();
-				const m = runMutationRef.current;
-				if (!m.isPending) m.mutate();
+				triggerRun();
 			}
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, []);
+	}, [triggerRun]);
+
+	const editorContent = (
+		<div className="flex flex-col h-full">
+			<EditorHeaderMenu
+				onRun={triggerRun}
+				onSave={() => saveMutation.mutate()}
+				isRunDisabled={runMutation.isPending}
+				isSaveDisabled={!isDirty || saveMutation.isPending}
+			/>
+			<div className="flex-1 min-h-0 overflow-auto">
+				<div className="min-h-full bg-bg-primary px-2.5 py-3">
+					<PropertiesTree />
+				</div>
+			</div>
+		</div>
+	);
+
+	const hasResult = runResult !== null || isRunning;
+
+	if (!hasResult) {
+		return (
+			<div className="relative h-full grow min-h-0 flex flex-col">
+				<HSComp.ResizablePanelGroup
+					direction="vertical"
+					autoSaveId="sqlquery-builder-vertical-no-result"
+					className="grow min-h-0"
+				>
+					<HSComp.ResizablePanel minSize={20}>
+						{editorContent}
+					</HSComp.ResizablePanel>
+					{runError && (
+						<>
+							<HSComp.ResizableHandle />
+							<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+								<HSComp.OperationOutcomeView
+									resource={runError}
+									className="h-full overflow-auto"
+								/>
+							</HSComp.ResizablePanel>
+						</>
+					)}
+				</HSComp.ResizablePanelGroup>
+			</div>
+		);
+	}
+
+	if (isResultCollapsed) {
+		return (
+			<div className="relative h-full grow min-h-0 flex flex-col overflow-hidden">
+				<div className="flex-1 min-h-0">
+					<HSComp.ResizablePanelGroup
+						direction="vertical"
+						autoSaveId="sqlquery-builder-vertical-collapsed"
+						className="grow min-h-0"
+					>
+						<HSComp.ResizablePanel minSize={20}>
+							{editorContent}
+						</HSComp.ResizablePanel>
+						{runError && (
+							<>
+								<HSComp.ResizableHandle />
+								<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+									<HSComp.OperationOutcomeView
+										resource={runError}
+										className="h-full overflow-auto"
+									/>
+								</HSComp.ResizablePanel>
+							</>
+						)}
+					</HSComp.ResizablePanelGroup>
+				</div>
+				<div className="flex items-center justify-between bg-bg-secondary pl-6 pr-2 py-3 border-t h-10 flex-none">
+					<span className="typo-label text-text-secondary">Result</span>
+					<HSComp.Tooltip>
+						<HSComp.TooltipTrigger asChild>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								onClick={handleToggleCollapse}
+							>
+								<PanelBottomOpen className="w-4 h-4" />
+							</HSComp.Button>
+						</HSComp.TooltipTrigger>
+						<HSComp.TooltipContent align="end">Restore</HSComp.TooltipContent>
+					</HSComp.Tooltip>
+				</div>
+			</div>
+		);
+	}
 
 	return (
-		<HSComp.ResizablePanelGroup
-			direction="vertical"
-			autoSaveId="sqlquery-builder-vertical"
-			className="grow min-h-0"
-		>
-			<HSComp.ResizablePanel minSize={20}>
-				<div className="flex flex-col h-full">
-					<EditorHeaderMenu
-						onRun={() => runMutation.mutate()}
-						onSave={() => saveMutation.mutate()}
-						isRunDisabled={runMutation.isPending}
-						isSaveDisabled={!isDirty || saveMutation.isPending}
-					/>
-					<div className="flex-1 min-h-0 overflow-auto">
-						<div className="min-h-full bg-bg-primary px-2.5 py-3">
-							<PropertiesTree />
+		<div className="relative h-full grow min-h-0 flex flex-col overflow-hidden">
+			<HSComp.ResizablePanelGroup
+				direction="vertical"
+				autoSaveId="sqlquery-builder-vertical"
+				className="grow min-h-0"
+			>
+				<HSComp.ResizablePanel minSize={20}>
+					{editorContent}
+				</HSComp.ResizablePanel>
+				{runError && (
+					<>
+						<HSComp.ResizableHandle />
+						<HSComp.ResizablePanel defaultSize={20} minSize={10}>
+							<HSComp.OperationOutcomeView
+								resource={runError}
+								className="h-full overflow-auto"
+							/>
+						</HSComp.ResizablePanel>
+					</>
+				)}
+				<HSComp.ResizableHandle />
+				<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+					<div
+						className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-30 overflow-auto bg-bg-primary" : ""}`}
+					>
+						<div className="flex-1 min-h-0">
+							<ResultPanel
+								isMaximized={isMaximized}
+								onToggleMaximize={handleToggleMaximize}
+								onToggleCollapse={handleToggleCollapse}
+							/>
 						</div>
 					</div>
-				</div>
-			</HSComp.ResizablePanel>
-			{runError && (
-				<>
-					<HSComp.ResizableHandle />
-					<HSComp.ResizablePanel defaultSize={20} minSize={10}>
-						<HSComp.OperationOutcomeView
-							resource={runError}
-							className="h-full overflow-auto"
-						/>
-					</HSComp.ResizablePanel>
-				</>
-			)}
-			<HSComp.ResizableHandle />
-			<HSComp.ResizablePanel defaultSize={30} minSize={10}>
-				<div className="flex flex-col h-full">
-					<RunInputs />
-					<div className="flex-1 min-h-0">
-						<ResultPanel />
-					</div>
-				</div>
-			</HSComp.ResizablePanel>
-		</HSComp.ResizablePanelGroup>
+				</HSComp.ResizablePanel>
+			</HSComp.ResizablePanelGroup>
+		</div>
 	);
 }

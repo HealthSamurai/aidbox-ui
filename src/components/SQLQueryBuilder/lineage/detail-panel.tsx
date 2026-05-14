@@ -1,7 +1,40 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Link } from "@tanstack/react-router";
-import { Database, ExternalLink, FileCode2, Table } from "lucide-react";
+import { Database, ExternalLink, FileCode2, Table, X } from "lucide-react";
 import type { LineageNodeData, ViewSelect } from "./types";
+
+function CloseButton({ onClose }: { onClose: () => void }) {
+	return (
+		<HSComp.IconButton
+			variant="ghost"
+			aria-label="Close"
+			onClick={onClose}
+			icon={<X className="w-4 h-4" />}
+		/>
+	);
+}
+
+function PanelHeader({
+	icon,
+	label,
+	color,
+	onClose,
+}: {
+	icon: React.ReactNode;
+	label: string;
+	color: string;
+	onClose: () => void;
+}) {
+	return (
+		<div className="flex items-center justify-between">
+			<div className={`flex items-center gap-2 ${color}`}>
+				{icon}
+				<span className="font-mono text-xs uppercase">{label}</span>
+			</div>
+			<CloseButton onClose={onClose} />
+		</div>
+	);
+}
 
 function Field({
 	label,
@@ -143,39 +176,21 @@ function SelectTree({ node }: { node: ViewSelect }) {
 	);
 }
 
-function KindHeader({
-	icon,
-	label,
-	color,
+export function LineageDetailPanel({
+	data,
+	onClose,
 }: {
-	icon: React.ReactNode;
-	label: string;
-	color: string;
+	data: LineageNodeData;
+	onClose: () => void;
 }) {
-	return (
-		<div className={`flex items-center gap-2 ${color}`}>
-			{icon}
-			<span className="font-mono text-xs uppercase">{label}</span>
-		</div>
-	);
-}
-
-export function LineageDetailPanel({ data }: { data: LineageNodeData | null }) {
-	if (!data) {
-		return (
-			<div className="h-full flex items-center justify-center text-text-tertiary p-6 text-center text-sm">
-				Click on a node in the graph to see its details.
-			</div>
-		);
-	}
-
 	if (data.kind === "resource-type") {
 		return (
 			<div className="h-full overflow-auto p-4 pb-20 flex flex-col gap-4 bg-bg-primary">
-				<KindHeader
+				<PanelHeader
 					icon={<Database size={14} />}
 					label="Resource"
 					color="text-text-success-primary"
+					onClose={onClose}
 				/>
 				<Field label="Resource type" value={data.resourceType} mono copyable />
 				<Link
@@ -193,10 +208,11 @@ export function LineageDetailPanel({ data }: { data: LineageNodeData | null }) {
 	if (data.kind === "view-definition") {
 		return (
 			<div className="h-full overflow-auto p-4 pb-20 flex flex-col gap-4 bg-bg-primary">
-				<KindHeader
+				<PanelHeader
 					icon={<Table size={14} />}
 					label="View"
 					color="text-text-info-primary"
+					onClose={onClose}
 				/>
 				<div className="flex flex-col gap-1">
 					<span className="text-xs typo-label-tiny text-text-tertiary uppercase">
@@ -271,10 +287,11 @@ export function LineageDetailPanel({ data }: { data: LineageNodeData | null }) {
 	// sql-query
 	return (
 		<div className="h-full overflow-auto p-4 pb-20 flex flex-col gap-4 bg-bg-primary">
-			<KindHeader
+			<PanelHeader
 				icon={<FileCode2 size={14} />}
 				label="Query"
 				color="text-text-brand-primary"
+				onClose={onClose}
 			/>
 			<div className="flex flex-col gap-1">
 				<span className="text-xs typo-label-tiny text-text-tertiary uppercase">

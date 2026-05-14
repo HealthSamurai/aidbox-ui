@@ -4,7 +4,7 @@ import {
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import { AlertTriangle, Link, Plus, X } from "lucide-react";
+import { Play, Plus, X } from "lucide-react";
 import * as React from "react";
 import { useSQLQueryContext } from "./context";
 import {
@@ -47,6 +47,8 @@ function InputView({
 	className,
 	invalid,
 	disabled,
+	leftSlot,
+	dashed,
 }: {
 	placeholder: string;
 	value?: string;
@@ -54,6 +56,8 @@ function InputView({
 	className?: string;
 	invalid?: boolean;
 	disabled?: boolean;
+	leftSlot?: React.ReactNode;
+	dashed?: boolean;
 }) {
 	const [localValue, setLocalValue] = React.useState(value ?? "");
 
@@ -73,10 +77,22 @@ function InputView({
 		}, 500);
 	};
 
+	const borderCls = dashed
+		? invalid
+			? "border border-dashed border-border-error focus:border-border-error focus-visible:border-border-error hover:border-border-error"
+			: "border border-dashed border-border-secondary"
+		: "border-none";
+	const ringCls = invalid
+		? dashed
+			? ""
+			: "ring-1 ring-border-error rounded-md focus:ring-border-error"
+		: "focus:ring-1 focus:ring-border-link";
+	const paddingCls = leftSlot ? "pl-9 pr-2" : "px-2";
 	return (
 		<HSComp.Input
 			disabled={disabled}
-			className={`h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary disabled:cursor-not-allowed ${invalid ? "ring-1 ring-border-error rounded-md" : ""} ${className ?? ""}`}
+			leftSlot={leftSlot}
+			className={`h-7 py-1 ${paddingCls} bg-bg-primary ${borderCls} hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary disabled:cursor-not-allowed ${ringCls} ${className ?? ""}`}
 			placeholder={placeholder}
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
@@ -126,46 +142,61 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 	);
 }
 
-function InheritedParameterRow({
-	entry,
-	hasConflict,
+function ParamValueField({
+	name,
+	type,
+	value,
+	onChange,
+	missing,
 }: {
-	entry: ResolvedParameter;
-	hasConflict: boolean;
+	name: string | undefined;
+	type: string;
+	value: string;
+	onChange: (value: string) => void;
+	missing?: boolean;
 }) {
-	return (
-		<div className="flex w-full items-center gap-2">
-			<div className="w-44 shrink-0 cursor-not-allowed">
-				<InputView
-					disabled
-					placeholder="name"
-					value={entry.name}
-					className="font-mono text-xs"
+	const hasName = !!name;
+	const wrapperProps =
+		missing && hasName
+			? { "data-param-missing": name as string }
+			: ({} as Record<string, string>);
+	if (type === "boolean") {
+		return (
+			<div
+				className={`flex-1 min-w-0 flex items-center gap-2 ${missing ? "ring-1 ring-border-error rounded-md" : ""}`}
+				onClick={(e) => e.stopPropagation()}
+				onMouseDown={(e) => e.stopPropagation()}
+				onKeyDown={(e) => e.stopPropagation()}
+				role="presentation"
+				{...wrapperProps}
+			>
+				<Play size={12} className="text-text-tertiary shrink-0" />
+				<HSComp.Switch
+					checked={value === "true"}
+					onCheckedChange={(c) => onChange(c ? "true" : "false")}
 				/>
 			</div>
-			<div className="w-36 cursor-not-allowed">
-				<HSComp.Select value={entry.type ?? "string"} disabled>
-					<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
-						<HSComp.SelectValue />
-					</HSComp.SelectTrigger>
-					<HSComp.SelectContent>
-						{FHIR_PARAMETER_TYPES.map((t) => (
-							<HSComp.SelectItem key={t} value={t}>
-								{t}
-							</HSComp.SelectItem>
-						))}
-					</HSComp.SelectContent>
-				</HSComp.Select>
-			</div>
-			<InheritedSourceTooltip
-				sources={entry.sources}
-				hasConflict={hasConflict}
+		);
+	}
+	return (
+		<div className="flex-1 min-w-0 relative" {...wrapperProps}>
+			<Play
+				size={12}
+				className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none z-10"
+			/>
+			<InputView
+				placeholder="RUN parameter value"
+				value={value}
+				onChange={onChange}
+				className="font-mono text-xs pl-7"
+				invalid={missing}
+				dashed
 			/>
 		</div>
 	);
 }
 
-function InheritedSourceTooltip({
+function SourceTooltipContent({
 	sources,
 	hasConflict,
 }: {
@@ -173,53 +204,142 @@ function InheritedSourceTooltip({
 	hasConflict: boolean;
 }) {
 	return (
-		<HSComp.Tooltip delayDuration={250}>
-			<HSComp.TooltipTrigger asChild>
-				<span
-					className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-						hasConflict ? "text-text-error-primary" : "text-text-link"
-					}`}
-				>
-					{hasConflict ? <AlertTriangle size={14} /> : <Link size={14} />}
-				</span>
-			</HSComp.TooltipTrigger>
-			<HSComp.TooltipContent
-				side="bottom"
-				align="start"
-				className="max-w-md p-0 bg-bg-primary text-text-primary border border-border-primary shadow-md"
-			>
-				<div className="flex flex-col">
-					{hasConflict && (
-						<div className="px-3 py-2 text-xs text-text-error-primary border-b border-border-primary">
-							Type conflict across sources
-						</div>
-					)}
-					{sources.map((s, i) => (
+		<HSComp.TooltipContent
+			side="bottom"
+			align="start"
+			className="max-w-md p-0 bg-bg-primary text-text-primary border border-border-primary shadow-md"
+		>
+			<div className="flex flex-col">
+				{hasConflict && (
+					<div className="px-3 py-2 text-xs text-text-error-primary border-b border-border-primary">
+						Type conflict across sources
+					</div>
+				)}
+				{sources.map((s, i) => (
+					<div
+						key={`${s.libraryId ?? s.canonical}-${i}`}
+						className={`flex flex-col gap-0.5 px-3 py-2 min-w-0 ${
+							i > 0 ? "border-t border-border-primary" : ""
+						}`}
+					>
+						<span className="typo-label-tiny text-text-tertiary">SQLQuery</span>
+						<span className="truncate">
+							{s.libraryTitle || s.libraryName || s.libraryId || s.canonical}
+						</span>
+						<span className="font-mono text-xs text-text-tertiary truncate">
+							{s.libraryDescription || s.canonical}
+						</span>
+					</div>
+				))}
+			</div>
+		</HSComp.TooltipContent>
+	);
+}
+
+function InheritedParameterRow({
+	entry,
+	hasConflict,
+	value,
+	onValueChange,
+	missing,
+}: {
+	entry: ResolvedParameter;
+	hasConflict: boolean;
+	value: string;
+	onValueChange: (value: string) => void;
+	missing: boolean;
+}) {
+	const disabledRingClass = hasConflict
+		? "ring-1 ring-border-error rounded-md"
+		: "";
+	return (
+		<div className="flex w-full items-center gap-2">
+			<HSComp.Tooltip delayDuration={250}>
+				<HSComp.TooltipTrigger asChild>
+					<div className="flex items-center gap-2">
 						<div
-							key={`${s.libraryId ?? s.canonical}-${i}`}
-							className={`flex flex-col gap-0.5 px-3 py-2 min-w-0 ${
-								i > 0 ? "border-t border-border-primary" : ""
-							}`}
+							className={`w-44 shrink-0 cursor-not-allowed ${disabledRingClass}`}
 						>
-							<span className="typo-label-tiny text-text-tertiary">
-								SQLQuery
-							</span>
-							<span className="truncate">
-								{s.libraryTitle || s.libraryName || s.libraryId || s.canonical}
-							</span>
-							<span className="font-mono text-xs text-text-tertiary truncate">
-								{s.libraryDescription || s.canonical}
-							</span>
+							<InputView
+								disabled
+								placeholder="name"
+								value={entry.name}
+								className="font-mono text-xs"
+							/>
 						</div>
-					))}
-				</div>
-			</HSComp.TooltipContent>
-		</HSComp.Tooltip>
+						<div className={`w-28 cursor-not-allowed ${disabledRingClass}`}>
+							<HSComp.Select value={entry.type ?? "string"} disabled>
+								<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
+									<HSComp.SelectValue />
+								</HSComp.SelectTrigger>
+								<HSComp.SelectContent>
+									{FHIR_PARAMETER_TYPES.map((t) => (
+										<HSComp.SelectItem key={t} value={t}>
+											{t}
+										</HSComp.SelectItem>
+									))}
+								</HSComp.SelectContent>
+							</HSComp.Select>
+						</div>
+					</div>
+				</HSComp.TooltipTrigger>
+				<SourceTooltipContent
+					sources={entry.sources}
+					hasConflict={hasConflict}
+				/>
+			</HSComp.Tooltip>
+			<ParamValueField
+				name={entry.name}
+				type={entry.type ?? "string"}
+				value={value}
+				onChange={onValueChange}
+				missing={missing}
+			/>
+		</div>
 	);
 }
 
 export function PropertiesTree() {
-	const { library, updateLibrary } = useSQLQueryContext();
+	const {
+		library,
+		updateLibrary,
+		quietUpdateLibrary,
+		paramValues,
+		setParamValue,
+		missingParams,
+	} = useSQLQueryContext();
+	const treeContainerRef = React.useRef<HTMLDivElement>(null);
+	const firstMissingName = React.useMemo(() => {
+		for (const n of missingParams) {
+			if ((paramValues[n] ?? "") === "") return n;
+		}
+		return null;
+	}, [missingParams, paramValues]);
+
+	React.useEffect(() => {
+		if (!firstMissingName) return;
+		setExpandedItems((prev) =>
+			prev.includes("_parameter") ? prev : [...prev, "_parameter"],
+		);
+		let cancelled = false;
+		const id = requestAnimationFrame(() => {
+			if (cancelled) return;
+			requestAnimationFrame(() => {
+				if (cancelled) return;
+				const el = treeContainerRef.current?.querySelector(
+					`[data-param-missing="${CSS.escape(firstMissingName)}"]`,
+				) as HTMLElement | null;
+				if (!el) return;
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
+				const input = el.querySelector("input,button") as HTMLElement | null;
+				input?.focus();
+			});
+		});
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(id);
+		};
+	}, [firstMissingName]);
 
 	const dependsOn = React.useMemo(
 		() =>
@@ -228,6 +348,35 @@ export function PropertiesTree() {
 	);
 
 	const parameters = library.parameter ?? [];
+
+	React.useEffect(() => {
+		quietUpdateLibrary((lib) => {
+			const list = (lib.relatedArtifact ?? []).filter(
+				(ra) => ra.type === "depends-on",
+			);
+			const last = list[list.length - 1];
+			if (last && !last.label && !last.resource) return lib;
+			return {
+				...lib,
+				relatedArtifact: [
+					...(lib.relatedArtifact ?? []),
+					{ type: "depends-on", label: "", resource: "" },
+				],
+			};
+		});
+	}, [quietUpdateLibrary]);
+
+	React.useEffect(() => {
+		quietUpdateLibrary((lib) => {
+			const list = lib.parameter ?? [];
+			const last = list[list.length - 1];
+			if (last && !last.name) return lib;
+			return {
+				...lib,
+				parameter: [...list, { use: "in", name: "" }],
+			};
+		});
+	}, [quietUpdateLibrary]);
 
 	const { tree: resolvedTree } = useResolvedParameterTree(library);
 
@@ -402,7 +551,7 @@ export function PropertiesTree() {
 
 	const addParameter = () => {
 		const newIndex = parameters.length;
-		setParameters([...parameters, { use: "in", name: "", type: "string" }]);
+		setParameters([...parameters, { use: "in", name: "" }]);
 		requestFocus(`parameter-${newIndex}`);
 	};
 
@@ -484,7 +633,7 @@ export function PropertiesTree() {
 					>
 						<div className="w-44 shrink-0">
 							<InputView
-								placeholder="label"
+								placeholder="Table name"
 								value={labelValue}
 								onChange={(v) => updateDependsOnLabel(idx, v)}
 								invalid={labelInvalid}
@@ -543,13 +692,13 @@ export function PropertiesTree() {
 								className="font-mono text-xs"
 							/>
 						</div>
-						<div className="w-36">
+						<div className="w-28 shrink-0">
 							<HSComp.Select
-								value={entry.type ?? "string"}
+								value={entry.type}
 								onValueChange={(v) => updateParameterType(idx, v)}
 							>
 								<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
-									<HSComp.SelectValue />
+									<HSComp.SelectValue placeholder="type" />
 								</HSComp.SelectTrigger>
 								<HSComp.SelectContent>
 									{FHIR_PARAMETER_TYPES.map((t) => (
@@ -560,10 +709,23 @@ export function PropertiesTree() {
 								</HSComp.SelectContent>
 							</HSComp.Select>
 						</div>
+						<ParamValueField
+							name={entry.name}
+							type={entry.type ?? "string"}
+							value={entry.name ? (paramValues[entry.name] ?? "") : ""}
+							onChange={(v) =>
+								entry.name ? setParamValue(entry.name, v) : undefined
+							}
+							missing={
+								!!entry.name &&
+								missingParams.has(entry.name) &&
+								(paramValues[entry.name] ?? "") === ""
+							}
+						/>
 						<HSComp.Button
 							variant="link"
 							size="small"
-							className="group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
+							className="shrink-0 group-hover/tree-item-label:opacity-100 opacity-0 transition-opacity"
 							onClick={() => removeParameter(idx)}
 							asChild
 						>
@@ -582,6 +744,12 @@ export function PropertiesTree() {
 					<InheritedParameterRow
 						entry={entry}
 						hasConflict={conflictNames.has(entry.name)}
+						value={paramValues[entry.name] ?? ""}
+						onValueChange={(v) => setParamValue(entry.name, v)}
+						missing={
+							missingParams.has(entry.name) &&
+							(paramValues[entry.name] ?? "") === ""
+						}
 					/>
 				);
 			}
@@ -603,7 +771,7 @@ export function PropertiesTree() {
 			case "sql-value":
 				return (
 					<div
-						className="w-full h-[400px] -ml-2.5"
+						className="w-full -ml-2.5"
 						onClick={(e) => e.stopPropagation()}
 						onKeyDown={(e) => e.stopPropagation()}
 						role="presentation"
@@ -617,32 +785,34 @@ export function PropertiesTree() {
 	};
 
 	return (
-		<TreeView
-			items={tree}
-			rootItemId="root"
-			customItemView={customItemView}
-			disableHover={true}
-			chevronClassName="self-center cursor-pointer"
-			expandedItems={expandedItems}
-			onExpandedItemsChange={setExpandedItems}
-			onItemLabelClick={(item) => {
-				if (item.isFolder()) {
-					if (item.isExpanded()) item.collapse();
-					else item.expand();
-				}
-			}}
-			itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
-				const metaType = item.getItemData()?.meta?.type;
-				if (
-					metaType === "properties" ||
-					metaType === "depends-on" ||
-					metaType === "parameter" ||
-					metaType === "sql"
-				) {
-					return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
-				}
-				return "pr-0";
-			}}
-		/>
+		<div ref={treeContainerRef}>
+			<TreeView
+				items={tree}
+				rootItemId="root"
+				customItemView={customItemView}
+				disableHover={true}
+				chevronClassName="self-center cursor-pointer"
+				expandedItems={expandedItems}
+				onExpandedItemsChange={setExpandedItems}
+				onItemLabelClick={(item) => {
+					if (item.isFolder()) {
+						if (item.isExpanded()) item.collapse();
+						else item.expand();
+					}
+				}}
+				itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
+					const metaType = item.getItemData()?.meta?.type;
+					if (
+						metaType === "properties" ||
+						metaType === "depends-on" ||
+						metaType === "parameter" ||
+						metaType === "sql"
+					) {
+						return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
+					}
+					return "pr-0";
+				}}
+			/>
+		</div>
 	);
 }

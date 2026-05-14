@@ -47,7 +47,12 @@ export const AccessPolicyProvider = ({
 		>
 			{children}
 
-			<HSComp.AlertDialog open={status === "blocked"}>
+			<HSComp.AlertDialog
+				open={status === "blocked"}
+				onOpenChange={(open) => {
+					if (!open) reset?.();
+				}}
+			>
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
 						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>

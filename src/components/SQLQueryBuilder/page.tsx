@@ -1,8 +1,14 @@
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type * as HSComp from "@health-samurai/react-components";
 import * as React from "react";
+import { useLocalStorage } from "../../hooks";
 import { type RunResult, SQLQueryContext } from "./context";
 import type { SQLLibrary } from "./types";
+
+function paramStorageKey(lib: SQLLibrary): string {
+	const id = lib.id || lib.url || "new";
+	return `sqlquery-builder:param-values:${id}`;
+}
 
 export function SQLQueryProvider({
 	initialResource,
@@ -23,8 +29,15 @@ export function SQLQueryProvider({
 	const [runError, setRunError] =
 		React.useState<HSComp.OperationOutcome | null>(null);
 	const [isRunning, setIsRunning] = React.useState(false);
-	const [paramValues, setParamValues] = React.useState<Record<string, string>>(
-		{},
+	const [missingParams, setMissingParams] = React.useState<Set<string>>(
+		() => new Set(),
+	);
+	const [paramValues, setParamValues] = useLocalStorage<Record<string, string>>(
+		{
+			key: paramStorageKey(library),
+			defaultValue: {},
+			getInitialValueInEffect: false,
+		},
 	);
 
 	const updateLibrary = React.useCallback(
@@ -38,15 +51,26 @@ export function SQLQueryProvider({
 		[],
 	);
 
-	const setParamValue = React.useCallback((name: string, value: string) => {
-		setParamValues((prev) => ({ ...prev, [name]: value }));
-	}, []);
+	const quietUpdateLibrary = React.useCallback(
+		(updater: (lib: SQLLibrary) => SQLLibrary) => {
+			setLibrary((prev) => updater(prev));
+		},
+		[],
+	);
+
+	const setParamValue = React.useCallback(
+		(name: string, value: string) => {
+			setParamValues((prev) => ({ ...prev, [name]: value }));
+		},
+		[setParamValues],
+	);
 
 	return (
 		<SQLQueryContext.Provider
 			value={{
 				library,
 				updateLibrary,
+				quietUpdateLibrary,
 				isDirty,
 				setIsDirty,
 				runResult,
@@ -57,6 +81,8 @@ export function SQLQueryProvider({
 				setIsRunning,
 				paramValues,
 				setParamValue,
+				missingParams,
+				setMissingParams,
 				onCreated,
 				onDeleted,
 			}}
