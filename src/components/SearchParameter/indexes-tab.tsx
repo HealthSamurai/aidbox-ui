@@ -434,7 +434,7 @@ export const IndexesTab = ({
 															<div className="text-xs font-medium text-text-secondary mb-1">
 																Covers
 															</div>
-															<dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+															<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
 																{r.subtypes.map((st) => {
 																	const label = formatSubtype(st);
 																	const example = subtypeExample(
