@@ -56,7 +56,8 @@
 			"yaml": "^2.8.3",
 			"diff": "^8.0.3",
 			"postcss@<8.5.10": ">=8.5.10",
-			"@codemirror/view": "^6.42.0"
+			"@codemirror/view": "^6.42.0",
+			"@codemirror/autocomplete": "6.20.2"
 		}
 	},
 	"dependencies": {
