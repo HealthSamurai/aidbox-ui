@@ -8,9 +8,9 @@ import { validateSearch } from "./resource.$resourceType.create";
 
 const PageComponent = () => {
 	const { id } = Route.useParams();
-	const navigate = useNavigate({ from: "/data-lineage/queries/edit/$id" });
+	const navigate = useNavigate({ from: "/analytics/queries/edit/$id" });
 	const { tab, mode } = useSearch({
-		from: "/data-lineage/queries/edit/$id",
+		from: "/analytics/queries/edit/$id",
 	});
 	return (
 		<ResourceEditorPageWithLoader
@@ -21,7 +21,7 @@ const PageComponent = () => {
 			navigate={navigate}
 			onDeleted={() =>
 				navigate({
-					to: "/data-lineage/queries",
+					to: "/analytics/queries",
 					search: { q: undefined, page: undefined, pageSize: undefined },
 				})
 			}
@@ -29,7 +29,7 @@ const PageComponent = () => {
 	);
 };
 
-export const Route = createFileRoute("/data-lineage/queries/edit/$id")({
+export const Route = createFileRoute("/analytics/queries/edit/$id")({
 	component: PageComponent,
 	validateSearch,
 	loader: (cx) => ({ breadCrumb: cx.params.id }),

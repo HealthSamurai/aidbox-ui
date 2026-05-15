@@ -183,7 +183,9 @@ export function SQLQueryBuilderContent() {
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
-			queryClient.invalidateQueries({ queryKey: ["data-lineage-queries"] });
+			queryClient.invalidateQueries({
+				queryKey: ["data-lineage-sidebar-queries"],
+			});
 			if (created && onCreated) {
 				const id = (resource as SQLLibrary).id;
 				if (id) onCreated(id);

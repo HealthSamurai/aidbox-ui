@@ -59,6 +59,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 					{runResult.columns.map((col) => (
 						<HSComp.TableHead key={col}>{col}</HSComp.TableHead>
 					))}
+					<HSComp.TableHead className="w-full p-0" />
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
 			<HSComp.TableBody>
@@ -77,6 +78,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 								</HSComp.TableCell>
 							);
 						})}
+						<HSComp.TableCell className="p-0" />
 					</HSComp.TableRow>
 				))}
 			</HSComp.TableBody>

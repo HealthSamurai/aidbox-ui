@@ -52,6 +52,7 @@ export function SQLQueryProvider({
 	const setIsDirty = React.useCallback((value: boolean) => {
 		if (!value) {
 			setBaselineHash(computeLibraryHash(libraryRef.current));
+			isDirtyRef.current = false;
 		}
 	}, []);
 	const [runResult, setRunResult] = React.useState<RunResult | null>(null);

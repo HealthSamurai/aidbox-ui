@@ -169,7 +169,7 @@ function ViewsSection({
 						className="top-0 right-0 h-full w-auto aspect-square rounded-lg"
 					>
 						<Link
-							to="/data-lineage/views/create"
+							to="/analytics/views/create"
 							search={createSearch}
 							className="text-text-link! hover:text-text-link! [&>svg]:text-text-link!"
 							aria-label="Create view"
@@ -188,8 +188,7 @@ function ViewsSection({
 							</HSComp.SidebarMenuSubItem>
 						)}
 						{items.map((it) => {
-							const active =
-								currentPath === `/data-lineage/views/edit/${it.id}`;
+							const active = currentPath === `/analytics/views/edit/${it.id}`;
 							return (
 								<HSComp.SidebarMenuSubItem key={it.id}>
 									<HoverTooltip description={it.description}>
@@ -199,7 +198,7 @@ function ViewsSection({
 											className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
 										>
 											<Link
-												to="/data-lineage/views/edit/$id"
+												to="/analytics/views/edit/$id"
 												params={{ id: it.id }}
 												search={editSearch}
 											>
@@ -259,7 +258,7 @@ function QueriesSection({
 						className="top-0 right-0 h-full w-auto aspect-square rounded-lg"
 					>
 						<Link
-							to="/data-lineage/queries/create"
+							to="/analytics/queries/create"
 							search={createSearch}
 							className="text-text-link! hover:text-text-link! [&>svg]:text-text-link!"
 							aria-label="Create query"
@@ -278,8 +277,7 @@ function QueriesSection({
 							</HSComp.SidebarMenuSubItem>
 						)}
 						{items.map((it) => {
-							const active =
-								currentPath === `/data-lineage/queries/edit/${it.id}`;
+							const active = currentPath === `/analytics/queries/edit/${it.id}`;
 							return (
 								<HSComp.SidebarMenuSubItem key={it.id}>
 									<HoverTooltip description={it.description}>
@@ -289,7 +287,7 @@ function QueriesSection({
 											className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
 										>
 											<Link
-												to="/data-lineage/queries/edit/$id"
+												to="/analytics/queries/edit/$id"
 												params={{ id: it.id }}
 												search={editSearch}
 											>

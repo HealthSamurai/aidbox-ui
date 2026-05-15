@@ -12,6 +12,19 @@ import { createResource, deleteResource, updateResource } from "./api";
 import type { EditorMode } from "./types";
 import { defaultTabFor, pageId } from "./types";
 
+const DATA_LINEAGE_SIDEBAR_KEY_BY_RESOURCE_TYPE: Record<string, string> = {
+	Library: "data-lineage-sidebar-queries",
+	ViewDefinition: "data-lineage-sidebar-views",
+};
+
+const invalidateDataLineageSidebar = (
+	queryClient: ReturnType<typeof useQueryClient>,
+	resourceType: string,
+) => {
+	const key = DATA_LINEAGE_SIDEBAR_KEY_BY_RESOURCE_TYPE[resourceType];
+	if (key) queryClient.invalidateQueries({ queryKey: [key] });
+};
+
 export interface SaveHandle {
 	save: () => Promise<Resource>;
 }
@@ -56,6 +69,7 @@ export const SaveButton = ({
 			queryClient.invalidateQueries({
 				queryKey: [pageId, resourceType, id],
 			});
+			invalidateDataLineageSidebar(queryClient, resourceType);
 			if (!resource.id)
 				return Utils.toastError(
 					"Failed to open saved resource",
@@ -112,6 +126,7 @@ export const DeleteButton = ({
 	onDeleted?: () => void;
 }) => {
 	const navigate = Router.useNavigate();
+	const queryClient = useQueryClient();
 	const mutation = useMutation({
 		mutationFn: async () => {
 			return await deleteResource(client, resourceType, id);
@@ -119,6 +134,7 @@ export const DeleteButton = ({
 		onError: Utils.onMutationError,
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
+			invalidateDataLineageSidebar(queryClient, resourceType);
 			if (onDeleted) {
 				onDeleted();
 				return;

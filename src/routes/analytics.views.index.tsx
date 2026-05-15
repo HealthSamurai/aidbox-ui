@@ -10,7 +10,7 @@ function ViewsPlaceholder() {
 	);
 }
 
-export const Route = createFileRoute("/data-lineage/views/")({
+export const Route = createFileRoute("/analytics/views/")({
 	staticData: { title: "Views" },
 	component: ViewsPlaceholder,
 });
