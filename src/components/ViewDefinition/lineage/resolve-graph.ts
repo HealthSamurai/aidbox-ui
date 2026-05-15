@@ -595,6 +595,10 @@ export function useViewDefinitionLineageGraph(
 			return buildInitialState(client, raw);
 		},
 		placeholderData: (prev) => prev,
+		staleTime: Number.POSITIVE_INFINITY,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		refetchOnMount: false,
 	});
 	return {
 		state: data ?? null,
