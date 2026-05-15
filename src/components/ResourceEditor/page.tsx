@@ -34,6 +34,7 @@ import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
 import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
+import { ViewDefinitionLineageTab } from "../ViewDefinition/lineage/lineage-tab";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
 import { deleteResource, fetchResource } from "./api";
@@ -391,6 +392,18 @@ export const ResourceEditorPage = ({
 			content: (
 				<HSComp.TabsContent value="builder" className="grow min-h-0">
 					<BuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isViewDefinition && id) {
+		tabs.push({
+			value: "lineage",
+			trigger: <HSComp.TabsTrigger value="lineage">Lineage</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent value="lineage" className="grow min-h-0 flex">
+					<ViewDefinitionLineageTab />
 				</HSComp.TabsContent>
 			),
 		});

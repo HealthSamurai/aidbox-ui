@@ -55,7 +55,7 @@ export function BaseNodeRow({
 }) {
 	return (
 		<div
-			className={`grid grid-cols-2 items-center px-3 py-1 border-b border-border-primary last:border-b-0 ${className ?? ""}`}
+			className={`grid grid-cols-[1fr_auto] gap-3 items-center px-3 py-1 border-b border-border-primary last:border-b-0 ${className ?? ""}`}
 		>
 			{children}
 		</div>
