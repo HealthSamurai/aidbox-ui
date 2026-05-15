@@ -14,17 +14,27 @@ import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
 import { Route as IgRouteImport } from './routes/ig'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
+import { Route as DataLineageRouteImport } from './routes/data-lineage'
 import { Route as AuditEventsRouteImport } from './routes/audit-events'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
+import { Route as DataLineageIndexRouteImport } from './routes/data-lineage.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
 import { Route as IgAddRouteImport } from './routes/ig.add'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
+import { Route as DataLineageViewsRouteImport } from './routes/data-lineage.views'
+import { Route as DataLineageQueriesRouteImport } from './routes/data-lineage.queries'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
 import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.index'
+import { Route as DataLineageViewsIndexRouteImport } from './routes/data-lineage.views.index'
+import { Route as DataLineageQueriesIndexRouteImport } from './routes/data-lineage.queries.index'
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
+import { Route as DataLineageViewsCreateRouteImport } from './routes/data-lineage.views.create'
+import { Route as DataLineageQueriesCreateRouteImport } from './routes/data-lineage.queries.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
+import { Route as DataLineageViewsEditIdRouteImport } from './routes/data-lineage.views.edit.$id'
+import { Route as DataLineageQueriesEditIdRouteImport } from './routes/data-lineage.queries.edit.$id'
 import { Route as IgPackageIdResourceResourceTypeResourceIdRouteImport } from './routes/ig.$packageId.resource.$resourceType.$resourceId'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -52,6 +62,11 @@ const DbConsoleRoute = DbConsoleRouteImport.update({
   path: '/db-console',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataLineageRoute = DataLineageRouteImport.update({
+  id: '/data-lineage',
+  path: '/data-lineage',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditEventsRoute = AuditEventsRouteImport.update({
   id: '/audit-events',
   path: '/audit-events',
@@ -72,6 +87,11 @@ const IgIndexRoute = IgIndexRouteImport.update({
   path: '/',
   getParentRoute: () => IgRoute,
 } as any)
+const DataLineageIndexRoute = DataLineageIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DataLineageRoute,
+} as any)
 const ResourceResourceTypeRoute = ResourceResourceTypeRouteImport.update({
   id: '/$resourceType',
   path: '/$resourceType',
@@ -87,6 +107,16 @@ const IgPackageIdRoute = IgPackageIdRouteImport.update({
   path: '/$packageId',
   getParentRoute: () => IgRoute,
 } as any)
+const DataLineageViewsRoute = DataLineageViewsRouteImport.update({
+  id: '/views',
+  path: '/views',
+  getParentRoute: () => DataLineageRoute,
+} as any)
+const DataLineageQueriesRoute = DataLineageQueriesRouteImport.update({
+  id: '/queries',
+  path: '/queries',
+  getParentRoute: () => DataLineageRoute,
+} as any)
 const ResourceResourceTypeIndexRoute =
   ResourceResourceTypeIndexRouteImport.update({
     id: '/',
@@ -98,17 +128,49 @@ const IgPackageIdIndexRoute = IgPackageIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => IgPackageIdRoute,
 } as any)
+const DataLineageViewsIndexRoute = DataLineageViewsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DataLineageViewsRoute,
+} as any)
+const DataLineageQueriesIndexRoute = DataLineageQueriesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DataLineageQueriesRoute,
+} as any)
 const ResourceResourceTypeCreateRoute =
   ResourceResourceTypeCreateRouteImport.update({
     id: '/create',
     path: '/create',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
+const DataLineageViewsCreateRoute = DataLineageViewsCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => DataLineageViewsRoute,
+} as any)
+const DataLineageQueriesCreateRoute =
+  DataLineageQueriesCreateRouteImport.update({
+    id: '/create',
+    path: '/create',
+    getParentRoute: () => DataLineageQueriesRoute,
+  } as any)
 const ResourceResourceTypeEditIdRoute =
   ResourceResourceTypeEditIdRouteImport.update({
     id: '/edit/$id',
     path: '/edit/$id',
     getParentRoute: () => ResourceResourceTypeRoute,
+  } as any)
+const DataLineageViewsEditIdRoute = DataLineageViewsEditIdRouteImport.update({
+  id: '/edit/$id',
+  path: '/edit/$id',
+  getParentRoute: () => DataLineageViewsRoute,
+} as any)
+const DataLineageQueriesEditIdRoute =
+  DataLineageQueriesEditIdRouteImport.update({
+    id: '/edit/$id',
+    path: '/edit/$id',
+    getParentRoute: () => DataLineageQueriesRoute,
   } as any)
 const IgPackageIdResourceResourceTypeResourceIdRoute =
   IgPackageIdResourceResourceTypeResourceIdRouteImport.update({
@@ -120,19 +182,29 @@ const IgPackageIdResourceResourceTypeResourceIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/audit-events': typeof AuditEventsRoute
+  '/data-lineage': typeof DataLineageRouteWithChildren
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/data-lineage/queries': typeof DataLineageQueriesRouteWithChildren
+  '/data-lineage/views': typeof DataLineageViewsRouteWithChildren
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
+  '/data-lineage/': typeof DataLineageIndexRoute
   '/ig/': typeof IgIndexRoute
   '/resource/': typeof ResourceIndexRoute
+  '/data-lineage/queries/create': typeof DataLineageQueriesCreateRoute
+  '/data-lineage/views/create': typeof DataLineageViewsCreateRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/data-lineage/queries/': typeof DataLineageQueriesIndexRoute
+  '/data-lineage/views/': typeof DataLineageViewsIndexRoute
   '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
+  '/data-lineage/queries/edit/$id': typeof DataLineageQueriesEditIdRoute
+  '/data-lineage/views/edit/$id': typeof DataLineageViewsEditIdRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
@@ -143,11 +215,18 @@ export interface FileRoutesByTo {
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
   '/ig/add': typeof IgAddRoute
+  '/data-lineage': typeof DataLineageIndexRoute
   '/ig': typeof IgIndexRoute
   '/resource': typeof ResourceIndexRoute
+  '/data-lineage/queries/create': typeof DataLineageQueriesCreateRoute
+  '/data-lineage/views/create': typeof DataLineageViewsCreateRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/data-lineage/queries': typeof DataLineageQueriesIndexRoute
+  '/data-lineage/views': typeof DataLineageViewsIndexRoute
   '/ig/$packageId': typeof IgPackageIdIndexRoute
   '/resource/$resourceType': typeof ResourceResourceTypeIndexRoute
+  '/data-lineage/queries/edit/$id': typeof DataLineageQueriesEditIdRoute
+  '/data-lineage/views/edit/$id': typeof DataLineageViewsEditIdRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
@@ -155,19 +234,29 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/audit-events': typeof AuditEventsRoute
+  '/data-lineage': typeof DataLineageRouteWithChildren
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/data-lineage/queries': typeof DataLineageQueriesRouteWithChildren
+  '/data-lineage/views': typeof DataLineageViewsRouteWithChildren
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
+  '/data-lineage/': typeof DataLineageIndexRoute
   '/ig/': typeof IgIndexRoute
   '/resource/': typeof ResourceIndexRoute
+  '/data-lineage/queries/create': typeof DataLineageQueriesCreateRoute
+  '/data-lineage/views/create': typeof DataLineageViewsCreateRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
+  '/data-lineage/queries/': typeof DataLineageQueriesIndexRoute
+  '/data-lineage/views/': typeof DataLineageViewsIndexRoute
   '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
+  '/data-lineage/queries/edit/$id': typeof DataLineageQueriesEditIdRoute
+  '/data-lineage/views/edit/$id': typeof DataLineageViewsEditIdRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
@@ -176,19 +265,29 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/audit-events'
+    | '/data-lineage'
     | '/db-console'
     | '/ig'
     | '/resource'
     | '/rest'
     | '/settings'
+    | '/data-lineage/queries'
+    | '/data-lineage/views'
     | '/ig/$packageId'
     | '/ig/add'
     | '/resource/$resourceType'
+    | '/data-lineage/'
     | '/ig/'
     | '/resource/'
+    | '/data-lineage/queries/create'
+    | '/data-lineage/views/create'
     | '/resource/$resourceType/create'
+    | '/data-lineage/queries/'
+    | '/data-lineage/views/'
     | '/ig/$packageId/'
     | '/resource/$resourceType/'
+    | '/data-lineage/queries/edit/$id'
+    | '/data-lineage/views/edit/$id'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesByTo: FileRoutesByTo
@@ -199,30 +298,47 @@ export interface FileRouteTypes {
     | '/rest'
     | '/settings'
     | '/ig/add'
+    | '/data-lineage'
     | '/ig'
     | '/resource'
+    | '/data-lineage/queries/create'
+    | '/data-lineage/views/create'
     | '/resource/$resourceType/create'
+    | '/data-lineage/queries'
+    | '/data-lineage/views'
     | '/ig/$packageId'
     | '/resource/$resourceType'
+    | '/data-lineage/queries/edit/$id'
+    | '/data-lineage/views/edit/$id'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   id:
     | '__root__'
     | '/'
     | '/audit-events'
+    | '/data-lineage'
     | '/db-console'
     | '/ig'
     | '/resource'
     | '/rest'
     | '/settings'
+    | '/data-lineage/queries'
+    | '/data-lineage/views'
     | '/ig/$packageId'
     | '/ig/add'
     | '/resource/$resourceType'
+    | '/data-lineage/'
     | '/ig/'
     | '/resource/'
+    | '/data-lineage/queries/create'
+    | '/data-lineage/views/create'
     | '/resource/$resourceType/create'
+    | '/data-lineage/queries/'
+    | '/data-lineage/views/'
     | '/ig/$packageId/'
     | '/resource/$resourceType/'
+    | '/data-lineage/queries/edit/$id'
+    | '/data-lineage/views/edit/$id'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesById: FileRoutesById
@@ -230,6 +346,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditEventsRoute: typeof AuditEventsRoute
+  DataLineageRoute: typeof DataLineageRouteWithChildren
   DbConsoleRoute: typeof DbConsoleRoute
   IgRoute: typeof IgRouteWithChildren
   ResourceRoute: typeof ResourceRouteWithChildren
@@ -274,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DbConsoleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/data-lineage': {
+      id: '/data-lineage'
+      path: '/data-lineage'
+      fullPath: '/data-lineage'
+      preLoaderRoute: typeof DataLineageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/audit-events': {
       id: '/audit-events'
       path: '/audit-events'
@@ -302,6 +426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IgIndexRouteImport
       parentRoute: typeof IgRoute
     }
+    '/data-lineage/': {
+      id: '/data-lineage/'
+      path: '/'
+      fullPath: '/data-lineage/'
+      preLoaderRoute: typeof DataLineageIndexRouteImport
+      parentRoute: typeof DataLineageRoute
+    }
     '/resource/$resourceType': {
       id: '/resource/$resourceType'
       path: '/$resourceType'
@@ -323,6 +454,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IgPackageIdRouteImport
       parentRoute: typeof IgRoute
     }
+    '/data-lineage/views': {
+      id: '/data-lineage/views'
+      path: '/views'
+      fullPath: '/data-lineage/views'
+      preLoaderRoute: typeof DataLineageViewsRouteImport
+      parentRoute: typeof DataLineageRoute
+    }
+    '/data-lineage/queries': {
+      id: '/data-lineage/queries'
+      path: '/queries'
+      fullPath: '/data-lineage/queries'
+      preLoaderRoute: typeof DataLineageQueriesRouteImport
+      parentRoute: typeof DataLineageRoute
+    }
     '/resource/$resourceType/': {
       id: '/resource/$resourceType/'
       path: '/'
@@ -337,6 +482,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IgPackageIdIndexRouteImport
       parentRoute: typeof IgPackageIdRoute
     }
+    '/data-lineage/views/': {
+      id: '/data-lineage/views/'
+      path: '/'
+      fullPath: '/data-lineage/views/'
+      preLoaderRoute: typeof DataLineageViewsIndexRouteImport
+      parentRoute: typeof DataLineageViewsRoute
+    }
+    '/data-lineage/queries/': {
+      id: '/data-lineage/queries/'
+      path: '/'
+      fullPath: '/data-lineage/queries/'
+      preLoaderRoute: typeof DataLineageQueriesIndexRouteImport
+      parentRoute: typeof DataLineageQueriesRoute
+    }
     '/resource/$resourceType/create': {
       id: '/resource/$resourceType/create'
       path: '/create'
@@ -344,12 +503,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceResourceTypeCreateRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
     }
+    '/data-lineage/views/create': {
+      id: '/data-lineage/views/create'
+      path: '/create'
+      fullPath: '/data-lineage/views/create'
+      preLoaderRoute: typeof DataLineageViewsCreateRouteImport
+      parentRoute: typeof DataLineageViewsRoute
+    }
+    '/data-lineage/queries/create': {
+      id: '/data-lineage/queries/create'
+      path: '/create'
+      fullPath: '/data-lineage/queries/create'
+      preLoaderRoute: typeof DataLineageQueriesCreateRouteImport
+      parentRoute: typeof DataLineageQueriesRoute
+    }
     '/resource/$resourceType/edit/$id': {
       id: '/resource/$resourceType/edit/$id'
       path: '/edit/$id'
       fullPath: '/resource/$resourceType/edit/$id'
       preLoaderRoute: typeof ResourceResourceTypeEditIdRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
+    }
+    '/data-lineage/views/edit/$id': {
+      id: '/data-lineage/views/edit/$id'
+      path: '/edit/$id'
+      fullPath: '/data-lineage/views/edit/$id'
+      preLoaderRoute: typeof DataLineageViewsEditIdRouteImport
+      parentRoute: typeof DataLineageViewsRoute
+    }
+    '/data-lineage/queries/edit/$id': {
+      id: '/data-lineage/queries/edit/$id'
+      path: '/edit/$id'
+      fullPath: '/data-lineage/queries/edit/$id'
+      preLoaderRoute: typeof DataLineageQueriesEditIdRouteImport
+      parentRoute: typeof DataLineageQueriesRoute
     }
     '/ig/$packageId/resource/$resourceType/$resourceId': {
       id: '/ig/$packageId/resource/$resourceType/$resourceId'
@@ -360,6 +547,52 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface DataLineageQueriesRouteChildren {
+  DataLineageQueriesCreateRoute: typeof DataLineageQueriesCreateRoute
+  DataLineageQueriesIndexRoute: typeof DataLineageQueriesIndexRoute
+  DataLineageQueriesEditIdRoute: typeof DataLineageQueriesEditIdRoute
+}
+
+const DataLineageQueriesRouteChildren: DataLineageQueriesRouteChildren = {
+  DataLineageQueriesCreateRoute: DataLineageQueriesCreateRoute,
+  DataLineageQueriesIndexRoute: DataLineageQueriesIndexRoute,
+  DataLineageQueriesEditIdRoute: DataLineageQueriesEditIdRoute,
+}
+
+const DataLineageQueriesRouteWithChildren =
+  DataLineageQueriesRoute._addFileChildren(DataLineageQueriesRouteChildren)
+
+interface DataLineageViewsRouteChildren {
+  DataLineageViewsCreateRoute: typeof DataLineageViewsCreateRoute
+  DataLineageViewsIndexRoute: typeof DataLineageViewsIndexRoute
+  DataLineageViewsEditIdRoute: typeof DataLineageViewsEditIdRoute
+}
+
+const DataLineageViewsRouteChildren: DataLineageViewsRouteChildren = {
+  DataLineageViewsCreateRoute: DataLineageViewsCreateRoute,
+  DataLineageViewsIndexRoute: DataLineageViewsIndexRoute,
+  DataLineageViewsEditIdRoute: DataLineageViewsEditIdRoute,
+}
+
+const DataLineageViewsRouteWithChildren =
+  DataLineageViewsRoute._addFileChildren(DataLineageViewsRouteChildren)
+
+interface DataLineageRouteChildren {
+  DataLineageQueriesRoute: typeof DataLineageQueriesRouteWithChildren
+  DataLineageViewsRoute: typeof DataLineageViewsRouteWithChildren
+  DataLineageIndexRoute: typeof DataLineageIndexRoute
+}
+
+const DataLineageRouteChildren: DataLineageRouteChildren = {
+  DataLineageQueriesRoute: DataLineageQueriesRouteWithChildren,
+  DataLineageViewsRoute: DataLineageViewsRouteWithChildren,
+  DataLineageIndexRoute: DataLineageIndexRoute,
+}
+
+const DataLineageRouteWithChildren = DataLineageRoute._addFileChildren(
+  DataLineageRouteChildren,
+)
 
 interface IgPackageIdRouteChildren {
   IgPackageIdIndexRoute: typeof IgPackageIdIndexRoute
@@ -422,6 +655,7 @@ const ResourceRouteWithChildren = ResourceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditEventsRoute: AuditEventsRoute,
+  DataLineageRoute: DataLineageRouteWithChildren,
   DbConsoleRoute: DbConsoleRoute,
   IgRoute: IgRouteWithChildren,
   ResourceRoute: ResourceRouteWithChildren,

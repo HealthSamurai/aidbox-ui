@@ -227,7 +227,7 @@ function formatIndexDef(indexdef: string): string {
 	}
 }
 
-function formatRowCount(count: number): string {
+export function formatRowCount(count: number): string {
 	if (count < 0) return "~0";
 	if (count < 1000) return `~${count}`;
 	if (count < 1_000_000) return `~${Math.round(count / 1000)}K`;

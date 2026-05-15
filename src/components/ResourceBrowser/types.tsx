@@ -18,28 +18,6 @@ export type SortState = {
 	direction: "asc" | "desc";
 } | null;
 
-export interface ResourcesTabTableProps {
-	data: ResourcesTabTableData | undefined;
-	total: number;
-	selectedIds: Set<string>;
-	setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-	sort: SortState;
-	onSortToggle: (column: string) => void;
-	hasIndex: boolean | undefined;
-}
-
-export interface ResourcesTabFooterProps {
-	total: number;
-	currentPage: number;
-	pageSize: number;
-	selectedIds: Set<string>;
-	onPageChange: (page: number) => void;
-	onPageSizeChange: (size: number) => void;
-	onExport: () => void;
-	onDelete: () => void;
-	isDeleting: boolean;
-}
-
 export interface ResourcesTabHeaderProps {
 	handleSearch: (e: React.FormEvent<HTMLFormElement>) => void;
 }
