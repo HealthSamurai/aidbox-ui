@@ -1,4 +1,5 @@
 import type {
+	Completion,
 	CompletionContext,
 	CompletionResult,
 } from "@codemirror/autocomplete";
@@ -9,6 +10,7 @@ import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { psqlRequest } from "../db-console/tables-view";
 import { useSQLQueryContext } from "./context";
+import { type DependsOnSchema, useDependsOnSchemas } from "./resolve-schemas";
 import { useResolvedParameterTree } from "./resolve-tree";
 
 function decodeBase64(b64: string): string {
@@ -25,6 +27,98 @@ function encodeBase64(text: string): string {
 	} catch {
 		return "";
 	}
+}
+
+const TABLE_CONTEXT_REGEX = /\b(FROM|JOIN|INTO|UPDATE|TABLE)\s+[\w]*$/i;
+
+function completeParameters(
+	context: CompletionContext,
+	paramNames: string[],
+): CompletionResult | null {
+	const colonMatch = context.matchBefore(/:[\w]*/);
+	if (!colonMatch || paramNames.length === 0) return null;
+	return {
+		from: colonMatch.from + 1,
+		options: paramNames.map((name) => ({
+			label: name,
+			type: "variable",
+			detail: "parameter",
+			boost: 99,
+		})),
+		validFor: /^[\w]*$/,
+	};
+}
+
+function completeQualifiedColumns(
+	context: CompletionContext,
+	schemasByLabel: Map<string, DependsOnSchema>,
+): CompletionResult | null {
+	const qualifiedMatch = context.matchBefore(/[\w]+\.[\w]*/);
+	if (!qualifiedMatch) return null;
+	const dotIdx = qualifiedMatch.text.indexOf(".");
+	const label = qualifiedMatch.text.slice(0, dotIdx);
+	const schema = schemasByLabel.get(label);
+	if (!schema || schema.columns.length === 0) return null;
+	return {
+		from: qualifiedMatch.from + dotIdx + 1,
+		options: schema.columns.map((c) => ({
+			label: c.name,
+			type: "property",
+			detail: c.type ?? "column",
+			info: c.description ?? c.path,
+			boost: 99,
+		})),
+		validFor: /^[\w]*$/,
+	};
+}
+
+function completeTables(
+	context: CompletionContext,
+	dependsOnLabels: string[],
+): CompletionResult | null {
+	if (dependsOnLabels.length === 0) return null;
+	const word = context.matchBefore(/[\w]*/);
+	if (!word) return null;
+	const line = context.state.doc.lineAt(context.pos);
+	const textBefore = line.text.slice(0, context.pos - line.from);
+	if (!TABLE_CONTEXT_REGEX.test(textBefore)) return null;
+	return {
+		from: word.from,
+		options: dependsOnLabels.map((label) => ({
+			label,
+			type: "table",
+			detail: "depends-on",
+			boost: 99,
+		})),
+		validFor: /^[\w]*$/,
+	};
+}
+
+function completeUnqualifiedColumns(
+	context: CompletionContext,
+	schemas: DependsOnSchema[],
+): CompletionResult | null {
+	if (schemas.length === 0) return null;
+	const word = context.matchBefore(/[\w]*/);
+	if (!word || word.from === word.to) return null;
+	const options: Completion[] = [];
+	const seen = new Set<string>();
+	for (const s of schemas) {
+		for (const c of s.columns) {
+			const key = `${s.label}.${c.name}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			options.push({
+				label: c.name,
+				type: "property",
+				detail: `${s.label}${c.type ? ` · ${c.type}` : ""}`,
+				info: c.description ?? c.path,
+				boost: 10,
+			});
+		}
+	}
+	if (options.length === 0) return null;
+	return { from: word.from, options, validFor: /^[\w]*$/ };
 }
 
 export function SqlEditor() {
@@ -75,39 +169,19 @@ export function SqlEditor() {
 		return Array.from(names);
 	}, [library.parameter, resolvedParameterTree.inherited]);
 
+	const { schemas } = useDependsOnSchemas(library);
+	const schemasByLabel = React.useMemo(() => {
+		const map = new Map<string, (typeof schemas)[number]>();
+		for (const s of schemas) map.set(s.label, s);
+		return map;
+	}, [schemas]);
+
 	const additionalExtensions = React.useMemo(() => {
-		const tableContext = /\b(FROM|JOIN|INTO|UPDATE|TABLE)\s+[\w]*$/i;
-		const source = (context: CompletionContext): CompletionResult | null => {
-			const colonMatch = context.matchBefore(/:[\w]*/);
-			if (colonMatch && paramNames.length > 0) {
-				return {
-					from: colonMatch.from + 1,
-					options: paramNames.map((name) => ({
-						label: name,
-						type: "variable",
-						detail: "parameter",
-						boost: 99,
-					})),
-					validFor: /^[\w]*$/,
-				};
-			}
-			if (dependsOnLabels.length === 0) return null;
-			const word = context.matchBefore(/[\w]*/);
-			if (!word) return null;
-			const line = context.state.doc.lineAt(context.pos);
-			const textBefore = line.text.slice(0, context.pos - line.from);
-			if (!tableContext.test(textBefore)) return null;
-			return {
-				from: word.from,
-				options: dependsOnLabels.map((label) => ({
-					label,
-					type: "table",
-					detail: "depends-on",
-					boost: 99,
-				})),
-				validFor: /^[\w]*$/,
-			};
-		};
+		const source = (context: CompletionContext): CompletionResult | null =>
+			completeParameters(context, paramNames) ??
+			completeQualifiedColumns(context, schemasByLabel) ??
+			completeTables(context, dependsOnLabels) ??
+			completeUnqualifiedColumns(context, schemas);
 		return [
 			EditorState.languageData.of(() => [{ autocomplete: source }]),
 			Prec.highest(
@@ -122,7 +196,7 @@ export function SqlEditor() {
 				]),
 			),
 		];
-	}, [dependsOnLabels, paramNames, triggerRunRef]);
+	}, [dependsOnLabels, paramNames, schemas, schemasByLabel, triggerRunRef]);
 
 	const issueLineNumbers = React.useMemo(() => {
 		if (!runError) return undefined;

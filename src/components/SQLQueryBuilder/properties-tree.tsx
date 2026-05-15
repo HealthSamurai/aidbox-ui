@@ -4,8 +4,9 @@ import {
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import { Play, Plus, X } from "lucide-react";
+import { AlignLeft, Play, Plus, X } from "lucide-react";
 import * as React from "react";
+import { format as formatSQL } from "sql-formatter";
 import { useSQLQueryContext } from "./context";
 import {
 	type ResolvedParameter,
@@ -112,6 +113,28 @@ function InputView({
 	);
 }
 
+function SqlValueCell() {
+	const ref = React.useRef<HTMLDivElement>(null);
+	React.useEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const stop = (e: Event) => e.stopPropagation();
+		el.addEventListener("keydown", stop);
+		el.addEventListener("click", stop);
+		el.addEventListener("dragstart", stop);
+		return () => {
+			el.removeEventListener("keydown", stop);
+			el.removeEventListener("click", stop);
+			el.removeEventListener("dragstart", stop);
+		};
+	}, []);
+	return (
+		<div ref={ref} className="w-full -ml-2.5">
+			<SqlEditor />
+		</div>
+	);
+}
+
 function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 	const metaType = item.getItemData()?.meta?.type;
 	const isFolder = item.isFolder();
@@ -173,7 +196,7 @@ function ParamValueField({
 	if (type === "boolean") {
 		return (
 			<div
-				className={`flex-1 min-w-0 max-w-[200px] flex items-center gap-2 ${missing ? "ring-1 ring-border-error rounded-md" : ""}`}
+				className={`flex-1 min-w-0 max-w-[200px] flex items-center gap-2 pl-2.5 ${missing ? "ring-1 ring-border-error rounded-md" : ""}`}
 				onClick={(e) => e.stopPropagation()}
 				onMouseDown={(e) => e.stopPropagation()}
 				onKeyDown={(e) => e.stopPropagation()}
@@ -268,7 +291,7 @@ function InheritedParameterRow({
 				<HSComp.TooltipTrigger asChild>
 					<div className="flex items-center gap-2">
 						<div
-							className={`w-44 shrink-0 cursor-not-allowed ${disabledRingClass}`}
+							className={`w-[226px] shrink-0 cursor-not-allowed ${disabledRingClass}`}
 						>
 							<InputView
 								disabled
@@ -317,6 +340,14 @@ export function PropertiesTree() {
 	React.useEffect(() => {
 		addUrlToHistory(library.url);
 	}, [library.url]);
+
+	React.useEffect(() => {
+		const el = treeContainerRef.current;
+		if (!el) return;
+		const handler = (e: Event) => e.preventDefault();
+		el.addEventListener("dragstart", handler);
+		return () => el.removeEventListener("dragstart", handler);
+	}, []);
 	const firstMissingName = React.useMemo(() => {
 		for (const n of missingParams) {
 			if ((paramValues[n] ?? "") === "") return n;
@@ -550,6 +581,39 @@ export function PropertiesTree() {
 		setParameters(parameters.filter((_, idx) => idx !== i));
 	};
 
+	const formatSqlContent = () => {
+		const data = library.content?.[0]?.data;
+		if (!data) return;
+		let current: string;
+		try {
+			current = atob(data);
+		} catch {
+			return;
+		}
+		if (!current.trim()) return;
+		let formatted: string;
+		try {
+			formatted = formatSQL(current, {
+				language: "postgresql",
+				indentStyle: "tabularRight",
+			});
+		} catch {
+			return;
+		}
+		updateLibrary((lib) => {
+			const existing = lib.content?.[0];
+			return {
+				...lib,
+				content: [
+					{
+						contentType: existing?.contentType ?? "application/sql",
+						data: btoa(formatted),
+					},
+				],
+			};
+		});
+	};
+
 	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const meta = item.getItemData()?.meta;
 		const metaType = meta?.type;
@@ -557,12 +621,42 @@ export function PropertiesTree() {
 			case "properties":
 			case "depends-on":
 			case "parameter":
-			case "sql":
 				return <div>{labelView(item)}</div>;
+			case "sql": {
+				const hasSql = !!library.content?.[0]?.data;
+				return (
+					<div className="flex w-full items-center gap-1">
+						{labelView(item)}
+						<HSComp.Tooltip delayDuration={250}>
+							<HSComp.TooltipTrigger asChild>
+								<HSComp.Button
+									variant="link"
+									size="small"
+									className="px-1 text-text-secondary hover:text-text-primary"
+									onClick={(e) => {
+										e.stopPropagation();
+										formatSqlContent();
+									}}
+									onMouseDown={(e) => e.stopPropagation()}
+									disabled={!hasSql}
+									asChild
+								>
+									<span>
+										<AlignLeft size={14} />
+									</span>
+								</HSComp.Button>
+							</HSComp.TooltipTrigger>
+							<HSComp.TooltipContent side="bottom">
+								Format SQL
+							</HSComp.TooltipContent>
+						</HSComp.Tooltip>
+					</div>
+				);
+			}
 			case "url":
 				return (
 					<div className="flex w-full items-center gap-2">
-						<div className="w-44 shrink-0">{labelView(item)}</div>
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
 								name="sqlquery-library-url"
@@ -578,7 +672,7 @@ export function PropertiesTree() {
 			case "title":
 				return (
 					<div className="flex w-full items-center gap-2">
-						<div className="w-44 shrink-0">{labelView(item)}</div>
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
 								placeholder="Name for this library (human friendly)"
@@ -591,7 +685,7 @@ export function PropertiesTree() {
 			case "description":
 				return (
 					<div className="flex w-full items-center gap-2">
-						<div className="w-44 shrink-0">{labelView(item)}</div>
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
 						<div className="flex-1 min-w-0">
 							<InputView
 								placeholder="Natural language description of the library"
@@ -613,7 +707,7 @@ export function PropertiesTree() {
 						className="flex w-full items-center gap-2"
 						data-focus-key={`depends-on-${idx}`}
 					>
-						<div className="w-44 shrink-0">
+						<div className="w-[226px] shrink-0">
 							<InputView
 								placeholder="Table name"
 								value={labelValue}
@@ -666,7 +760,7 @@ export function PropertiesTree() {
 						className="flex w-full items-center gap-2"
 						data-focus-key={`parameter-${idx}`}
 					>
-						<div className="w-44 shrink-0">
+						<div className="w-[226px] shrink-0">
 							<InputView
 								placeholder="Name"
 								value={entry.name ?? ""}
@@ -751,16 +845,7 @@ export function PropertiesTree() {
 					</HSComp.Button>
 				);
 			case "sql-value":
-				return (
-					<div
-						className="w-full -ml-2.5"
-						onClick={(e) => e.stopPropagation()}
-						onKeyDown={(e) => e.stopPropagation()}
-						role="presentation"
-					>
-						<SqlEditor />
-					</div>
-				);
+				return <SqlValueCell />;
 			default:
 				return <div>{labelView(item)}</div>;
 		}

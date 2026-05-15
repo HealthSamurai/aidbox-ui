@@ -157,12 +157,27 @@ function ViewsSection({
 				onOpenChange={onOpenChange}
 				className="group/collapsible"
 			>
-				<HSComp.CollapsibleTrigger asChild>
-					<HSComp.SidebarMenuButton className="text-xs font-normal">
-						<ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-						<span>Views</span>
-					</HSComp.SidebarMenuButton>
-				</HSComp.CollapsibleTrigger>
+				<div className="relative">
+					<HSComp.CollapsibleTrigger asChild>
+						<HSComp.SidebarMenuButton className="text-xs font-normal">
+							<ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+							<span>Views</span>
+						</HSComp.SidebarMenuButton>
+					</HSComp.CollapsibleTrigger>
+					<HSComp.SidebarMenuAction
+						asChild
+						className="top-0 right-0 h-full w-auto aspect-square rounded-lg"
+					>
+						<Link
+							to="/data-lineage/views/create"
+							search={createSearch}
+							className="text-text-link! hover:text-text-link! [&>svg]:text-text-link!"
+							aria-label="Create view"
+						>
+							<Plus />
+						</Link>
+					</HSComp.SidebarMenuAction>
+				</div>
 				<HSComp.CollapsibleContent>
 					<HSComp.SidebarMenuSub>
 						{items.length === 0 && (
@@ -195,21 +210,6 @@ function ViewsSection({
 								</HSComp.SidebarMenuSubItem>
 							);
 						})}
-						<HSComp.SidebarMenuSubItem>
-							<HSComp.SidebarMenuSubButton
-								asChild
-								className="text-xs font-normal pl-[11px]"
-							>
-								<Link
-									to="/data-lineage/views/create"
-									search={createSearch}
-									className="text-text-link! [&>svg]:text-text-link!"
-								>
-									<Plus />
-									<span>Create</span>
-								</Link>
-							</HSComp.SidebarMenuSubButton>
-						</HSComp.SidebarMenuSubItem>
 					</HSComp.SidebarMenuSub>
 				</HSComp.CollapsibleContent>
 			</HSComp.Collapsible>
@@ -247,12 +247,27 @@ function QueriesSection({
 				onOpenChange={onOpenChange}
 				className="group/collapsible"
 			>
-				<HSComp.CollapsibleTrigger asChild>
-					<HSComp.SidebarMenuButton className="text-xs font-normal">
-						<ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-						<span>Queries</span>
-					</HSComp.SidebarMenuButton>
-				</HSComp.CollapsibleTrigger>
+				<div className="relative">
+					<HSComp.CollapsibleTrigger asChild>
+						<HSComp.SidebarMenuButton className="text-xs font-normal">
+							<ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+							<span>Queries</span>
+						</HSComp.SidebarMenuButton>
+					</HSComp.CollapsibleTrigger>
+					<HSComp.SidebarMenuAction
+						asChild
+						className="top-0 right-0 h-full w-auto aspect-square rounded-lg"
+					>
+						<Link
+							to="/data-lineage/queries/create"
+							search={createSearch}
+							className="text-text-link! hover:text-text-link! [&>svg]:text-text-link!"
+							aria-label="Create query"
+						>
+							<Plus />
+						</Link>
+					</HSComp.SidebarMenuAction>
+				</div>
 				<HSComp.CollapsibleContent>
 					<HSComp.SidebarMenuSub>
 						{items.length === 0 && (
@@ -285,21 +300,6 @@ function QueriesSection({
 								</HSComp.SidebarMenuSubItem>
 							);
 						})}
-						<HSComp.SidebarMenuSubItem>
-							<HSComp.SidebarMenuSubButton
-								asChild
-								className="text-xs font-normal pl-[11px]"
-							>
-								<Link
-									to="/data-lineage/queries/create"
-									search={createSearch}
-									className="text-text-link! [&>svg]:text-text-link!"
-								>
-									<Plus />
-									<span>Create</span>
-								</Link>
-							</HSComp.SidebarMenuSubButton>
-						</HSComp.SidebarMenuSubItem>
 					</HSComp.SidebarMenuSub>
 				</HSComp.CollapsibleContent>
 			</HSComp.Collapsible>

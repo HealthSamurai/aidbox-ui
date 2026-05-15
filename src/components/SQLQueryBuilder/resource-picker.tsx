@@ -1,7 +1,7 @@
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { SQL_QUERY_TYPE_CODE, SQL_QUERY_TYPE_SYSTEM } from "./types";
@@ -103,6 +103,18 @@ export function ResourcePicker({
 	const [open, setOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
 	const { data: candidates = [] } = useCandidates(open ? search : "");
+	const commandRef = React.useRef<HTMLDivElement>(null);
+
+	React.useEffect(() => {
+		if (!open) return;
+		const id = requestAnimationFrame(() => {
+			const list = commandRef.current?.querySelector<HTMLElement>(
+				'[data-slot="command-list"]',
+			);
+			if (list) list.scrollLeft = 0;
+		});
+		return () => cancelAnimationFrame(id);
+	}, [open]);
 
 	return (
 		<HSComp.Popover open={open} onOpenChange={setOpen}>
@@ -120,42 +132,58 @@ export function ResourcePicker({
 				</HSComp.Button>
 			</HSComp.PopoverTrigger>
 			<HSComp.PopoverContent className="w-[420px] p-0" align="start">
-				<HSComp.Command shouldFilter={false}>
-					<HSComp.CommandInput
-						placeholder="Search view or query…"
-						value={search}
-						onValueChange={setSearch}
-					/>
-					<HSComp.CommandList className="overflow-x-auto">
-						<HSComp.CommandEmpty>No matches</HSComp.CommandEmpty>
-						<div className="min-w-max">
-							{candidates.map((c) => {
-								const label = c.title || c.name || c.id;
-								const secondary = c.description || c.url;
-								return (
-									<HSComp.CommandItem
-										key={c.url}
-										value={c.url}
-										onSelect={() => {
-											onChange(c.url);
-											setOpen(false);
-										}}
-									>
-										<div className="flex flex-col gap-0.5">
-											<span className="typo-label-tiny text-text-tertiary whitespace-nowrap">
-												{c.kind}
-											</span>
-											<span className="whitespace-nowrap">{label}</span>
-											<span className="font-mono text-xs text-text-tertiary whitespace-nowrap">
-												{secondary}
-											</span>
-										</div>
-									</HSComp.CommandItem>
-								);
-							})}
-						</div>
-					</HSComp.CommandList>
-				</HSComp.Command>
+				<div ref={commandRef}>
+					<HSComp.Command shouldFilter={false}>
+						<HSComp.CommandInput
+							placeholder="Search view or query…"
+							value={search}
+							onValueChange={setSearch}
+						/>
+						<HSComp.CommandList className="overflow-x-auto">
+							<HSComp.CommandEmpty>
+								<div className="flex flex-col items-center gap-2 px-4">
+									<span className="typo-body text-text-tertiary">
+										No matches
+									</span>
+									<div className="flex items-start gap-1.5 text-left typo-label-tiny text-text-tertiary">
+										<Info className="size-3.5 shrink-0 mt-px text-text-quaternary" />
+										<span>
+											Only ViewDefinitions and SQLQueries with a defined{" "}
+											<span className="font-mono text-text-secondary">url</span>{" "}
+											are listed — references rely on canonical URLs.
+										</span>
+									</div>
+								</div>
+							</HSComp.CommandEmpty>
+							<div className="min-w-max">
+								{candidates.map((c) => {
+									const label = c.title || c.name || c.id;
+									const secondary = c.description || c.url;
+									return (
+										<HSComp.CommandItem
+											key={c.url}
+											value={c.url}
+											onSelect={() => {
+												onChange(c.url);
+												setOpen(false);
+											}}
+										>
+											<div className="flex flex-col gap-0.5">
+												<span className="typo-label-tiny text-text-tertiary whitespace-nowrap">
+													{c.kind}
+												</span>
+												<span className="whitespace-nowrap">{label}</span>
+												<span className="font-mono text-xs text-text-tertiary whitespace-nowrap">
+													{secondary}
+												</span>
+											</div>
+										</HSComp.CommandItem>
+									);
+								})}
+							</div>
+						</HSComp.CommandList>
+					</HSComp.Command>
+				</div>
 			</HSComp.PopoverContent>
 		</HSComp.Popover>
 	);
