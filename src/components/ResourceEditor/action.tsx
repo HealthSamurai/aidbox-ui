@@ -24,6 +24,7 @@ export const SaveButton = ({
 	client,
 	onError,
 	onSuccess,
+	onCreated,
 	saveRef,
 }: {
 	resourceType: string;
@@ -33,6 +34,7 @@ export const SaveButton = ({
 	client: AidboxClientR5;
 	onError?: (error: Error) => void;
 	onSuccess?: () => void;
+	onCreated?: (id: string) => void;
 	saveRef?: React.RefObject<SaveHandle | null>;
 }) => {
 	const navigate = Router.useNavigate();
@@ -59,16 +61,20 @@ export const SaveButton = ({
 					"Failed to open saved resource",
 					"resource is missing an ID field",
 				);
-			if (!id)
-				navigate({
-					to: `/resource/$resourceType/edit/$id`,
-					params: { resourceType, id: resource.id },
-					search: {
-						tab: defaultTabFor(resourceType),
-						mode: "json" as const,
-						builderTab: "form" as const,
-					},
-				});
+			if (id) return;
+			if (onCreated) {
+				onCreated(resource.id);
+				return;
+			}
+			navigate({
+				to: `/resource/$resourceType/edit/$id`,
+				params: { resourceType, id: resource.id },
+				search: {
+					tab: defaultTabFor(resourceType),
+					mode: "json" as const,
+					builderTab: "form" as const,
+				},
+			});
 		},
 	});
 
@@ -98,10 +104,12 @@ export const DeleteButton = ({
 	resourceType,
 	id,
 	client,
+	onDeleted,
 }: {
 	resourceType: string;
 	id: string;
 	client: AidboxClientR5;
+	onDeleted?: () => void;
 }) => {
 	const navigate = Router.useNavigate();
 	const mutation = useMutation({
@@ -111,6 +119,10 @@ export const DeleteButton = ({
 		onError: Utils.onMutationError,
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
+			if (onDeleted) {
+				onDeleted();
+				return;
+			}
 			navigate({
 				to: `/resource/$resourceType`,
 				params: { resourceType },

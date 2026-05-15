@@ -241,6 +241,9 @@ type ItemMeta = {
 		| "where-value"
 		| "properties"
 		| "name"
+		| "title"
+		| "description"
+		| "url"
 		| "status"
 		| "resource"
 		| "constant"
@@ -650,6 +653,22 @@ const InputView = ({
 		debouncedOnChange(newValue);
 	};
 
+	// Chrome breaks caret placement and text selection inside <input>
+	// when an ancestor has draggable=true. Temporarily disable the
+	// draggable parent during pointer interaction.
+	const handleMouseDown = (e: React.MouseEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+		const dragParent =
+			e.currentTarget.closest<HTMLElement>('[draggable="true"]');
+		if (!dragParent) return;
+		dragParent.draggable = false;
+		const restore = () => {
+			dragParent.draggable = true;
+			document.removeEventListener("mouseup", restore);
+		};
+		document.addEventListener("mouseup", restore);
+	};
+
 	return (
 		<Input
 			className={`h-7 py-1 px-2 ${className} bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary
@@ -658,7 +677,7 @@ const InputView = ({
 			value={localValue}
 			onChange={(e) => handleChange(e.target.value)}
 			onClick={(e) => e.stopPropagation()}
-			onMouseDown={(e) => e.stopPropagation()}
+			onMouseDown={handleMouseDown}
 		/>
 	);
 };
@@ -1273,6 +1292,21 @@ export const FormTabContent = ({
 		updateViewDefinition(undefined, undefined, { name });
 	};
 
+	// Function to update url field
+	const updateUrl = (url: string) => {
+		updateViewDefinition(undefined, undefined, { url });
+	};
+
+	// Function to update title field
+	const updateTitle = (title: string) => {
+		updateViewDefinition(undefined, undefined, { title });
+	};
+
+	// Function to update description field
+	const updateDescription = (description: string) => {
+		updateViewDefinition(undefined, undefined, { description });
+	};
+
 	// Function to update status field
 	const updateStatus = (status: CanonicalResource["status"]) => {
 		updateViewDefinition(undefined, undefined, { status });
@@ -1345,6 +1379,7 @@ export const FormTabContent = ({
 			setSelectItems(updatedItems);
 			updateViewDefinition(undefined, undefined, undefined, updatedItems);
 		}
+
 		return newItem.nodeId;
 	};
 
@@ -1632,12 +1667,18 @@ export const FormTabContent = ({
 				meta: {
 					type: "properties",
 				},
-				children: ["_resource", "_status", "_name"],
+				children: ["_resource", "_url", "_name", "_title", "_description"],
 			},
 			_resource: {
 				name: "_resource",
 				meta: {
 					type: "resource",
+				},
+			},
+			_url: {
+				name: "_url",
+				meta: {
+					type: "url",
 				},
 			},
 			_name: {
@@ -1646,10 +1687,16 @@ export const FormTabContent = ({
 					type: "name",
 				},
 			},
-			_status: {
-				name: "_status",
+			_title: {
+				name: "_title",
 				meta: {
-					type: "status",
+					type: "title",
+				},
+			},
+			_description: {
+				name: "_description",
+				meta: {
+					type: "description",
 				},
 			},
 			_constant: {
@@ -1827,7 +1874,9 @@ export const FormTabContent = ({
 		} else if (
 			metaType === "resource" ||
 			metaType === "name" ||
-			metaType === "status"
+			metaType === "title" ||
+			metaType === "description" ||
+			metaType === "url"
 		)
 			additionalClass = "text-text-info-primary bg-bg-info-primary";
 
@@ -1890,19 +1939,32 @@ export const FormTabContent = ({
 		switch (metaType) {
 			case "resource":
 				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
+					<div className="flex w-full items-center gap-2">
+						<div className="w-32 shrink-0">{labelView(item)}</div>
+						<div className="w-fit">
 							<ResourceTypeSelect onChange={updateResource} />
+						</div>
+					</div>
+				);
+			case "url":
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-32 shrink-0">{labelView(item)}</div>
+						<div className="flex-1 min-w-0 max-w-md" data-field="url">
+							<InputView
+								placeholder="Canonical URL of the ViewDefinition"
+								value={viewDefinition?.url || ""}
+								onChange={(value) => updateUrl(value)}
+							/>
 						</div>
 					</div>
 				);
 			case "name":
 				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
+					<div className="flex w-full items-center gap-2">
+						<div className="w-32 shrink-0">{labelView(item)}</div>
 						<div
-							className={`w-[50%] ${fieldErrors.has("name") ? "ring-1 ring-border-error rounded-md" : ""}`}
+							className={`flex-1 min-w-0 max-w-md ${fieldErrors.has("name") ? "ring-1 ring-border-error rounded-md" : ""}`}
 							data-field="name"
 						>
 							<InputView
@@ -1913,27 +1975,29 @@ export const FormTabContent = ({
 						</div>
 					</div>
 				);
-			case "status":
+			case "title":
 				return (
-					<div className="flex w-full items-center justify-between">
-						{labelView(item)}
-						<div className="w-[50%]">
-							<Select
-								value={viewDefinition?.status || ""}
-								onValueChange={(value: CanonicalResource["status"]) =>
-									updateStatus(value)
-								}
-							>
-								<SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
-									<SelectValue placeholder="Select status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="draft">draft</SelectItem>
-									<SelectItem value="active">active</SelectItem>
-									<SelectItem value="retired">retired</SelectItem>
-									<SelectItem value="unknown">unknown</SelectItem>
-								</SelectContent>
-							</Select>
+					<div className="flex w-full items-center gap-2">
+						<div className="w-32 shrink-0">{labelView(item)}</div>
+						<div className="flex-1 min-w-0 max-w-md" data-field="title">
+							<InputView
+								placeholder="Name for this ViewDefinition (human friendly)"
+								value={viewDefinition?.title || ""}
+								onChange={(value) => updateTitle(value)}
+							/>
+						</div>
+					</div>
+				);
+			case "description":
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-32 shrink-0">{labelView(item)}</div>
+						<div className="flex-1 min-w-0" data-field="description">
+							<InputView
+								placeholder="Natural language description of the ViewDefinition"
+								value={viewDefinition?.description || ""}
+								onChange={(value) => updateDescription(value)}
+							/>
 						</div>
 					</div>
 				);

@@ -29,6 +29,10 @@ import { EmptyState } from "../empty-state";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
 import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
+import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
+import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
+import { SQLQueryProvider } from "../SQLQueryBuilder/page";
+import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
 import { DeleteButton, SaveButton, type SaveHandle } from "./action";
@@ -46,6 +50,8 @@ interface ResourceEditorPageProps {
 	navigate: <T extends string>(
 		opts: Router.NavigateOptions<Router.RegisteredRouter, T, T>,
 	) => Promise<void>;
+	onCreated?: (id: string) => void;
+	onDeleted?: () => void;
 }
 
 export const ResourceEditorPageWithLoader = (
@@ -105,10 +111,10 @@ export const ResourceEditorPageWithLoader = (
 
 	return (
 		<ResourceEditorPage
-			// Remount on id change so `useState(initialResource)` re-initializes —
+			// Remount on id/type change so `useState(initialResource)` re-initializes —
 			// otherwise navigating to a sibling resource keeps the previous one's
 			// state. VersionId guards against in-place updates of the same id.
-			key={`${id ?? ""}:${String(meta?.versionId ?? "")}`}
+			key={`${resourceType}/${id ?? ""}@${String(meta?.versionId ?? "")}`}
 			initialResource={resourceData}
 			{...props}
 		/>
@@ -122,6 +128,8 @@ export const ResourceEditorPage = ({
 	mode,
 	indent = 2,
 	navigate,
+	onCreated,
+	onDeleted,
 	initialResource,
 }: ResourceEditorPageProps & { initialResource: Resource }) => {
 	const client = useAidboxClient();
@@ -317,10 +325,14 @@ export const ResourceEditorPage = ({
 				};
 			try {
 				await deleteResource(client, resourceType, id);
-				navigate({
-					to: "/resource/$resourceType",
-					params: { resourceType },
-				});
+				if (onDeleted) {
+					onDeleted();
+				} else {
+					navigate({
+						to: "/resource/$resourceType",
+						params: { resourceType },
+					});
+				}
 				return { status: "ok" };
 			} catch (e) {
 				return {
@@ -353,6 +365,14 @@ export const ResourceEditorPage = ({
 	const isViewDefinition = resourceType === "ViewDefinition";
 	const isAccessPolicy = resourceType === "AccessPolicy";
 	const isSearchParameter = resourceType === "SearchParameter";
+	const isLibrary = resourceType === "Library";
+	const isSQLQuery =
+		isLibrary &&
+		Boolean(
+			(
+				initialResource as { meta?: { profile?: string[] } }
+			).meta?.profile?.includes(SQL_QUERY_PROFILE),
+		);
 
 	const tabs: {
 		value: string;
@@ -376,6 +396,34 @@ export const ResourceEditorPage = ({
 		});
 	}
 
+	if (isLibrary) {
+		tabs.push({
+			value: "sqlquery",
+			trigger: (
+				<HSComp.TabsTrigger value="sqlquery">
+					SQLQuery Builder
+				</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="sqlquery" className="grow min-h-0 flex">
+					<SQLQueryBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isSQLQuery) {
+		tabs.push({
+			value: "lineage",
+			trigger: <HSComp.TabsTrigger value="lineage">Lineage</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent value="lineage" className="grow min-h-0 flex">
+					<LineageTab />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
 	const editActions = (
 		<>
 			<SaveButton
@@ -386,10 +434,16 @@ export const ResourceEditorPage = ({
 				client={client}
 				onError={handleSaveError}
 				onSuccess={() => setEditDirty(false)}
+				onCreated={onCreated}
 				saveRef={saveRef}
 			/>
 			{id && (
-				<DeleteButton client={client} resourceType={resourceType} id={id} />
+				<DeleteButton
+					client={client}
+					resourceType={resourceType}
+					id={id}
+					onDeleted={onDeleted}
+				/>
 			)}
 		</>
 	);
@@ -516,7 +570,8 @@ export const ResourceEditorPage = ({
 		),
 	});
 
-	if (id) {
+	const hasHistoryTab = !isLibrary && !isViewDefinition;
+	if (id && hasHistoryTab) {
 		tabs.push({
 			value: "history",
 			trigger: <HSComp.TabsTrigger value="history">History</HSComp.TabsTrigger>,
@@ -552,7 +607,12 @@ export const ResourceEditorPage = ({
 				{tabs.map((t) => t.content)}
 			</HSComp.Tabs>
 
-			<HSComp.AlertDialog open={editBlockerStatus === "blocked"}>
+			<HSComp.AlertDialog
+				open={editBlockerStatus === "blocked"}
+				onOpenChange={(open) => {
+					if (!open) editReset?.();
+				}}
+			>
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
 						<HSComp.AlertDialogTitle>Unsaved changes</HSComp.AlertDialogTitle>
@@ -585,9 +645,26 @@ export const ResourceEditorPage = ({
 
 	if (isViewDefinition) {
 		return (
-			<ViewDefinitionProvider id={id} initialResource={initialResource}>
+			<ViewDefinitionProvider
+				id={id}
+				initialResource={initialResource}
+				onCreated={onCreated}
+				onDeleted={onDeleted}
+			>
 				{content}
 			</ViewDefinitionProvider>
+		);
+	}
+
+	if (isLibrary) {
+		return (
+			<SQLQueryProvider
+				initialResource={initialResource}
+				onCreated={onCreated}
+				onDeleted={onDeleted}
+			>
+				{content}
+			</SQLQueryProvider>
 		);
 	}
 

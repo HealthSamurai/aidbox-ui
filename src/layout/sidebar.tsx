@@ -21,6 +21,7 @@ import {
 	ShieldUser,
 	SquareArrowOutUpRight,
 	SquareTerminal,
+	Workflow,
 } from "lucide-react";
 import { useEffect } from "react";
 import { useAuditLogEnabled } from "../components/AuditEvents/api";
@@ -62,6 +63,16 @@ const mainMenuItems: {
 			<Link to="/db-console" search={{ query: undefined }}>
 				<Database />
 				SQL console
+			</Link>
+		),
+	},
+	{
+		url: "/data-lineage",
+		title: "Data Lineage",
+		link: (
+			<Link to="/data-lineage">
+				<Workflow />
+				Data Lineage
 			</Link>
 		),
 	},

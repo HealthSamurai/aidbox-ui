@@ -10,6 +10,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
+	Skeleton,
 	Switch,
 	Tooltip,
 	TooltipContent,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 import React, { lazy, Suspense, useEffect } from "react";
 import { useInstanceName, useLogout, useUserInfo } from "../api/auth";
+import { useCanonicalDisplay } from "../api/canonical-resources";
 import AidboxLogo from "../assets/aidbox-logo.svg";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 
@@ -35,6 +37,41 @@ const ClaudeChatToggle = import.meta.env.DEV
 
 import { PREFERRED_UI_KEY, THEME_KEY, VIM_MODE_KEY } from "../shared/const";
 import { getAidboxBaseURL } from "../utils";
+
+function inferResourceTypeFromPath(path: string): string | null {
+	if (/^\/data-lineage\/views\/edit\//.test(path)) return "ViewDefinition";
+	if (/^\/data-lineage\/queries\/edit\//.test(path)) return "Library";
+	const m = path.match(/^\/resource\/([^/]+)\/edit\//);
+	if (m?.[1]) return m[1];
+	return null;
+}
+
+function CurrentCrumb({ title, path }: { title: string; path: string }) {
+	const isUuid = /^[0-9a-f-]{36}$/i.test(title);
+	const resourceType: string | null = isUuid
+		? (inferResourceTypeFromPath(path) ?? null)
+		: null;
+	const { display, isLoading } = useCanonicalDisplay(
+		resourceType,
+		isUuid ? title : null,
+	);
+	return (
+		<>
+			{resourceType && isLoading ? (
+				<BreadcrumbPage>
+					<Skeleton className="h-5 w-48 rounded" />
+				</BreadcrumbPage>
+			) : (
+				<BreadcrumbPage className="truncate">{display ?? title}</BreadcrumbPage>
+			)}
+			{isUuid && (
+				<span className="ml-2 inline-flex items-center [&_svg]:size-4 text-text-tertiary hover:text-text-primary">
+					<CopyIcon text={title} tooltipText="Copy ID" showToast={false} />
+				</span>
+			)}
+		</>
+	);
+}
 
 function Breadcrumbs() {
 	const matches = useMatches();
@@ -66,20 +103,7 @@ function Breadcrumbs() {
 							}
 						>
 							{index === breadcrumbs.length - 1 ? (
-								<>
-									<BreadcrumbPage className="truncate">
-										{crumb.title}
-									</BreadcrumbPage>
-									{/^[0-9a-f-]{36}$/i.test(crumb.title) && (
-										<span className="ml-1 [&_svg]:size-4 text-text-tertiary hover:text-text-primary">
-											<CopyIcon
-												text={crumb.title}
-												tooltipText="Copy ID"
-												showToast={false}
-											/>
-										</span>
-									)}
-								</>
+								<CurrentCrumb title={crumb.title} path={crumb.path} />
 							) : (
 								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>

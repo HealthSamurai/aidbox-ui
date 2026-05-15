@@ -4,6 +4,8 @@ export const RESOURCE_EDITOR_TABS = [
 	"builder",
 	"stats",
 	"indexes",
+	"sqlquery",
+	"lineage",
 ] as const;
 export type ResourceEditorTab = (typeof RESOURCE_EDITOR_TABS)[number];
 const resourceEditorTabSet = new Set(RESOURCE_EDITOR_TABS);

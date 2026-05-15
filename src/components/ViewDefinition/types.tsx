@@ -24,6 +24,8 @@ export interface ViewDefinitionContextProps {
 	issueClickRef: React.MutableRefObject<
 		((issue: OperationOutcomeIssue) => void) | undefined
 	>;
+	onCreated?: (id: string) => void;
+	onDeleted?: () => void;
 }
 
 export interface ViewDefinitionResourceTypeContextProps {
