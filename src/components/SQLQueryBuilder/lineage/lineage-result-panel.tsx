@@ -1,6 +1,7 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
 import * as React from "react";
+import { useLocalStorage } from "../../../hooks";
 import { DataTableFooter } from "../../data-table/footer";
 import { EmptyState } from "../../empty-state";
 import { useLineageRunContext } from "./run-context";
@@ -56,6 +57,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 					{runResult.columns.map((col) => (
 						<HSComp.TableHead key={col}>{col}</HSComp.TableHead>
 					))}
+					<HSComp.TableHead className="w-full p-0" />
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
 			<HSComp.TableBody>
@@ -74,6 +76,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 								</HSComp.TableCell>
 							);
 						})}
+						<HSComp.TableCell className="p-0" />
 					</HSComp.TableRow>
 				))}
 			</HSComp.TableBody>
@@ -92,7 +95,11 @@ export function LineageResultPanel({
 }) {
 	const { runResult } = useLineageRunContext();
 	const [page, setPage] = React.useState(1);
-	const [pageSize, setPageSize] = React.useState(DEFAULT_PAGE_SIZE);
+	const [pageSize, setPageSize] = useLocalStorage<number>({
+		key: "lineage-result-panel:page-size",
+		defaultValue: DEFAULT_PAGE_SIZE,
+		getInitialValueInEffect: false,
+	});
 	const total = runResult?.rows.length ?? 0;
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
