@@ -215,7 +215,13 @@ export const IndexesTab = ({
 		});
 
 	const createMutation = ReactQuery.useMutation({
-		mutationFn: async (statement: string) => {
+		mutationFn: async ({
+			statement,
+		}: {
+			base: string;
+			name: string;
+			statement: string;
+		}) => {
 			// `CREATE INDEX CONCURRENTLY` rejects transactions, so we send
 			// `Aidbox-Sql-Autocommit: true`. `Aidbox-Sql-Async: true` kicks the
 			// statement off into Aidbox's async-api scheduler so the HTTP call
@@ -236,10 +242,19 @@ export const IndexesTab = ({
 			if (!res.response.ok)
 				throw new Error(`HTTP ${res.response.status} from /$psql`);
 		},
-		onSuccess: () => {
+		onSuccess: (_data, { base, name }) => {
 			HSComp.toast.success("Index creation started", defaultToastPlacement);
-			// Immediate refetch picks up the `:building` flag from pg.
-			queryClient.invalidateQueries({ queryKey: indexesKey });
+			// Optimistically mark this row as building. `Aidbox-Sql-Async: true`
+			// returns 202 before pg has even started CREATE INDEX CONCURRENTLY,
+			// so an immediate refetch would still see `pg_stat_progress_create_index`
+			// empty → `:building false` → polling never starts. Patching the
+			// cache here flips `(some r.building)` to true, which arms the 3 s
+			// refetch loop; pg's view of truth takes over from the next tick.
+			queryClient.setQueryData<SearchParamIndex[]>(indexesKey, (prev) =>
+				(prev ?? []).map((r) =>
+					r.base === base && r.name === name ? { ...r, building: true } : r,
+				),
+			);
 		},
 		onError: ApiUtils.onMutationError,
 	});
@@ -417,7 +432,13 @@ export const IndexesTab = ({
 												<RowActions
 													row={r}
 													pending={pending}
-													onCreate={() => createMutation.mutate(r.definition)}
+													onCreate={() =>
+														createMutation.mutate({
+															base: r.base,
+															name: r.name,
+															statement: r.definition,
+														})
+													}
 													onDrop={() => setConfirmDrop(r)}
 												/>
 											</HSComp.TableCell>
