@@ -390,7 +390,7 @@ export function LineageDetailPanel({
 						ID
 					</span>
 					<Link
-						to="/data-lineage/views/edit/$id"
+						to="/analytics/views/edit/$id"
 						params={{ id: data.id }}
 						search={{
 							tab: "builder" as const,
@@ -469,7 +469,7 @@ export function LineageDetailPanel({
 					ID
 				</span>
 				<Link
-					to="/data-lineage/queries/edit/$id"
+					to="/analytics/queries/edit/$id"
 					params={{ id: data.id }}
 					search={{
 						tab: "sqlquery" as const,

@@ -8,29 +8,38 @@ import {
 import { validateSearch } from "./resource.$resourceType.create";
 
 const initialResource: Resource = {
-	resource: "Patient",
-	resourceType: "ViewDefinition",
-	status: "draft",
-	select: [],
+	resourceType: "Library",
+	meta: {
+		profile: ["https://sql-on-fhir.org/ig/StructureDefinition/SQLQuery"],
+	},
+	status: "active",
+	type: {
+		coding: [
+			{
+				system: "https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes",
+				code: "sql-query",
+			},
+		],
+	},
 } as Resource;
 
 const PageComponent = () => {
 	const navigate = useNavigate();
-	const { tab, mode } = useSearch({ from: "/data-lineage/views/create" });
+	const { tab, mode } = useSearch({ from: "/analytics/queries/create" });
 
 	return (
 		<ResourceEditorPage
 			initialResource={initialResource}
-			resourceType="ViewDefinition"
+			resourceType="Library"
 			tab={tab}
 			mode={mode}
 			navigate={navigate}
 			onCreated={(id) =>
 				navigate({
-					to: "/data-lineage/views/edit/$id",
+					to: "/analytics/queries/edit/$id",
 					params: { id },
 					search: {
-						tab: "builder" as const,
+						tab: "sqlquery" as const,
 						mode: "json" as const,
 						builderTab: "form" as const,
 					},
@@ -40,9 +49,9 @@ const PageComponent = () => {
 	);
 };
 
-export const Route = createFileRoute("/data-lineage/views/create")({
+export const Route = createFileRoute("/analytics/queries/create")({
 	component: PageComponent,
 	validateSearch,
-	staticData: { title: "Create View" },
+	staticData: { title: "Create Query" },
 	loader: () => ({ breadCrumb: "Create" }),
 });

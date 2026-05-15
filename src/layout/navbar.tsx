@@ -39,8 +39,8 @@ import { PREFERRED_UI_KEY, THEME_KEY, VIM_MODE_KEY } from "../shared/const";
 import { getAidboxBaseURL } from "../utils";
 
 function inferResourceTypeFromPath(path: string): string | null {
-	if (/^\/data-lineage\/views\/edit\//.test(path)) return "ViewDefinition";
-	if (/^\/data-lineage\/queries\/edit\//.test(path)) return "Library";
+	if (/^\/analytics\/views\/edit\//.test(path)) return "ViewDefinition";
+	if (/^\/analytics\/queries\/edit\//.test(path)) return "Library";
 	const m = path.match(/^\/resource\/([^/]+)\/edit\//);
 	if (m?.[1]) return m[1];
 	return null;

@@ -10,7 +10,7 @@ function QueriesPlaceholder() {
 	);
 }
 
-export const Route = createFileRoute("/data-lineage/queries/")({
+export const Route = createFileRoute("/analytics/queries/")({
 	staticData: { title: "Queries" },
 	component: QueriesPlaceholder,
 });

@@ -974,7 +974,7 @@ export const FormTabContent = ({
 	const [selectItems, setSelectItems] = useState<SelectItemInternal[]>([]);
 	const [collapsedItemIds, setCollapsedItemIds] = useLocalStorage<string[]>({
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
-		defaultValue: ["_properties"],
+		defaultValue: [],
 	});
 
 	const paramPrefix = /^Parameters\.parameter\[\d+\]\.resource\./;

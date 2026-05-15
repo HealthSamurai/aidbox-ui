@@ -14,6 +14,7 @@ import {
 	ClipboardList,
 	Columns3Cog,
 	Database,
+	FileChartPie,
 	Package,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -21,7 +22,6 @@ import {
 	ShieldUser,
 	SquareArrowOutUpRight,
 	SquareTerminal,
-	Workflow,
 } from "lucide-react";
 import { useEffect } from "react";
 import { useAuditLogEnabled } from "../components/AuditEvents/api";
@@ -67,12 +67,12 @@ const mainMenuItems: {
 		),
 	},
 	{
-		url: "/data-lineage",
-		title: "Data Lineage",
+		url: "/analytics",
+		title: "Analytics",
 		link: (
-			<Link to="/data-lineage">
-				<Workflow />
-				Data Lineage
+			<Link to="/analytics">
+				<FileChartPie />
+				Analytics
 			</Link>
 		),
 	},

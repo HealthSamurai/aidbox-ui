@@ -16,7 +16,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import React from "react";
@@ -277,6 +277,11 @@ export const useViewDefinitionActions = (
 	options?: { onRunSuccess?: () => void },
 ) => {
 	const navigate = useNavigate({ from: "/resource/$resourceType/create" });
+	const queryClient = useQueryClient();
+	const invalidateSidebar = () =>
+		queryClient.invalidateQueries({
+			queryKey: ["data-lineage-sidebar-views"],
+		});
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -300,6 +305,7 @@ export const useViewDefinitionActions = (
 
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
+			invalidateSidebar();
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -325,6 +331,7 @@ export const useViewDefinitionActions = (
 
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
+			invalidateSidebar();
 			const id = result.value.resource.id;
 			if (!id)
 				return Utils.toastError(
@@ -510,6 +517,7 @@ export const useViewDefinitionActions = (
 		},
 		onSuccess: () => {
 			viewDefinitionContext.setIsDirty(false);
+			invalidateSidebar();
 			HSComp.toast.success("ViewDefinition deleted successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
