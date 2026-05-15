@@ -3,6 +3,7 @@ import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import { useQuery } from "@tanstack/react-query";
 import { type AidboxClientR5, useAidboxClient } from "../../../AidboxClient";
 import type {
+	ParamSpec,
 	ResourceTypeNodeData,
 	SQLQueryNodeData,
 	ViewConstant,
@@ -60,6 +61,88 @@ type RawViewDefinition = {
 	select?: RawSelect[];
 	where?: Array<{ path?: string; description?: string }>;
 };
+
+function dependsOnCanonicals(lib: RawLibrary): string[] {
+	return (lib.relatedArtifact ?? [])
+		.filter((ra) => ra.type === "depends-on")
+		.map((ra) => ra.resource ?? "")
+		.filter(Boolean);
+}
+
+function splitCanonical(canonical: string): { url: string; version?: string } {
+	const idx = canonical.indexOf("|");
+	if (idx < 0) return { url: canonical };
+	return { url: canonical.slice(0, idx), version: canonical.slice(idx + 1) };
+}
+
+async function fetchLibraryByCanonical(
+	client: AidboxClientR5,
+	canonical: string,
+): Promise<RawLibrary | null> {
+	const relative = canonical.match(/^Library\/([^/?#]+)$/);
+	if (relative) {
+		const result = await client.request<RawLibrary>({
+			method: "GET",
+			url: `/fhir/Library/${relative[1]}`,
+		});
+		if (result.isErr()) return null;
+		return result.value.resource;
+	}
+	if (canonical.startsWith("ViewDefinition/")) return null;
+	const { url, version } = splitCanonical(canonical);
+	const params: Array<[string, string]> = [
+		["url", url],
+		["_count", "1"],
+	];
+	if (version) params.push(["version", version]);
+	const result = await client.request<Bundle>({
+		method: "GET",
+		url: "/fhir/Library",
+		params,
+	});
+	if (result.isErr()) return null;
+	const entry = result.value.resource.entry?.[0];
+	const lib = entry?.resource as RawLibrary | undefined;
+	if (!lib || lib.resourceType !== "Library") return null;
+	return lib;
+}
+
+async function resolveInheritedParameters(
+	client: AidboxClientR5,
+	rootLib: RawLibrary,
+): Promise<ParamSpec[]> {
+	const ownNames = new Set(
+		(rootLib.parameter ?? [])
+			.map((p) => p.name)
+			.filter((n): n is string => Boolean(n)),
+	);
+	const collected = new Map<string, ParamSpec>();
+	const visited = new Set<string>();
+
+	let frontier = dependsOnCanonicals(rootLib);
+	while (frontier.length > 0) {
+		const toFetch = frontier.filter((c) => !visited.has(c));
+		for (const c of toFetch) visited.add(c);
+		const libs = await Promise.all(
+			toFetch.map((c) => fetchLibraryByCanonical(client, c)),
+		);
+		const next: string[] = [];
+		for (const lib of libs) {
+			if (!lib) continue;
+			for (const p of lib.parameter ?? []) {
+				if (!p.name) continue;
+				if (ownNames.has(p.name) || collected.has(p.name)) continue;
+				collected.set(p.name, { name: p.name, type: p.type });
+			}
+			for (const c of dependsOnCanonicals(lib)) {
+				if (!visited.has(c)) next.push(c);
+			}
+		}
+		frontier = next;
+	}
+
+	return Array.from(collected.values());
+}
 
 function isSqlQueryLibrary(lib: RawLibrary): boolean {
 	const profiles = lib.meta?.profile ?? [];
@@ -147,7 +230,10 @@ function librarySql(lib: RawLibrary): string {
 	return data ? decodeBase64(data) : "";
 }
 
-function sqlQueryNodeData(lib: RawLibrary): SQLQueryNodeData {
+function sqlQueryNodeData(
+	lib: RawLibrary,
+	inheritedParameters: ParamSpec[] = [],
+): SQLQueryNodeData {
 	return {
 		kind: "sql-query",
 		id: lib.id ?? "",
@@ -159,7 +245,7 @@ function sqlQueryNodeData(lib: RawLibrary): SQLQueryNodeData {
 		parameters: (lib.parameter ?? [])
 			.filter((p) => p.name)
 			.map((p) => ({ name: p.name as string, type: p.type })),
-		inheritedParameters: [],
+		inheritedParameters,
 		isRoot: false,
 	};
 }
@@ -269,13 +355,16 @@ function rootViewNode(vd: RawViewDefinition): BackrefNode {
 	};
 }
 
-function backrefQueryNode(lib: RawLibrary): BackrefNode {
+function backrefQueryNode(
+	lib: RawLibrary,
+	inheritedParameters: ParamSpec[] = [],
+): BackrefNode {
 	const id = queryNodeId(lib);
 	return {
 		id,
 		type: "sql-query",
 		position: { x: 0, y: 0 },
-		data: sqlQueryNodeData(lib),
+		data: sqlQueryNodeData(lib, inheritedParameters),
 	};
 }
 
@@ -415,15 +504,19 @@ async function buildInitialState(
 		canonical: view.url,
 	});
 
+	const inheritedList = await Promise.all(
+		libs.map((lib) => resolveInheritedParameters(client, lib)),
+	);
+
 	const placed: { node: BackrefNode; lib: RawLibrary; depth: number }[] = [];
-	for (const lib of libs) {
-		const node = backrefQueryNode(lib);
-		if (state.nodesById.has(node.id)) continue;
+	libs.forEach((lib, i) => {
+		const node = backrefQueryNode(lib, inheritedList[i] ?? []);
+		if (state.nodesById.has(node.id)) return;
 		state.nodesById.set(node.id, node);
 		setDepth(state, node.id, 1);
 		addEdge(state, root.id, node.id);
 		placed.push({ node, lib, depth: 1 });
-	}
+	});
 
 	await attachPlaceholders(client, state, placed);
 	return state;
@@ -454,20 +547,24 @@ export async function expandQueryNode(
 		canonical: data.canonical,
 	});
 
+	const inheritedList = await Promise.all(
+		libs.map((lib) => resolveInheritedParameters(client, lib)),
+	);
+
 	const placed: { node: BackrefNode; lib: RawLibrary; depth: number }[] = [];
-	for (const lib of libs) {
-		const node = backrefQueryNode(lib);
+	libs.forEach((lib, i) => {
+		const node = backrefQueryNode(lib, inheritedList[i] ?? []);
 		if (node.id === queryNodeId || state.nodesById.has(node.id)) {
 			if (!state.edges.some((e) => e.id === `${queryNodeId}->${node.id}`)) {
 				addEdge(state, queryNodeId, node.id);
 			}
-			continue;
+			return;
 		}
 		state.nodesById.set(node.id, node);
 		setDepth(state, node.id, queryDepth + 1);
 		addEdge(state, queryNodeId, node.id);
 		placed.push({ node, lib, depth: queryDepth + 1 });
-	}
+	});
 
 	await attachPlaceholders(client, state, placed);
 	return state;
