@@ -25,9 +25,15 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
-import { Fullscreen, Minimize2, Play, Timer } from "lucide-react";
+import {
+	Fullscreen,
+	Minimize2,
+	Play,
+	SquareTerminalIcon,
+	Timer,
+} from "lucide-react";
 import type React from "react";
 import {
 	useCallback,
@@ -41,6 +47,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
 import { fetchUIHistory } from "../api/auth";
+import { appendSqlTabs } from "../components/db-console/active-tabs";
 import {
 	ActiveTabs,
 	addTab,
@@ -740,6 +747,7 @@ type ResponsePaneProps = {
 	selectedTab: Tab;
 	aidboxClient: AidboxClientR5;
 	sendVersion: number;
+	onExplainSubTabChange: (subTab: "query" | "statement" | "plan") => void;
 	onFollowContentLocation?: (path: string) => void;
 };
 
@@ -769,6 +777,7 @@ function ResponseView({
 	selectedTab,
 	aidboxClient,
 	sendVersion,
+	onExplainSubTabChange,
 	onFollowContentLocation,
 }: {
 	response: ResponseData | null;
@@ -778,6 +787,7 @@ function ResponseView({
 	selectedTab: Tab;
 	aidboxClient: AidboxClientR5;
 	sendVersion: number;
+	onExplainSubTabChange: (subTab: "query" | "statement" | "plan") => void;
 	onFollowContentLocation?: (path: string) => void;
 }) {
 	if (activeResponseTab === "explain") {
@@ -787,6 +797,7 @@ function ResponseView({
 				selectedTab={selectedTab}
 				sendVersion={sendVersion}
 				aidboxClient={aidboxClient}
+				onSubTabChange={onExplainSubTabChange}
 			/>
 		);
 	}
@@ -975,11 +986,14 @@ function ExplainView({
 	selectedTab,
 	aidboxClient,
 	sendVersion,
+	onSubTabChange,
 }: {
 	selectedTab: Tab;
 	aidboxClient: AidboxClientR5;
 	sendVersion: number;
+	onSubTabChange: (subTab: "query" | "statement" | "plan") => void;
 }) {
+	const navigate = useNavigate();
 	const { isLoading, data, error } = useQuery({
 		queryKey: ["rest-console-explain", selectedTab.id, sendVersion],
 		queryFn: async (): Promise<ExplainResponse> => {
@@ -1047,24 +1061,57 @@ function ExplainView({
 		);
 	}
 
-	const defaultSubTab = inlineSQL ? "query" : querySQL ? "statement" : "plan";
+	const available: ("query" | "statement" | "plan")[] = [];
+	if (inlineSQL) available.push("query");
+	if (querySQL) available.push("statement");
+	if (plan) available.push("plan");
+	const persisted = selectedTab.activeExplainSubTab;
+	const effectiveSubTab =
+		persisted && available.includes(persisted) ? persisted : available[0];
+
+	// Only the Query sub-tab has self-contained, runnable SQL (values
+	// already inlined). Statement is parameterized — pasting it into the
+	// SQL Console without the params block would error.
+	const sqlForActiveSubTab = effectiveSubTab === "query" ? inlineSQL : "";
+
+	const openInSqlConsole = () => {
+		if (!sqlForActiveSubTab) return;
+		appendSqlTabs([sqlForActiveSubTab]);
+		navigate({ to: "/db-console", search: { query: undefined } });
+	};
 
 	return (
 		<Tabs
 			variant="tertiary"
-			defaultValue={defaultSubTab}
+			value={effectiveSubTab}
+			onValueChange={(v) => onSubTabChange(v as "query" | "statement" | "plan")}
 			className="flex flex-col grow min-h-0"
 		>
-			<div className="flex items-center bg-bg-secondary h-10 border-b shrink-0">
+			<div className="flex items-center justify-between bg-bg-secondary h-10 border-b shrink-0">
 				<TabsList className="py-0! border-b-0!">
 					{inlineSQL && <TabsTrigger value="query">Query</TabsTrigger>}
 					{querySQL && <TabsTrigger value="statement">Statement</TabsTrigger>}
 					{plan && <TabsTrigger value="plan">Execution Plan</TabsTrigger>}
 				</TabsList>
+				{sqlForActiveSubTab && (
+					<div className="px-2">
+						<Button variant="ghost" size="small" onClick={openInSqlConsole}>
+							<SquareTerminalIcon className="w-4 h-4" />
+							Open in SQL Console
+						</Button>
+					</div>
+				)}
 			</div>
 			{inlineSQL && (
 				<TabsContent value="query" className="grow min-h-0">
-					<CodeEditor readOnly currentValue={inlineSQL} mode="sql" />
+					{/* HSComp.CodeEditor only consumes `currentValue` once. Force a
+					    remount when the SQL changes so re-Sends actually update. */}
+					<CodeEditor
+						key={`explain-query-${sendVersion}`}
+						readOnly
+						currentValue={inlineSQL}
+						mode="sql"
+					/>
 				</TabsContent>
 			)}
 			{querySQL && (
@@ -1072,7 +1119,12 @@ function ExplainView({
 					{queryParams.length > 0 ? (
 						<ResizablePanelGroup direction="vertical">
 							<ResizablePanel minSize={20}>
-								<CodeEditor readOnly currentValue={querySQL} mode="sql" />
+								<CodeEditor
+									key={`explain-statement-${sendVersion}`}
+									readOnly
+									currentValue={querySQL}
+									mode="sql"
+								/>
 							</ResizablePanel>
 							<ResizableHandle />
 							<ResizablePanel defaultSize={30} minSize={10}>
@@ -1089,7 +1141,12 @@ function ExplainView({
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					) : (
-						<CodeEditor readOnly currentValue={querySQL} mode="sql" />
+						<CodeEditor
+							key={`explain-statement-${sendVersion}`}
+							readOnly
+							currentValue={querySQL}
+							mode="sql"
+						/>
 					)}
 				</TabsContent>
 			)}
@@ -1119,6 +1176,7 @@ function ResponsePane({
 	selectedTab,
 	aidboxClient,
 	sendVersion,
+	onExplainSubTabChange,
 	onFollowContentLocation,
 }: ResponsePaneProps) {
 	// Use response mode from the response itself (set at request time)
@@ -1167,6 +1225,7 @@ function ResponsePane({
 					selectedTab={selectedTab}
 					aidboxClient={aidboxClient}
 					sendVersion={sendVersion}
+					onExplainSubTabChange={onExplainSubTabChange}
 					onFollowContentLocation={onFollowContentLocation}
 				/>
 			</div>
@@ -2118,6 +2177,14 @@ function RouteComponent() {
 		});
 	}
 
+	function handleExplainSubTabChange(subTab: "query" | "statement" | "plan") {
+		setTabs((currentTabs) => {
+			return currentTabs.map((tab) =>
+				tab.selected ? { ...tab, activeExplainSubTab: subTab } : tab,
+			) as Tab[];
+		});
+	}
+
 	const collectionEntries = useQuery({
 		queryKey: ["rest-console-collections"],
 		queryFn: () => RestCollections.getCollectionsEntries(client),
@@ -2197,15 +2264,7 @@ function RouteComponent() {
 										setRequestLineVersion(generateId());
 										handleTabRequestPathChange(path, tabs, setTabs);
 									}}
-									onSubmit={() =>
-										handleSendRequest(
-											selectedTab,
-											queryClient,
-											setIsLoading,
-											responseStorage.set,
-											client,
-										)
-									}
+									onSubmit={doSendRequest}
 								>
 									<RequestLineEditor
 										key={`request-line-editor-${selectedTab.id}`}
@@ -2225,17 +2284,7 @@ function RouteComponent() {
 										}}
 									/>
 								</UrlAutocomplete>
-								<SendButton
-									onClick={() =>
-										handleSendRequest(
-											selectedTab,
-											queryClient,
-											setIsLoading,
-											responseStorage.set,
-											client,
-										)
-									}
-								/>
+								<SendButton onClick={doSendRequest} />
 								<RestCollections.SaveButton
 									tab={selectedTab}
 									collectionEntries={collectionEntries}
@@ -2311,6 +2360,7 @@ function RouteComponent() {
 										selectedTab={selectedTab}
 										aidboxClient={client}
 										sendVersion={sendVersion}
+										onExplainSubTabChange={handleExplainSubTabChange}
 										onFollowContentLocation={(contentPath) => {
 											const updatedTab = {
 												...selectedTab,

@@ -24,7 +24,18 @@ import {
 	type SortState,
 } from "../data-table";
 import { EmptyState } from "../empty-state";
+import { defaultTabFor } from "../ResourceEditor/types";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
+import {
+	formatCount,
+	formatMs,
+	formatRelativeTime,
+} from "../SearchParameter/format";
+import { rpcCall } from "../SearchParameter/suggest-index";
+import type {
+	SearchParamShape,
+	SearchParamStat,
+} from "../SearchParameter/types";
 import * as Constants from "./constants";
 import type * as Types from "./types";
 
@@ -139,7 +150,7 @@ export const ResourcesTabCreateButton = () => {
 			to="/resource/$resourceType/create"
 			params={{ resourceType: resourcesPageContext.resourceType }}
 			search={{
-				tab: "edit" as const,
+				tab: defaultTabFor(resourcesPageContext.resourceType),
 				mode: "json" as const,
 				builderTab: "form" as const,
 			}}
@@ -946,6 +957,12 @@ type SearchParameterBundle = {
 	entry?: { resource: SearchParameterResource }[];
 };
 
+const HOT_CALLS_THRESHOLD = 100;
+const SLOW_MEAN_MS_THRESHOLD = 200;
+
+type StatsSortCol = "calls" | "mean" | "last";
+type StatsSortDir = "asc" | "desc";
+
 const SearchParametersTabContent = ({
 	client,
 	resourceType,
@@ -971,11 +988,112 @@ const SearchParametersTabContent = ({
 		retry: false,
 	});
 
+	const statsQuery = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "resource-search-param-stats", resourceType],
+		queryFn: async () => {
+			try {
+				const json = await rpcCall(
+					client,
+					"aidbox.index/get-search-param-stats",
+					{
+						"resource-type": resourceType,
+						by: "param",
+						limit: 1000,
+						"flush-first": true,
+					},
+				);
+				return (json.result ?? []) as SearchParamStat[];
+			} catch {
+				return [] as SearchParamStat[];
+			}
+		},
+		retry: false,
+		refetchInterval: 30_000,
+	});
+
+	const shapesQuery = ReactQuery.useQuery({
+		queryKey: [Constants.PageID, "resource-search-param-shapes", resourceType],
+		queryFn: async () => {
+			try {
+				const json = await rpcCall(
+					client,
+					"aidbox.index/get-search-param-stats",
+					{
+						"resource-type": resourceType,
+						by: "shape",
+						limit: 1000,
+					},
+				);
+				return (json.result ?? []) as SearchParamShape[];
+			} catch {
+				return [] as SearchParamShape[];
+			}
+		},
+		retry: false,
+		refetchInterval: 30_000,
+	});
+
+	const statsByParam = React.useMemo(() => {
+		const m = new Map<string, SearchParamStat>();
+		for (const s of statsQuery.data ?? []) m.set(s.search_param, s);
+		return m;
+	}, [statsQuery.data]);
+
+	const shapesByParam = React.useMemo(() => {
+		const m = new Map<string, SearchParamShape[]>();
+		for (const s of shapesQuery.data ?? []) {
+			for (const sp of s.search_params) {
+				if (!m.has(sp)) m.set(sp, []);
+				m.get(sp)?.push(s);
+			}
+		}
+		for (const [, arr] of m) arr.sort((a, b) => b.calls - a.calls);
+		return m;
+	}, [shapesQuery.data]);
+
+	const [sort, setSort] = React.useState<{
+		col: StatsSortCol;
+		dir: StatsSortDir;
+	}>({ col: "calls", dir: "desc" });
+
+	const toggleSort = (col: StatsSortCol) => {
+		setSort((prev) => ({
+			col,
+			dir: prev.col === col && prev.dir === "desc" ? "asc" : "desc",
+		}));
+	};
+
+	const sortedHead = (col: StatsSortCol): "asc" | "desc" | false =>
+		sort.col === col ? sort.dir : false;
+
+	const sortedData = React.useMemo(() => {
+		if (!data) return data;
+		const dirMul = sort.dir === "desc" ? -1 : 1;
+		const value = (param: SearchParameterResource): number | null => {
+			const s = param.code ? statsByParam.get(param.code) : undefined;
+			if (!s) return null;
+			if (sort.col === "calls") return s.calls;
+			if (sort.col === "mean") return s.mean_time_ms;
+			if (sort.col === "last")
+				return s.last_used_at ? Date.parse(s.last_used_at) : null;
+			return null;
+		};
+		return [...data].sort((a, b) => {
+			const av = value(a);
+			const bv = value(b);
+			// Rows without stats sink to the bottom regardless of direction.
+			if (av == null && bv == null) return 0;
+			if (av == null) return 1;
+			if (bv == null) return -1;
+			return (av - bv) * dirMul;
+		});
+	}, [data, statsByParam, sort]);
+
 	if (isLoading) {
 		return <div>Loading...</div>;
 	}
 
-	if (!data || data.length === 0) {
+	if (!sortedData || sortedData.length === 0) {
 		return (
 			<div className="flex items-center justify-center h-full text-text-secondary">
 				<div className="text-center">
@@ -990,7 +1108,34 @@ const SearchParametersTabContent = ({
 			<HSComp.Table zebra stickyHeader className="typo-code">
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
+						<HSComp.TableHead className="w-6 px-1">
+							<span className="sr-only">Alert</span>
+						</HSComp.TableHead>
 						<HSComp.TableHead>Definition</HSComp.TableHead>
+						<HSComp.TableHead
+							className="w-0 text-right"
+							sortable
+							sorted={sortedHead("calls")}
+							onClick={() => toggleSort("calls")}
+						>
+							Calls
+						</HSComp.TableHead>
+						<HSComp.TableHead
+							className="w-0 text-right"
+							sortable
+							sorted={sortedHead("mean")}
+							onClick={() => toggleSort("mean")}
+						>
+							Mean&nbsp;ms
+						</HSComp.TableHead>
+						<HSComp.TableHead
+							className="w-0"
+							sortable
+							sorted={sortedHead("last")}
+							onClick={() => toggleSort("last")}
+						>
+							Last used
+						</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Code</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Name</HSComp.TableHead>
 						<HSComp.TableHead className="w-0">Type</HSComp.TableHead>
@@ -998,31 +1143,115 @@ const SearchParametersTabContent = ({
 					</HSComp.TableRow>
 				</HSComp.TableHeader>
 				<HSComp.TableBody>
-					{data.map((param, index) => (
-						<HSComp.TableRow key={param.id} zebra index={index}>
-							<HSComp.TableCell type="link">
-								<Router.Link
-									className="text-text-link hover:underline"
-									to="/resource/$resourceType/edit/$id"
-									params={{
-										resourceType: "SearchParameter",
-										id: param.id,
-									}}
-									search={{
-										tab: "edit" as const,
-										mode: "json" as const,
-										builderTab: "form" as const,
-									}}
+					{sortedData.map((param, index) => {
+						const stats = param.code ? statsByParam.get(param.code) : undefined;
+						const shapes = param.code
+							? shapesByParam.get(param.code)
+							: undefined;
+						const alert =
+							stats && !stats.has_index && stats.calls > HOT_CALLS_THRESHOLD
+								? {
+										message:
+											"Frequent search-param use without an index. Consider creating one.",
+									}
+								: stats?.has_index &&
+										stats.mean_time_ms > SLOW_MEAN_MS_THRESHOLD
+									? {
+											message:
+												"Search uses an index but mean time is high. May benefit from a more selective or partial index.",
+										}
+									: null;
+						return (
+							<HSComp.TableRow key={param.id} zebra index={index}>
+								<HSComp.TableCell className="w-6 px-1 align-middle">
+									{alert ? (
+										<HSComp.Tooltip>
+											<HSComp.TooltipTrigger asChild>
+												<span className="text-[var(--color-illustrations-solid)] inline-flex items-center align-middle">
+													<Lucide.TriangleAlertIcon size={16} />
+												</span>
+											</HSComp.TooltipTrigger>
+											<HSComp.TooltipContent
+												side="right"
+												className="bg-bg-warning-primary_inverse text-neutral-900 max-w-xs"
+											>
+												{alert.message}
+											</HSComp.TooltipContent>
+										</HSComp.Tooltip>
+									) : null}
+								</HSComp.TableCell>
+								<HSComp.TableCell type="link">
+									<Router.Link
+										className="text-text-link hover:underline"
+										to="/resource/$resourceType/edit/$id"
+										params={{
+											resourceType: "SearchParameter",
+											id: param.id,
+										}}
+										search={{
+											tab: "builder" as const,
+											mode: "json" as const,
+											builderTab: "form" as const,
+										}}
+									>
+										{param.url || "-"}
+									</Router.Link>
+								</HSComp.TableCell>
+								<HSComp.TableCell className="text-right tabular-nums">
+									{stats && shapes && shapes.length > 0 ? (
+										<HSComp.Tooltip>
+											<HSComp.TooltipTrigger asChild>
+												<span className="cursor-help underline decoration-dotted decoration-text-tertiary underline-offset-2">
+													{formatCount(stats.calls)}
+												</span>
+											</HSComp.TooltipTrigger>
+											<HSComp.TooltipContent
+												side="left"
+												className="max-w-md p-2"
+											>
+												<div className="space-y-1 typo-code text-xs">
+													<div className="font-medium pb-1 mb-1 border-b border-border-secondary">
+														Queries containing &lsquo;{param.code}&rsquo;
+													</div>
+													{shapes.map((s) => (
+														<div
+															key={s.search_params.join("|")}
+															className="flex justify-between gap-4"
+														>
+															<span className="truncate">
+																?{s.search_params.join("&")}
+															</span>
+															<span className="tabular-nums shrink-0 text-text-secondary">
+																{formatCount(s.calls)} ·{" "}
+																{formatMs(s.mean_time_ms)} ms
+															</span>
+														</div>
+													))}
+												</div>
+											</HSComp.TooltipContent>
+										</HSComp.Tooltip>
+									) : stats ? (
+										formatCount(stats.calls)
+									) : (
+										"—"
+									)}
+								</HSComp.TableCell>
+								<HSComp.TableCell className="text-right tabular-nums">
+									{stats ? formatMs(stats.mean_time_ms) : "—"}
+								</HSComp.TableCell>
+								<HSComp.TableCell
+									title={stats?.last_used_at ?? undefined}
+									className="whitespace-nowrap"
 								>
-									{param.url || "-"}
-								</Router.Link>
-							</HSComp.TableCell>
-							<HSComp.TableCell>{param.code || "-"}</HSComp.TableCell>
-							<HSComp.TableCell>{param.name || "-"}</HSComp.TableCell>
-							<HSComp.TableCell>{param.type || "-"}</HSComp.TableCell>
-							<HSComp.TableCell>{param.description || "-"}</HSComp.TableCell>
-						</HSComp.TableRow>
-					))}
+									{formatRelativeTime(stats?.last_used_at)}
+								</HSComp.TableCell>
+								<HSComp.TableCell>{param.code || "-"}</HSComp.TableCell>
+								<HSComp.TableCell>{param.name || "-"}</HSComp.TableCell>
+								<HSComp.TableCell>{param.type || "-"}</HSComp.TableCell>
+								<HSComp.TableCell>{param.description || "-"}</HSComp.TableCell>
+							</HSComp.TableRow>
+						);
+					})}
 				</HSComp.TableBody>
 			</HSComp.Table>
 		</div>
@@ -1123,7 +1352,7 @@ export const ResourcesPage = ({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType, id },
 				search: {
-					tab: "edit" as const,
+					tab: defaultTabFor(resourceType),
 					mode: "json" as const,
 					builderTab: "form" as const,
 				},
@@ -1134,7 +1363,7 @@ export const ResourcesPage = ({
 				to: "/resource/$resourceType/create",
 				params: { resourceType },
 				search: {
-					tab: "edit" as const,
+					tab: defaultTabFor(resourceType),
 					mode: "json" as const,
 					builderTab: "form" as const,
 				},

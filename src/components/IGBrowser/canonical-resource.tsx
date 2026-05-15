@@ -11,6 +11,7 @@ import { useAidboxClient } from "../../AidboxClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useWebMCPCanonicalResource } from "../../webmcp/canonical-resource";
 import type { CanonicalResourceActions } from "../../webmcp/canonical-resource-context";
+import { defaultTabFor } from "../ResourceEditor/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -670,7 +671,7 @@ export function CanonicalResource() {
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType, id: resourceId },
 				search: {
-					tab: "edit" as const,
+					tab: defaultTabFor(resourceType),
 					mode: "json" as const,
 					builderTab: "form" as const,
 				},

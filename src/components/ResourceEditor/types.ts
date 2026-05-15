@@ -2,6 +2,8 @@ export const RESOURCE_EDITOR_TABS = [
 	"edit",
 	"history",
 	"builder",
+	"stats",
+	"indexes",
 	"sqlquery",
 	"lineage",
 ] as const;
@@ -26,3 +28,21 @@ export const isBuilderTab = (x: unknown): x is BuilderTab => {
 };
 
 export const pageId = "ResourceEditor";
+
+/**
+ * Resource types that register a custom "builder" tab in `ResourceEditor/page`.
+ * Keep in sync with the `tabs.push({ value: "builder", ... })` branches there.
+ */
+export const RESOURCE_TYPES_WITH_BUILDER = new Set([
+	"ViewDefinition",
+	"AccessPolicy",
+	"SearchParameter",
+]);
+
+/**
+ * Default ResourceEditor tab for first-time navigation to a resource type.
+ * Resource types with a custom builder prefer it over the raw JSON editor —
+ * the builder is the authoring UI the editor was designed for.
+ */
+export const defaultTabFor = (resourceType: string): ResourceEditorTab =>
+	RESOURCE_TYPES_WITH_BUILDER.has(resourceType) ? "builder" : "edit";

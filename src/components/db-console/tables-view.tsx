@@ -86,15 +86,35 @@ type NotebookPsqlResponse = {
 	position?: number;
 };
 
+export interface PsqlRequestOpts {
+	/**
+	 * Set `Aidbox-Sql-Autocommit: true` so each statement commits immediately
+	 * instead of running inside a wrapping transaction. Required for
+	 * `CREATE INDEX CONCURRENTLY`, `VACUUM`, etc. Same header the SQL console
+	 * sends when autocommit mode is on.
+	 */
+	autocommit?: boolean;
+	timeoutSec?: number;
+	readOnly?: boolean;
+}
+
 export function psqlRequest<T = Record<string, unknown>>(
 	client: ReturnType<typeof useAidboxClient>,
 	query: string,
+	opts: PsqlRequestOpts = {},
 ): Promise<T[]> {
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+	};
+	if (opts.autocommit) headers["Aidbox-Sql-Autocommit"] = "true";
+	if (opts.timeoutSec != null)
+		headers["Aidbox-Sql-Timeout"] = String(opts.timeoutSec);
+	if (opts.readOnly) headers["Aidbox-Sql-Read-Only"] = "true";
 	return client
 		.rawRequest({
 			method: "POST",
 			url: "/$psql",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			body: JSON.stringify({ query }),
 		})
 		.then(async (res) => {

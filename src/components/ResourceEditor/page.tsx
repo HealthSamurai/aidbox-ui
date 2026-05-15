@@ -13,6 +13,7 @@ import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import * as ApiUtils from "../../api/utils";
 import { useUnsavedChangesBlocker } from "../../hooks/useUnsavedChangesBlocker";
 import { storeSelectedTab } from "../../routes/resource.$resourceType.create";
 import {
@@ -25,6 +26,9 @@ import type { ResourceEditorActions } from "../../webmcp/resource-editor-context
 import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { EmptyState } from "../empty-state";
+import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
+import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
+import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
 import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
 import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
@@ -107,6 +111,9 @@ export const ResourceEditorPageWithLoader = (
 
 	return (
 		<ResourceEditorPage
+			// Remount on id/type change so `useState(initialResource)` re-initializes —
+			// otherwise navigating to a sibling resource keeps the previous one's
+			// state. VersionId guards against in-place updates of the same id.
 			key={`${resourceType}/${id ?? ""}@${String(meta?.versionId ?? "")}`}
 			initialResource={resourceData}
 			{...props}
@@ -163,6 +170,7 @@ export const ResourceEditorPage = ({
 	};
 
 	const {
+		isDirty: editDirty,
 		setIsDirty: setEditDirty,
 		proceed: editProceed,
 		reset: editReset,
@@ -182,6 +190,17 @@ export const ResourceEditorPage = ({
 		}
 	};
 
+	const handleResourceChange = (next: Resource) => {
+		setResource(next);
+		setSaveError(null);
+		const text =
+			mode === "yaml"
+				? YAML.dump(next, { indent })
+				: JSON.stringify(next, null, indent);
+		setResourceText(text);
+		setEditDirty(text !== initialTextRef.current);
+	};
+
 	const editorViewRef = React.useRef<CodeEditorView | null>(null);
 	const saveRef = React.useRef<SaveHandle>(null);
 
@@ -190,9 +209,20 @@ export const ResourceEditorPage = ({
 	);
 
 	const handleSaveError = React.useCallback((error: Error) => {
+		// Toast first — the inline OperationOutcome panel only shows on the
+		// Edit tab, so on Builder/Stats/Indexes the user would otherwise see
+		// no feedback at all when a save fails.
 		if (isOperationOutcome(error.cause)) {
-			setSaveError(error.cause);
+			const oo = error.cause;
+			const issues = ApiUtils.parseOperationOutcome(oo);
+			const first = issues[0];
+			ApiUtils.toastError(
+				first?.expression || "Failed to save",
+				first?.diagnostics || error.message,
+			);
+			setSaveError(oo);
 		} else {
+			ApiUtils.toastError("Failed to save", error.message);
 			setSaveError({
 				resourceType: "OperationOutcome",
 				issue: [
@@ -334,6 +364,7 @@ export const ResourceEditorPage = ({
 
 	const isViewDefinition = resourceType === "ViewDefinition";
 	const isAccessPolicy = resourceType === "AccessPolicy";
+	const isSearchParameter = resourceType === "SearchParameter";
 	const isLibrary = resourceType === "Library";
 	const isSQLQuery =
 		isLibrary &&
@@ -429,6 +460,66 @@ export const ResourceEditorPage = ({
 				</HSComp.TabsContent>
 			),
 		});
+	}
+
+	if (isSearchParameter) {
+		tabs.push({
+			value: "builder",
+			trigger: <HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent
+					value="builder"
+					className="grow min-h-0 flex flex-col"
+				>
+					<SearchParameterBuilderContent
+						client={client}
+						resource={resource}
+						onResourceChange={handleResourceChange}
+						actions={editActions}
+						saveError={saveError}
+						isDirty={editDirty}
+					/>
+				</HSComp.TabsContent>
+			),
+		});
+
+		if (id) {
+			const sp = resource as { code?: string; base?: string[] };
+			tabs.push({
+				value: "stats",
+				trigger: <HSComp.TabsTrigger value="stats">Stats</HSComp.TabsTrigger>,
+				content: (
+					<HSComp.TabsContent
+						value="stats"
+						className="grow min-h-0 flex flex-col"
+					>
+						<SearchParameterStatsTab
+							client={client}
+							bases={sp.base ?? []}
+							code={sp.code ?? ""}
+						/>
+					</HSComp.TabsContent>
+				),
+			});
+			tabs.push({
+				value: "indexes",
+				trigger: (
+					<HSComp.TabsTrigger value="indexes">Indexes</HSComp.TabsTrigger>
+				),
+				content: (
+					<HSComp.TabsContent
+						value="indexes"
+						className="grow min-h-0 flex flex-col"
+					>
+						<SearchParameterIndexesTab
+							client={client}
+							bases={sp.base ?? []}
+							code={sp.code ?? ""}
+						/>
+					</HSComp.TabsContent>
+				),
+			});
+		}
 	}
 
 	tabs.push({
