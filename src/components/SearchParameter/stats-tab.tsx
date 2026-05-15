@@ -181,10 +181,15 @@ export const StatsTab = ({
 					<EmptyState
 						title="No usage recorded yet"
 						description={
-							<>
+							<span className="block max-w-xl text-center">
 								Issue a few searches that include <code>{code}</code> on{" "}
-								<code>{bases.join(", ")}</code> and stats will appear here.
-							</>
+								<code>
+									{bases.length > 5
+										? `${bases.slice(0, 5).join(", ")} and ${bases.length - 5} more`
+										: bases.join(", ")}
+								</code>{" "}
+								and stats will appear here.
+							</span>
 						}
 					/>
 				)}
