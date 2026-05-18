@@ -1,16 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { EmptyState } from "../components/empty-state";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AnalyticsListPage, validateAnalyticsSearch } from "./analytics.index";
 
-function ViewsPlaceholder() {
+function ViewsRoute() {
+	const { q: searchQ = "" } = Route.useSearch();
+	const navigate = useNavigate({ from: "/analytics/views/" });
+	const setSearchQ = (next: string) =>
+		navigate({
+			search: (prev) => ({ ...prev, q: next || undefined }),
+			replace: true,
+		});
 	return (
-		<EmptyState
-			title="Pick a view"
-			description="Select a view from the sidebar or create a new one."
-		/>
+		<AnalyticsListPage kind="view" searchQ={searchQ} setSearchQ={setSearchQ} />
 	);
 }
 
 export const Route = createFileRoute("/analytics/views/")({
 	staticData: { title: "Views" },
-	component: ViewsPlaceholder,
+	component: ViewsRoute,
+	validateSearch: validateAnalyticsSearch,
 });

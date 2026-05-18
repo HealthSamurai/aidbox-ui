@@ -22,7 +22,7 @@ const PageComponent = () => {
 			onDeleted={() =>
 				navigate({
 					to: "/analytics/views",
-					search: { q: undefined, page: undefined, pageSize: undefined },
+					search: { q: undefined },
 				})
 			}
 		/>

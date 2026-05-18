@@ -135,6 +135,7 @@ export const DeleteButton = ({
 		onSuccess: (_resource, _variables, _onMutateResult, _context) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
 			invalidateDataLineageSidebar(queryClient, resourceType);
+			window.dispatchEvent(new Event("aidbox-resource-deleted"));
 			if (onDeleted) {
 				onDeleted();
 				return;

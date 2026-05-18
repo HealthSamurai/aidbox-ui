@@ -257,8 +257,8 @@ export function SQLQueryNode({ id, data, selected }: AnyNodeProps) {
 	const headerInner = (
 		<>
 			<div className="flex items-center gap-2">
-				<FileCode2 size={14} className="text-text-brand-primary shrink-0" />
-				<span className="font-mono text-xs text-text-brand-primary uppercase">
+				<FileCode2 size={14} className="text-text-warning-primary shrink-0" />
+				<span className="font-mono text-xs text-text-warning-primary uppercase">
 					Query
 				</span>
 			</div>

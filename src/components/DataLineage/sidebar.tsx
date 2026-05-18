@@ -42,6 +42,40 @@ function pickLabel(r: { id?: string; name?: string; title?: string }): string {
 	return r.title || r.name || r.id || "(unnamed)";
 }
 
+const SKELETON_WIDTHS = [
+	"w-32",
+	"w-40",
+	"w-28",
+	"w-44",
+	"w-36",
+	"w-24",
+	"w-48",
+	"w-32",
+];
+
+function SkeletonRows({ count }: { count: number }) {
+	const rows = React.useMemo(
+		() =>
+			Array.from({ length: count }, () => ({
+				id: crypto.randomUUID(),
+				width:
+					SKELETON_WIDTHS[Math.floor(Math.random() * SKELETON_WIDTHS.length)],
+			})),
+		[count],
+	);
+	return (
+		<>
+			{rows.map((r) => (
+				<HSComp.SidebarMenuSubItem key={r.id}>
+					<div className="flex items-center h-7 pl-[11px]">
+						<HSComp.Skeleton className={`h-3.5 ${r.width}`} />
+					</div>
+				</HSComp.SidebarMenuSubItem>
+			))}
+		</>
+	);
+}
+
 function useViewItems() {
 	const client = useAidboxClient();
 	return useQuery<SidebarItem[]>({
@@ -133,12 +167,16 @@ function ViewsSection({
 	currentPath,
 	currentTab,
 	items,
+	loading,
+	skeletonCount,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	currentPath: string;
 	currentTab: string | undefined;
 	items: SidebarItem[];
+	loading: boolean;
+	skeletonCount: number;
 }) {
 	const editSearch = {
 		tab: mapToViewTab(currentTab),
@@ -180,35 +218,39 @@ function ViewsSection({
 				</div>
 				<HSComp.CollapsibleContent>
 					<HSComp.SidebarMenuSub>
-						{items.length === 0 && (
+						{loading && skeletonCount > 0 && (
+							<SkeletonRows count={skeletonCount} />
+						)}
+						{!loading && items.length === 0 && (
 							<HSComp.SidebarMenuSubItem>
 								<div className="pl-[11px] py-1 text-xs italic text-text-tertiary">
 									No views
 								</div>
 							</HSComp.SidebarMenuSubItem>
 						)}
-						{items.map((it) => {
-							const active = currentPath === `/analytics/views/edit/${it.id}`;
-							return (
-								<HSComp.SidebarMenuSubItem key={it.id}>
-									<HoverTooltip description={it.description}>
-										<HSComp.SidebarMenuSubButton
-											isActive={active}
-											asChild
-											className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
-										>
-											<Link
-												to="/analytics/views/edit/$id"
-												params={{ id: it.id }}
-												search={editSearch}
+						{!loading &&
+							items.map((it) => {
+								const active = currentPath === `/analytics/views/edit/${it.id}`;
+								return (
+									<HSComp.SidebarMenuSubItem key={it.id}>
+										<HoverTooltip description={it.description}>
+											<HSComp.SidebarMenuSubButton
+												isActive={active}
+												asChild
+												className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
 											>
-												<span className="truncate">{it.label}</span>
-											</Link>
-										</HSComp.SidebarMenuSubButton>
-									</HoverTooltip>
-								</HSComp.SidebarMenuSubItem>
-							);
-						})}
+												<Link
+													to="/analytics/views/edit/$id"
+													params={{ id: it.id }}
+													search={editSearch}
+												>
+													<span className="truncate">{it.label}</span>
+												</Link>
+											</HSComp.SidebarMenuSubButton>
+										</HoverTooltip>
+									</HSComp.SidebarMenuSubItem>
+								);
+							})}
 					</HSComp.SidebarMenuSub>
 				</HSComp.CollapsibleContent>
 			</HSComp.Collapsible>
@@ -222,12 +264,16 @@ function QueriesSection({
 	currentPath,
 	currentTab,
 	items,
+	loading,
+	skeletonCount,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	currentPath: string;
 	currentTab: string | undefined;
 	items: SidebarItem[];
+	loading: boolean;
+	skeletonCount: number;
 }) {
 	const editSearch = {
 		tab: mapToQueryTab(currentTab),
@@ -269,35 +315,40 @@ function QueriesSection({
 				</div>
 				<HSComp.CollapsibleContent>
 					<HSComp.SidebarMenuSub>
-						{items.length === 0 && (
+						{loading && skeletonCount > 0 && (
+							<SkeletonRows count={skeletonCount} />
+						)}
+						{!loading && items.length === 0 && (
 							<HSComp.SidebarMenuSubItem>
 								<div className="pl-[11px] py-1 text-xs italic text-text-tertiary">
 									No queries
 								</div>
 							</HSComp.SidebarMenuSubItem>
 						)}
-						{items.map((it) => {
-							const active = currentPath === `/analytics/queries/edit/${it.id}`;
-							return (
-								<HSComp.SidebarMenuSubItem key={it.id}>
-									<HoverTooltip description={it.description}>
-										<HSComp.SidebarMenuSubButton
-											isActive={active}
-											asChild
-											className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
-										>
-											<Link
-												to="/analytics/queries/edit/$id"
-												params={{ id: it.id }}
-												search={editSearch}
+						{!loading &&
+							items.map((it) => {
+								const active =
+									currentPath === `/analytics/queries/edit/${it.id}`;
+								return (
+									<HSComp.SidebarMenuSubItem key={it.id}>
+										<HoverTooltip description={it.description}>
+											<HSComp.SidebarMenuSubButton
+												isActive={active}
+												asChild
+												className="text-xs font-normal pl-[11px] data-[active=true]:bg-bg-tertiary data-[active=true]:hover:bg-bg-tertiary"
 											>
-												<span className="truncate">{it.label}</span>
-											</Link>
-										</HSComp.SidebarMenuSubButton>
-									</HoverTooltip>
-								</HSComp.SidebarMenuSubItem>
-							);
-						})}
+												<Link
+													to="/analytics/queries/edit/$id"
+													params={{ id: it.id }}
+													search={editSearch}
+												>
+													<span className="truncate">{it.label}</span>
+												</Link>
+											</HSComp.SidebarMenuSubButton>
+										</HoverTooltip>
+									</HSComp.SidebarMenuSubItem>
+								);
+							})}
 					</HSComp.SidebarMenuSub>
 				</HSComp.CollapsibleContent>
 			</HSComp.Collapsible>
@@ -323,7 +374,24 @@ export function DataLineageSidebar() {
 		defaultValue: true,
 		getInitialValueInEffect: false,
 	});
+	const [viewsCount, setViewsCount] = useLocalStorage<number | null>({
+		key: "data-lineage-sidebar:views-count",
+		defaultValue: null,
+		getInitialValueInEffect: false,
+	});
+	const [queriesCount, setQueriesCount] = useLocalStorage<number | null>({
+		key: "data-lineage-sidebar:queries-count",
+		defaultValue: null,
+		getInitialValueInEffect: false,
+	});
 	const [searchQ, setSearchQ] = React.useState("");
+
+	React.useEffect(() => {
+		if (views.data) setViewsCount(views.data.length);
+	}, [views.data, setViewsCount]);
+	React.useEffect(() => {
+		if (queries.data) setQueriesCount(queries.data.length);
+	}, [queries.data, setQueriesCount]);
 
 	const filteredViews = filterItems(views.data ?? [], searchQ);
 	const filteredQueries = filterItems(queries.data ?? [], searchQ);
@@ -346,6 +414,8 @@ export function DataLineageSidebar() {
 						currentPath={currentPath}
 						currentTab={currentTab}
 						items={filteredViews}
+						loading={views.isLoading}
+						skeletonCount={viewsCount ?? 0}
 					/>
 					<QueriesSection
 						open={openQueries || searchQ.trim() !== ""}
@@ -353,6 +423,8 @@ export function DataLineageSidebar() {
 						currentPath={currentPath}
 						currentTab={currentTab}
 						items={filteredQueries}
+						loading={queries.isLoading}
+						skeletonCount={queriesCount ?? 0}
 					/>
 				</HSComp.SidebarMenu>
 			</HSComp.SidebarContent>
