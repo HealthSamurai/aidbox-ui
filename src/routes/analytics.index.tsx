@@ -17,6 +17,7 @@ import {
 import * as React from "react";
 import { useAidboxClient } from "../AidboxClient";
 import { EmptyState } from "../components/empty-state";
+import { buildQuery, parseQuery, tagSlug } from "../utils/tag-search";
 
 type MatchRange = readonly [number, number];
 
@@ -168,28 +169,6 @@ function useRecentQueries() {
 }
 
 type LookupByUrl = (url: string) => RecentItem | undefined;
-
-function tagSlug(text: string): string {
-	return text.toLowerCase().replace(/\s+/g, "-");
-}
-
-function parseQuery(q: string): { chips: string[]; text: string } {
-	const tokens = q.split(/\s+/).filter(Boolean);
-	const chips: string[] = [];
-	const textTokens: string[] = [];
-	for (const t of tokens) {
-		if (t.startsWith("#") && t.length > 1) chips.push(t.slice(1));
-		else textTokens.push(t);
-	}
-	return { chips, text: textTokens.join(" ") };
-}
-
-function buildQuery(chips: string[], text: string): string {
-	const chipStr = chips.map((c) => `#${c}`).join(" ");
-	const trimmedText = text.trim();
-	if (chipStr && trimmedText) return `${chipStr} ${trimmedText}`;
-	return chipStr || trimmedText;
-}
 
 function getItemTagSlugs(item: RecentItem, lookup: LookupByUrl): string[] {
 	const slugs: string[] = [tagSlug(item.label)];
