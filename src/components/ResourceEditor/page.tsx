@@ -326,6 +326,8 @@ export const ResourceEditorPage = ({
 				};
 			try {
 				await deleteResource(client, resourceType, id);
+				setEditDirty(false);
+				window.dispatchEvent(new Event("aidbox-resource-deleted"));
 				if (onDeleted) {
 					onDeleted();
 				} else {

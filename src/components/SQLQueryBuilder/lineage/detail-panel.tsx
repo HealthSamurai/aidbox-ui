@@ -461,7 +461,7 @@ export function LineageDetailPanel({
 			<PanelHeader
 				icon={<FileCode2 size={14} />}
 				label="Query"
-				color="text-text-brand-primary"
+				color="text-text-warning-primary"
 				onClose={onClose}
 			/>
 			<div className="flex flex-col gap-1">

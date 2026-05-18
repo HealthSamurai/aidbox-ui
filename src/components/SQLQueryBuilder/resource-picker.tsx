@@ -1,12 +1,14 @@
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Info } from "lucide-react";
+import { ChevronDown, FileCode2, Info, Table } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { SQL_QUERY_TYPE_CODE, SQL_QUERY_TYPE_SYSTEM } from "./types";
 
 type CandidateKind = "ViewDefinition" | "SQLQuery";
+
+type RelatedArtifactRef = { url: string; label?: string };
 
 type CandidateOption = {
 	url: string;
@@ -15,6 +17,9 @@ type CandidateOption = {
 	name?: string;
 	title?: string;
 	description?: string;
+	resource?: string;
+	relatedArtifacts?: RelatedArtifactRef[];
+	createdAt?: string;
 };
 
 type RawCandidate = {
@@ -23,7 +28,36 @@ type RawCandidate = {
 	name?: string;
 	title?: string;
 	description?: string;
+	resource?: string;
+	relatedArtifact?: Array<{
+		type?: string;
+		label?: string;
+		resource?: string;
+	}>;
+	meta?: {
+		lastUpdated?: string;
+		extension?: Array<{ url?: string; valueInstant?: string }>;
+	};
 };
+
+function extractCreatedAt(r: RawCandidate): string | undefined {
+	const ext = r.meta?.extension;
+	if (!ext) return undefined;
+	for (const e of ext) {
+		if (e.valueInstant) return e.valueInstant;
+	}
+	return undefined;
+}
+
+function Badge({ text, accentClass }: { text: string; accentClass: string }) {
+	return (
+		<span
+			className={`shrink-0 text-[11px] leading-4 normal-case whitespace-nowrap ${accentClass}`}
+		>
+			#{text}
+		</span>
+	);
+}
 
 const SQL_QUERY_TYPE_TOKEN = `${SQL_QUERY_TYPE_SYSTEM}|${SQL_QUERY_TYPE_CODE}`;
 
@@ -36,15 +70,17 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 	return v;
 }
 
-function useCandidates(search: string) {
+function useCandidates(search: string, enabled = true) {
 	const client = useAidboxClient();
 	const debouncedSearch = useDebouncedValue(search, 200);
 	return useQuery<CandidateOption[]>({
 		queryKey: ["sqlquery-depends-on-candidates", debouncedSearch],
+		enabled,
 		queryFn: async () => {
 			const baseParams: Array<[string, string]> = [
-				["_count", "30"],
+				["_count", "1000"],
 				["url:missing", "false"],
+				["_sort", "-_createdAt"],
 			];
 			if (debouncedSearch) baseParams.push(["_ilike", debouncedSearch]);
 			const [vd, lib] = await Promise.all([
@@ -70,12 +106,17 @@ function useCandidates(search: string) {
 						name: r.name,
 						title: r.title,
 						description: r.description,
+						resource: r.resource,
+						createdAt: extractCreatedAt(r),
 					});
 				}
 			}
 			if (lib.isOk()) {
 				for (const entry of lib.value.resource.entry ?? []) {
 					const r = entry.resource as unknown as RawCandidate;
+					const relatedArtifacts = (r.relatedArtifact ?? []).flatMap((ra) =>
+						ra.resource ? [{ url: ra.resource, label: ra.label }] : [],
+					);
 					out.push({
 						url: r.url,
 						kind: "SQLQuery",
@@ -83,9 +124,17 @@ function useCandidates(search: string) {
 						name: r.name,
 						title: r.title,
 						description: r.description,
+						relatedArtifacts:
+							relatedArtifacts.length > 0 ? relatedArtifacts : undefined,
+						createdAt: extractCreatedAt(r),
 					});
 				}
 			}
+			out.sort((a, b) => {
+				const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+				const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+				return db - da;
+			});
 			return out;
 		},
 	});
@@ -102,8 +151,15 @@ export function ResourcePicker({
 }) {
 	const [open, setOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
-	const { data: candidates = [] } = useCandidates(open ? search : "");
+	const { data: candidates = [] } = useCandidates(search, open);
+	const { data: allCandidates = [] } = useCandidates("", open);
 	const commandRef = React.useRef<HTMLDivElement>(null);
+	const lookupByUrl = React.useMemo(() => {
+		const map = new Map<string, CandidateOption>();
+		for (const c of allCandidates) map.set(c.url, c);
+		for (const c of candidates) map.set(c.url, c);
+		return (url: string) => map.get(url);
+	}, [allCandidates, candidates]);
 
 	React.useEffect(() => {
 		if (!open) return;
@@ -131,7 +187,7 @@ export function ResourcePicker({
 					<ChevronDown className="size-4 shrink-0 opacity-50" />
 				</HSComp.Button>
 			</HSComp.PopoverTrigger>
-			<HSComp.PopoverContent className="w-[420px] p-0" align="start">
+			<HSComp.PopoverContent className="w-[640px] p-0" align="start">
 				<div ref={commandRef}>
 					<HSComp.Command shouldFilter={false}>
 						<HSComp.CommandInput
@@ -139,48 +195,94 @@ export function ResourcePicker({
 							value={search}
 							onValueChange={setSearch}
 						/>
-						<HSComp.CommandList className="overflow-x-auto">
+						<HSComp.CommandList>
 							<HSComp.CommandEmpty>
-								<div className="flex flex-col items-center gap-2 px-4">
-									<span className="typo-body text-text-tertiary">
+								<div className="flex flex-col items-start gap-2 px-4 py-4 normal-case">
+									<span className="typo-body text-text-primary">
 										No matches
 									</span>
-									<div className="flex items-start gap-1.5 text-left typo-label-tiny text-text-tertiary">
-										<Info className="size-3.5 shrink-0 mt-px text-text-quaternary" />
+									<div className="flex items-start gap-1.5 text-left typo-body-xs text-text-secondary normal-case">
+										<Info className="size-3.5 shrink-0 mt-0.5 text-text-tertiary" />
 										<span>
 											Only ViewDefinitions and SQLQueries with a defined{" "}
-											<span className="font-mono text-text-secondary">url</span>{" "}
+											<span className="font-mono text-text-primary">url</span>{" "}
 											are listed — references rely on canonical URLs.
 										</span>
 									</div>
 								</div>
 							</HSComp.CommandEmpty>
-							<div className="min-w-max">
-								{candidates.map((c) => {
-									const label = c.title || c.name || c.id;
-									const secondary = c.description || c.url;
-									return (
-										<HSComp.CommandItem
-											key={c.url}
-											value={c.url}
-											onSelect={() => {
-												onChange(c.url);
-												setOpen(false);
-											}}
-										>
-											<div className="flex flex-col gap-0.5">
-												<span className="typo-label-tiny text-text-tertiary whitespace-nowrap">
-													{c.kind}
-												</span>
-												<span className="whitespace-nowrap">{label}</span>
-												<span className="font-mono text-xs text-text-tertiary whitespace-nowrap">
-													{secondary}
-												</span>
-											</div>
-										</HSComp.CommandItem>
+							{candidates.map((c) => {
+								const label = c.title || c.name || c.id;
+								const isView = c.kind === "ViewDefinition";
+								const Icon = isView ? Table : FileCode2;
+								const kindLabel = isView ? "View" : "Query";
+								const accentClass = isView
+									? "text-text-info-primary"
+									: "text-text-warning-primary";
+								const badges: React.ReactNode[] = [];
+								if (isView && c.resource) {
+									badges.push(
+										<Badge
+											key="resource"
+											text={c.resource}
+											accentClass="text-text-success-primary"
+										/>,
 									);
-								})}
-							</div>
+								}
+								if (!isView && c.relatedArtifacts) {
+									for (const ra of c.relatedArtifacts) {
+										const linked = lookupByUrl(ra.url);
+										const isLinkedView =
+											linked?.kind === "ViewDefinition" ||
+											ra.url.includes("/ViewDefinition/");
+										badges.push(
+											<Badge
+												key={ra.url}
+												text={
+													linked?.title ?? linked?.name ?? ra.label ?? ra.url
+												}
+												accentClass={
+													isLinkedView
+														? "text-text-info-primary"
+														: "text-text-warning-primary"
+												}
+											/>,
+										);
+									}
+								}
+								return (
+									<HSComp.CommandItem
+										key={c.url}
+										value={c.url}
+										onSelect={() => {
+											onChange(c.url);
+											setOpen(false);
+										}}
+									>
+										<div className="flex flex-col min-w-0">
+											<div
+												className={`flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide ${accentClass}`}
+											>
+												<Icon className="size-3.5 shrink-0" />
+												<span>{kindLabel}</span>
+											</div>
+											<div className="typo-body text-text-primary truncate first-letter:uppercase mt-0.5">
+												{label}
+											</div>
+											{c.description && (
+												<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-1">
+													{c.description}
+												</div>
+											)}
+											{badges.length > 0 && (
+												<div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-2">
+													{badges}
+												</div>
+											)}
+										</div>
+									</HSComp.CommandItem>
+								);
+							})}
 						</HSComp.CommandList>
 					</HSComp.Command>
 				</div>

@@ -1,16 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { EmptyState } from "../components/empty-state";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AnalyticsListPage, validateAnalyticsSearch } from "./analytics.index";
 
-function QueriesPlaceholder() {
+function QueriesRoute() {
+	const { q: searchQ = "" } = Route.useSearch();
+	const navigate = useNavigate({ from: "/analytics/queries/" });
+	const setSearchQ = (next: string) =>
+		navigate({
+			search: (prev) => ({ ...prev, q: next || undefined }),
+			replace: true,
+		});
 	return (
-		<EmptyState
-			title="Pick a query"
-			description="Select a query from the sidebar or create a new one."
-		/>
+		<AnalyticsListPage kind="query" searchQ={searchQ} setSearchQ={setSearchQ} />
 	);
 }
 
 export const Route = createFileRoute("/analytics/queries/")({
 	staticData: { title: "Queries" },
-	component: QueriesPlaceholder,
+	component: QueriesRoute,
+	validateSearch: validateAnalyticsSearch,
 });

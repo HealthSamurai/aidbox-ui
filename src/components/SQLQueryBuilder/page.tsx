@@ -45,7 +45,9 @@ export function SQLQueryProvider({
 	const [baselineHash, setBaselineHash] = React.useState<string>(() =>
 		computeLibraryHash(initialResource as SQLLibrary),
 	);
-	const isDirty = computeLibraryHash(library) !== baselineHash;
+	const isDeletedRef = React.useRef(false);
+	const isDirty =
+		!isDeletedRef.current && computeLibraryHash(library) !== baselineHash;
 	const isDirtyRef = React.useRef(false);
 	isDirtyRef.current = isDirty;
 
@@ -54,6 +56,14 @@ export function SQLQueryProvider({
 			setBaselineHash(computeLibraryHash(libraryRef.current));
 			isDirtyRef.current = false;
 		}
+	}, []);
+	React.useEffect(() => {
+		const handler = () => {
+			isDeletedRef.current = true;
+			isDirtyRef.current = false;
+		};
+		window.addEventListener("aidbox-resource-deleted", handler);
+		return () => window.removeEventListener("aidbox-resource-deleted", handler);
 	}, []);
 	const [runResult, setRunResult] = React.useState<RunResult | null>(null);
 	const [runError, setRunError] =
