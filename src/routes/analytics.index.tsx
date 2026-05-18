@@ -12,6 +12,7 @@ import {
 	Search,
 	Table,
 	Trash2,
+	X,
 } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../AidboxClient";
@@ -168,24 +169,107 @@ function useRecentQueries() {
 
 type LookupByUrl = (url: string) => RecentItem | undefined;
 
-function Badge({ text, accentClass }: { text: string; accentClass: string }) {
-	return (
-		<span
-			className={`shrink-0 text-[11px] leading-4 normal-case whitespace-nowrap ${accentClass}`}
-		>
-			#{text}
-		</span>
-	);
+function tagSlug(text: string): string {
+	return text.toLowerCase().replace(/\s+/g, "-");
+}
+
+function parseQuery(q: string): { chips: string[]; text: string } {
+	const tokens = q.split(/\s+/).filter(Boolean);
+	const chips: string[] = [];
+	const textTokens: string[] = [];
+	for (const t of tokens) {
+		if (t.startsWith("#") && t.length > 1) chips.push(t.slice(1));
+		else textTokens.push(t);
+	}
+	return { chips, text: textTokens.join(" ") };
+}
+
+function buildQuery(chips: string[], text: string): string {
+	const chipStr = chips.map((c) => `#${c}`).join(" ");
+	const trimmedText = text.trim();
+	if (chipStr && trimmedText) return `${chipStr} ${trimmedText}`;
+	return chipStr || trimmedText;
+}
+
+function getItemTagSlugs(item: RecentItem, lookup: LookupByUrl): string[] {
+	const slugs: string[] = [tagSlug(item.label)];
+	if (item.resource) slugs.push(tagSlug(item.resource));
+	if (item.relatedArtifacts) {
+		for (const ra of item.relatedArtifacts) {
+			const linked = lookup(ra.url);
+			const text = linked?.label ?? ra.label ?? ra.url;
+			slugs.push(tagSlug(text));
+		}
+	}
+	return slugs;
+}
+
+function filterByTags(
+	items: RecentItem[],
+	tagTokens: string[],
+	lookup: LookupByUrl,
+): RecentItem[] {
+	if (tagTokens.length === 0) return items;
+	return items.filter((item) => {
+		const slugs = getItemTagSlugs(item, lookup);
+		return tagTokens.every((tag) => slugs.some((slug) => slug === tag));
+	});
+}
+
+function chipStyleFor(slug: string, items: RecentItem[]): string {
+	for (const item of items) {
+		if (tagSlug(item.label) === slug) {
+			return item.kind === "view"
+				? "bg-blue-50 text-text-info-primary"
+				: "bg-yellow-50 text-text-warning-primary";
+		}
+	}
+	for (const item of items) {
+		if (item.resource && tagSlug(item.resource) === slug) {
+			return "bg-green-50 text-text-success-primary";
+		}
+	}
+	return "bg-bg-tertiary text-text-primary";
+}
+
+function Badge({
+	text,
+	accentClass,
+	onClick,
+}: {
+	text: string;
+	accentClass: string;
+	onClick?: () => void;
+}) {
+	const base = `shrink-0 text-[11px] leading-4 normal-case whitespace-nowrap ${accentClass}`;
+	if (onClick) {
+		return (
+			<button
+				type="button"
+				onClick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					onClick();
+				}}
+				className={`${base} cursor-pointer hover:underline`}
+			>
+				#{text}
+			</button>
+		);
+	}
+	return <span className={base}>#{text}</span>;
 }
 
 function ItemRow({
 	item,
 	lookup,
 	showKindLabel = true,
+	onTagClick,
 }: {
 	item: RecentItem;
 	lookup: LookupByUrl;
 	showKindLabel?: boolean;
+	onTagClick?: (text: string) => void;
 }) {
 	const isView = item.kind === "view";
 	const Icon = isView ? Table : FileCode2;
@@ -195,11 +279,13 @@ function ItemRow({
 		: "text-text-warning-primary";
 	const badges: React.ReactNode[] = [];
 	if (isView && item.resource) {
+		const resourceText = item.resource;
 		badges.push(
 			<Badge
 				key="resource"
-				text={item.resource}
+				text={resourceText}
 				accentClass="text-text-success-primary"
+				onClick={onTagClick ? () => onTagClick(resourceText) : undefined}
 			/>,
 		);
 	}
@@ -208,21 +294,23 @@ function ItemRow({
 			const linked = lookup(ra.url);
 			const isLinkedView =
 				linked?.kind === "view" || ra.url.includes("/ViewDefinition/");
+			const text = linked?.label ?? ra.label ?? ra.url;
 			badges.push(
 				<Badge
 					key={ra.url}
-					text={linked?.label ?? ra.label ?? ra.url}
+					text={text}
 					accentClass={
 						isLinkedView
 							? "text-text-info-primary"
 							: "text-text-warning-primary"
 					}
+					onClick={onTagClick ? () => onTagClick(text) : undefined}
 				/>,
 			);
 		}
 	}
 	return (
-		<div className="flex flex-col pl-7 pr-4 py-3 min-w-0">
+		<div className="flex flex-col pl-3 pr-4 py-3 min-w-0">
 			{showKindLabel && (
 				<div
 					className={`flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide ${accentClass}`}
@@ -237,7 +325,7 @@ function ItemRow({
 				{highlight(item.label, item.labelMatches)}
 			</div>
 			{item.description && (
-				<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-1">
+				<div className="typo-body-xs text-text-secondary mt-0.5">
 					{highlight(item.description, item.descriptionMatches)}
 				</div>
 			)}
@@ -260,6 +348,70 @@ const QUERY_CREATE_SEARCH = {
 	mode: "json" as const,
 	builderTab: "form" as const,
 };
+
+function SearchBar({
+	chips,
+	textPart,
+	placeholder,
+	allItems,
+	inputRef,
+	onTextChange,
+	onRemoveChip,
+	onClear,
+}: {
+	chips: string[];
+	textPart: string;
+	placeholder: string;
+	allItems: RecentItem[];
+	inputRef: (el: HTMLInputElement | null) => void;
+	onTextChange: (next: string) => void;
+	onRemoveChip: (slug: string) => void;
+	onClear: () => void;
+}) {
+	return (
+		<div className="flex flex-1 items-center gap-2 min-h-9 px-3 py-1 rounded-lg border border-border-primary bg-bg-primary flex-wrap">
+			<Search className="size-4 text-text-tertiary shrink-0" />
+			{chips.map((chip) => (
+				<span
+					key={chip}
+					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap ${chipStyleFor(chip, allItems)}`}
+				>
+					#{chip}
+					<button
+						type="button"
+						aria-label={`Remove tag ${chip}`}
+						onClick={() => onRemoveChip(chip)}
+						className="flex items-center justify-center rounded opacity-70 hover:opacity-100"
+					>
+						<X className="size-3" />
+					</button>
+				</span>
+			))}
+			<input
+				ref={inputRef}
+				value={textPart}
+				onChange={(e) => onTextChange(e.target.value)}
+				onKeyDown={(e) => {
+					const last = chips[chips.length - 1];
+					if (e.key === "Backspace" && textPart === "" && last) {
+						e.preventDefault();
+						onRemoveChip(last);
+					}
+				}}
+				placeholder={chips.length === 0 ? placeholder : ""}
+				className="flex-1 min-w-[80px] bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
+			/>
+			{(chips.length > 0 || textPart.length > 0) && (
+				<HSComp.IconButton
+					variant="link"
+					aria-label="Clear"
+					onClick={onClear}
+					icon={<X />}
+				/>
+			)}
+		</div>
+	);
+}
 
 export function AnalyticsListPage({
 	kind,
@@ -357,18 +509,25 @@ export function AnalyticsListPage({
 		}
 		return (url: string) => map.get(url);
 	}, [views.data, queries.data]);
-	const needle = searchQ.trim();
+	const { chips, text: textPart } = parseQuery(searchQ);
+	const tagTokens = chips.map((c) => c.toLowerCase());
+	const textQuery = textPart;
+
+	const tagFiltered = filterByTags(allItems, tagTokens, lookup);
+
 	const fuse = React.useMemo(
 		() =>
-			new Fuse(allItems, {
+			new Fuse(tagFiltered, {
 				keys: ["label", "description"],
 				includeMatches: true,
 				threshold: 0.3,
 				ignoreLocation: true,
 				minMatchCharLength: 1,
 			}),
-		[allItems],
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[tagFiltered],
 	);
+	const needle = textQuery;
 	const minHighlight = Math.min(Math.max(needle.length, 1), 3);
 	const items: RecentItem[] = needle
 		? fuse.search(needle).map((r) => {
@@ -390,7 +549,7 @@ export function AnalyticsListPage({
 					),
 				};
 			})
-		: allItems;
+		: tagFiltered;
 
 	if (loading) {
 		return (
@@ -423,21 +582,37 @@ export function AnalyticsListPage({
 		navigate({ to: "/analytics/views/create", search: VIEW_CREATE_SEARCH });
 	const createQuery = () =>
 		navigate({ to: "/analytics/queries/create", search: QUERY_CREATE_SEARCH });
+	const handleTagClick = (tagText: string) => {
+		const slug = tagSlug(tagText);
+		if (chips.includes(slug)) return;
+		setSearchQ(buildQuery([...chips, slug], textPart));
+	};
+	const removeChip = (slug: string) => {
+		setSearchQ(
+			buildQuery(
+				chips.filter((c) => c !== slug),
+				textPart,
+			),
+		);
+	};
+	const updateTextPart = (next: string) => {
+		setSearchQ(buildQuery(chips, next));
+	};
 
 	return (
 		<div className="h-full overflow-y-auto pb-[250px]">
-			<div className="sticky top-0 z-10 bg-bg-primary border-b border-border-default px-4 py-3">
-				<div className="flex items-center gap-2">
-					<div className="flex flex-1 items-center gap-2 h-9 px-3 rounded-lg border border-border-primary bg-bg-primary">
-						<Search className="size-4 text-text-tertiary shrink-0" />
-						<input
-							ref={setSearchInputRef}
-							value={searchQ}
-							onChange={(e) => setSearchQ(e.target.value)}
-							placeholder={placeholder}
-							className="flex-1 bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
-						/>
-					</div>
+			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
+				<div className="mx-auto max-w-[990px] px-8 flex items-center gap-2">
+					<SearchBar
+						chips={chips}
+						textPart={textPart}
+						placeholder={placeholder}
+						allItems={allItems}
+						inputRef={setSearchInputRef}
+						onTextChange={updateTextPart}
+						onRemoveChip={removeChip}
+						onClear={() => setSearchQ("")}
+					/>
 					{kind === "view" ? (
 						<HSComp.Button variant="secondary" onClick={createView}>
 							<Plus className="size-4 text-text-info-primary" />
@@ -477,11 +652,11 @@ export function AnalyticsListPage({
 				</div>
 			</div>
 			{items.length === 0 ? (
-				<div className="px-4 py-6 typo-body-xs text-text-tertiary italic">
+				<div className="mx-auto max-w-[990px] px-8 py-6 typo-body-xs text-text-tertiary italic">
 					Nothing matches “{searchQ}”.
 				</div>
 			) : (
-				<ul className="divide-y divide-border-default bg-bg-primary">
+				<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
 					{items.map((it) => {
 						const itemKey = `${it.kind}-${it.id}`;
 						const isMenuOpen = openMenuKey === itemKey;
@@ -497,7 +672,12 @@ export function AnalyticsListPage({
 										search={VIEW_EDIT_SEARCH}
 										className="block"
 									>
-										<ItemRow item={it} lookup={lookup} showKindLabel={!kind} />
+										<ItemRow
+											item={it}
+											lookup={lookup}
+											showKindLabel={!kind}
+											onTagClick={handleTagClick}
+										/>
 									</Link>
 								) : (
 									<Link
@@ -506,7 +686,12 @@ export function AnalyticsListPage({
 										search={QUERY_EDIT_SEARCH}
 										className="block"
 									>
-										<ItemRow item={it} lookup={lookup} showKindLabel={!kind} />
+										<ItemRow
+											item={it}
+											lookup={lookup}
+											showKindLabel={!kind}
+											onTagClick={handleTagClick}
+										/>
 									</Link>
 								)}
 								<div
