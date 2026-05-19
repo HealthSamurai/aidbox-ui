@@ -460,12 +460,6 @@ export function AnalyticsListPage({
 		}
 	}, []);
 
-	const loading =
-		kind === "view"
-			? views.isLoading
-			: kind === "query"
-				? queries.isLoading
-				: views.isLoading || queries.isLoading;
 	const combined: RecentItem[] = [
 		...(views.data ?? []),
 		...(queries.data ?? []),
@@ -530,16 +524,6 @@ export function AnalyticsListPage({
 				};
 			})
 		: tagFiltered;
-
-	if (loading) {
-		return (
-			<div className="h-full overflow-y-auto p-6 space-y-2">
-				<HSComp.Skeleton className="h-14 w-full" />
-				<HSComp.Skeleton className="h-14 w-full" />
-				<HSComp.Skeleton className="h-14 w-full" />
-			</div>
-		);
-	}
 
 	const noun =
 		kind === "view" ? "view" : kind === "query" ? "query" : "view or query";
