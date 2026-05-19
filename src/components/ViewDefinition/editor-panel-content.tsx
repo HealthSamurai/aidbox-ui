@@ -23,6 +23,7 @@ import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
+import { addUrlToHistory } from "../../utils/url-history";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
 import { FormTabContent } from "./editor-form-tab-content";
@@ -33,6 +34,8 @@ import {
 } from "./page";
 import { ResultPanel } from "./result-panel-content";
 import type * as Types from "./types";
+
+const URL_HISTORY_KEY = "viewdefinition-url-history";
 
 const cleanEmptyValues = <T,>(obj: T): T => {
 	if (Array.isArray(obj)) {
@@ -306,6 +309,7 @@ export const useViewDefinitionActions = (
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			invalidateSidebar();
+			addUrlToHistory(URL_HISTORY_KEY, viewDefinitionResource?.url);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -332,6 +336,7 @@ export const useViewDefinitionActions = (
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			invalidateSidebar();
+			addUrlToHistory(URL_HISTORY_KEY, result.value.resource.url);
 			const id = result.value.resource.id;
 			if (!id)
 				return Utils.toastError(

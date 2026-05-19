@@ -5,6 +5,7 @@ import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
+import { addUrlToHistory } from "../../utils/url-history";
 import { useSQLQueryContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
@@ -12,7 +13,8 @@ import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
 import { buildRunPayload, ensureSQLQueryShape } from "./run-payload";
 import type { SQLLibrary } from "./types";
-import { addUrlToHistory } from "./url-history";
+
+const URL_HISTORY_KEY = "sqlquery-library-url-history";
 
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
 	if (
@@ -178,7 +180,7 @@ export function SQLQueryBuilderContent() {
 		},
 		onSuccess: ({ resource, created }) => {
 			setIsDirty(false);
-			addUrlToHistory(library.url);
+			addUrlToHistory(URL_HISTORY_KEY, library.url);
 			HSComp.toast.success("SQLQuery saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
