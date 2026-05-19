@@ -14,6 +14,7 @@ overrides:
   postcss@<8.5.10: '>=8.5.10'
   '@codemirror/view': ^6.42.0
   '@codemirror/autocomplete': 6.20.2
+  '@health-samurai/aidbox-client': file:./aidbox-ts-sdk/packages/aidbox-client
 
 importers:
 
@@ -29,8 +30,8 @@ importers:
         specifier: file:aidbox-ts-sdk/packages/aidbox-client
         version: file:aidbox-ts-sdk/packages/aidbox-client
       '@health-samurai/aidbox-fhirpath-lsp':
-        specifier: 0.0.0-alpha.7
-        version: 0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+        specifier: file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp
+        version: file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       '@health-samurai/react-components':
         specifier: file:aidbox-ts-sdk/packages/react-components
         version: file:aidbox-ts-sdk/packages/react-components(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
@@ -577,14 +578,11 @@ packages:
       react: '*'
       react-dom: '*'
 
-  '@health-samurai/aidbox-client@0.0.0-alpha.5':
-    resolution: {integrity: sha512-WYXfTgMAMRRvJPhnSjB7KiOMhgQ7CDEOS7IUJDvPsjWUbIrRVzfjl89UzyDw6Rv/kum3nDIcVZHyHjVoWbms6g==}
-
   '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
     resolution: {directory: aidbox-ts-sdk/packages/aidbox-client, type: directory}
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7':
-    resolution: {integrity: sha512-AX3f07EMoZg8OWduVWq6rx5HOk+h7ISj6dIgMmaHLLZJ3wcH+LHjAfPv1H6Q/Hc1kqMx+xyfX68z1AOaqGnANw==}
+  '@health-samurai/aidbox-fhirpath-lsp@file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp':
+    resolution: {directory: aidbox-ts-sdk/packages/aidbox-fhirpath-lsp, type: directory}
     peerDependencies:
       '@codemirror/lsp-client': ^6.2.0
       '@codemirror/state': ^6.5.2
@@ -2982,7 +2980,7 @@ snapshots:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/commands': 6.10.3
       '@codemirror/language': 6.12.2
-      '@codemirror/lint': 6.9.5
+      '@codemirror/lint': 6.9.6
       '@codemirror/search': 6.6.0
       '@codemirror/state': 6.6.0
       '@codemirror/theme-one-dark': 6.1.3
@@ -3404,25 +3402,19 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@health-samurai/aidbox-client@0.0.0-alpha.5':
-    dependencies:
-      '@types/json-patch': 0.0.33
-      oauth4webapi: 3.8.5
-      yaml: 2.8.3
-
   '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
     dependencies:
       '@types/json-patch': 0.0.33
       oauth4webapi: 3.8.5
       yaml: 2.8.3
 
-  '@health-samurai/aidbox-fhirpath-lsp@0.0.0-alpha.7(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
+  '@health-samurai/aidbox-fhirpath-lsp@file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
       '@atomic-ehr/fhirpath': 0.1.4(typescript@5.9.3)
       '@atomic-ehr/fhirpath-lsp': 0.0.7(typescript@5.9.3)
       '@codemirror/lsp-client': 6.2.2
       '@codemirror/state': 6.6.0
-      '@health-samurai/aidbox-client': 0.0.0-alpha.5
+      '@health-samurai/aidbox-client': file:aidbox-ts-sdk/packages/aidbox-client
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
     transitivePeerDependencies:
@@ -4979,7 +4971,7 @@ snapshots:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/commands': 6.10.3
       '@codemirror/language': 6.12.2
-      '@codemirror/lint': 6.9.5
+      '@codemirror/lint': 6.9.6
       '@codemirror/search': 6.6.0
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1

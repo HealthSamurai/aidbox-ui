@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
-		"preinstall": "cd aidbox-ts-sdk/packages/aidbox-client && pnpm install && pnpm build && cd ../react-components && pnpm install && pnpm build",
+		"preinstall": "cd aidbox-ts-sdk/packages/aidbox-client && pnpm install && pnpm build && cd ../react-components && pnpm install && pnpm build && cd ../aidbox-fhirpath-lsp && pnpm install && pnpm build",
 		"dev": "vite",
 		"rc:build": "cd aidbox-ts-sdk/packages/react-components && pnpm build && cd ../../.. && pnpm install && rm -rf node_modules/.vite",
 		"client:build": "cd aidbox-ts-sdk/packages/aidbox-client && pnpm build && cd ../../.. && pnpm install && rm -rf node_modules/.vite",
@@ -57,14 +57,15 @@
 			"diff": "^8.0.3",
 			"postcss@<8.5.10": ">=8.5.10",
 			"@codemirror/view": "^6.42.0",
-			"@codemirror/autocomplete": "6.20.2"
+			"@codemirror/autocomplete": "6.20.2",
+			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client"
 		}
 	},
 	"dependencies": {
 		"@git-diff-view/file": "^0.0.30",
 		"@git-diff-view/react": "^0.0.30",
 		"@health-samurai/aidbox-client": "file:aidbox-ts-sdk/packages/aidbox-client",
-		"@health-samurai/aidbox-fhirpath-lsp": "0.0.0-alpha.7",
+		"@health-samurai/aidbox-fhirpath-lsp": "file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp",
 		"@health-samurai/react-components": "file:aidbox-ts-sdk/packages/react-components",
 		"@mcp-b/global": "^2.1.0",
 		"@replit/codemirror-vim": "^6.3.0",
