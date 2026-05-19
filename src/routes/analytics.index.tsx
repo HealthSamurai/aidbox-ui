@@ -17,7 +17,7 @@ import {
 import * as React from "react";
 import { useAidboxClient } from "../AidboxClient";
 import { EmptyState } from "../components/empty-state";
-import { buildQuery, parseQuery, tagSlug } from "../utils/tag-search";
+import { parseQuery, tagSlug } from "../utils/tag-search";
 
 type MatchRange = readonly [number, number];
 
@@ -30,7 +30,7 @@ function highlight(text: string, ranges: readonly MatchRange[] | undefined) {
 		if (start < cursor) return;
 		if (start > cursor) parts.push(text.slice(cursor, start));
 		parts.push(
-			<span key={`${start}-${end}`} className="text-text-link">
+			<span key={`${start}-${end}`} className="font-medium">
 				{text.slice(start, end + 1)}
 			</span>,
 		);
@@ -195,7 +195,8 @@ function filterByTags(
 	});
 }
 
-function chipStyleFor(slug: string, items: RecentItem[]): string {
+function chipStyleFor(tag: string, items: RecentItem[]): string {
+	const slug = tagSlug(tag);
 	for (const item of items) {
 		if (tagSlug(item.label) === slug) {
 			return item.kind === "view"
@@ -289,7 +290,7 @@ function ItemRow({
 		}
 	}
 	return (
-		<div className="flex flex-col pl-3 pr-4 py-3 min-w-0">
+		<div className="flex flex-col pl-3.5 pr-4 py-3 min-w-0">
 			{showKindLabel && (
 				<div
 					className={`flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide ${accentClass}`}
@@ -344,27 +345,23 @@ function SearchBar({
 	allItems: RecentItem[];
 	inputRef: (el: HTMLInputElement | null) => void;
 	onTextChange: (next: string) => void;
-	onRemoveChip: (slug: string) => void;
+	onRemoveChip: (tag: string) => void;
 	onClear: () => void;
 }) {
 	return (
 		<div className="flex flex-1 items-center gap-2 min-h-9 px-3 py-1 rounded-lg border border-border-primary bg-bg-primary flex-wrap">
 			<Search className="size-4 text-text-tertiary shrink-0" />
 			{chips.map((chip) => (
-				<span
+				<button
 					key={chip}
-					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap ${chipStyleFor(chip, allItems)}`}
+					type="button"
+					aria-label={`Remove tag ${chip}`}
+					onClick={() => onRemoveChip(chip)}
+					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap cursor-pointer ${chipStyleFor(chip, allItems)}`}
 				>
 					#{chip}
-					<button
-						type="button"
-						aria-label={`Remove tag ${chip}`}
-						onClick={() => onRemoveChip(chip)}
-						className="flex items-center justify-center rounded opacity-70 hover:opacity-100"
-					>
-						<X className="size-3" />
-					</button>
-				</span>
+					<X className="size-3 opacity-70" />
+				</button>
 			))}
 			<input
 				ref={inputRef}
@@ -392,14 +389,19 @@ function SearchBar({
 	);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: list page combines search/filter/grouping logic
 export function AnalyticsListPage({
 	kind,
-	searchQ,
-	setSearchQ,
+	tags,
+	text,
+	setTags,
+	setText,
 }: {
 	kind?: AnalyticsListKind;
-	searchQ: string;
-	setSearchQ: (next: string) => void;
+	tags: string[];
+	text: string;
+	setTags: (next: string[]) => void;
+	setText: (next: string) => void;
 }) {
 	const views = useRecentViews();
 	const queries = useRecentQueries();
@@ -488,9 +490,8 @@ export function AnalyticsListPage({
 		}
 		return (url: string) => map.get(url);
 	}, [views.data, queries.data]);
-	const { chips, text: textPart } = parseQuery(searchQ);
-	const tagTokens = chips.map((c) => c.toLowerCase());
-	const textQuery = textPart;
+	const tagTokens = tags.map(tagSlug);
+	const textQuery = text;
 
 	const tagFiltered = filterByTags(allItems, tagTokens, lookup);
 
@@ -540,16 +541,9 @@ export function AnalyticsListPage({
 		);
 	}
 
-	if (allItems.length === 0 && !searchQ) {
-		const noun =
-			kind === "view" ? "view" : kind === "query" ? "query" : "view or query";
-		return (
-			<EmptyState
-				title="Analytics"
-				description={`Create your first ${noun} from the sidebar.`}
-			/>
-		);
-	}
+	const noun =
+		kind === "view" ? "view" : kind === "query" ? "query" : "view or query";
+	const isEmpty = allItems.length === 0 && tags.length === 0 && !text;
 
 	const placeholder =
 		kind === "view"
@@ -563,34 +557,48 @@ export function AnalyticsListPage({
 		navigate({ to: "/analytics/queries/create", search: QUERY_CREATE_SEARCH });
 	const handleTagClick = (tagText: string) => {
 		const slug = tagSlug(tagText);
-		if (chips.includes(slug)) return;
-		setSearchQ(buildQuery([...chips, slug], textPart));
+		if (tags.some((t) => tagSlug(t) === slug)) return;
+		setTags([...tags, tagText]);
 	};
-	const removeChip = (slug: string) => {
-		setSearchQ(
-			buildQuery(
-				chips.filter((c) => c !== slug),
-				textPart,
-			),
-		);
+	const removeChip = (tag: string) => {
+		setTags(tags.filter((t) => t !== tag));
 	};
 	const updateTextPart = (next: string) => {
-		setSearchQ(buildQuery(chips, next));
+		const parsed = parseQuery(next);
+		if (parsed.chips.length > 0) {
+			const seen = new Set(tags.map(tagSlug));
+			const extra: string[] = [];
+			for (const c of parsed.chips) {
+				const s = tagSlug(c);
+				if (!seen.has(s)) {
+					extra.push(c);
+					seen.add(s);
+				}
+			}
+			if (extra.length > 0) setTags([...tags, ...extra]);
+			setText(parsed.text);
+		} else {
+			setText(next);
+		}
+	};
+	const onClear = () => {
+		setTags([]);
+		setText("");
 	};
 
 	return (
-		<div className="h-full overflow-y-auto pb-[250px]">
-			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
+		<div className="h-full flex flex-col">
+			<div className="bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
 				<div className="mx-auto max-w-[990px] px-8 flex items-center gap-2">
 					<SearchBar
-						chips={chips}
-						textPart={textPart}
+						chips={tags}
+						textPart={text}
 						placeholder={placeholder}
-						allItems={allItems}
+						allItems={combined}
 						inputRef={setSearchInputRef}
 						onTextChange={updateTextPart}
 						onRemoveChip={removeChip}
-						onClear={() => setSearchQ("")}
+						onClear={onClear}
 					/>
 					{kind === "view" ? (
 						<HSComp.Button variant="secondary" onClick={createView}>
@@ -630,89 +638,135 @@ export function AnalyticsListPage({
 					)}
 				</div>
 			</div>
-			{items.length === 0 ? (
-				<div className="mx-auto max-w-[990px] px-8 py-6 typo-body-xs text-text-tertiary italic">
-					Nothing matches “{searchQ}”.
-				</div>
-			) : (
-				<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
-					{items.map((it) => {
-						const itemKey = `${it.kind}-${it.id}`;
-						const isMenuOpen = openMenuKey === itemKey;
-						return (
-							<li
-								key={itemKey}
-								className="relative group/row transition-colors hover:bg-bg-secondary"
-							>
-								{it.kind === "view" ? (
-									<Link
-										to="/analytics/views/edit/$id"
-										params={{ id: it.id }}
-										search={VIEW_EDIT_SEARCH}
-										className="block"
-									>
-										<ItemRow
-											item={it}
-											lookup={lookup}
-											showKindLabel={!kind}
-											onTagClick={handleTagClick}
-										/>
-									</Link>
-								) : (
-									<Link
-										to="/analytics/queries/edit/$id"
-										params={{ id: it.id }}
-										search={QUERY_EDIT_SEARCH}
-										className="block"
-									>
-										<ItemRow
-											item={it}
-											lookup={lookup}
-											showKindLabel={!kind}
-											onTagClick={handleTagClick}
-										/>
-									</Link>
-								)}
-								<div
-									className={`${isMenuOpen ? "block" : "hidden group-hover/row:block focus-within:block"} absolute top-2 right-2`}
+			<div className="flex-1 min-h-0 overflow-y-auto pb-[250px]">
+				{isEmpty ? (
+					<EmptyState
+						title="Analytics"
+						description={`Create your first ${noun}.`}
+						action={
+							kind === "view" ? (
+								<HSComp.Button variant="secondary" onClick={createView}>
+									<Plus className="size-4 text-text-info-primary" />
+									Create
+								</HSComp.Button>
+							) : kind === "query" ? (
+								<HSComp.Button variant="secondary" onClick={createQuery}>
+									<Plus className="size-4 text-text-info-primary" />
+									Create
+								</HSComp.Button>
+							) : (
+								<HSComp.DropdownMenu>
+									<HSComp.DropdownMenuTrigger asChild>
+										<HSComp.Button variant="secondary">
+											<Plus className="size-4 text-text-info-primary" />
+											Create
+										</HSComp.Button>
+									</HSComp.DropdownMenuTrigger>
+									<HSComp.DropdownMenuContent align="end">
+										<HSComp.DropdownMenuItem
+											className="justify-start! text-text-info-primary!"
+											onSelect={createView}
+										>
+											<Table className="size-4 text-text-info-primary" />
+											View
+										</HSComp.DropdownMenuItem>
+										<HSComp.DropdownMenuItem
+											className="justify-start! text-text-warning-primary!"
+											onSelect={createQuery}
+										>
+											<FileCode2 className="size-4 text-text-warning-primary" />
+											Query
+										</HSComp.DropdownMenuItem>
+									</HSComp.DropdownMenuContent>
+								</HSComp.DropdownMenu>
+							)
+						}
+					/>
+				) : items.length === 0 ? (
+					<div className="mx-auto max-w-[990px] px-8 py-6 typo-body-xs text-text-tertiary italic">
+						Nothing matches “
+						{[...tags.map((t) => `#${t}`), text].filter(Boolean).join(" ")}”.
+					</div>
+				) : (
+					<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
+						{items.map((it) => {
+							const itemKey = `${it.kind}-${it.id}`;
+							const isMenuOpen = openMenuKey === itemKey;
+							return (
+								<li
+									key={itemKey}
+									className="relative group/row transition-colors hover:bg-bg-secondary first:rounded-t-lg last:rounded-b-lg"
 								>
-									<HSComp.DropdownMenu
-										open={isMenuOpen}
-										onOpenChange={(o) => setOpenMenuKey(o ? itemKey : null)}
+									{it.kind === "view" ? (
+										<Link
+											to="/analytics/views/edit/$id"
+											params={{ id: it.id }}
+											search={VIEW_EDIT_SEARCH}
+											className="block"
+										>
+											<ItemRow
+												item={it}
+												lookup={lookup}
+												showKindLabel={!kind}
+												onTagClick={handleTagClick}
+											/>
+										</Link>
+									) : (
+										<Link
+											to="/analytics/queries/edit/$id"
+											params={{ id: it.id }}
+											search={QUERY_EDIT_SEARCH}
+											className="block"
+										>
+											<ItemRow
+												item={it}
+												lookup={lookup}
+												showKindLabel={!kind}
+												onTagClick={handleTagClick}
+											/>
+										</Link>
+									)}
+									<div
+										className={`${isMenuOpen ? "block" : "hidden group-hover/row:block focus-within:block"} absolute top-2 right-2`}
 									>
-										<HSComp.DropdownMenuTrigger asChild>
-											<button
-												type="button"
-												aria-label="More actions"
-												className="size-7 flex items-center justify-center rounded hover:bg-bg-tertiary text-text-secondary"
-											>
-												<EllipsisVertical className="size-4" />
-											</button>
-										</HSComp.DropdownMenuTrigger>
-										<HSComp.DropdownMenuContent align="end">
-											<HSComp.DropdownMenuItem
-												className="justify-start!"
-												onSelect={() => openLineage(it)}
-											>
-												<GitBranch className="size-4" />
-												Lineage
-											</HSComp.DropdownMenuItem>
-											<HSComp.DropdownMenuItem
-												className="justify-start!"
-												variant="destructive"
-												onSelect={() => setConfirmingDelete(it)}
-											>
-												<Trash2 className="size-4" />
-												Delete
-											</HSComp.DropdownMenuItem>
-										</HSComp.DropdownMenuContent>
-									</HSComp.DropdownMenu>
-								</div>
-							</li>
-						);
-					})}
-				</ul>
-			)}
+										<HSComp.DropdownMenu
+											open={isMenuOpen}
+											onOpenChange={(o) => setOpenMenuKey(o ? itemKey : null)}
+										>
+											<HSComp.DropdownMenuTrigger asChild>
+												<button
+													type="button"
+													aria-label="More actions"
+													className="size-7 flex items-center justify-center rounded hover:bg-bg-tertiary text-text-secondary"
+												>
+													<EllipsisVertical className="size-4" />
+												</button>
+											</HSComp.DropdownMenuTrigger>
+											<HSComp.DropdownMenuContent align="end">
+												<HSComp.DropdownMenuItem
+													className="justify-start!"
+													onSelect={() => openLineage(it)}
+												>
+													<GitBranch className="size-4" />
+													Lineage
+												</HSComp.DropdownMenuItem>
+												<HSComp.DropdownMenuItem
+													className="justify-start!"
+													variant="destructive"
+													onSelect={() => setConfirmingDelete(it)}
+												>
+													<Trash2 className="size-4" />
+													Delete
+												</HSComp.DropdownMenuItem>
+											</HSComp.DropdownMenuContent>
+										</HSComp.DropdownMenu>
+									</div>
+								</li>
+							);
+						})}
+					</ul>
+				)}
+			</div>
 			<HSComp.AlertDialog
 				open={!!confirmingDelete}
 				onOpenChange={(o) => {
@@ -752,18 +806,44 @@ export function AnalyticsListPage({
 
 export const validateAnalyticsSearch = (search: {
 	q?: unknown;
-}): { q?: string } =>
-	typeof search.q === "string" && search.q.length > 0 ? { q: search.q } : {};
+	tags?: unknown;
+}): { q?: string; tags?: string[] } => {
+	const out: { q?: string; tags?: string[] } = {};
+	if (typeof search.q === "string" && search.q.length > 0) out.q = search.q;
+	if (Array.isArray(search.tags)) {
+		const tags = search.tags.filter(
+			(t): t is string => typeof t === "string" && t.length > 0,
+		);
+		if (tags.length > 0) out.tags = tags;
+	} else if (typeof search.tags === "string" && search.tags.length > 0) {
+		out.tags = [search.tags];
+	}
+	return out;
+};
 
 function AnalyticsHomeRoute() {
-	const { q: searchQ = "" } = Route.useSearch();
+	const search = Route.useSearch();
+	const text = search.q ?? "";
+	const tags = search.tags ?? [];
 	const navigate = useNavigate({ from: "/analytics/" });
-	const setSearchQ = (next: string) =>
+	const setText = (next: string) =>
 		navigate({
 			search: (prev) => ({ ...prev, q: next || undefined }),
 			replace: true,
 		});
-	return <AnalyticsListPage searchQ={searchQ} setSearchQ={setSearchQ} />;
+	const setTags = (next: string[]) =>
+		navigate({
+			search: (prev) => ({ ...prev, tags: next.length > 0 ? next : undefined }),
+			replace: true,
+		});
+	return (
+		<AnalyticsListPage
+			text={text}
+			tags={tags}
+			setText={setText}
+			setTags={setTags}
+		/>
+	);
 }
 
 export const Route = createFileRoute("/analytics/")({
