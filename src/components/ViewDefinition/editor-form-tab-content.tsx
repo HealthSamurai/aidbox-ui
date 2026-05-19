@@ -44,6 +44,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, useLocalStorage } from "../../hooks";
 import { generateId } from "../../utils";
+import { readUrlHistory } from "../../utils/url-history";
 import type {
 	FormTreeSelectItem,
 	ViewDefinitionBuilderActions,
@@ -55,6 +56,8 @@ import {
 	ViewDefinitionResourceTypeContext,
 } from "./page";
 import { ResourceTypeSelect } from "./resource-type-select";
+
+const URL_HISTORY_KEY = "viewdefinition-url-history";
 
 // --- De-identification extension support ---
 
@@ -630,11 +633,17 @@ const InputView = ({
 	className,
 	value,
 	onChange,
+	name,
+	autoComplete,
+	list,
 }: {
 	placeholder: string;
 	className?: string;
 	value?: string;
 	onChange?: (value: string) => void;
+	name?: string;
+	autoComplete?: string;
+	list?: string;
 }) => {
 	const [localValue, setLocalValue] = useState(value || "");
 
@@ -675,6 +684,9 @@ const InputView = ({
 			`}
 			placeholder={placeholder}
 			value={localValue}
+			name={name}
+			autoComplete={autoComplete}
+			list={list}
 			onChange={(e) => handleChange(e.target.value)}
 			onClick={(e) => e.stopPropagation()}
 			onMouseDown={handleMouseDown}
@@ -976,6 +988,8 @@ export const FormTabContent = ({
 		key: `viewDefinition-form-collapsed-${viewDefinition?.id || "default"}`,
 		defaultValue: [],
 	});
+
+	const urlHistory = readUrlHistory(URL_HISTORY_KEY);
 
 	const paramPrefix = /^Parameters\.parameter\[\d+\]\.resource\./;
 
@@ -1884,7 +1898,8 @@ export const FormTabContent = ({
 		const isAlwaysExpanded =
 			metaType === "constant" || metaType === "where" || metaType === "select";
 
-		const onLabelClickFn = () => {
+		const onLabelClickFn = (e: React.MouseEvent) => {
+			e.stopPropagation();
 			if (isAlwaysExpanded) return;
 			if (item.isExpanded()) {
 				item.collapse();
@@ -1955,6 +1970,9 @@ export const FormTabContent = ({
 								placeholder="Canonical URL of the ViewDefinition"
 								value={viewDefinition?.url || ""}
 								onChange={(value) => updateUrl(value)}
+								name="viewdefinition-url"
+								autoComplete="on"
+								list={URL_HISTORY_KEY}
 							/>
 						</div>
 					</div>
@@ -2500,6 +2518,11 @@ export const FormTabContent = ({
 
 	return (
 		<FhirPathLspProvider>
+			<datalist id={URL_HISTORY_KEY}>
+				{urlHistory.map((u) => (
+					<option key={u} value={u} />
+				))}
+			</datalist>
 			<TreeView
 				itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 					const metaType = item.getItemData()?.meta?.type;

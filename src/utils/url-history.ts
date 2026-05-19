@@ -1,9 +1,8 @@
-const KEY = "sqlquery-library-url-history";
 const MAX_ENTRIES = 20;
 
-export function readUrlHistory(): string[] {
+export function readUrlHistory(key: string): string[] {
 	try {
-		const raw = window.localStorage.getItem(KEY);
+		const raw = window.localStorage.getItem(key);
 		if (!raw) return [];
 		const parsed = JSON.parse(raw);
 		if (Array.isArray(parsed)) {
@@ -15,15 +14,18 @@ export function readUrlHistory(): string[] {
 	return [];
 }
 
-export function addUrlToHistory(url: string | undefined | null): void {
+export function addUrlToHistory(
+	key: string,
+	url: string | undefined | null,
+): void {
 	if (!url) return;
 	try {
-		const current = readUrlHistory();
+		const current = readUrlHistory(key);
 		const next = [url, ...current.filter((u) => u !== url)].slice(
 			0,
 			MAX_ENTRIES,
 		);
-		window.localStorage.setItem(KEY, JSON.stringify(next));
+		window.localStorage.setItem(key, JSON.stringify(next));
 	} catch {
 		// ignore
 	}

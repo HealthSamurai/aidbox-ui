@@ -4,10 +4,12 @@ export const EmptyState = ({
 	title,
 	description,
 	grayscale,
+	action,
 }: {
 	title: ReactNode;
 	description?: ReactNode;
 	grayscale?: boolean;
+	action?: ReactNode;
 }) => {
 	return (
 		<div className="flex items-center justify-center h-full overflow-auto min-h-0">
@@ -23,6 +25,7 @@ export const EmptyState = ({
 						<span className="text-text-secondary">{description}</span>
 					)}
 				</div>
+				{action}
 			</div>
 		</div>
 	);

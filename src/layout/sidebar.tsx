@@ -11,10 +11,10 @@ import {
 } from "@health-samurai/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+	ChartNoAxesCombined,
 	ClipboardList,
 	Columns3Cog,
 	Database,
-	FileChartPie,
 	Package,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -71,7 +71,7 @@ const mainMenuItems: {
 		title: "Analytics",
 		link: (
 			<Link to="/analytics">
-				<FileChartPie />
+				<ChartNoAxesCombined />
 				Analytics
 			</Link>
 		),

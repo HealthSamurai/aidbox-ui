@@ -7,6 +7,7 @@ import {
 import { AlignLeft, Play, Plus, X } from "lucide-react";
 import * as React from "react";
 import { format as formatSQL } from "sql-formatter";
+import { readUrlHistory } from "../../utils/url-history";
 import { useSQLQueryContext } from "./context";
 import {
 	type ResolvedParameter,
@@ -20,7 +21,8 @@ import {
 	type SQLDependsOn,
 	type SQLParameter,
 } from "./types";
-import { addUrlToHistory, readUrlHistory } from "./url-history";
+
+const URL_HISTORY_KEY = "sqlquery-library-url-history";
 
 type ItemMeta = {
 	type:
@@ -149,8 +151,9 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 		? "text-text-info-primary px-1!"
 		: "text-text-info-primary bg-bg-info-primary";
 
-	const onLabelClickFn = () => {
+	const onLabelClickFn = (e: React.MouseEvent) => {
 		if (!isFolder) return;
+		e.stopPropagation();
 		if (item.isExpanded()) item.collapse();
 		else item.expand();
 	};
@@ -336,10 +339,6 @@ export function PropertiesTree() {
 	const { library, updateLibrary, paramValues, setParamValue, missingParams } =
 		useSQLQueryContext();
 	const treeContainerRef = React.useRef<HTMLDivElement>(null);
-
-	React.useEffect(() => {
-		addUrlToHistory(library.url);
-	}, [library.url]);
 
 	React.useEffect(() => {
 		const el = treeContainerRef.current;
@@ -851,7 +850,7 @@ export function PropertiesTree() {
 		}
 	};
 
-	const urlHistory = readUrlHistory();
+	const urlHistory = readUrlHistory(URL_HISTORY_KEY);
 
 	return (
 		<div ref={treeContainerRef}>
