@@ -17,28 +17,12 @@ import {
 import * as React from "react";
 import { useAidboxClient } from "../AidboxClient";
 import { EmptyState } from "../components/empty-state";
+import {
+	filterHighlightRanges,
+	highlight,
+	type MatchRange,
+} from "../utils/highlight";
 import { parseQuery, tagSlug } from "../utils/tag-search";
-
-type MatchRange = readonly [number, number];
-
-function highlight(text: string, ranges: readonly MatchRange[] | undefined) {
-	if (!ranges || ranges.length === 0) return text;
-	const sorted = ranges.slice().sort((a, b) => a[0] - b[0]);
-	const parts: React.ReactNode[] = [];
-	let cursor = 0;
-	sorted.forEach(([start, end]) => {
-		if (start < cursor) return;
-		if (start > cursor) parts.push(text.slice(cursor, start));
-		parts.push(
-			<span key={`${start}-${end}`} className="font-medium">
-				{text.slice(start, end + 1)}
-			</span>,
-		);
-		cursor = end + 1;
-	});
-	if (cursor < text.length) parts.push(text.slice(cursor));
-	return <>{parts}</>;
-}
 
 const SQL_QUERY_TYPE_TOKEN =
 	"https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes|sql-query";
@@ -338,6 +322,7 @@ function SearchBar({
 	onTextChange,
 	onRemoveChip,
 	onClear,
+	onInputKeyDown,
 }: {
 	chips: string[];
 	textPart: string;
@@ -347,6 +332,7 @@ function SearchBar({
 	onTextChange: (next: string) => void;
 	onRemoveChip: (tag: string) => void;
 	onClear: () => void;
+	onInputKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
 	return (
 		<div className="flex flex-1 items-center gap-2 min-h-9 px-3 py-1 rounded-lg border border-border-primary bg-bg-primary flex-wrap">
@@ -372,7 +358,9 @@ function SearchBar({
 					if (e.key === "Backspace" && textPart === "" && last) {
 						e.preventDefault();
 						onRemoveChip(last);
+						return;
 					}
+					onInputKeyDown?.(e);
 				}}
 				placeholder={chips.length === 0 ? placeholder : ""}
 				className="flex-1 min-w-[80px] bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
@@ -389,7 +377,6 @@ function SearchBar({
 	);
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: list page combines search/filter/grouping logic
 export function AnalyticsListPage({
 	kind,
 	tags,
@@ -502,23 +489,20 @@ export function AnalyticsListPage({
 		[tagFiltered],
 	);
 	const needle = textQuery;
-	const minHighlight = Math.min(Math.max(needle.length, 1), 3);
 	const items: RecentItem[] = needle
 		? fuse.search(needle).map((r) => {
 				const labelMatch = r.matches?.find((m) => m.key === "label");
 				const descriptionMatch = r.matches?.find(
 					(m) => m.key === "description",
 				);
-				const filterRanges = (
-					indices?: readonly MatchRange[],
-				): readonly MatchRange[] | undefined =>
-					indices?.filter(([s, e]) => e - s + 1 >= minHighlight);
 				return {
 					...r.item,
-					labelMatches: filterRanges(
+					labelMatches: filterHighlightRanges(
+						needle,
 						labelMatch?.indices as readonly MatchRange[] | undefined,
 					),
-					descriptionMatches: filterRanges(
+					descriptionMatches: filterHighlightRanges(
+						needle,
 						descriptionMatch?.indices as readonly MatchRange[] | undefined,
 					),
 				};
@@ -570,6 +554,51 @@ export function AnalyticsListPage({
 		setText("");
 	};
 
+	const [focusedIndex, setFocusedIndex] = React.useState(-1);
+	const focusedRowRef = React.useRef<HTMLLIElement | null>(null);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: focusedIndex triggers scroll
+	React.useEffect(() => {
+		focusedRowRef.current?.scrollIntoView({ block: "nearest" });
+	}, [focusedIndex]);
+
+	React.useEffect(() => {
+		if (text && items.length > 0) setFocusedIndex(0);
+		else setFocusedIndex(-1);
+	}, [text, items.length]);
+
+	const openItem = (it: RecentItem) => {
+		if (it.kind === "view") {
+			navigate({
+				to: "/analytics/views/edit/$id",
+				params: { id: it.id },
+				search: VIEW_EDIT_SEARCH,
+			});
+		} else {
+			navigate({
+				to: "/analytics/queries/edit/$id",
+				params: { id: it.id },
+				search: QUERY_EDIT_SEARCH,
+			});
+		}
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((p) => Math.min(p + 1, items.length - 1));
+		} else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((p) => Math.max(p - 1, -1));
+		} else if (e.key === "Enter") {
+			if (focusedIndex < 0) return;
+			const it = items[focusedIndex];
+			if (!it) return;
+			e.preventDefault();
+			openItem(it);
+		}
+	};
+
 	return (
 		<div className="h-full flex flex-col">
 			<div className="bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
@@ -583,6 +612,7 @@ export function AnalyticsListPage({
 						onTextChange={updateTextPart}
 						onRemoveChip={removeChip}
 						onClear={onClear}
+						onInputKeyDown={handleKeyDown}
 					/>
 					{kind === "view" ? (
 						<HSComp.Button variant="secondary" onClick={createView}>
@@ -673,13 +703,15 @@ export function AnalyticsListPage({
 					</div>
 				) : (
 					<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
-						{items.map((it) => {
+						{items.map((it, index) => {
 							const itemKey = `${it.kind}-${it.id}`;
 							const isMenuOpen = openMenuKey === itemKey;
+							const focused = index === focusedIndex;
 							return (
 								<li
 									key={itemKey}
-									className="relative group/row transition-colors hover:bg-bg-secondary first:rounded-t-lg last:rounded-b-lg"
+									ref={focused ? focusedRowRef : undefined}
+									className={`relative group/row transition-colors hover:bg-bg-secondary first:rounded-t-lg last:rounded-b-lg ${focused ? "bg-bg-secondary" : ""}`}
 								>
 									{it.kind === "view" ? (
 										<Link

@@ -2,18 +2,17 @@ import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import {
-	ArrowDownAZ,
-	ArrowDownZA,
-	ArrowUpDown,
-	Pin,
-	Search,
-	X,
-} from "lucide-react";
+import Fuse from "fuse.js";
+import { Pin, Search, X } from "lucide-react";
 import React, { useMemo, useRef } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
-import { buildQuery, parseQuery, tagSlug } from "../../utils/tag-search";
+import {
+	filterHighlightRanges,
+	highlight,
+	type MatchRange,
+} from "../../utils/highlight";
+import { parseQuery, tagSlug } from "../../utils/tag-search";
 import { useWebMCPResourceBrowser } from "../../webmcp/resource-browser";
 import type { ResourceBrowserActions } from "../../webmcp/resource-browser-context";
 import { EmptyState } from "../empty-state";
@@ -28,6 +27,7 @@ const STATUS_VALUES = new Set([
 	"trial-use",
 	"draft",
 	"informative",
+	"deprecated",
 ]);
 
 type SDExtension = {
@@ -44,7 +44,19 @@ type SDItem = {
 	categoryTop?: string;
 	categorySub?: string;
 	standardsStatus?: string;
+	origin?: string;
+	nameMatches?: readonly MatchRange[];
+	descriptionMatches?: readonly MatchRange[];
 };
+
+const AIDBOX_PUBLISHER = "Health Samurai";
+const FHIR_PUBLISHER_PREFIX = "Health Level Seven";
+
+function publisherToOrigin(publisher: string | undefined): string | undefined {
+	if (publisher === AIDBOX_PUBLISHER) return "Aidbox";
+	if (publisher?.startsWith(FHIR_PUBLISHER_PREFIX)) return "FHIR";
+	return undefined;
+}
 
 function decodeAmp(s: string): string {
 	return s.replace(/&amp;/g, "&");
@@ -71,6 +83,7 @@ function parseStandardsStatus(
 
 function itemTagSlugs(item: SDItem): string[] {
 	const slugs: string[] = [tagSlug(item.resourceType)];
+	if (item.origin) slugs.push(tagSlug(item.origin));
 	if (item.categoryTop) slugs.push(tagSlug(item.categoryTop));
 	if (item.categorySub) slugs.push(tagSlug(item.categorySub));
 	if (item.standardsStatus) slugs.push(tagSlug(item.standardsStatus));
@@ -85,7 +98,10 @@ function filterByTags(items: SDItem[], tagTokens: string[]): SDItem[] {
 	});
 }
 
-function chipStyleFor(slug: string): string {
+function chipStyleFor(text: string): string {
+	const slug = tagSlug(text);
+	if (slug === "aidbox") return "bg-bg-brand-secondary text-text-brand-primary";
+	if (slug === "fhir") return "bg-green-50 text-text-success-primary";
 	if (STATUS_VALUES.has(slug)) return "bg-yellow-50 text-text-warning-primary";
 	return "bg-blue-50 text-text-info-primary";
 }
@@ -96,6 +112,7 @@ type StructureDefinitionResource = {
 	name?: string;
 	url?: string;
 	description?: string;
+	publisher?: string;
 	extension?: SDExtension[];
 };
 
@@ -110,7 +127,7 @@ function useStructureDefinitions(client: AidboxClientR5) {
 		queryFn: async () => {
 			const response = await client.rawRequest({
 				method: "GET",
-				url: "/fhir/StructureDefinition?kind=resource&derivation=specialization&_count=1000&_elements=type,name,url,description,extension",
+				url: "/fhir/StructureDefinition?kind=resource&derivation=specialization&_count=1000&_elements=type,name,url,description,extension,publisher",
 			});
 			const bundle: StructureDefinitionBundle = await response.response.json();
 			return (bundle.entry ?? []).flatMap((entry) => {
@@ -127,16 +144,13 @@ function useStructureDefinitions(client: AidboxClientR5) {
 						categoryTop: cat.top,
 						categorySub: cat.sub,
 						standardsStatus: parseStandardsStatus(r.extension),
+						origin: publisherToOrigin(r.publisher),
 					} satisfies SDItem,
 				];
 			});
 		},
 	});
 }
-
-type SortColumn = "name" | "url";
-type SortDirection = "asc" | "desc";
-type SortState = { column: SortColumn; direction: SortDirection };
 
 function Badge({ text, onClick }: { text: string; onClick: () => void }) {
 	return (
@@ -147,8 +161,7 @@ function Badge({ text, onClick }: { text: string; onClick: () => void }) {
 				e.stopPropagation();
 				onClick();
 			}}
-			className="shrink-0 text-[11px] leading-4 normal-case whitespace-nowrap text-text-info-primary cursor-pointer hover:underline data-[status=true]:text-text-warning-primary"
-			data-status={STATUS_VALUES.has(tagSlug(text))}
+			className="shrink-0 text-[11px] leading-4 normal-case whitespace-nowrap cursor-pointer hover:underline text-text-info-primary"
 		>
 			#{text}
 		</button>
@@ -181,16 +194,22 @@ function ItemCard({
 				className="block"
 			>
 				<div className="flex flex-col pl-3 pr-10 py-3 min-w-0">
-					<div className="typo-body text-text-primary truncate first-letter:uppercase">
-						{item.name}
+					<div className="typo-body text-text-primary truncate">
+						{highlight(item.name, item.nameMatches)}
 					</div>
 					{item.description && (
-						<div className="typo-body-xs text-text-secondary mt-0.5">
-							{item.description}
+						<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-2">
+							{highlight(item.description, item.descriptionMatches)}
 						</div>
 					)}
-					{(item.categoryTop || item.standardsStatus) && (
+					{(item.origin || item.categoryTop || item.standardsStatus) && (
 						<div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-2">
+							{item.origin && (
+								<Badge
+									text={item.origin}
+									onClick={() => onTagClick(item.origin ?? "")}
+								/>
+							)}
 							{item.categoryTop && (
 								<Badge
 									text={item.categoryTop}
@@ -250,20 +269,16 @@ function SearchBar({
 		<div className="flex flex-1 items-center gap-2 min-h-9 px-3 py-1 rounded-lg border border-border-primary bg-bg-primary flex-wrap">
 			<Search className="size-4 text-text-tertiary shrink-0" />
 			{chips.map((chip) => (
-				<span
+				<button
 					key={chip}
-					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap ${chipStyleFor(chip)}`}
+					type="button"
+					aria-label={`Remove tag ${chip}`}
+					onClick={() => onRemoveChip(chip)}
+					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap cursor-pointer ${chipStyleFor(chip)}`}
 				>
 					#{chip}
-					<button
-						type="button"
-						aria-label={`Remove tag ${chip}`}
-						onClick={() => onRemoveChip(chip)}
-						className="flex items-center justify-center rounded opacity-70 hover:opacity-100"
-					>
-						<X className="size-3" />
-					</button>
-				</span>
+					<X className="size-3 opacity-70" />
+				</button>
 			))}
 			<input
 				ref={inputRef}
@@ -295,73 +310,8 @@ function SearchBar({
 	);
 }
 
-function SortDropdown({
-	sort,
-	onChange,
-}: {
-	sort: SortState;
-	onChange: (s: SortState) => void;
-}) {
-	const label =
-		sort.column === "name"
-			? sort.direction === "asc"
-				? "Name A→Z"
-				: "Name Z→A"
-			: sort.direction === "asc"
-				? "URL A→Z"
-				: "URL Z→A";
-	const Icon = sort.direction === "asc" ? ArrowDownAZ : ArrowDownZA;
-	return (
-		<HSComp.DropdownMenu>
-			<HSComp.DropdownMenuTrigger asChild>
-				<HSComp.Button variant="secondary">
-					<Icon className="size-4" />
-					{label}
-				</HSComp.Button>
-			</HSComp.DropdownMenuTrigger>
-			<HSComp.DropdownMenuContent align="end">
-				<HSComp.DropdownMenuItem
-					className="justify-start!"
-					onSelect={() => onChange({ column: "name", direction: "asc" })}
-				>
-					<ArrowDownAZ className="size-4" />
-					Name A→Z
-				</HSComp.DropdownMenuItem>
-				<HSComp.DropdownMenuItem
-					className="justify-start!"
-					onSelect={() => onChange({ column: "name", direction: "desc" })}
-				>
-					<ArrowDownZA className="size-4" />
-					Name Z→A
-				</HSComp.DropdownMenuItem>
-				<HSComp.DropdownMenuItem
-					className="justify-start!"
-					onSelect={() => onChange({ column: "url", direction: "asc" })}
-				>
-					<ArrowUpDown className="size-4" />
-					URL A→Z
-				</HSComp.DropdownMenuItem>
-				<HSComp.DropdownMenuItem
-					className="justify-start!"
-					onSelect={() => onChange({ column: "url", direction: "desc" })}
-				>
-					<ArrowUpDown className="size-4" />
-					URL Z→A
-				</HSComp.DropdownMenuItem>
-			</HSComp.DropdownMenuContent>
-		</HSComp.DropdownMenu>
-	);
-}
-
-function sortItems(items: SDItem[], sort: SortState): SDItem[] {
-	const sorted = [...items];
-	sorted.sort((a, b) => {
-		const av = sort.column === "name" ? a.name : a.url;
-		const bv = sort.column === "name" ? b.name : b.url;
-		const cmp = av.localeCompare(bv);
-		return sort.direction === "asc" ? cmp : -cmp;
-	});
-	return sorted;
+function sortByName(items: SDItem[]): SDItem[] {
+	return [...items].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function applyFavorites(
@@ -380,17 +330,26 @@ function applyFavorites(
 
 export function Browser() {
 	const client = useAidboxClient();
-	const { q } = useSearch({ from: "/resource/" });
+	const search = useSearch({ from: "/resource/" });
 	const navigate = useNavigate();
 
-	const searchQ = q ?? "";
-	const { chips, text: textPart } = parseQuery(searchQ);
-	const tagTokens = chips.map((c) => c.toLowerCase());
+	const text = search.q ?? "";
+	const chips = search.tags ?? [];
+	const tagTokens = chips.map(tagSlug);
+	const hasQuery = chips.length > 0 || Boolean(text);
 
-	const setSearchQ = (value: string) => {
+	const setText = (next: string) => {
 		navigate({
 			from: "/resource/",
-			search: (prev) => ({ ...prev, q: value || undefined }),
+			search: (prev) => ({ ...prev, q: next || undefined }),
+			replace: true,
+		});
+	};
+	const setTags = (next: string[]) => {
+		navigate({
+			from: "/resource/",
+			search: (prev) => ({ ...prev, tags: next.length > 0 ? next : undefined }),
+			replace: true,
 		});
 	};
 
@@ -400,48 +359,75 @@ export function Browser() {
 	});
 	const favorites = useMemo(() => new Set(favoritesArray), [favoritesArray]);
 
-	const [sort, setSort] = React.useState<SortState>({
-		column: "name",
-		direction: "asc",
-	});
-
 	const { data, isLoading } = useStructureDefinitions(client);
 	const allItems = data ?? [];
 
 	const tagFiltered = filterByTags(allItems, tagTokens);
 
-	const fuzzy = useMemo(
+	const fuse = useMemo(
 		() =>
-			createFuzzySearch(tagFiltered, {
+			new Fuse(tagFiltered, {
 				keys: [
-					{ name: "name", weight: 2 },
+					{ name: "name", weight: 10 },
 					{ name: "description", weight: 1 },
 				],
+				includeMatches: true,
+				ignoreLocation: true,
+				useExtendedSearch: true,
 				minMatchCharLength: 1,
 				threshold: 0.3,
 			}),
 		[tagFiltered],
 	);
 
-	const textFiltered = textPart ? fuzzy(textPart) : tagFiltered;
-	const sorted = sortItems(textFiltered, sort);
-	const items = applyFavorites(sorted, favorites, Boolean(searchQ));
+	const textFiltered: SDItem[] = text
+		? fuse.search(text).map((r) => {
+				const nameMatch = r.matches?.find((m) => m.key === "name");
+				const descMatch = r.matches?.find((m) => m.key === "description");
+				return {
+					...r.item,
+					nameMatches: filterHighlightRanges(
+						text,
+						nameMatch?.indices as readonly MatchRange[] | undefined,
+					),
+					descriptionMatches: filterHighlightRanges(
+						text,
+						descMatch?.indices as readonly MatchRange[] | undefined,
+					),
+				};
+			})
+		: sortByName(tagFiltered);
+	const items = applyFavorites(textFiltered, favorites, hasQuery);
 
 	const handleTagClick = (tagText: string) => {
 		const slug = tagSlug(tagText);
-		if (chips.includes(slug)) return;
-		setSearchQ(buildQuery([...chips, slug], textPart));
+		if (chips.some((c) => tagSlug(c) === slug)) return;
+		setTags([...chips, tagText]);
 	};
-	const removeChip = (slug: string) => {
-		setSearchQ(
-			buildQuery(
-				chips.filter((c) => c !== slug),
-				textPart,
-			),
-		);
+	const removeChip = (tag: string) => {
+		setTags(chips.filter((c) => c !== tag));
 	};
 	const updateTextPart = (next: string) => {
-		setSearchQ(buildQuery(chips, next));
+		const parsed = parseQuery(next);
+		if (parsed.chips.length > 0) {
+			const seen = new Set(chips.map(tagSlug));
+			const extra: string[] = [];
+			for (const c of parsed.chips) {
+				const s = tagSlug(c);
+				if (!seen.has(s)) {
+					extra.push(c);
+					seen.add(s);
+				}
+			}
+			if (extra.length > 0) setTags([...chips, ...extra]);
+			setText(parsed.text);
+		} else {
+			setText(next);
+		}
+	};
+	const onClear = () => {
+		setTags([]);
+		setText("");
 	};
 
 	const toggleFavorite = (resourceType: string) => {
@@ -468,8 +454,9 @@ export function Browser() {
 	}, [focusedIndex]);
 
 	React.useEffect(() => {
-		setFocusedIndex(-1);
-	}, []);
+		if (text && items.length > 0) setFocusedIndex(0);
+		else setFocusedIndex(-1);
+	}, [text, items.length]);
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
@@ -478,11 +465,8 @@ export function Browser() {
 		} else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
 			e.preventDefault();
 			setFocusedIndex((p) => Math.max(p - 1, -1));
-		} else if (
-			e.key === "Enter" &&
-			focusedIndex >= 0 &&
-			focusedIndex < items.length
-		) {
+		} else if (e.key === "Enter") {
+			if (focusedIndex < 0) return;
 			const it = items[focusedIndex];
 			if (!it) return;
 			e.preventDefault();
@@ -497,12 +481,20 @@ export function Browser() {
 	useWebMCPResourceBrowser(actionsRef);
 	actionsRef.current = {
 		listResourceTypes: (filter) => {
-			if (filter !== undefined) setSearchQ(filter);
-			const q2 = filter ?? searchQ;
-			const parsed = parseQuery(q2);
-			const tags = parsed.chips.map((c) => c.toLowerCase());
-			const filtered = filterByTags(allItems, tags);
-			const t = parsed.text
+			let resolvedTags: string[];
+			let resolvedText: string;
+			if (filter !== undefined) {
+				const parsed = parseQuery(filter);
+				setTags(parsed.chips);
+				setText(parsed.text);
+				resolvedTags = parsed.chips.map(tagSlug);
+				resolvedText = parsed.text;
+			} else {
+				resolvedTags = tagTokens;
+				resolvedText = text;
+			}
+			const filtered = filterByTags(allItems, resolvedTags);
+			const t = resolvedText
 				? createFuzzySearch(filtered, {
 						keys: [
 							{ name: "name", weight: 2 },
@@ -510,10 +502,13 @@ export function Browser() {
 						],
 						minMatchCharLength: 1,
 						threshold: 0.3,
-					})(parsed.text)
-				: filtered;
-			const sortedRes = sortItems(t, sort);
-			const finalList = applyFavorites(sortedRes, favorites, Boolean(q2));
+					})(resolvedText)
+				: sortByName(filtered);
+			const finalList = applyFavorites(
+				t,
+				favorites,
+				Boolean(resolvedText) || resolvedTags.length > 0,
+			);
 			return finalList.map((row) => ({
 				resourceType: row.resourceType,
 				url: row.url,
@@ -533,17 +528,16 @@ export function Browser() {
 	return (
 		<div className="h-full overflow-y-auto pb-[250px]">
 			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
-				<div className="mx-auto max-w-[990px] px-8 flex items-center gap-2">
+				<div className="mx-auto max-w-[990px] px-8">
 					<SearchBar
 						chips={chips}
-						textPart={textPart}
+						textPart={text}
 						inputRef={setSearchInputRef}
 						onTextChange={updateTextPart}
 						onRemoveChip={removeChip}
-						onClear={() => setSearchQ("")}
+						onClear={onClear}
 						onInputKeyDown={handleKeyDown}
 					/>
-					<SortDropdown sort={sort} onChange={setSort} />
 				</div>
 			</div>
 			{!isLoading && items.length === 0 ? (
