@@ -363,7 +363,7 @@ function upsertHeader(
 		return;
 	}
 	const newHeader = {
-		id: crypto.randomUUID(),
+		id: generateId(),
 		name: headerName,
 		value,
 		enabled: true,
