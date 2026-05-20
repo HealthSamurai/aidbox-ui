@@ -7,6 +7,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import * as React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
+import { generateId } from "../../utils";
 
 const SQL_QUERY_TYPE_TOKEN =
 	"https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes|sql-query";
@@ -57,7 +58,7 @@ function SkeletonRows({ count }: { count: number }) {
 	const rows = React.useMemo(
 		() =>
 			Array.from({ length: count }, () => ({
-				id: crypto.randomUUID(),
+				id: generateId(),
 				width:
 					SKELETON_WIDTHS[Math.floor(Math.random() * SKELETON_WIDTHS.length)],
 			})),
