@@ -34,7 +34,7 @@ import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.ind
 import { Route as AnalyticsViewsIndexRouteImport } from './routes/analytics.views.index'
 import { Route as AnalyticsQueriesIndexRouteImport } from './routes/analytics.queries.index'
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
-import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id.edit'
+import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id_.edit'
 import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.views.create'
 import { Route as AnalyticsQueriesCreateRouteImport } from './routes/analytics.queries.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
@@ -170,9 +170,9 @@ const ResourceResourceTypeCreateRoute =
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
 const NotebooksIdEditRoute = NotebooksIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => NotebooksIdRoute,
+  id: '/$id_/edit',
+  path: '/$id/edit',
+  getParentRoute: () => NotebooksRoute,
 } as any)
 const AnalyticsViewsCreateRoute = AnalyticsViewsCreateRouteImport.update({
   id: '/create',
@@ -221,7 +221,7 @@ export interface FileRoutesByFullPath {
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
-  '/notebooks/$id': typeof NotebooksIdRouteWithChildren
+  '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
@@ -248,7 +248,7 @@ export interface FileRoutesByTo {
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
   '/ig/add': typeof IgAddRoute
-  '/notebooks/$id': typeof NotebooksIdRouteWithChildren
+  '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/analytics': typeof AnalyticsIndexRoute
   '/ig': typeof IgIndexRoute
@@ -282,7 +282,7 @@ export interface FileRoutesById {
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
-  '/notebooks/$id': typeof NotebooksIdRouteWithChildren
+  '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
@@ -291,7 +291,7 @@ export interface FileRoutesById {
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
-  '/notebooks/$id/edit': typeof NotebooksIdEditRoute
+  '/notebooks/$id_/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries/': typeof AnalyticsQueriesIndexRoute
   '/analytics/views/': typeof AnalyticsViewsIndexRoute
@@ -387,7 +387,7 @@ export interface FileRouteTypes {
     | '/resource/'
     | '/analytics/queries/create'
     | '/analytics/views/create'
-    | '/notebooks/$id/edit'
+    | '/notebooks/$id_/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries/'
     | '/analytics/views/'
@@ -588,12 +588,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceResourceTypeCreateRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
     }
-    '/notebooks/$id/edit': {
-      id: '/notebooks/$id/edit'
-      path: '/edit'
+    '/notebooks/$id_/edit': {
+      id: '/notebooks/$id_/edit'
+      path: '/$id/edit'
       fullPath: '/notebooks/$id/edit'
       preLoaderRoute: typeof NotebooksIdEditRouteImport
-      parentRoute: typeof NotebooksIdRoute
+      parentRoute: typeof NotebooksRoute
     }
     '/analytics/views/create': {
       id: '/analytics/views/create'
@@ -716,28 +716,18 @@ const IgRouteChildren: IgRouteChildren = {
 
 const IgRouteWithChildren = IgRoute._addFileChildren(IgRouteChildren)
 
-interface NotebooksIdRouteChildren {
+interface NotebooksRouteChildren {
+  NotebooksIdRoute: typeof NotebooksIdRoute
+  NotebooksNewRoute: typeof NotebooksNewRoute
+  NotebooksIndexRoute: typeof NotebooksIndexRoute
   NotebooksIdEditRoute: typeof NotebooksIdEditRoute
 }
 
-const NotebooksIdRouteChildren: NotebooksIdRouteChildren = {
-  NotebooksIdEditRoute: NotebooksIdEditRoute,
-}
-
-const NotebooksIdRouteWithChildren = NotebooksIdRoute._addFileChildren(
-  NotebooksIdRouteChildren,
-)
-
-interface NotebooksRouteChildren {
-  NotebooksIdRoute: typeof NotebooksIdRouteWithChildren
-  NotebooksNewRoute: typeof NotebooksNewRoute
-  NotebooksIndexRoute: typeof NotebooksIndexRoute
-}
-
 const NotebooksRouteChildren: NotebooksRouteChildren = {
-  NotebooksIdRoute: NotebooksIdRouteWithChildren,
+  NotebooksIdRoute: NotebooksIdRoute,
   NotebooksNewRoute: NotebooksNewRoute,
   NotebooksIndexRoute: NotebooksIndexRoute,
+  NotebooksIdEditRoute: NotebooksIdEditRoute,
 }
 
 const NotebooksRouteWithChildren = NotebooksRoute._addFileChildren(

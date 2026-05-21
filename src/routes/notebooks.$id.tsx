@@ -1,25 +1,32 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
 import {
 	Check,
-	ChevronLeft,
-	Copy,
+	ChevronDown,
+	FileDown,
 	Globe,
+	GlobeOff,
+	Link2,
 	Loader2,
 	Pencil,
 	Play,
+	Share2,
 	Timer,
+	Trash2,
 	User,
+	X,
 } from "lucide-react";
 import { Children, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAidboxClient } from "../AidboxClient";
+import { ConfirmDialog } from "../components/confirm-dialog";
 import { ResultContent } from "../components/db-console/result-content";
 import { transformToQueryResultItems } from "../components/db-console/tables-view";
 import { HTTP_STATUS_CODES } from "../shared/const";
+import { prettyEdn } from "../utils/edn";
 import type { QueryResultItem } from "../webmcp/db-console-context";
 
 type SavedRestResult = {
@@ -29,14 +36,14 @@ type SavedRestResult = {
 	body?: string;
 };
 
-type Cell = {
+export type Cell = {
 	id?: string;
 	type?: "rest" | "sql" | "markdown" | "rpc" | string;
 	value?: string;
 	result?: SavedRestResult | unknown;
 };
 
-type Notebook = {
+export type Notebook = {
 	id: string;
 	resourceType?: string;
 	name?: string;
@@ -83,7 +90,7 @@ function formatTag(s: string): string {
 	return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-const MD_COMPONENTS = {
+export const MD_COMPONENTS = {
 	h1: ({ children }: { children?: React.ReactNode }) => (
 		<h1 className="typo-page-header text-text-primary mt-2 mb-3">{children}</h1>
 	),
@@ -162,17 +169,24 @@ const MD_COMPONENTS = {
 		<em className="italic">{children}</em>
 	),
 	table: ({ children }: { children?: React.ReactNode }) => (
-		<table className="my-2 border-collapse border border-border-default text-left">
-			{children}
-		</table>
+		<div className="my-2 rounded-lg border border-border-default overflow-hidden">
+			<HSComp.Table zebra>{children}</HSComp.Table>
+		</div>
+	),
+	thead: ({ children }: { children?: React.ReactNode }) => (
+		<HSComp.TableHeader>{children}</HSComp.TableHeader>
+	),
+	tbody: ({ children }: { children?: React.ReactNode }) => (
+		<HSComp.TableBody>{children}</HSComp.TableBody>
+	),
+	tr: ({ children }: { children?: React.ReactNode }) => (
+		<HSComp.TableRow>{children}</HSComp.TableRow>
 	),
 	th: ({ children }: { children?: React.ReactNode }) => (
-		<th className="border border-border-default px-2 py-1 bg-bg-tertiary font-semibold">
-			{children}
-		</th>
+		<HSComp.TableHead>{children}</HSComp.TableHead>
 	),
 	td: ({ children }: { children?: React.ReactNode }) => (
-		<td className="border border-border-default px-2 py-1">{children}</td>
+		<HSComp.TableCell>{children}</HSComp.TableCell>
 	),
 };
 
@@ -280,12 +294,16 @@ function savedRestToResponse(saved: unknown): CellResponse | null {
 	};
 }
 
-function detectBodyMode(headers: Record<string, string>): "json" | "yaml" {
+type BodyMode = "json" | "yaml" | "edn";
+
+function detectBodyMode(headers: Record<string, string>): BodyMode {
 	const ct = headers["content-type"] ?? headers["Content-Type"] ?? "";
-	return /yaml/i.test(ct) ? "yaml" : "json";
+	if (/edn/i.test(ct)) return "edn";
+	if (/yaml/i.test(ct)) return "yaml";
+	return "json";
 }
 
-function formatBodyContent(body: string, mode: "json" | "yaml"): string {
+function formatBodyContent(body: string, mode: BodyMode): string {
 	if (mode === "yaml") {
 		try {
 			return yaml.dump(yaml.load(body), {
@@ -293,6 +311,13 @@ function formatBodyContent(body: string, mode: "json" | "yaml"): string {
 				lineWidth: -1,
 				noRefs: true,
 			});
+		} catch {
+			return body;
+		}
+	}
+	if (mode === "edn") {
+		try {
+			return prettyEdn(body);
 		} catch {
 			return body;
 		}
@@ -320,7 +345,15 @@ function ResponseStatus({ response }: { response: CellResponse }) {
 	);
 }
 
-function RestCellView({ cell }: { cell: Cell }) {
+export function RestCellView({
+	cell,
+	onValueChange,
+	onResultChange,
+}: {
+	cell: Cell;
+	onValueChange?: (value: string) => void;
+	onResultChange?: (result: unknown) => void;
+}) {
 	const [raw, setRaw] = useState(cell.value ?? "");
 	const [response, setResponse] = useState<CellResponse | null>(
 		savedRestToResponse(cell.result),
@@ -331,6 +364,11 @@ function RestCellView({ cell }: { cell: Cell }) {
 	const [reqTab, setReqTab] = useState<"params" | "headers" | "raw">("raw");
 	const responseRef = useRef<HTMLDivElement | null>(null);
 	const client = useAidboxClient();
+
+	const updateRaw = (v: string) => {
+		setRaw(v);
+		onValueChange?.(v);
+	};
 
 	useEffect(() => {
 		if (response && hasFreshResponse) {
@@ -343,32 +381,66 @@ function RestCellView({ cell }: { cell: Cell }) {
 
 	const send = async () => {
 		setLoading(true);
+		const t0 = performance.now();
 		try {
 			const { method, path, headers, body } = parseRawRequest(raw);
-			const t0 = performance.now();
-			const resp = await client.rawRequest({
-				method: method as "GET",
-				url: path,
-				...(Object.keys(headers).length > 0 ? { headers } : {}),
-				...(body ? { body } : {}),
-			});
-			const text = await resp.response.text();
+			let respObj: { response: Response };
+			try {
+				respObj = await client.rawRequest({
+					method: method as "GET",
+					url: path,
+					...(Object.keys(headers).length > 0 ? { headers } : {}),
+					...(body ? { body } : {}),
+				});
+			} catch (e) {
+				if (e && typeof e === "object" && "response" in e) {
+					respObj = e as { response: Response };
+				} else {
+					const next: CellResponse = {
+						status: 0,
+						statusText: e instanceof Error ? e.message : String(e),
+						headers: {},
+						body: e instanceof Error ? e.message : String(e),
+						duration: performance.now() - t0,
+					};
+					setResponse(next);
+					setHasFreshResponse(true);
+					onResultChange?.(next);
+					return;
+				}
+			}
+			const text = await respObj.response.text();
 			const duration = performance.now() - t0;
 			const respHeaders: Record<string, string> = {};
-			resp.response.headers.forEach((value, key) => {
+			respObj.response.headers.forEach((value, key) => {
 				respHeaders[key] = value;
 			});
-			setResponse({
-				status: resp.response.status,
-				statusText: resp.response.statusText,
+			const next: CellResponse = {
+				status: respObj.response.status,
+				statusText: respObj.response.statusText,
 				headers: respHeaders,
 				body: text,
 				duration,
-			});
+			};
+			setResponse(next);
 			setHasFreshResponse(true);
+			onResultChange?.(next);
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const parsedRaw = parseRawRequest(raw);
+	const queryParams = parsePathQuery(parsedRaw.path);
+	const hasParams = queryParams.length > 0;
+	useEffect(() => {
+		if (reqTab === "params" && !hasParams) setReqTab("raw");
+	}, [reqTab, hasParams]);
+
+	const clearResponse = () => {
+		setResponse(null);
+		setHasFreshResponse(false);
+		onResultChange?.(null);
 	};
 
 	const bodyMode = response ? detectBodyMode(response.headers) : "json";
@@ -380,7 +452,7 @@ function RestCellView({ cell }: { cell: Cell }) {
 	const mode = tab === "headers" ? "json" : bodyMode;
 
 	return (
-		<div className="-mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
+		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<HSComp.Tabs
 				value={reqTab}
 				onValueChange={(v) => setReqTab(v as "params" | "headers" | "raw")}
@@ -393,7 +465,9 @@ function RestCellView({ cell }: { cell: Cell }) {
 						</span>
 						<HSComp.TabsList>
 							<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
-							<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
+							{hasParams && (
+								<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
+							)}
 							<HSComp.TabsTrigger value="headers">Headers</HSComp.TabsTrigger>
 						</HSComp.TabsList>
 					</div>
@@ -401,7 +475,11 @@ function RestCellView({ cell }: { cell: Cell }) {
 						type="button"
 						disabled={loading}
 						onClick={() => void send()}
-						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+						className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
+							loading
+								? "opacity-100"
+								: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
+						}`}
 					>
 						{loading ? (
 							<Loader2 className="size-4 animate-spin" />
@@ -416,23 +494,21 @@ function RestCellView({ cell }: { cell: Cell }) {
 						<HSComp.CodeEditor
 							mode="http"
 							defaultValue={raw}
-							onChange={setRaw}
+							onChange={updateRaw}
 							lineNumbers={false}
 							foldGutter={false}
 						/>
 					</div>
 				)}
-				{reqTab === "params" && (
-					<KeyValueTable
-						rows={parsePathQuery(parseRawRequest(raw).path)}
-						empty="No query params."
-					/>
+				{reqTab === "params" && hasParams && (
+					<KeyValueTable rows={queryParams} empty="No query params." />
 				)}
 				{reqTab === "headers" && (
 					<KeyValueTable
-						rows={Object.entries(parseRawRequest(raw).headers).map(
-							([name, value]) => ({ name, value }),
-						)}
+						rows={Object.entries(parsedRaw.headers).map(([name, value]) => ({
+							name,
+							value,
+						}))}
 						empty="No headers."
 					/>
 				)}
@@ -464,6 +540,16 @@ function RestCellView({ cell }: { cell: Cell }) {
 									<span className="ml-1">ms</span>
 								</span>
 							)}
+							{onResultChange && (
+								<button
+									type="button"
+									onClick={clearResponse}
+									aria-label="Clear response"
+									className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
+								>
+									<X className="size-4" />
+								</button>
+							)}
 						</div>
 					</div>
 				</HSComp.Tabs>
@@ -473,21 +559,27 @@ function RestCellView({ cell }: { cell: Cell }) {
 					ref={responseRef}
 					className="max-h-[400px] overflow-auto [&_.cm-content]:!pl-1.5"
 				>
-					<HSComp.CodeEditor
-						key={`${tab}-${response.status}`}
-						readOnly
-						currentValue={content}
-						mode={mode}
-						lineNumbers={false}
-						foldGutter={false}
-					/>
+					{mode === "edn" ? (
+						<pre className="px-3 py-2 typo-code whitespace-pre text-text-primary">
+							{content}
+						</pre>
+					) : (
+						<HSComp.CodeEditor
+							key={`${tab}-${response.status}`}
+							readOnly
+							currentValue={content}
+							mode={mode}
+							lineNumbers={false}
+							foldGutter={false}
+						/>
+					)}
 				</div>
 			)}
 		</div>
 	);
 }
 
-function normalizeMarkdown(s: string): string {
+export function normalizeMarkdown(s: string): string {
 	// CommonMark requires a space after #/##/etc., but old notebooks often have
 	// "##Heading" written without it. Insert a space so headings render.
 	return s.replace(/^(#{1,6})(?=[^\s#])/gm, "$1 ");
@@ -533,7 +625,15 @@ function savedSqlToResults(saved: unknown): QueryResultItem[] | null {
 	return null;
 }
 
-function SqlCellView({ cell }: { cell: Cell }) {
+export function SqlCellView({
+	cell,
+	onValueChange,
+	onResultChange,
+}: {
+	cell: Cell;
+	onValueChange?: (value: string) => void;
+	onResultChange?: (result: unknown) => void;
+}) {
 	const [query, setQuery] = useState(cell.value ?? "");
 	const [results, setResults] = useState<QueryResultItem[] | null>(() =>
 		savedSqlToResults(cell.result),
@@ -542,6 +642,11 @@ function SqlCellView({ cell }: { cell: Cell }) {
 	const [duration, setDuration] = useState<number | undefined>();
 	const [loading, setLoading] = useState(false);
 	const client = useAidboxClient();
+
+	const updateQuery = (v: string) => {
+		setQuery(v);
+		onValueChange?.(v);
+	};
 
 	const send = async () => {
 		setLoading(true);
@@ -557,15 +662,21 @@ function SqlCellView({ cell }: { cell: Cell }) {
 			const took = performance.now() - t0;
 			setDuration(took);
 			if (!resp.ok) {
-				setError(`HTTP ${resp.status}: ${await resp.text()}`);
+				const message = `HTTP ${resp.status}: ${await resp.text()}`;
+				setError(message);
 				setResults(null);
+				onResultChange?.({ status: "error", error: message, query });
 				return;
 			}
-			const items = transformToQueryResultItems(await resp.json());
+			const raw = await resp.json();
+			const items = transformToQueryResultItems(raw);
 			setResults(items);
+			onResultChange?.(raw);
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			const message = e instanceof Error ? e.message : String(e);
+			setError(message);
 			setResults(null);
+			onResultChange?.({ status: "error", error: message, query });
 		} finally {
 			setLoading(false);
 		}
@@ -574,7 +685,7 @@ function SqlCellView({ cell }: { cell: Cell }) {
 	const hasResponse = results !== null || error !== null;
 
 	return (
-		<div className="-mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
+		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
 				<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0">
 					SQL
@@ -583,7 +694,11 @@ function SqlCellView({ cell }: { cell: Cell }) {
 					type="button"
 					disabled={loading}
 					onClick={() => void send()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
+						loading
+							? "opacity-100"
+							: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
+					}`}
 				>
 					{loading ? (
 						<Loader2 className="size-4 animate-spin" />
@@ -597,7 +712,7 @@ function SqlCellView({ cell }: { cell: Cell }) {
 				<HSComp.CodeEditor
 					mode="sql"
 					defaultValue={query}
-					onChange={setQuery}
+					onChange={updateQuery}
 					lineNumbers={false}
 					foldGutter={false}
 				/>
@@ -611,13 +726,30 @@ function SqlCellView({ cell }: { cell: Cell }) {
 								? ` (${results.reduce((s, r) => s + (r.result?.length ?? 0), 0)})`
 								: ""}
 						</span>
-						{duration !== undefined && (
-							<span className="flex items-center text-text-secondary text-sm">
-								<Timer className="size-4 mr-1" strokeWidth={1.5} />
-								<span className="font-bold">{Math.round(duration)}</span>
-								<span className="ml-1">ms</span>
-							</span>
-						)}
+						<div className="flex items-center gap-3">
+							{duration !== undefined && (
+								<span className="flex items-center text-text-secondary text-sm">
+									<Timer className="size-4 mr-1" strokeWidth={1.5} />
+									<span className="font-bold">{Math.round(duration)}</span>
+									<span className="ml-1">ms</span>
+								</span>
+							)}
+							{onResultChange && (
+								<button
+									type="button"
+									onClick={() => {
+										setResults(null);
+										setError(null);
+										setDuration(undefined);
+										onResultChange(null);
+									}}
+									aria-label="Clear result"
+									className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
+								>
+									<X className="size-4" />
+								</button>
+							)}
+						</div>
 					</div>
 					<div className="max-h-[400px] flex flex-col [&_table_th:first-child]:!pl-3 [&_table_td:first-child]:!pl-3">
 						<ResultContent
@@ -636,7 +768,7 @@ function SqlCellView({ cell }: { cell: Cell }) {
 
 function CellView({ cell }: { cell: Cell }) {
 	const type = cell.type ?? "rest";
-	if (type === "rest") {
+	if (type === "rest" || type === "rpc") {
 		return <RestCellView cell={cell} />;
 	}
 	if (type === "sql") {
@@ -665,6 +797,343 @@ function CellView({ cell }: { cell: Cell }) {
 	);
 }
 
+function notebookForExport(notebook: Notebook): Record<string, unknown> {
+	const cleaned: Record<string, unknown> = {
+		...(notebook as unknown as Record<string, unknown>),
+	};
+	delete cleaned["edit-secret"];
+	delete cleaned["publication-id"];
+	delete cleaned.origin;
+	delete cleaned.source;
+	const tags = cleaned.tags as { type?: string; value?: unknown[] } | undefined;
+	if (tags && Array.isArray(tags.value)) {
+		cleaned.tags = {
+			...tags,
+			value: tags.value.filter(
+				(v) => typeof v !== "string" || v.toLowerCase() !== "community",
+			),
+		};
+	}
+	return cleaned;
+}
+
+function collectDocumentCss(): string {
+	const rules: string[] = [];
+	for (const sheet of Array.from(document.styleSheets)) {
+		try {
+			for (const rule of Array.from(sheet.cssRules)) {
+				rules.push(rule.cssText);
+			}
+		} catch {
+			// cross-origin sheet — skip
+		}
+	}
+	return rules.join("\n");
+}
+
+function downloadNotebookHtml(notebook: Notebook): void {
+	const root = document.getElementById("nb-container");
+	const wrapper = root?.parentElement;
+	if (!root || !wrapper) throw new Error("nb-container not found");
+	const clone = wrapper.cloneNode(true) as HTMLElement;
+	clone
+		.querySelectorAll<HTMLElement>("[data-export-skip]")
+		.forEach((el) => el.remove());
+	const css = collectDocumentCss();
+	const data = encodeURIComponent(JSON.stringify(notebook));
+	const title = notebook.name ?? "notebook";
+	const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>${title}</title><style>${css}</style></head>
+<body><data value="${data}"></data>${clone.outerHTML}</body>
+</html>`;
+	const blob = new Blob([html], { type: "text/html" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `${title}.html`;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
+}
+
+function ShareButton({ notebook }: { notebook: Notebook }) {
+	const client = useAidboxClient();
+	const [copied, setCopied] = useState(false);
+	const linkMut = useMutation<string, Error>({
+		mutationFn: async () => {
+			const body = {
+				method: "aidbox.notebooks/export-notebook",
+				params: { notebook: notebookForExport(notebook) },
+			};
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/rpc?_m=${body.method}`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const json = (await resp.response.json()) as {
+				result?: { notebook?: { "import-url"?: string } };
+				error?: { message?: string };
+			};
+			const url = json.result?.notebook?.["import-url"];
+			if (!url) throw new Error(json.error?.message ?? "No import-url");
+			await navigator.clipboard.writeText(url);
+			return url;
+		},
+		onSuccess: () => {
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		},
+	});
+	const shareAsFile = () => {
+		void client
+			.rawRequest({
+				method: "POST",
+				url: "/rpc?_m=aidbox.notebooks/export-notebook-by-file",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					method: "aidbox.notebooks/export-notebook-by-file",
+					params: {},
+				}),
+			})
+			.catch(() => undefined);
+		downloadNotebookHtml(notebook);
+	};
+	const Icon = linkMut.isPending ? Loader2 : copied ? Check : Share2;
+	return (
+		<HSComp.DropdownMenu>
+			<HSComp.DropdownMenuTrigger asChild>
+				<HSComp.Button
+					variant="ghost"
+					size="small"
+					className="px-0!"
+					disabled={linkMut.isPending}
+				>
+					<Icon
+						className={
+							linkMut.isPending
+								? "size-4 animate-spin"
+								: copied
+									? "size-4 text-text-success-primary"
+									: "size-4"
+						}
+					/>
+					{copied ? "Copied" : "Share"}
+					<ChevronDown className="size-3.5" />
+				</HSComp.Button>
+			</HSComp.DropdownMenuTrigger>
+			<HSComp.DropdownMenuContent align="end">
+				<HSComp.DropdownMenuItem onClick={() => linkMut.mutate()}>
+					<Link2 className="size-4 text-text-info-primary" />
+					As link
+				</HSComp.DropdownMenuItem>
+				<HSComp.DropdownMenuItem onClick={shareAsFile}>
+					<FileDown className="size-4 text-text-info-primary" />
+					As file
+				</HSComp.DropdownMenuItem>
+			</HSComp.DropdownMenuContent>
+		</HSComp.DropdownMenu>
+	);
+}
+
+function DeleteNotebookButton({ notebook }: { notebook: Notebook }) {
+	const client = useAidboxClient();
+	const navigate = useNavigate();
+	const [open, setOpen] = useState(false);
+	const mut = useMutation<void, Error>({
+		mutationFn: async () => {
+			if (notebook["publication-id"]) {
+				try {
+					await client.rawRequest({
+						method: "POST",
+						url: "/rpc?_m=aidbox.notebooks/delete-published-notebook",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							method: "aidbox.notebooks/delete-published-notebook",
+							params: { notebook },
+						}),
+					});
+				} catch {
+					// best-effort: continue with local delete even if unpublish failed
+				}
+			}
+			const resp = await fetch(
+				`${client.getBaseUrl()}/Notebook/${notebook.id}`,
+				{
+					method: "DELETE",
+					credentials: "include",
+				},
+			);
+			if (!resp.ok && resp.status !== 404)
+				throw new Error(`Delete failed: ${resp.status}`);
+		},
+		onSuccess: () => {
+			void navigate({ to: "/notebooks" });
+		},
+	});
+	return (
+		<>
+			<HSComp.Button
+				variant="ghost"
+				size="small"
+				className="px-0!"
+				disabled={mut.isPending}
+				onClick={() => setOpen(true)}
+			>
+				{mut.isPending ? (
+					<Loader2 className="size-4 animate-spin" />
+				) : (
+					<Trash2 className="size-4" />
+				)}
+				Delete
+			</HSComp.Button>
+			<ConfirmDialog
+				open={open}
+				onOpenChange={setOpen}
+				title="Delete notebook"
+				description="This will permanently remove the notebook. This cannot be undone."
+				confirmLabel="Delete"
+				danger
+				onConfirm={() => mut.mutate()}
+			/>
+		</>
+	);
+}
+
+function PublishButtons({
+	notebook,
+	queryKey,
+}: {
+	notebook: Notebook;
+	queryKey: readonly unknown[];
+}) {
+	const client = useAidboxClient();
+	const queryClient = useQueryClient();
+	const [publishOpen, setPublishOpen] = useState(false);
+	const [unpublishOpen, setUnpublishOpen] = useState(false);
+
+	const isPublished = !!notebook["publication-id"];
+
+	const publishMut = useMutation<Notebook, Error>({
+		mutationFn: async () => {
+			const body = {
+				method: "aidbox.notebooks/publish-notebook",
+				params: { notebook },
+			};
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/rpc?_m=${body.method}`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const json = (await resp.response.json()) as {
+				result?: { notebook?: Notebook };
+				error?: { message?: string };
+			};
+			const saved = json.result?.notebook;
+			if (!saved) throw new Error(json.error?.message ?? "publish failed");
+			return saved;
+		},
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey });
+		},
+	});
+
+	const unpublishMut = useMutation<void, Error>({
+		mutationFn: async () => {
+			const delResp = await client.rawRequest({
+				method: "POST",
+				url: "/rpc?_m=aidbox.notebooks/delete-published-notebook",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					method: "aidbox.notebooks/delete-published-notebook",
+					params: { notebook },
+				}),
+			});
+			const delJson = (await delResp.response.json()) as {
+				error?: { message?: string };
+			};
+			if (delJson.error)
+				throw new Error(delJson.error.message ?? "unpublish failed");
+			const cleaned: Record<string, unknown> = {
+				...(notebook as unknown as Record<string, unknown>),
+			};
+			delete cleaned["publication-id"];
+			delete cleaned["edit-secret"];
+			delete cleaned.origin;
+			await client.rawRequest({
+				method: "POST",
+				url: "/rpc?_m=aidbox.notebooks/save-notebook",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					method: "aidbox.notebooks/save-notebook",
+					params: { notebook: cleaned },
+				}),
+			});
+		},
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey });
+		},
+	});
+
+	const publishDisabled = !notebook.name?.trim() || publishMut.isPending;
+
+	return (
+		<>
+			{isPublished ? (
+				<HSComp.Button
+					variant="ghost"
+					size="small"
+					className="px-0!"
+					disabled={unpublishMut.isPending}
+					onClick={() => setUnpublishOpen(true)}
+				>
+					{unpublishMut.isPending ? (
+						<Loader2 className="size-4 animate-spin" />
+					) : (
+						<GlobeOff className="size-4" />
+					)}
+					Unpublish
+				</HSComp.Button>
+			) : (
+				<HSComp.Button
+					variant="ghost"
+					size="small"
+					className="px-0!"
+					disabled={publishDisabled}
+					onClick={() => setPublishOpen(true)}
+				>
+					{publishMut.isPending ? (
+						<Loader2 className="size-4 animate-spin" />
+					) : (
+						<Globe className="size-4" />
+					)}
+					Publish
+				</HSComp.Button>
+			)}
+			<ConfirmDialog
+				open={publishOpen}
+				onOpenChange={setPublishOpen}
+				title="Publish notebook?"
+				description="The notebook will become available to all Aidbox users through a shareable link."
+				confirmLabel="Publish"
+				onConfirm={() => publishMut.mutate()}
+			/>
+			<ConfirmDialog
+				open={unpublishOpen}
+				onOpenChange={setUnpublishOpen}
+				title="Unpublish notebook?"
+				description="Other Aidbox users will no longer be able to access this notebook."
+				confirmLabel="Unpublish"
+				danger
+				onConfirm={() => unpublishMut.mutate()}
+			/>
+		</>
+	);
+}
+
 function NotebookViewPage() {
 	const { id } = Route.useParams();
 	const { path } = Route.useSearch();
@@ -675,6 +1144,31 @@ function NotebookViewPage() {
 
 	return (
 		<div className="h-full flex flex-col">
+			{notebook && canEdit && (
+				<div
+					className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-default"
+					data-export-skip
+				>
+					<div className="mx-auto max-w-[990px] w-full flex items-center gap-4 px-8">
+						<Link to="/notebooks/$id/edit" params={{ id: notebook.id }}>
+							<HSComp.Button
+								variant="ghost"
+								size="small"
+								className="px-0! text-text-link"
+							>
+								<Pencil className="size-4" />
+								Edit
+							</HSComp.Button>
+						</Link>
+						<PublishButtons
+							notebook={notebook}
+							queryKey={["notebook", id, path ?? null]}
+						/>
+						<DeleteNotebookButton notebook={notebook} />
+						<ShareButton notebook={notebook} />
+					</div>
+				</div>
+			)}
 			<div className="flex-1 min-h-0 overflow-y-auto pb-[400px]">
 				<div className="mx-auto max-w-[990px] px-8 py-8">
 					{isLoading ? null : !notebook ? (
@@ -682,7 +1176,7 @@ function NotebookViewPage() {
 							Notebook not found.
 						</div>
 					) : (
-						<div className="flex flex-col">
+						<div id="nb-container" className="flex flex-col">
 							<div className="flex flex-col gap-1">
 								<div
 									className={`flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide ${isCommunity ? "text-text-success-primary" : "text-text-warning-primary"}`}
@@ -694,24 +1188,12 @@ function NotebookViewPage() {
 									)}
 									<span>{isCommunity ? "Community" : "Personal"}</span>
 								</div>
-								<div className="flex items-start justify-between gap-3">
-									<h1 className="typo-page-header text-text-primary first-letter:uppercase">
-										{notebook.name ?? "(unnamed)"}
-									</h1>
-									{canEdit && (
-										<Link to="/notebooks/$id/edit" params={{ id: notebook.id }}>
-											<HSComp.Button variant="secondary">
-												<Pencil className="size-4 text-text-info-primary" />
-												Edit
-											</HSComp.Button>
-										</Link>
-									)}
-								</div>
-								{notebook.description && (
-									<p className="typo-body text-text-secondary">
-										{notebook.description}
-									</p>
-								)}
+								<h1 className="typo-page-header text-text-primary">
+									{notebook.name ?? "(unnamed)"}
+								</h1>
+								<p className="typo-body text-text-secondary">
+									{notebook.description || " "}
+								</p>
 							</div>
 							{(notebook.cells ?? []).length > 0 && (
 								<div className="flex flex-col mt-7">

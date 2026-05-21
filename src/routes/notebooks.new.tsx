@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { emptyNotebook, NotebookEditor } from "../components/notebook-editor";
 
 function NotebookCreatePage() {
-	return <div className="h-full" />;
+	return <NotebookEditor initial={emptyNotebook()} isNew />;
 }
 
 export const Route = createFileRoute("/notebooks/new")({

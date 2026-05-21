@@ -130,12 +130,30 @@ function CurrentCrumb({
 	);
 }
 
+function MiddleCrumb({ crumb }: { crumb: { title: string; path: string } }) {
+	const isNotebookView = /^\/notebooks\/[0-9a-f-]{36}\/?$/i.test(crumb.path);
+	const isUuid = /^[0-9a-f-]{36}$/i.test(crumb.title);
+	const { display } = useNotebookDisplay(
+		isNotebookView && isUuid ? crumb.title : null,
+		null,
+	);
+	return (
+		<BreadcrumbLink className="px-3" asChild>
+			<Link to={crumb.path}>{display ?? crumb.title}</Link>
+		</BreadcrumbLink>
+	);
+}
+
 function Breadcrumbs() {
 	const matches = useMatches();
 	const { data: instanceName } = useInstanceName();
 	if (matches.length === 0) return <div>No router matches</div>;
 
-	const breadcrumbs = [
+	const breadcrumbs: {
+		title: string;
+		path: string;
+		search?: Record<string, unknown>;
+	}[] = [
 		...(instanceName ? [{ title: instanceName, path: "/" }] : []),
 		...matches.flatMap((match) => {
 			const breadCrumb = match.loaderData?.breadCrumb;
@@ -150,6 +168,20 @@ function Breadcrumbs() {
 				: [];
 		}),
 	];
+
+	// For /notebooks/<uuid>/edit, insert a name-crumb before the "Edit" leaf
+	const last = breadcrumbs[breadcrumbs.length - 1];
+	const editMatch = last?.path.match(
+		/^\/notebooks\/([0-9a-f-]{36})\/edit\/?$/i,
+	);
+	if (editMatch?.[1] && last) {
+		const id = editMatch[1];
+		const viewPath = `/notebooks/${id}`;
+		breadcrumbs.splice(breadcrumbs.length - 1, 0, {
+			title: id,
+			path: viewPath,
+		});
+	}
 
 	if (breadcrumbs.length === 0) {
 		console.warn("Breadcrumb ommited!");
@@ -174,9 +206,7 @@ function Breadcrumbs() {
 									search={"search" in crumb ? crumb.search : undefined}
 								/>
 							) : (
-								<BreadcrumbLink className="px-3" asChild>
-									<Link to={crumb.path}>{crumb.title}</Link>
-								</BreadcrumbLink>
+								<MiddleCrumb crumb={crumb} />
 							)}
 						</BreadcrumbItem>
 					</React.Fragment>

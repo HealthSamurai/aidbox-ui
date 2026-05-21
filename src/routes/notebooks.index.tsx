@@ -1,5 +1,5 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import Fuse from "fuse.js";
 import {
@@ -34,6 +34,7 @@ type RpcNotebook = {
 	name?: string;
 	description?: string;
 	source?: { type: "rpc" | "uri"; id?: string; path?: string };
+	origin?: string | null;
 	tags?: { value?: string[] };
 	"cell-types"?: string[] | null;
 };
@@ -68,15 +69,23 @@ function useNotebooks() {
 				error?: unknown;
 			};
 			const list = json.result?.notebooks ?? [];
+			const personalIds = new Set(
+				list
+					.filter((nb) => nb.id && nb.source?.type === "rpc")
+					.map((nb) => nb.id),
+			);
 			return list.flatMap((nb) => {
 				if (!nb.id) return [];
+				const isCommunity = nb.source?.type === "uri";
+				// Hide the published copy when its source notebook is already listed locally.
+				if (isCommunity && nb.origin && personalIds.has(nb.origin)) return [];
 				const cellTypes = Array.from(new Set(nb["cell-types"] ?? [])).sort();
 				return [
 					{
 						id: nb.id,
 						name: nb.name ?? "(unnamed)",
 						description: nb.description,
-						isCommunity: nb.source?.type === "uri",
+						isCommunity,
 						path: nb.source?.path,
 						cellTypes,
 					} satisfies NotebookItem,
@@ -181,7 +190,7 @@ function NotebookRow({
 					<KindIcon className="size-3.5 shrink-0" />
 					<span>{kindLabel}</span>
 				</div>
-				<div className="typo-body text-text-primary truncate first-letter:uppercase mt-0.5">
+				<div className="typo-body text-text-primary truncate mt-0.5">
 					{highlight(nb.name, nb.nameMatches)}
 				</div>
 				{nb.description && (
@@ -209,6 +218,164 @@ function NotebookRow({
 				)}
 			</Link>
 		</li>
+	);
+}
+
+function UploadButton() {
+	const client = useAidboxClient();
+	const queryClient = useQueryClient();
+	const navigate = useNavigate({ from: "/notebooks/" });
+	const fileRef = React.useRef<HTMLInputElement>(null);
+	const [linkOpen, setLinkOpen] = React.useState(false);
+	const [linkUrl, setLinkUrl] = React.useState("");
+	const [error, setError] = React.useState<string | null>(null);
+
+	const importLinkMut = useMutation<{ id: string }, Error, string>({
+		mutationFn: async (url) => {
+			const body = {
+				method: "aidbox.notebooks/import-notebook",
+				params: { "notebook-url": url },
+			};
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/rpc?_m=${body.method}`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const json = (await resp.response.json()) as {
+				result?: { notebook?: { id?: string } };
+				error?: { message?: string };
+			};
+			const nb = json.result?.notebook;
+			if (!nb?.id) throw new Error(json.error?.message ?? "import failed");
+			return { id: nb.id };
+		},
+		onSuccess: ({ id }) => {
+			void queryClient.invalidateQueries({ queryKey: ["notebooks-list"] });
+			setLinkOpen(false);
+			setLinkUrl("");
+			void navigate({ to: "/notebooks/$id", params: { id } });
+		},
+		onError: (e) => setError(e.message),
+	});
+
+	const importFileMut = useMutation<{ id: string }, Error, File>({
+		mutationFn: async (file) => {
+			const text = await file.text();
+			const m = text.match(/<data value="([^"]+)"/);
+			if (!m?.[1]) throw new Error("File is not a notebook export");
+			let parsed: Record<string, unknown>;
+			try {
+				parsed = JSON.parse(decodeURIComponent(m[1])) as Record<
+					string,
+					unknown
+				>;
+			} catch {
+				throw new Error("Invalid notebook payload");
+			}
+			delete parsed.id;
+			delete parsed.meta;
+			delete parsed.source;
+			const body = {
+				method: "aidbox.notebooks/import-notebook-as-json",
+				params: { notebook: parsed },
+			};
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/rpc?_m=${body.method}`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const json = (await resp.response.json()) as {
+				result?: { notebook?: { id?: string } };
+				error?: { message?: string };
+			};
+			const nb = json.result?.notebook;
+			if (!nb?.id) throw new Error(json.error?.message ?? "import failed");
+			return { id: nb.id };
+		},
+		onSuccess: ({ id }) => {
+			void queryClient.invalidateQueries({ queryKey: ["notebooks-list"] });
+			void navigate({ to: "/notebooks/$id", params: { id } });
+		},
+		onError: (e) => HSComp.toast.error(e.message),
+	});
+
+	return (
+		<>
+			<HSComp.DropdownMenu>
+				<HSComp.DropdownMenuTrigger asChild>
+					<HSComp.Button variant="secondary">
+						<Upload className="size-4 text-text-info-primary" />
+						Upload
+					</HSComp.Button>
+				</HSComp.DropdownMenuTrigger>
+				<HSComp.DropdownMenuContent align="end">
+					<HSComp.DropdownMenuItem
+						className="justify-start!"
+						onClick={() => {
+							setError(null);
+							setLinkOpen(true);
+						}}
+					>
+						<LinkIcon className="size-4" />
+						as link
+					</HSComp.DropdownMenuItem>
+					<HSComp.DropdownMenuItem
+						className="justify-start!"
+						onClick={() => fileRef.current?.click()}
+					>
+						<FileUp className="size-4" />
+						as file
+					</HSComp.DropdownMenuItem>
+				</HSComp.DropdownMenuContent>
+			</HSComp.DropdownMenu>
+			<input
+				ref={fileRef}
+				type="file"
+				accept=".html,text/html"
+				className="hidden"
+				onChange={(e) => {
+					const file = e.target.files?.[0];
+					e.target.value = "";
+					if (file) importFileMut.mutate(file);
+				}}
+			/>
+			<HSComp.Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+				<HSComp.DialogContent className="max-w-lg">
+					<HSComp.DialogHeader>
+						<HSComp.DialogTitle>Upload notebook by link</HSComp.DialogTitle>
+					</HSComp.DialogHeader>
+					<div className="flex flex-col gap-2">
+						<input
+							autoFocus
+							value={linkUrl}
+							onChange={(e) => setLinkUrl(e.target.value)}
+							placeholder="https://aidbox.app/ExportedNotebook/…"
+							className="w-full border border-border-default rounded-md px-3 py-2 typo-body outline-none focus:border-border-info-primary bg-bg-primary text-text-primary"
+						/>
+						{error && (
+							<p className="typo-body-xs text-critical-default">{error}</p>
+						)}
+					</div>
+					<HSComp.DialogFooter>
+						<HSComp.Button
+							variant="secondary"
+							onClick={() => setLinkOpen(false)}
+						>
+							Cancel
+						</HSComp.Button>
+						<HSComp.Button
+							variant="primary"
+							disabled={!linkUrl.trim() || importLinkMut.isPending}
+							onClick={() => importLinkMut.mutate(linkUrl.trim())}
+						>
+							Import
+						</HSComp.Button>
+					</HSComp.DialogFooter>
+				</HSComp.DialogContent>
+			</HSComp.Dialog>
+		</>
 	);
 }
 
@@ -366,7 +533,7 @@ function NotebooksPage() {
 
 	return (
 		<div className="h-full flex flex-col">
-			<div className="bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
+			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
 				<div className="mx-auto max-w-[990px] px-8 flex items-center gap-2">
 					<SearchBar
 						chips={tags}
@@ -377,24 +544,7 @@ function NotebooksPage() {
 						onClear={onClear}
 						onInputKeyDown={handleKeyDown}
 					/>
-					<HSComp.DropdownMenu>
-						<HSComp.DropdownMenuTrigger asChild>
-							<HSComp.Button variant="secondary">
-								<Upload className="size-4 text-text-info-primary" />
-								Upload
-							</HSComp.Button>
-						</HSComp.DropdownMenuTrigger>
-						<HSComp.DropdownMenuContent align="end">
-							<HSComp.DropdownMenuItem className="justify-start!">
-								<LinkIcon className="size-4" />
-								as link
-							</HSComp.DropdownMenuItem>
-							<HSComp.DropdownMenuItem className="justify-start!">
-								<FileUp className="size-4" />
-								as file
-							</HSComp.DropdownMenuItem>
-						</HSComp.DropdownMenuContent>
-					</HSComp.DropdownMenu>
+					<UploadButton />
 					<HSComp.Button
 						variant="secondary"
 						onClick={() => navigate({ to: "/notebooks/new" })}
@@ -452,7 +602,6 @@ const validateSearch = (search: {
 
 export const Route = createFileRoute("/notebooks/")({
 	staticData: { title: "Notebooks" },
-	loader: () => ({ breadCrumb: "Notebooks" }),
 	component: NotebooksPage,
 	validateSearch,
 });
