@@ -25,6 +25,7 @@ import { useAidboxClient } from "../AidboxClient";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { ResultContent } from "../components/db-console/result-content";
 import { transformToQueryResultItems } from "../components/db-console/tables-view";
+import { ResourcePicker } from "../components/SQLQueryBuilder/resource-picker";
 import { HTTP_STATUS_CODES } from "../shared/const";
 import { prettyEdn } from "../utils/edn";
 import type { QueryResultItem } from "../webmcp/db-console-context";
@@ -766,6 +767,611 @@ export function SqlCellView({
 	);
 }
 
+type ViewDefinitionResource = {
+	id: string;
+	url?: string;
+	name?: string;
+	title?: string;
+	description?: string;
+	resource?: string;
+};
+
+type ViewRunResult =
+	| { ok: true; rows: Record<string, unknown>[] }
+	| { ok: false; error: string };
+
+function useViewDefinitionByUrl(url: string | null) {
+	const client = useAidboxClient();
+	return useQuery<ViewDefinitionResource | null>({
+		queryKey: ["view-definition-by-url", url],
+		enabled: !!url,
+		staleTime: 60_000,
+		queryFn: async () => {
+			const resp = await client.rawRequest({
+				method: "GET",
+				url: `/fhir/ViewDefinition?url=${encodeURIComponent(url ?? "")}&_count=1`,
+			});
+			const json = (await resp.response.json()) as {
+				entry?: { resource: ViewDefinitionResource }[];
+			};
+			return json.entry?.[0]?.resource ?? null;
+		},
+	});
+}
+
+export function ViewDefinitionCellView({
+	cell,
+	onValueChange,
+	onResultChange,
+}: {
+	cell: Cell;
+	onValueChange?: (value: string) => void;
+	onResultChange?: (result: unknown) => void;
+}) {
+	const client = useAidboxClient();
+	const editable = !!onValueChange;
+	const url = cell.value ?? "";
+	const { data: vd, isLoading: vdLoading } = useViewDefinitionByUrl(
+		url ? url : null,
+	);
+	const initial = (cell.result as ViewRunResult | null) ?? null;
+	const [result, setResult] = useState<ViewRunResult | null>(initial);
+	const [loading, setLoading] = useState(false);
+
+	const run = async () => {
+		if (!vd?.id) return;
+		setLoading(true);
+		try {
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/fhir/ViewDefinition/${vd.id}/$run`,
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/fhir+json",
+				},
+				body: JSON.stringify({
+					resourceType: "Parameters",
+					parameter: [
+						{ name: "_format", valueCode: "json" },
+						{ name: "_limit", valueInteger: 1000 },
+						{ name: "_page", valueInteger: 1 },
+					],
+				}),
+			});
+			const text = await resp.response.text();
+			let next: ViewRunResult;
+			try {
+				const body = JSON.parse(text) as {
+					data?: string;
+					issue?: { diagnostics?: string }[];
+				};
+				if (body?.data) {
+					const decoded = atob(body.data);
+					const rows = JSON.parse(decoded) as Record<string, unknown>[];
+					next = { ok: true, rows };
+				} else {
+					next = {
+						ok: false,
+						error:
+							body.issue?.map((i) => i.diagnostics).join("\n") ??
+							"Empty response",
+					};
+				}
+			} catch {
+				next = { ok: false, error: text };
+			}
+			setResult(next);
+			onResultChange?.(next);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const clear = () => {
+		setResult(null);
+		onResultChange?.(null);
+	};
+
+	const label = vd?.title ?? vd?.name ?? vd?.id ?? "(unknown view)";
+	const columns =
+		result?.ok && result.rows.length > 0
+			? Array.from(new Set(result.rows.flatMap((r) => Object.keys(r))))
+			: [];
+
+	return (
+		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
+			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10 gap-3">
+				<div className="flex items-center gap-3 min-w-0">
+					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0">
+						ViewDefinition
+					</span>
+					{editable && (
+						<ResourcePicker
+							value=""
+							onChange={(v) => onValueChange?.(v)}
+							kinds={["ViewDefinition"]}
+							placeholder={url ? "Change…" : "Select view…"}
+							className={url ? "max-w-[200px]" : "max-w-[500px]"}
+						/>
+					)}
+				</div>
+				<button
+					type="button"
+					disabled={loading || !vd?.id}
+					onClick={() => void run()}
+					className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
+						loading
+							? "opacity-100"
+							: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
+					}`}
+				>
+					{loading ? (
+						<Loader2 className="size-4 animate-spin" />
+					) : (
+						<Play className="size-4 fill-current" />
+					)}
+					{loading ? "Running…" : "Run"}
+				</button>
+			</div>
+			{url && (
+				<div className="px-3 py-2 border-b border-border-default flex flex-col gap-0.5">
+					{vdLoading ? (
+						<HSComp.Skeleton className="h-4 w-40 rounded" />
+					) : vd?.id ? (
+						<Link
+							to="/resource/$resourceType/edit/$id"
+							params={{ resourceType: "ViewDefinition", id: vd.id }}
+							search={{ tab: "edit", mode: "json", builderTab: "form" }}
+							className="typo-body text-text-info-primary hover:underline truncate"
+						>
+							{label}
+						</Link>
+					) : (
+						<span className="typo-body-xs text-text-tertiary truncate">
+							Not found: {url}
+						</span>
+					)}
+					{vd?.description && (
+						<span className="typo-body-xs text-text-secondary">
+							{vd.description}
+						</span>
+					)}
+				</div>
+			)}
+			{result && (
+				<>
+					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
+						<span className="text-sm font-medium text-text-secondary">
+							Result
+							{result.ok ? ` (${result.rows.length})` : " — error"}
+						</span>
+						{onResultChange && (
+							<button
+								type="button"
+								onClick={clear}
+								aria-label="Clear result"
+								className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
+							>
+								<X className="size-4" />
+							</button>
+						)}
+					</div>
+					{result.ok ? (
+						result.rows.length === 0 ? (
+							<div className="px-3 py-3 typo-body-xs text-text-tertiary italic">
+								No rows.
+							</div>
+						) : (
+							<div className="max-h-[400px] overflow-auto">
+								<HSComp.Table zebra stickyHeader className="typo-code">
+									<HSComp.TableHeader>
+										<HSComp.TableRow>
+											{columns.map((c) => (
+												<HSComp.TableHead key={c}>{c}</HSComp.TableHead>
+											))}
+										</HSComp.TableRow>
+									</HSComp.TableHeader>
+									<HSComp.TableBody>
+										{result.rows.map((row, i) => (
+											<HSComp.TableRow
+												// biome-ignore lint/suspicious/noArrayIndexKey: result rows are positional
+												key={`row-${i}`}
+											>
+												{columns.map((c) => (
+													<HSComp.TableCell key={c}>
+														{formatCellValue(row[c])}
+													</HSComp.TableCell>
+												))}
+											</HSComp.TableRow>
+										))}
+									</HSComp.TableBody>
+								</HSComp.Table>
+							</div>
+						)
+					) : (
+						<pre className="px-3 py-2 typo-code whitespace-pre-wrap text-critical-default">
+							{result.error}
+						</pre>
+					)}
+				</>
+			)}
+		</div>
+	);
+}
+
+function formatCellValue(v: unknown): string {
+	if (v === null || v === undefined) return "";
+	if (typeof v === "object") return JSON.stringify(v);
+	return String(v);
+}
+
+type LibraryParameter = {
+	name?: string;
+	type?: string;
+	use?: string;
+	min?: number;
+	max?: string;
+};
+
+type LibraryResource = {
+	id: string;
+	url?: string;
+	name?: string;
+	title?: string;
+	description?: string;
+	parameter?: LibraryParameter[];
+};
+
+type SqlQueryRunResult =
+	| { ok: true; columns: string[]; rows: unknown[][] }
+	| { ok: false; error: string };
+
+function useLibraryByUrl(url: string | null) {
+	const client = useAidboxClient();
+	return useQuery<LibraryResource | null>({
+		queryKey: ["sqlquery-library-by-url", url],
+		enabled: !!url,
+		staleTime: 60_000,
+		queryFn: async () => {
+			const resp = await client.rawRequest({
+				method: "GET",
+				url: `/fhir/Library?url=${encodeURIComponent(url ?? "")}&_count=1`,
+			});
+			const json = (await resp.response.json()) as {
+				entry?: { resource: LibraryResource }[];
+			};
+			return json.entry?.[0]?.resource ?? null;
+		},
+	});
+}
+
+function buildParamValue(
+	value: string,
+	type: string | undefined,
+): Record<string, unknown> {
+	const t = (type ?? "string").toLowerCase();
+	if (t === "integer" || t === "positiveint" || t === "unsignedint") {
+		const n = Number.parseInt(value, 10);
+		return { valueInteger: Number.isFinite(n) ? n : 0 };
+	}
+	if (t === "decimal") {
+		const n = Number.parseFloat(value);
+		return { valueDecimal: Number.isFinite(n) ? n : 0 };
+	}
+	if (t === "boolean") return { valueBoolean: value === "true" };
+	if (t === "code") return { valueCode: value };
+	return { valueString: value };
+}
+
+type ParamPart = { name?: string; [k: string]: unknown };
+type ParamsResp = {
+	parameter?: { name?: string; part?: ParamPart[] }[];
+	issue?: { diagnostics?: string }[];
+};
+
+function getPartValue(part: ParamPart): unknown {
+	for (const key of Object.keys(part)) {
+		if (key.startsWith("value")) return part[key];
+	}
+	return null;
+}
+
+function parseSqlQueryResponse(body: ParamsResp): SqlQueryRunResult {
+	if (body.issue?.length)
+		return {
+			ok: false,
+			error: body.issue.map((i) => i.diagnostics).join("\n"),
+		};
+	const rowParams = (body.parameter ?? []).filter((p) => p.name === "row");
+	const columns: string[] = [];
+	const seen = new Set<string>();
+	for (const rp of rowParams) {
+		for (const part of rp.part ?? []) {
+			if (part.name && !seen.has(part.name)) {
+				seen.add(part.name);
+				columns.push(part.name);
+			}
+		}
+	}
+	const rows = rowParams.map((rp) => {
+		const byName = new Map<string, unknown>();
+		for (const part of rp.part ?? []) {
+			if (part.name) byName.set(part.name, getPartValue(part));
+		}
+		return columns.map((c) => byName.get(c) ?? null);
+	});
+	return { ok: true, columns, rows };
+}
+
+function parseSqlQueryCellValue(raw: string): {
+	url: string;
+	params: Record<string, string>;
+} {
+	const trimmed = (raw ?? "").trim();
+	if (!trimmed) return { url: "", params: {} };
+	if (trimmed.startsWith("{")) {
+		try {
+			const obj = JSON.parse(trimmed) as {
+				url?: string;
+				params?: Record<string, string>;
+			};
+			return { url: obj.url ?? "", params: obj.params ?? {} };
+		} catch {
+			return { url: trimmed, params: {} };
+		}
+	}
+	return { url: trimmed, params: {} };
+}
+
+function stringifySqlQueryCellValue(
+	url: string,
+	params: Record<string, string>,
+): string {
+	const nonEmpty: Record<string, string> = {};
+	for (const [k, v] of Object.entries(params)) {
+		if (v !== "") nonEmpty[k] = v;
+	}
+	if (Object.keys(nonEmpty).length === 0) return url;
+	return JSON.stringify({ url, params: nonEmpty });
+}
+
+export function SqlQueryCellView({
+	cell,
+	onValueChange,
+	onResultChange,
+}: {
+	cell: Cell;
+	onValueChange?: (value: string) => void;
+	onResultChange?: (result: unknown) => void;
+}) {
+	const client = useAidboxClient();
+	const editable = !!onValueChange;
+	const parsed = parseSqlQueryCellValue(cell.value ?? "");
+	const url = parsed.url;
+	const { data: lib, isLoading: libLoading } = useLibraryByUrl(
+		url ? url : null,
+	);
+	const inputParams = (lib?.parameter ?? []).filter(
+		(p) => (p.use ?? "in") === "in" && p.name,
+	);
+	const [paramValues, setParamValues] = useState<Record<string, string>>(
+		parsed.params,
+	);
+	const initial = (cell.result as SqlQueryRunResult | null) ?? null;
+	const [result, setResult] = useState<SqlQueryRunResult | null>(initial);
+	const [loading, setLoading] = useState(false);
+
+	const run = async () => {
+		if (!lib?.id) return;
+		setLoading(true);
+		try {
+			const parameterEntries: Record<string, unknown>[] = [
+				{ name: "_format", valueCode: "fhir" },
+			];
+			const filled = inputParams
+				.filter((p) => p.name && paramValues[p.name])
+				.map((p) => ({
+					name: p.name,
+					...buildParamValue(paramValues[p.name ?? ""] ?? "", p.type),
+				}));
+			if (filled.length > 0) {
+				parameterEntries.push({
+					name: "parameters",
+					resource: { resourceType: "Parameters", parameter: filled },
+				});
+			}
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/fhir/Library/${lib.id}/$sqlquery-run`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					resourceType: "Parameters",
+					parameter: parameterEntries,
+				}),
+			});
+			const text = await resp.response.text();
+			let next: SqlQueryRunResult;
+			try {
+				const body = JSON.parse(text) as ParamsResp;
+				next = parseSqlQueryResponse(body);
+			} catch {
+				next = { ok: false, error: text };
+			}
+			setResult(next);
+			onResultChange?.(next);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const clear = () => {
+		setResult(null);
+		onResultChange?.(null);
+	};
+
+	const label = lib?.title ?? lib?.name ?? lib?.id ?? "(unknown query)";
+
+	return (
+		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
+			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10 gap-3">
+				<div className="flex items-center gap-3 min-w-0">
+					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0">
+						SQLQuery
+					</span>
+					{editable && (
+						<ResourcePicker
+							value=""
+							onChange={(v) => {
+								setParamValues({});
+								onValueChange?.(v);
+							}}
+							kinds={["SQLQuery"]}
+							placeholder={url ? "Change…" : "Select query…"}
+							className={url ? "max-w-[200px]" : "max-w-[500px]"}
+						/>
+					)}
+				</div>
+				<button
+					type="button"
+					disabled={loading || !lib?.id}
+					onClick={() => void run()}
+					className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
+						loading
+							? "opacity-100"
+							: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
+					}`}
+				>
+					{loading ? (
+						<Loader2 className="size-4 animate-spin" />
+					) : (
+						<Play className="size-4 fill-current" />
+					)}
+					{loading ? "Running…" : "Run"}
+				</button>
+			</div>
+			{url && (
+				<div className="px-3 py-2 border-b border-border-default flex flex-col gap-0.5">
+					{libLoading ? (
+						<HSComp.Skeleton className="h-4 w-40 rounded" />
+					) : lib?.id ? (
+						<Link
+							to="/resource/$resourceType/edit/$id"
+							params={{ resourceType: "Library", id: lib.id }}
+							search={{ tab: "edit", mode: "json", builderTab: "form" }}
+							className="typo-body text-text-info-primary hover:underline truncate"
+						>
+							{label}
+						</Link>
+					) : (
+						<span className="typo-body-xs text-text-tertiary truncate">
+							Not found: {url}
+						</span>
+					)}
+					{lib?.description && (
+						<span className="typo-body-xs text-text-secondary">
+							{lib.description}
+						</span>
+					)}
+				</div>
+			)}
+			{inputParams.length > 0 && (
+				<div className="px-3 pt-2 pb-4 border-b border-border-default flex flex-col gap-1.5">
+					<span className="typo-label-tiny uppercase tracking-wide text-text-tertiary">
+						Parameters
+					</span>
+					{inputParams.map((p) => {
+						const key = p.name ?? "";
+						return (
+							<div key={key} className="flex flex-col gap-0.5">
+								<label
+									htmlFor={`sqlq-${key}`}
+									className="typo-label-tiny uppercase tracking-wide text-text-tertiary"
+								>
+									{key}
+								</label>
+								<input
+									id={`sqlq-${key}`}
+									value={paramValues[key] ?? ""}
+									onChange={(e) => {
+										const next = {
+											...paramValues,
+											[key]: e.target.value,
+										};
+										setParamValues(next);
+										onValueChange?.(stringifySqlQueryCellValue(url, next));
+									}}
+									placeholder={p.type ?? "string"}
+									className="w-full px-2 py-1 typo-code border border-border-default rounded text-text-primary bg-bg-primary outline-none focus:border-border-info-primary"
+								/>
+							</div>
+						);
+					})}
+				</div>
+			)}
+			{result && (
+				<>
+					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
+						<span className="text-sm font-medium text-text-secondary">
+							Result
+							{result.ok ? ` (${result.rows.length})` : " — error"}
+						</span>
+						{onResultChange && (
+							<button
+								type="button"
+								onClick={clear}
+								aria-label="Clear result"
+								className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
+							>
+								<X className="size-4" />
+							</button>
+						)}
+					</div>
+					{result.ok ? (
+						result.rows.length === 0 ? (
+							<div className="px-3 py-3 typo-body-xs text-text-tertiary italic">
+								No rows.
+							</div>
+						) : (
+							<div className="max-h-[400px] overflow-auto">
+								<HSComp.Table zebra stickyHeader className="typo-code">
+									<HSComp.TableHeader>
+										<HSComp.TableRow>
+											{result.columns.map((c) => (
+												<HSComp.TableHead key={c}>{c}</HSComp.TableHead>
+											))}
+										</HSComp.TableRow>
+									</HSComp.TableHeader>
+									<HSComp.TableBody>
+										{result.rows.map((row, i) => (
+											<HSComp.TableRow
+												// biome-ignore lint/suspicious/noArrayIndexKey: result rows are positional
+												key={`row-${i}`}
+											>
+												{row.map((cellVal, j) => (
+													<HSComp.TableCell
+														// biome-ignore lint/suspicious/noArrayIndexKey: column order matches schema
+														key={`${i}-${j}`}
+													>
+														{formatCellValue(cellVal)}
+													</HSComp.TableCell>
+												))}
+											</HSComp.TableRow>
+										))}
+									</HSComp.TableBody>
+								</HSComp.Table>
+							</div>
+						)
+					) : (
+						<pre className="px-3 py-2 typo-code whitespace-pre-wrap text-critical-default">
+							{result.error}
+						</pre>
+					)}
+				</>
+			)}
+		</div>
+	);
+}
+
 function CellView({ cell }: { cell: Cell }) {
 	const type = cell.type ?? "rest";
 	if (type === "rest" || type === "rpc") {
@@ -773,6 +1379,12 @@ function CellView({ cell }: { cell: Cell }) {
 	}
 	if (type === "sql") {
 		return <SqlCellView cell={cell} />;
+	}
+	if (type === "view-definition") {
+		return <ViewDefinitionCellView cell={cell} />;
+	}
+	if (type === "sql-query") {
+		return <SqlQueryCellView cell={cell} />;
 	}
 	if (type === "markdown") {
 		return (

@@ -12,10 +12,18 @@ import {
 	normalizeMarkdown,
 	RestCellView,
 	SqlCellView,
+	SqlQueryCellView,
+	ViewDefinitionCellView,
 } from "../routes/notebooks.$id";
 import { ConfirmDialog } from "./confirm-dialog";
 
-export type CellType = "rest" | "sql" | "markdown" | "rpc";
+export type CellType =
+	| "rest"
+	| "sql"
+	| "markdown"
+	| "rpc"
+	| "view-definition"
+	| "sql-query";
 
 export type EditableCell = {
 	id: string;
@@ -36,9 +44,10 @@ export type EditableNotebook = {
 
 const CELL_TYPES: { value: CellType; label: string }[] = [
 	{ value: "rest", label: "REST" },
-	{ value: "rpc", label: "RPC" },
 	{ value: "sql", label: "SQL" },
 	{ value: "markdown", label: "Markdown" },
+	{ value: "view-definition", label: "ViewDefinition" },
+	{ value: "sql-query", label: "SQLQuery" },
 ];
 
 const DEFAULT_CELL_VALUE: Record<CellType, string> = {
@@ -46,6 +55,8 @@ const DEFAULT_CELL_VALUE: Record<CellType, string> = {
 	rpc: "POST /rpc\ncontent-type: application/json\n\n{}",
 	sql: "SELECT 1;",
 	markdown: "",
+	"view-definition": "",
+	"sql-query": "",
 };
 
 function genCellId(): string {
@@ -57,7 +68,7 @@ function genCellId(): string {
 export function emptyNotebook(): EditableNotebook {
 	return {
 		name: "",
-		description: "",
+		description: "Description",
 		cells: [],
 	};
 }
@@ -166,6 +177,18 @@ function CellWrapper({
 	const inner =
 		cell.type === "sql" ? (
 			<SqlCellView
+				cell={cellLike}
+				onValueChange={handleValue}
+				onResultChange={handleResult}
+			/>
+		) : cell.type === "view-definition" ? (
+			<ViewDefinitionCellView
+				cell={cellLike}
+				onValueChange={handleValue}
+				onResultChange={handleResult}
+			/>
+		) : cell.type === "sql-query" ? (
+			<SqlQueryCellView
 				cell={cellLike}
 				onValueChange={handleValue}
 				onResultChange={handleResult}
