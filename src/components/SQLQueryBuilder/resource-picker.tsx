@@ -70,11 +70,16 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 	return v;
 }
 
-function useCandidates(search: string, enabled = true) {
+function useCandidates(
+	search: string,
+	enabled = true,
+	kinds: CandidateKind[] = ["ViewDefinition", "SQLQuery"],
+) {
 	const client = useAidboxClient();
 	const debouncedSearch = useDebouncedValue(search, 200);
+	const kindsKey = kinds.slice().sort().join(",");
 	return useQuery<CandidateOption[]>({
-		queryKey: ["sqlquery-depends-on-candidates", debouncedSearch],
+		queryKey: ["sqlquery-depends-on-candidates", debouncedSearch, kindsKey],
 		enabled,
 		queryFn: async () => {
 			const baseParams: Array<[string, string]> = [
@@ -83,20 +88,25 @@ function useCandidates(search: string, enabled = true) {
 				["_sort", "-_createdAt"],
 			];
 			if (debouncedSearch) baseParams.push(["_ilike", debouncedSearch]);
+			const want = (k: CandidateKind) => kinds.includes(k);
 			const [vd, lib] = await Promise.all([
-				client.request<Bundle>({
-					method: "GET",
-					url: "/fhir/ViewDefinition",
-					params: baseParams,
-				}),
-				client.request<Bundle>({
-					method: "GET",
-					url: "/fhir/Library",
-					params: [...baseParams, ["type", SQL_QUERY_TYPE_TOKEN]],
-				}),
+				want("ViewDefinition")
+					? client.request<Bundle>({
+							method: "GET",
+							url: "/fhir/ViewDefinition",
+							params: baseParams,
+						})
+					: null,
+				want("SQLQuery")
+					? client.request<Bundle>({
+							method: "GET",
+							url: "/fhir/Library",
+							params: [...baseParams, ["type", SQL_QUERY_TYPE_TOKEN]],
+						})
+					: null,
 			]);
 			const out: CandidateOption[] = [];
-			if (vd.isOk()) {
+			if (vd?.isOk()) {
 				for (const entry of vd.value.resource.entry ?? []) {
 					const r = entry.resource as unknown as RawCandidate;
 					out.push({
@@ -111,7 +121,7 @@ function useCandidates(search: string, enabled = true) {
 					});
 				}
 			}
-			if (lib.isOk()) {
+			if (lib?.isOk()) {
 				for (const entry of lib.value.resource.entry ?? []) {
 					const r = entry.resource as unknown as RawCandidate;
 					const relatedArtifacts = (r.relatedArtifact ?? []).flatMap((ra) =>
@@ -144,15 +154,19 @@ export function ResourcePicker({
 	value,
 	onChange,
 	className,
+	kinds,
+	placeholder,
 }: {
 	value: string | undefined;
 	onChange: (reference: string) => void;
 	className?: string;
+	kinds?: CandidateKind[];
+	placeholder?: string;
 }) {
 	const [open, setOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
-	const { data: candidates = [] } = useCandidates(search, open);
-	const { data: allCandidates = [] } = useCandidates("", open);
+	const { data: candidates = [] } = useCandidates(search, open, kinds);
+	const { data: allCandidates = [] } = useCandidates("", open, kinds);
 	const commandRef = React.useRef<HTMLDivElement>(null);
 	const lookupByUrl = React.useMemo(() => {
 		const map = new Map<string, CandidateOption>();
@@ -182,7 +196,7 @@ export function ResourcePicker({
 					onClick={(e) => e.stopPropagation()}
 				>
 					<span className={`truncate ${value ? "" : "text-text-tertiary"}`}>
-						{value || "Select view or query…"}
+						{value || placeholder || "Select view or query…"}
 					</span>
 					<ChevronDown className="size-4 shrink-0 opacity-50" />
 				</HSComp.Button>
