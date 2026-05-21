@@ -15,6 +15,7 @@ import {
 	ClipboardList,
 	Columns3Cog,
 	Database,
+	Notebook,
 	Package,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -73,6 +74,16 @@ const mainMenuItems: {
 			<Link to="/analytics">
 				<ChartNoAxesCombined />
 				Analytics
+			</Link>
+		),
+	},
+	{
+		url: "/notebooks",
+		title: "Notebooks",
+		link: (
+			<Link to="/notebooks">
+				<Notebook />
+				Notebooks
 			</Link>
 		),
 	},

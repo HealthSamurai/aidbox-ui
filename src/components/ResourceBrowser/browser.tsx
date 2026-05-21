@@ -408,7 +408,20 @@ export function Browser() {
 		setTags(chips.filter((c) => c !== tag));
 	};
 	const updateTextPart = (next: string) => {
-		const parsed = parseQuery(next);
+		// last token without trailing whitespace is "in progress" — don't parse yet
+		let toParse = next;
+		let tail = "";
+		if (!/\s$/.test(next)) {
+			const m = next.match(/^(.*\s)(\S*)$/);
+			if (m) {
+				toParse = m[1] ?? "";
+				tail = m[2] ?? "";
+			} else {
+				toParse = "";
+				tail = next;
+			}
+		}
+		const parsed = parseQuery(toParse);
 		if (parsed.chips.length > 0) {
 			const seen = new Set(chips.map(tagSlug));
 			const extra: string[] = [];
@@ -420,7 +433,7 @@ export function Browser() {
 				}
 			}
 			if (extra.length > 0) setTags([...chips, ...extra]);
-			setText(parsed.text);
+			setText([parsed.text, tail].filter(Boolean).join(" "));
 		} else {
 			setText(next);
 		}

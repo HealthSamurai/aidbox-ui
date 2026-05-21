@@ -12,15 +12,19 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RestRouteImport } from './routes/rest'
 import { Route as ResourceRouteImport } from './routes/resource'
+import { Route as NotebooksRouteImport } from './routes/notebooks'
 import { Route as IgRouteImport } from './routes/ig'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
 import { Route as AuditEventsRouteImport } from './routes/audit-events'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
+import { Route as NotebooksIndexRouteImport } from './routes/notebooks.index'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
 import { Route as AnalyticsIndexRouteImport } from './routes/analytics.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
+import { Route as NotebooksNewRouteImport } from './routes/notebooks.new'
+import { Route as NotebooksIdRouteImport } from './routes/notebooks.$id'
 import { Route as IgAddRouteImport } from './routes/ig.add'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
 import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
@@ -30,6 +34,7 @@ import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.ind
 import { Route as AnalyticsViewsIndexRouteImport } from './routes/analytics.views.index'
 import { Route as AnalyticsQueriesIndexRouteImport } from './routes/analytics.queries.index'
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
+import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id_.edit'
 import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.views.create'
 import { Route as AnalyticsQueriesCreateRouteImport } from './routes/analytics.queries.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
@@ -50,6 +55,11 @@ const RestRoute = RestRouteImport.update({
 const ResourceRoute = ResourceRouteImport.update({
   id: '/resource',
   path: '/resource',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotebooksRoute = NotebooksRouteImport.update({
+  id: '/notebooks',
+  path: '/notebooks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IgRoute = IgRouteImport.update({
@@ -82,6 +92,11 @@ const ResourceIndexRoute = ResourceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ResourceRoute,
 } as any)
+const NotebooksIndexRoute = NotebooksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotebooksRoute,
+} as any)
 const IgIndexRoute = IgIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -96,6 +111,16 @@ const ResourceResourceTypeRoute = ResourceResourceTypeRouteImport.update({
   id: '/$resourceType',
   path: '/$resourceType',
   getParentRoute: () => ResourceRoute,
+} as any)
+const NotebooksNewRoute = NotebooksNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => NotebooksRoute,
+} as any)
+const NotebooksIdRoute = NotebooksIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => NotebooksRoute,
 } as any)
 const IgAddRoute = IgAddRouteImport.update({
   id: '/add',
@@ -144,6 +169,11 @@ const ResourceResourceTypeCreateRoute =
     path: '/create',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
+const NotebooksIdEditRoute = NotebooksIdEditRouteImport.update({
+  id: '/$id_/edit',
+  path: '/$id/edit',
+  getParentRoute: () => NotebooksRoute,
+} as any)
 const AnalyticsViewsCreateRoute = AnalyticsViewsCreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -183,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
+  '/notebooks': typeof NotebooksRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
@@ -190,12 +221,16 @@ export interface FileRoutesByFullPath {
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
+  '/notebooks/$id': typeof NotebooksIdRoute
+  '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
   '/ig/': typeof IgIndexRoute
+  '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
+  '/notebooks/$id/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries/': typeof AnalyticsQueriesIndexRoute
   '/analytics/views/': typeof AnalyticsViewsIndexRoute
@@ -213,11 +248,15 @@ export interface FileRoutesByTo {
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
   '/ig/add': typeof IgAddRoute
+  '/notebooks/$id': typeof NotebooksIdRoute
+  '/notebooks/new': typeof NotebooksNewRoute
   '/analytics': typeof AnalyticsIndexRoute
   '/ig': typeof IgIndexRoute
+  '/notebooks': typeof NotebooksIndexRoute
   '/resource': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
+  '/notebooks/$id/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries': typeof AnalyticsQueriesIndexRoute
   '/analytics/views': typeof AnalyticsViewsIndexRoute
@@ -235,6 +274,7 @@ export interface FileRoutesById {
   '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
+  '/notebooks': typeof NotebooksRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
@@ -242,12 +282,16 @@ export interface FileRoutesById {
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
+  '/notebooks/$id': typeof NotebooksIdRoute
+  '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
   '/ig/': typeof IgIndexRoute
+  '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
+  '/notebooks/$id_/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries/': typeof AnalyticsQueriesIndexRoute
   '/analytics/views/': typeof AnalyticsViewsIndexRoute
@@ -266,6 +310,7 @@ export interface FileRouteTypes {
     | '/audit-events'
     | '/db-console'
     | '/ig'
+    | '/notebooks'
     | '/resource'
     | '/rest'
     | '/settings'
@@ -273,12 +318,16 @@ export interface FileRouteTypes {
     | '/analytics/views'
     | '/ig/$packageId'
     | '/ig/add'
+    | '/notebooks/$id'
+    | '/notebooks/new'
     | '/resource/$resourceType'
     | '/analytics/'
     | '/ig/'
+    | '/notebooks/'
     | '/resource/'
     | '/analytics/queries/create'
     | '/analytics/views/create'
+    | '/notebooks/$id/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries/'
     | '/analytics/views/'
@@ -296,11 +345,15 @@ export interface FileRouteTypes {
     | '/rest'
     | '/settings'
     | '/ig/add'
+    | '/notebooks/$id'
+    | '/notebooks/new'
     | '/analytics'
     | '/ig'
+    | '/notebooks'
     | '/resource'
     | '/analytics/queries/create'
     | '/analytics/views/create'
+    | '/notebooks/$id/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries'
     | '/analytics/views'
@@ -317,6 +370,7 @@ export interface FileRouteTypes {
     | '/audit-events'
     | '/db-console'
     | '/ig'
+    | '/notebooks'
     | '/resource'
     | '/rest'
     | '/settings'
@@ -324,12 +378,16 @@ export interface FileRouteTypes {
     | '/analytics/views'
     | '/ig/$packageId'
     | '/ig/add'
+    | '/notebooks/$id'
+    | '/notebooks/new'
     | '/resource/$resourceType'
     | '/analytics/'
     | '/ig/'
+    | '/notebooks/'
     | '/resource/'
     | '/analytics/queries/create'
     | '/analytics/views/create'
+    | '/notebooks/$id_/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries/'
     | '/analytics/views/'
@@ -347,6 +405,7 @@ export interface RootRouteChildren {
   AuditEventsRoute: typeof AuditEventsRoute
   DbConsoleRoute: typeof DbConsoleRoute
   IgRoute: typeof IgRouteWithChildren
+  NotebooksRoute: typeof NotebooksRouteWithChildren
   ResourceRoute: typeof ResourceRouteWithChildren
   RestRoute: typeof RestRoute
   SettingsRoute: typeof SettingsRoute
@@ -373,6 +432,13 @@ declare module '@tanstack/react-router' {
       path: '/resource'
       fullPath: '/resource'
       preLoaderRoute: typeof ResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notebooks': {
+      id: '/notebooks'
+      path: '/notebooks'
+      fullPath: '/notebooks'
+      preLoaderRoute: typeof NotebooksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ig': {
@@ -417,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourceIndexRouteImport
       parentRoute: typeof ResourceRoute
     }
+    '/notebooks/': {
+      id: '/notebooks/'
+      path: '/'
+      fullPath: '/notebooks/'
+      preLoaderRoute: typeof NotebooksIndexRouteImport
+      parentRoute: typeof NotebooksRoute
+    }
     '/ig/': {
       id: '/ig/'
       path: '/'
@@ -437,6 +510,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/resource/$resourceType'
       preLoaderRoute: typeof ResourceResourceTypeRouteImport
       parentRoute: typeof ResourceRoute
+    }
+    '/notebooks/new': {
+      id: '/notebooks/new'
+      path: '/new'
+      fullPath: '/notebooks/new'
+      preLoaderRoute: typeof NotebooksNewRouteImport
+      parentRoute: typeof NotebooksRoute
+    }
+    '/notebooks/$id': {
+      id: '/notebooks/$id'
+      path: '/$id'
+      fullPath: '/notebooks/$id'
+      preLoaderRoute: typeof NotebooksIdRouteImport
+      parentRoute: typeof NotebooksRoute
     }
     '/ig/add': {
       id: '/ig/add'
@@ -500,6 +587,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/resource/$resourceType/create'
       preLoaderRoute: typeof ResourceResourceTypeCreateRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
+    }
+    '/notebooks/$id_/edit': {
+      id: '/notebooks/$id_/edit'
+      path: '/$id/edit'
+      fullPath: '/notebooks/$id/edit'
+      preLoaderRoute: typeof NotebooksIdEditRouteImport
+      parentRoute: typeof NotebooksRoute
     }
     '/analytics/views/create': {
       id: '/analytics/views/create'
@@ -622,6 +716,24 @@ const IgRouteChildren: IgRouteChildren = {
 
 const IgRouteWithChildren = IgRoute._addFileChildren(IgRouteChildren)
 
+interface NotebooksRouteChildren {
+  NotebooksIdRoute: typeof NotebooksIdRoute
+  NotebooksNewRoute: typeof NotebooksNewRoute
+  NotebooksIndexRoute: typeof NotebooksIndexRoute
+  NotebooksIdEditRoute: typeof NotebooksIdEditRoute
+}
+
+const NotebooksRouteChildren: NotebooksRouteChildren = {
+  NotebooksIdRoute: NotebooksIdRoute,
+  NotebooksNewRoute: NotebooksNewRoute,
+  NotebooksIndexRoute: NotebooksIndexRoute,
+  NotebooksIdEditRoute: NotebooksIdEditRoute,
+}
+
+const NotebooksRouteWithChildren = NotebooksRoute._addFileChildren(
+  NotebooksRouteChildren,
+)
+
 interface ResourceResourceTypeRouteChildren {
   ResourceResourceTypeCreateRoute: typeof ResourceResourceTypeCreateRoute
   ResourceResourceTypeIndexRoute: typeof ResourceResourceTypeIndexRoute
@@ -657,6 +769,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditEventsRoute: AuditEventsRoute,
   DbConsoleRoute: DbConsoleRoute,
   IgRoute: IgRouteWithChildren,
+  NotebooksRoute: NotebooksRouteWithChildren,
   ResourceRoute: ResourceRouteWithChildren,
   RestRoute: RestRoute,
   SettingsRoute: SettingsRoute,
