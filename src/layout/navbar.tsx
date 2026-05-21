@@ -16,6 +16,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useMatches } from "@tanstack/react-router";
 import {
 	BookOpenText,
@@ -26,6 +27,7 @@ import {
 	UserRound,
 } from "lucide-react";
 import React, { lazy, Suspense, useEffect } from "react";
+import { useAidboxClient } from "../AidboxClient";
 import { useInstanceName, useLogout, useUserInfo } from "../api/auth";
 import { useCanonicalDisplay } from "../api/canonical-resources";
 import AidboxLogo from "../assets/aidbox-logo.svg";
@@ -46,18 +48,73 @@ function inferResourceTypeFromPath(path: string): string | null {
 	return null;
 }
 
-function CurrentCrumb({ title, path }: { title: string; path: string }) {
+type NotebookLite = { id?: string; name?: string } | null;
+
+function useNotebookDisplay(
+	id: string | null,
+	path: string | null,
+): { display: string | null; isLoading: boolean } {
+	const client = useAidboxClient();
+	const enabled = !!id;
+	const { data, isLoading, isFetching } = useQuery<NotebookLite>({
+		queryKey: enabled
+			? ["notebook", id, path ?? null]
+			: ["__notebook-display-skip__"],
+		enabled,
+		queryFn: async () => {
+			const body = path
+				? {
+						method: "aidbox.notebooks/open-repo-notebook",
+						params: { "notebook-url": path },
+					}
+				: {
+						method: "aidbox.notebooks/get-notebook-by-id",
+						params: { notebook: { id } },
+					};
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/rpc?_m=${body.method}`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const json = (await resp.response.json()) as {
+				result?: { notebook?: NotebookLite };
+			};
+			return json.result?.notebook ?? null;
+		},
+		staleTime: 60_000,
+	});
+	if (!enabled) return { display: null, isLoading: false };
+	if (data) return { display: data.name ?? null, isLoading: false };
+	return { display: null, isLoading: isLoading || isFetching };
+}
+
+function CurrentCrumb({
+	title,
+	path,
+	search,
+}: {
+	title: string;
+	path: string;
+	search?: Record<string, unknown>;
+}) {
 	const isUuid = /^[0-9a-f-]{36}$/i.test(title);
-	const resourceType: string | null = isUuid
-		? (inferResourceTypeFromPath(path) ?? null)
-		: null;
-	const { display, isLoading } = useCanonicalDisplay(
-		resourceType,
-		isUuid ? title : null,
-	);
+	const isNotebook = /^\/notebooks\/[^/]+/.test(path);
+	const resourceType: string | null =
+		isUuid && !isNotebook ? (inferResourceTypeFromPath(path) ?? null) : null;
+	const { display: canonicalDisplay, isLoading: canonicalLoading } =
+		useCanonicalDisplay(resourceType, isUuid ? title : null);
+	const notebookPath =
+		typeof search?.path === "string" ? (search.path as string) : null;
+	const { display: notebookDisplay, isLoading: notebookLoading } =
+		useNotebookDisplay(isUuid && isNotebook ? title : null, notebookPath);
+	const display = canonicalDisplay ?? notebookDisplay ?? null;
+	const showSkeleton =
+		(!!resourceType && canonicalLoading) ||
+		(isUuid && isNotebook && notebookLoading);
 	return (
 		<>
-			{resourceType && isLoading ? (
+			{showSkeleton ? (
 				<BreadcrumbPage>
 					<Skeleton className="h-5 w-48 rounded" />
 				</BreadcrumbPage>
@@ -82,7 +139,15 @@ function Breadcrumbs() {
 		...(instanceName ? [{ title: instanceName, path: "/" }] : []),
 		...matches.flatMap((match) => {
 			const breadCrumb = match.loaderData?.breadCrumb;
-			return breadCrumb ? [{ title: breadCrumb, path: match.pathname }] : [];
+			return breadCrumb
+				? [
+						{
+							title: breadCrumb,
+							path: match.pathname,
+							search: (match.search ?? {}) as Record<string, unknown>,
+						},
+					]
+				: [];
 		}),
 	];
 
@@ -103,7 +168,11 @@ function Breadcrumbs() {
 							}
 						>
 							{index === breadcrumbs.length - 1 ? (
-								<CurrentCrumb title={crumb.title} path={crumb.path} />
+								<CurrentCrumb
+									title={crumb.title}
+									path={crumb.path}
+									search={"search" in crumb ? crumb.search : undefined}
+								/>
 							) : (
 								<BreadcrumbLink className="px-3" asChild>
 									<Link to={crumb.path}>{crumb.title}</Link>

@@ -13,7 +13,7 @@ import {
 	Timer,
 	User,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Children, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAidboxClient } from "../AidboxClient";
@@ -133,12 +133,15 @@ const MD_COMPONENTS = {
 		className?: string;
 		children?: React.ReactNode;
 	}) => {
-		const isBlock = className?.startsWith("language-");
+		const text = Children.toArray(children)
+			.filter((c): c is string => typeof c === "string")
+			.join("");
+		const isBlock = className?.startsWith("language-") || text.includes("\n");
 		return (
 			<code
 				className={
 					isBlock
-						? "block font-mono typo-body-xs whitespace-pre"
+						? "block typo-code whitespace-pre"
 						: "px-1 py-0.5 rounded bg-bg-tertiary text-[0.85em] font-mono text-text-primary"
 				}
 			>
@@ -147,7 +150,7 @@ const MD_COMPONENTS = {
 		);
 	},
 	pre: ({ children }: { children?: React.ReactNode }) => (
-		<pre className="my-2 p-3 rounded-lg border border-border-default bg-bg-tertiary overflow-x-auto">
+		<pre className="-mx-3 my-2 p-3 mb-4 rounded-lg border border-border-default bg-bg-tertiary overflow-x-auto">
 			{children}
 		</pre>
 	),
@@ -377,7 +380,7 @@ function RestCellView({ cell }: { cell: Cell }) {
 	const mode = tab === "headers" ? "json" : bodyMode;
 
 	return (
-		<div className="-mx-3 mb-2 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
+		<div className="-mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<HSComp.Tabs
 				value={reqTab}
 				onValueChange={(v) => setReqTab(v as "params" | "headers" | "raw")}
@@ -571,7 +574,7 @@ function SqlCellView({ cell }: { cell: Cell }) {
 	const hasResponse = results !== null || error !== null;
 
 	return (
-		<div className="-mx-3 mb-2 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
+		<div className="-mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
 				<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0">
 					SQL
@@ -673,13 +676,13 @@ function NotebookViewPage() {
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex-1 min-h-0 overflow-y-auto pb-[400px]">
-				<div className="mx-auto max-w-[990px] px-8 py-6">
+				<div className="mx-auto max-w-[990px] px-8 py-8">
 					{isLoading ? null : !notebook ? (
 						<div className="typo-body text-text-tertiary italic">
 							Notebook not found.
 						</div>
 					) : (
-						<div className="flex flex-col gap-6">
+						<div className="flex flex-col">
 							<div className="flex flex-col gap-1">
 								<div
 									className={`flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide ${isCommunity ? "text-text-success-primary" : "text-text-warning-primary"}`}
@@ -711,7 +714,7 @@ function NotebookViewPage() {
 								)}
 							</div>
 							{(notebook.cells ?? []).length > 0 && (
-								<div className="flex flex-col gap-6">
+								<div className="flex flex-col mt-7">
 									{(notebook.cells ?? []).map((cell, i) => (
 										<CellView key={cell.id ?? `cell-${i}`} cell={cell} />
 									))}
