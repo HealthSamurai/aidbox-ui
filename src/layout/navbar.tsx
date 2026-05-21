@@ -37,6 +37,7 @@ const ClaudeChatToggle = import.meta.env.DEV
 
 import { PREFERRED_UI_KEY, THEME_KEY, VIM_MODE_KEY } from "../shared/const";
 import { getAidboxBaseURL } from "../utils";
+import { setCookie } from "../utils/cookie";
 
 function inferResourceTypeFromPath(path: string): string | null {
 	if (/^\/analytics\/views\/edit\//.test(path)) return "ViewDefinition";
@@ -148,11 +149,9 @@ function NavbarButtons() {
 					checked={true}
 					onCheckedChange={(checked) => {
 						if (!checked) {
-							cookieStore.set({
-								name: PREFERRED_UI_KEY,
-								value: "old",
+							setCookie(PREFERRED_UI_KEY, "old", {
 								path: "/",
-								expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+								maxAgeSeconds: 365 * 24 * 60 * 60,
 							});
 							window.location.href = getAidboxBaseURL();
 						}
