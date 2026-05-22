@@ -2,9 +2,10 @@ import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Fuse from "fuse.js";
 import { Pin, Search, X } from "lucide-react";
-import React, { useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
 import {
@@ -21,14 +22,6 @@ const CATEGORY_EXT_URL =
 	"http://hl7.org/fhir/StructureDefinition/structuredefinition-category";
 const STATUS_EXT_URL =
 	"http://hl7.org/fhir/StructureDefinition/structuredefinition-standards-status";
-
-const STATUS_VALUES = new Set([
-	"normative",
-	"trial-use",
-	"draft",
-	"informative",
-	"deprecated",
-]);
 
 type SDExtension = {
 	url?: string;
@@ -98,13 +91,7 @@ function filterByTags(items: SDItem[], tagTokens: string[]): SDItem[] {
 	});
 }
 
-function chipStyleFor(text: string): string {
-	const slug = tagSlug(text);
-	if (slug === "aidbox") return "bg-bg-brand-secondary text-text-brand-primary";
-	if (slug === "fhir") return "bg-green-50 text-text-success-primary";
-	if (STATUS_VALUES.has(slug)) return "bg-yellow-50 text-text-warning-primary";
-	return "bg-blue-50 text-text-info-primary";
-}
+const CHIP_STYLE = "bg-blue-50 text-text-info-primary";
 
 type StructureDefinitionResource = {
 	resourceType: "StructureDefinition";
@@ -127,7 +114,10 @@ function useStructureDefinitions(client: AidboxClientR5) {
 		queryFn: async () => {
 			const response = await client.rawRequest({
 				method: "GET",
-				url: "/fhir/StructureDefinition?kind=resource&derivation=specialization&_count=1000&_elements=type,name,url,description,extension,publisher",
+				url: "/fhir/StructureDefinition?kind=resource&derivation=specialization&abstract=false&_count=1000&_elements=type,name,url,description,extension,publisher",
+				headers: {
+					"Cache-Control": "max-age=300",
+				},
 			});
 			const bundle: StructureDefinitionBundle = await response.response.json();
 			return (bundle.entry ?? []).flatMap((entry) => {
@@ -168,25 +158,22 @@ function Badge({ text, onClick }: { text: string; onClick: () => void }) {
 	);
 }
 
-function ItemCard({
+const ItemCard = React.memo(function ItemCard({
 	item,
 	isFavorite,
 	onTagClick,
 	onToggleFavorite,
 	focused,
-	rowRef,
 }: {
 	item: SDItem;
 	isFavorite: boolean;
 	onTagClick: (text: string) => void;
-	onToggleFavorite: () => void;
+	onToggleFavorite: (resourceType: string) => void;
 	focused: boolean;
-	rowRef?: React.Ref<HTMLLIElement>;
 }) {
 	return (
 		<li
-			ref={rowRef}
-			className={`relative group/row transition-colors hover:bg-bg-secondary ${focused ? "bg-bg-secondary" : ""}`}
+			className={`relative group/row transition-colors hover:bg-bg-secondary border-b border-border-default ${focused ? "bg-bg-secondary" : ""}`}
 		>
 			<Link
 				to="/resource/$resourceType"
@@ -238,7 +225,7 @@ function ItemCard({
 				onClick={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					onToggleFavorite();
+					onToggleFavorite(item.resourceType);
 				}}
 				className={`absolute top-2 right-2 size-7 flex items-center justify-center rounded hover:bg-bg-tertiary transition-opacity ${isFavorite ? "opacity-100 text-text-info-primary" : "opacity-0 group-hover/row:opacity-100 text-text-secondary"}`}
 			>
@@ -246,7 +233,7 @@ function ItemCard({
 			</button>
 		</li>
 	);
-}
+});
 
 function SearchBar({
 	chips,
@@ -274,7 +261,7 @@ function SearchBar({
 					type="button"
 					aria-label={`Remove tag ${chip}`}
 					onClick={() => onRemoveChip(chip)}
-					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap cursor-pointer ${chipStyleFor(chip)}`}
+					className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-4 whitespace-nowrap cursor-pointer ${CHIP_STYLE}`}
 				>
 					#{chip}
 					<X className="size-3 opacity-70" />
@@ -333,25 +320,59 @@ export function Browser() {
 	const search = useSearch({ from: "/resource/" });
 	const navigate = useNavigate();
 
-	const text = search.q ?? "";
+	const urlText = search.q ?? "";
 	const chips = search.tags ?? [];
 	const tagTokens = chips.map(tagSlug);
+
+	// Local input state for instant typing; URL sync is debounced + non-blocking.
+	const [inputText, setInputText] = React.useState(urlText);
+	const text = React.useDeferredValue(inputText);
 	const hasQuery = chips.length > 0 || Boolean(text);
 
-	const setText = (next: string) => {
-		navigate({
-			from: "/resource/",
-			search: (prev) => ({ ...prev, q: next || undefined }),
-			replace: true,
-		});
-	};
-	const setTags = (next: string[]) => {
-		navigate({
-			from: "/resource/",
-			search: (prev) => ({ ...prev, tags: next.length > 0 ? next : undefined }),
-			replace: true,
-		});
-	};
+	// Pull external URL changes (back/forward, navigate from outside) back into local state.
+	const lastUrlTextRef = useRef(urlText);
+	useEffect(() => {
+		if (urlText !== lastUrlTextRef.current) {
+			lastUrlTextRef.current = urlText;
+			setInputText(urlText);
+		}
+	}, [urlText]);
+
+	const urlSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const setText = useCallback(
+		(next: string) => {
+			setInputText(next);
+			if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+			urlSyncTimerRef.current = setTimeout(() => {
+				lastUrlTextRef.current = next;
+				navigate({
+					from: "/resource/",
+					search: (prev) => ({ ...prev, q: next || undefined }),
+					replace: true,
+				});
+			}, 200);
+		},
+		[navigate],
+	);
+	useEffect(
+		() => () => {
+			if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+		},
+		[],
+	);
+	const setTags = useCallback(
+		(next: string[]) => {
+			navigate({
+				from: "/resource/",
+				search: (prev) => ({
+					...prev,
+					tags: next.length > 0 ? next : undefined,
+				}),
+				replace: true,
+			});
+		},
+		[navigate],
+	);
 
 	const [favoritesArray, setFavoritesArray] = useLocalStorage<string[]>({
 		key: "resource-browser-favorites",
@@ -399,11 +420,17 @@ export function Browser() {
 		: sortByName(tagFiltered);
 	const items = applyFavorites(textFiltered, favorites, hasQuery);
 
-	const handleTagClick = (tagText: string) => {
-		const slug = tagSlug(tagText);
-		if (chips.some((c) => tagSlug(c) === slug)) return;
-		setTags([...chips, tagText]);
-	};
+	const chipsRef = useRef(chips);
+	chipsRef.current = chips;
+	const handleTagClick = useCallback(
+		(tagText: string) => {
+			const slug = tagSlug(tagText);
+			const current = chipsRef.current;
+			if (current.some((c) => tagSlug(c) === slug)) return;
+			setTags([...current, tagText]);
+		},
+		[setTags],
+	);
 	const removeChip = (tag: string) => {
 		setTags(chips.filter((c) => c !== tag));
 	};
@@ -443,16 +470,19 @@ export function Browser() {
 		setText("");
 	};
 
-	const toggleFavorite = (resourceType: string) => {
-		setFavoritesArray((prev) =>
-			prev.includes(resourceType)
-				? prev.filter((x) => x !== resourceType)
-				: [...prev, resourceType],
-		);
-	};
+	const toggleFavorite = useCallback(
+		(resourceType: string) => {
+			setFavoritesArray((prev) =>
+				prev.includes(resourceType)
+					? prev.filter((x) => x !== resourceType)
+					: [...prev, resourceType],
+			);
+		},
+		[setFavoritesArray],
+	);
 
 	const [focusedIndex, setFocusedIndex] = React.useState(-1);
-	const focusedRowRef = useRef<HTMLLIElement | null>(null);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const didFocus = useRef(false);
 	const setSearchInputRef = React.useCallback((el: HTMLInputElement | null) => {
 		if (el && !didFocus.current) {
@@ -461,10 +491,17 @@ export function Browser() {
 		}
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: focusedIndex triggers scroll
-	React.useEffect(() => {
-		focusedRowRef.current?.scrollIntoView({ block: "nearest" });
-	}, [focusedIndex]);
+	const rowVirtualizer = useVirtualizer({
+		count: items.length,
+		getScrollElement: () => scrollRef.current,
+		estimateSize: () => 90,
+		overscan: 8,
+	});
+
+	useEffect(() => {
+		if (focusedIndex < 0) return;
+		rowVirtualizer.scrollToIndex(focusedIndex, { align: "auto" });
+	}, [focusedIndex, rowVirtualizer]);
 
 	React.useEffect(() => {
 		if (text && items.length > 0) setFocusedIndex(0);
@@ -539,12 +576,12 @@ export function Browser() {
 	};
 
 	return (
-		<div className="h-full overflow-y-auto pb-[250px]">
+		<div ref={scrollRef} className="h-full overflow-y-auto pb-[250px]">
 			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
 				<div className="mx-auto max-w-[990px] px-8">
 					<SearchBar
 						chips={chips}
-						textPart={text}
+						textPart={inputText}
 						inputRef={setSearchInputRef}
 						onTextChange={updateTextPart}
 						onRemoveChip={removeChip}
@@ -561,19 +598,41 @@ export function Browser() {
 					/>
 				</div>
 			) : (
-				<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
-					{items.map((it, index) => (
-						<ItemCard
-							key={it.resourceType}
-							item={it}
-							isFavorite={favorites.has(it.resourceType)}
-							onTagClick={handleTagClick}
-							onToggleFavorite={() => toggleFavorite(it.resourceType)}
-							focused={index === focusedIndex}
-							rowRef={index === focusedIndex ? focusedRowRef : undefined}
-						/>
-					))}
-				</ul>
+				<div className="mx-auto max-w-[990px] px-8 bg-bg-primary">
+					<ul
+						style={{
+							position: "relative",
+							height: rowVirtualizer.getTotalSize(),
+						}}
+					>
+						{rowVirtualizer.getVirtualItems().map((vi) => {
+							const it = items[vi.index];
+							if (!it) return null;
+							return (
+								<div
+									key={it.resourceType}
+									ref={rowVirtualizer.measureElement}
+									data-index={vi.index}
+									style={{
+										position: "absolute",
+										top: 0,
+										left: 0,
+										right: 0,
+										transform: `translateY(${vi.start}px)`,
+									}}
+								>
+									<ItemCard
+										item={it}
+										isFavorite={favorites.has(it.resourceType)}
+										onTagClick={handleTagClick}
+										onToggleFavorite={toggleFavorite}
+										focused={vi.index === focusedIndex}
+									/>
+								</div>
+							);
+						})}
+					</ul>
+				</div>
 			)}
 		</div>
 	);

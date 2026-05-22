@@ -5,6 +5,8 @@ import * as yaml from "js-yaml";
 import {
 	Check,
 	ChevronDown,
+	Database,
+	FileCode,
 	FileDown,
 	Globe,
 	GlobeOff,
@@ -13,6 +15,8 @@ import {
 	Pencil,
 	Play,
 	Share2,
+	SquareTerminal,
+	Table,
 	Timer,
 	Trash2,
 	User,
@@ -218,63 +222,6 @@ function parseRawRequest(raw: string): {
 	return { method, path, headers, body };
 }
 
-function parsePathQuery(path: string): { name: string; value: string }[] {
-	const qIdx = path.indexOf("?");
-	if (qIdx < 0) return [];
-	const qs = path.slice(qIdx + 1);
-	return qs
-		.split("&")
-		.filter(Boolean)
-		.map((pair) => {
-			const eq = pair.indexOf("=");
-			const name = eq < 0 ? pair : pair.slice(0, eq);
-			const value = eq < 0 ? "" : pair.slice(eq + 1);
-			try {
-				return {
-					name: decodeURIComponent(name),
-					value: decodeURIComponent(value),
-				};
-			} catch {
-				return { name, value };
-			}
-		});
-}
-
-function KeyValueTable({
-	rows,
-	empty,
-}: {
-	rows: { name: string; value: string }[];
-	empty: string;
-}) {
-	if (rows.length === 0) {
-		return (
-			<div className="px-4 py-3 typo-body-xs text-text-tertiary italic">
-				{empty}
-			</div>
-		);
-	}
-	return (
-		<table className="w-full typo-body-xs">
-			<tbody>
-				{rows.map((r, i) => (
-					<tr
-						key={`${r.name}-${i}`}
-						className="border-b border-border-default last:border-b-0"
-					>
-						<td className="px-3 py-1.5 font-mono text-text-primary align-top w-[1%] whitespace-nowrap">
-							{r.name}
-						</td>
-						<td className="px-3 py-1.5 font-mono text-text-secondary break-all">
-							{r.value}
-						</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
-	);
-}
-
 type CellResponse = {
 	status: number;
 	statusText: string;
@@ -362,7 +309,6 @@ export function RestCellView({
 	const [loading, setLoading] = useState(false);
 	const [hasFreshResponse, setHasFreshResponse] = useState(false);
 	const [tab, setTab] = useState<"body" | "headers">("body");
-	const [reqTab, setReqTab] = useState<"params" | "headers" | "raw">("raw");
 	const responseRef = useRef<HTMLDivElement | null>(null);
 	const client = useAidboxClient();
 
@@ -431,13 +377,6 @@ export function RestCellView({
 		}
 	};
 
-	const parsedRaw = parseRawRequest(raw);
-	const queryParams = parsePathQuery(parsedRaw.path);
-	const hasParams = queryParams.length > 0;
-	useEffect(() => {
-		if (reqTab === "params" && !hasParams) setReqTab("raw");
-	}, [reqTab, hasParams]);
-
 	const clearResponse = () => {
 		setResponse(null);
 		setHasFreshResponse(false);
@@ -454,66 +393,34 @@ export function RestCellView({
 
 	return (
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
-			<HSComp.Tabs
-				value={reqTab}
-				onValueChange={(v) => setReqTab(v as "params" | "headers" | "raw")}
-				className="flex flex-col"
-			>
-				<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
-					<div className="flex items-center gap-3">
-						<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0">
-							Request
-						</span>
-						<HSComp.TabsList>
-							<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
-							{hasParams && (
-								<HSComp.TabsTrigger value="params">Params</HSComp.TabsTrigger>
-							)}
-							<HSComp.TabsTrigger value="headers">Headers</HSComp.TabsTrigger>
-						</HSComp.TabsList>
-					</div>
-					<button
-						type="button"
-						disabled={loading}
-						onClick={() => void send()}
-						className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
-							loading
-								? "opacity-100"
-								: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
-						}`}
-					>
-						{loading ? (
-							<Loader2 className="size-4 animate-spin" />
-						) : (
-							<Play className="size-4 fill-current" />
-						)}
-						{loading ? "Sending…" : "Send"}
-					</button>
-				</div>
-				{reqTab === "raw" && (
-					<div className="max-h-[400px] overflow-auto [&_.cm-content]:!pl-1.5">
-						<HSComp.CodeEditor
-							mode="http"
-							defaultValue={raw}
-							onChange={updateRaw}
-							lineNumbers={false}
-							foldGutter={false}
-						/>
-					</div>
-				)}
-				{reqTab === "params" && hasParams && (
-					<KeyValueTable rows={queryParams} empty="No query params." />
-				)}
-				{reqTab === "headers" && (
-					<KeyValueTable
-						rows={Object.entries(parsedRaw.headers).map(([name, value]) => ({
-							name,
-							value,
-						}))}
-						empty="No headers."
-					/>
-				)}
-			</HSComp.Tabs>
+			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
+				<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0 flex items-center gap-1.5">
+					<SquareTerminal className="size-4" />
+					REST
+				</span>
+				<button
+					type="button"
+					disabled={loading}
+					onClick={() => void send()}
+					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+				>
+					{loading ? (
+						<Loader2 className="size-4 animate-spin" />
+					) : (
+						<Play className="size-4 fill-current" />
+					)}
+					Send
+				</button>
+			</div>
+			<div className="max-h-[400px] overflow-auto [&_.cm-content]:!pl-1.5">
+				<HSComp.CodeEditor
+					mode="http"
+					defaultValue={raw}
+					onChange={updateRaw}
+					lineNumbers={false}
+					foldGutter={false}
+				/>
+			</div>
 			{response && (
 				<HSComp.Tabs
 					value={tab}
@@ -523,7 +430,7 @@ export function RestCellView({
 					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-t border-b border-border-default">
 						<div className="flex items-center gap-3">
 							<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0">
-								Response
+								Response:
 							</span>
 							<HSComp.TabsList>
 								<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
@@ -688,18 +595,15 @@ export function SqlCellView({
 	return (
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
-				<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0">
+				<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0 flex items-center gap-1.5">
+					<Database className="size-4" />
 					SQL
 				</span>
 				<button
 					type="button"
 					disabled={loading}
 					onClick={() => void send()}
-					className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
-						loading
-							? "opacity-100"
-							: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
-					}`}
+					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 				>
 					{loading ? (
 						<Loader2 className="size-4 animate-spin" />
@@ -882,7 +786,8 @@ export function ViewDefinitionCellView({
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10 gap-3">
 				<div className="flex items-center gap-3 min-w-0">
-					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0">
+					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0 flex items-center gap-1.5">
+						<Table className="size-4" />
 						ViewDefinition
 					</span>
 					{editable && (
@@ -899,11 +804,7 @@ export function ViewDefinitionCellView({
 					type="button"
 					disabled={loading || !vd?.id}
 					onClick={() => void run()}
-					className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
-						loading
-							? "opacity-100"
-							: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
-					}`}
+					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 				>
 					{loading ? (
 						<Loader2 className="size-4 animate-spin" />
@@ -1215,7 +1116,8 @@ export function SqlQueryCellView({
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
 			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10 gap-3">
 				<div className="flex items-center gap-3 min-w-0">
-					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0">
+					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0 flex items-center gap-1.5">
+						<FileCode className="size-4" />
 						SQLQuery
 					</span>
 					{editable && (
@@ -1235,11 +1137,7 @@ export function SqlQueryCellView({
 					type="button"
 					disabled={loading || !lib?.id}
 					onClick={() => void run()}
-					className={`flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-opacity ${
-						loading
-							? "opacity-100"
-							: "opacity-0 group-hover/cell:opacity-100 focus:opacity-100"
-					}`}
+					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 				>
 					{loading ? (
 						<Loader2 className="size-4 animate-spin" />
@@ -1372,7 +1270,7 @@ export function SqlQueryCellView({
 	);
 }
 
-function CellView({ cell }: { cell: Cell }) {
+export function CellView({ cell }: { cell: Cell }) {
 	const type = cell.type ?? "rest";
 	if (type === "rest" || type === "rpc") {
 		return <RestCellView cell={cell} />;
