@@ -712,7 +712,7 @@ export function ResultContent({
 				onValueChange={(v) => setActiveTab(Number(v))}
 				className="flex flex-col flex-1 min-h-0 h-full items-stretch"
 			>
-				<div className="flex-none flex items-center bg-bg-secondary h-10 border-b border-border-default">
+				<div className="flex-none flex items-center bg-bg-secondary h-10 [&_[data-slot=tabs-list]]:h-full">
 					<TabsBrowserList>
 						{results.map((r, i) => {
 							const rowCount = r.result?.length ?? 0;
@@ -740,7 +740,7 @@ export function ResultContent({
 							);
 						})}
 					</TabsBrowserList>
-					<div className="h-full flex items-stretch [&_[data-slot=popover-trigger]]:!px-0 [&_[data-slot=popover-trigger]]:!w-10">
+					<div className="ml-auto h-full flex items-stretch [&_[data-slot=popover-trigger]]:!pr-4">
 						<TabsListDropdown
 							tabs={results.map((r, i) => ({
 								id: String(i),
