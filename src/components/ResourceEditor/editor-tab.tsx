@@ -21,6 +21,7 @@ type EditorTabProps = {
 	issueLineNumbers?: { line: number; message?: string }[];
 	getStructureDefinitions?: GetStructureDefinitions;
 	expandValueSet?: ExpandValueSet;
+	resourceTypeHint?: string;
 };
 
 export const EditorTab = ({
@@ -36,6 +37,7 @@ export const EditorTab = ({
 	issueLineNumbers,
 	getStructureDefinitions,
 	expandValueSet,
+	resourceTypeHint,
 }: EditorTabProps) => {
 	const vimMode = useVimMode();
 	return (
@@ -67,6 +69,7 @@ export const EditorTab = ({
 					getStructureDefinitions={getStructureDefinitions}
 					expandValueSet={expandValueSet}
 					vimMode={vimMode}
+					resourceTypeHint={resourceTypeHint}
 				/>
 			</div>
 		</div>

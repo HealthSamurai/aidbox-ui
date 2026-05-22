@@ -51,7 +51,10 @@ export async function SaveRequest(
 	saveToRootCollection?: boolean,
 	setLeftMenuOpen?: (open: boolean) => void,
 ) {
-	const currentSnippet = collectionEntries.find((entry) => entry.id === tab.id);
+	const targetId = tab.historyId ?? tab.id;
+	const currentSnippet = collectionEntries.find(
+		(entry) => entry.id === targetId,
+	);
 	let collection: string | undefined;
 	let snippetId: string;
 
@@ -74,10 +77,17 @@ export async function SaveRequest(
 		snippetId = generateId();
 		setTabs([
 			...tabs.map((t) => ({ ...t, selected: false })),
-			{ ...tab, id: snippetId, selected: true },
+			{ ...tab, id: snippetId, historyId: snippetId, selected: true },
 		]);
 	} else {
-		snippetId = tab.id;
+		snippetId = targetId;
+		// Bind the editor tab to the underlying snippet so subsequent edits
+		// update the same sidebar entry instead of spawning a new one.
+		if (tab.historyId !== snippetId) {
+			setTabs(
+				tabs.map((t) => (t.id === tab.id ? { ...t, historyId: snippetId } : t)),
+			);
+		}
 	}
 
 	const result = await client.update({
@@ -399,7 +409,19 @@ function CollectionMoreButton({
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
 				<ReactComponents.DropdownMenuItem
-					onClick={() => tree.getItemInstance(itemId).startRenaming()}
+					onClick={(e) => {
+						e.stopPropagation();
+						// Defer so the dropdown close completes before input is focused;
+						// otherwise the immediate blur aborts the rename. Also keep the
+						// folder expanded — closing it on rename hides children mid-edit.
+						setTimeout(() => {
+							const instance = tree.getItemInstance(itemId);
+							if (instance.isFolder() && !instance.isExpanded()) {
+								instance.expand();
+							}
+							instance.startRenaming();
+						}, 0);
+					}}
 				>
 					Rename
 				</ReactComponents.DropdownMenuItem>
@@ -480,10 +502,13 @@ function SnippetMoreButton({
 			</ReactComponents.DropdownMenuTrigger>
 			<ReactComponents.DropdownMenuContent>
 				<ReactComponents.DropdownMenuItem
-					onClick={() => {
-						if (itemData.meta?.id !== undefined) {
-							tree.getItemInstance(itemData.meta.id).startRenaming();
-						}
+					onClick={(e) => {
+						e.stopPropagation();
+						const id = itemData.meta?.id;
+						if (id === undefined) return;
+						// Defer so the dropdown close completes before input is focused;
+						// otherwise the immediate blur aborts the rename.
+						setTimeout(() => tree.getItemInstance(id).startRenaming(), 0);
 					}}
 				>
 					Rename
@@ -639,6 +664,14 @@ function customItemView(
 							className="h-5 border-none p-0"
 							autoFocus
 							{...item.getRenameInputProps()}
+							onBlur={(e) => {
+								const tree = item.getTree();
+								if (e.target.value.trim()) {
+									tree.completeRenaming();
+								} else {
+									tree.abortRenaming();
+								}
+							}}
 						/>
 					) : itemData?.meta?.title ? (
 						<div>{itemData.meta.title}</div>
@@ -881,6 +914,27 @@ export const CollectionsView = ({
 				/>
 			) : (
 				<div className="px-1 py-2">
+					{selectedTab && (
+						<button
+							type="button"
+							className="flex items-center gap-2 w-full pl-2.5 pr-2 py-1 typo-body text-text-secondary hover:text-text-primary cursor-pointer"
+							onClick={() =>
+								SaveRequest(
+									client,
+									selectedTab,
+									queryClient,
+									collectionEntries.data ?? [],
+									setSelectedCollectionItemId,
+									true,
+									setTabs,
+									tabs,
+								)
+							}
+						>
+							<Lucide.Plus className="size-4 shrink-0" />
+							<span>Create</span>
+						</button>
+					)}
 					<ReactComponents.TreeView
 						key={
 							queryClient.getQueryState(["rest-console-collections"])
@@ -891,6 +945,16 @@ export const CollectionsView = ({
 						expandedItems={expandedItems}
 						onExpandedItemsChange={setExpandedItems}
 						onRename={(item, newTitle) => {
+							if (item.isFolder()) {
+								const oldId = item.getId();
+								// Carry collapsed state over to the new folder id so the
+								// rename does not visually expand a previously-closed folder.
+								if (collapsedItems.includes(oldId)) {
+									setCollapsedItems(
+										collapsedItems.map((id) => (id === oldId ? newTitle : id)),
+									);
+								}
+							}
 							handleRenameSnippet(client, item, newTitle, queryClient);
 						}}
 						onItemLabelClick={(item) => {
