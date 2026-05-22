@@ -712,7 +712,7 @@ export function ResultContent({
 				onValueChange={(v) => setActiveTab(Number(v))}
 				className="flex flex-col flex-1 min-h-0 h-full items-stretch"
 			>
-				<div className="flex-none flex items-center bg-bg-secondary h-10">
+				<div className="flex-none flex items-center bg-bg-secondary h-10 border-b border-border-default">
 					<TabsBrowserList>
 						{results.map((r, i) => {
 							const rowCount = r.result?.length ?? 0;
