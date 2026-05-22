@@ -1,6 +1,7 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Fuse from "fuse.js";
 import {
 	FileUp,
@@ -157,15 +158,13 @@ function SearchBar({
 	);
 }
 
-function NotebookRow({
+const NotebookRow = React.memo(function NotebookRow({
 	nb,
 	focused,
-	focusedRef,
 	onTagClick,
 }: {
 	nb: NotebookItem;
 	focused: boolean;
-	focusedRef: React.RefObject<HTMLLIElement | null> | undefined;
 	onTagClick: (t: string) => void;
 }) {
 	const KindIcon = nb.isCommunity ? Globe : User;
@@ -175,8 +174,7 @@ function NotebookRow({
 		: "text-text-warning-primary";
 	return (
 		<li
-			ref={focusedRef}
-			className={`relative transition-colors hover:bg-bg-secondary first:rounded-t-lg last:rounded-b-lg ${focused ? "bg-bg-secondary" : ""}`}
+			className={`relative transition-colors hover:bg-bg-secondary border-b border-border-default ${focused ? "bg-bg-secondary" : ""}`}
 		>
 			<Link
 				to="/notebooks/$id"
@@ -219,7 +217,7 @@ function NotebookRow({
 			</Link>
 		</li>
 	);
-}
+});
 
 function UploadButton() {
 	const client = useAidboxClient();
@@ -391,11 +389,17 @@ function NotebooksPage() {
 			search: (prev) => ({ ...prev, q: next || undefined }),
 			replace: true,
 		});
-	const setTags = (next: string[]) =>
-		navigate({
-			search: (prev) => ({ ...prev, tags: next.length > 0 ? next : undefined }),
-			replace: true,
-		});
+	const setTags = React.useCallback(
+		(next: string[]) =>
+			navigate({
+				search: (prev) => ({
+					...prev,
+					tags: next.length > 0 ? next : undefined,
+				}),
+				replace: true,
+			}),
+		[navigate],
+	);
 
 	const tagTokens = tags.map(tagSlug);
 
@@ -442,7 +446,7 @@ function NotebooksPage() {
 			);
 
 	const [focusedIndex, setFocusedIndex] = React.useState(-1);
-	const focusedRowRef = React.useRef<HTMLLIElement | null>(null);
+	const scrollRef = React.useRef<HTMLDivElement | null>(null);
 	const didFocus = React.useRef(false);
 	const setSearchInputRef = React.useCallback((el: HTMLInputElement | null) => {
 		if (el && !didFocus.current) {
@@ -451,10 +455,17 @@ function NotebooksPage() {
 		}
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: focusedIndex triggers scroll
+	const rowVirtualizer = useVirtualizer({
+		count: items.length,
+		getScrollElement: () => scrollRef.current,
+		estimateSize: () => 100,
+		overscan: 8,
+	});
+
 	React.useEffect(() => {
-		focusedRowRef.current?.scrollIntoView({ block: "nearest" });
-	}, [focusedIndex]);
+		if (focusedIndex < 0) return;
+		rowVirtualizer.scrollToIndex(focusedIndex, { align: "auto" });
+	}, [focusedIndex, rowVirtualizer]);
 
 	React.useEffect(() => {
 		if (text && items.length > 0) setFocusedIndex(0);
@@ -469,11 +480,17 @@ function NotebooksPage() {
 		});
 	};
 
-	const addTag = (tagText: string) => {
-		const slug = tagSlug(tagText);
-		if (tags.some((t) => tagSlug(t) === slug)) return;
-		setTags([...tags, tagText]);
-	};
+	const tagsRef = React.useRef(tags);
+	tagsRef.current = tags;
+	const addTag = React.useCallback(
+		(tagText: string) => {
+			const slug = tagSlug(tagText);
+			const current = tagsRef.current;
+			if (current.some((t) => tagSlug(t) === slug)) return;
+			setTags([...current, tagText]);
+		},
+		[setTags],
+	);
 	const removeChip = (tag: string) => {
 		setTags(tags.filter((t) => t !== tag));
 	};
@@ -554,7 +571,10 @@ function NotebooksPage() {
 					</HSComp.Button>
 				</div>
 			</div>
-			<div className="flex-1 min-h-0 overflow-y-auto pb-[250px]">
+			<div
+				ref={scrollRef}
+				className="flex-1 min-h-0 overflow-y-auto pb-[250px]"
+			>
 				{isLoading ? null : isEmpty ? (
 					<EmptyState
 						title="Notebooks"
@@ -566,17 +586,39 @@ function NotebooksPage() {
 						{[...tags.map((t) => `#${t}`), text].filter(Boolean).join(" ")}”.
 					</div>
 				) : (
-					<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
-						{items.map((nb, index) => (
-							<NotebookRow
-								key={nb.id}
-								nb={nb}
-								focused={index === focusedIndex}
-								focusedRef={index === focusedIndex ? focusedRowRef : undefined}
-								onTagClick={addTag}
-							/>
-						))}
-					</ul>
+					<div className="mx-auto max-w-[990px] px-8 bg-bg-primary">
+						<ul
+							style={{
+								position: "relative",
+								height: rowVirtualizer.getTotalSize(),
+							}}
+						>
+							{rowVirtualizer.getVirtualItems().map((vi) => {
+								const nb = items[vi.index];
+								if (!nb) return null;
+								return (
+									<div
+										key={nb.id}
+										ref={rowVirtualizer.measureElement}
+										data-index={vi.index}
+										style={{
+											position: "absolute",
+											top: 0,
+											left: 0,
+											right: 0,
+											transform: `translateY(${vi.start}px)`,
+										}}
+									>
+										<NotebookRow
+											nb={nb}
+											focused={vi.index === focusedIndex}
+											onTagClick={addTag}
+										/>
+									</div>
+								);
+							})}
+						</ul>
+					</div>
 				)}
 			</div>
 		</div>

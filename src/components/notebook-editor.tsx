@@ -1,15 +1,21 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, Plus, Save, Trash2, User } from "lucide-react";
+import {
+	Eye,
+	Loader2,
+	Plus,
+	Save,
+	TextInitial,
+	Trash2,
+	User,
+	X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useAidboxClient } from "../AidboxClient";
 import {
 	type Cell,
-	MD_COMPONENTS,
-	normalizeMarkdown,
+	CellView,
 	RestCellView,
 	SqlCellView,
 	SqlQueryCellView,
@@ -51,7 +57,7 @@ const CELL_TYPES: { value: CellType; label: string }[] = [
 ];
 
 const DEFAULT_CELL_VALUE: Record<CellType, string> = {
-	rest: "GET /fhir/Patient",
+	rest: "GET /fhir/Patient\nContent-Type: application/json\nAccept: application/json",
 	rpc: "POST /rpc\ncontent-type: application/json\n\n{}",
 	sql: "SELECT 1;",
 	markdown: "",
@@ -110,47 +116,24 @@ function MarkdownEditCell({
 	onChange: (value: string) => void;
 }) {
 	const [value, setValue] = useState(cell.value);
-	const [mode, setMode] = useState<"edit" | "preview">("edit");
 	const update = (v: string) => {
 		setValue(v);
 		onChange(v);
 	};
 	return (
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
-			<HSComp.Tabs
-				value={mode}
-				onValueChange={(v) => setMode(v as "edit" | "preview")}
-				className="flex flex-col"
-			>
-				<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
-					<div className="flex items-center gap-3">
-						<span className="text-sm font-medium text-text-secondary w-[70px] shrink-0">
-							Markdown
-						</span>
-						<HSComp.TabsList>
-							<HSComp.TabsTrigger value="edit">Edit</HSComp.TabsTrigger>
-							<HSComp.TabsTrigger value="preview">Preview</HSComp.TabsTrigger>
-						</HSComp.TabsList>
-					</div>
-				</div>
-				{mode === "edit" ? (
-					<textarea
-						value={value}
-						onChange={(e) => update(e.target.value)}
-						placeholder="# Markdown…"
-						className="w-full min-h-[150px] max-h-[400px] px-3 py-2 typo-code outline-none resize-y bg-bg-primary text-text-primary"
-					/>
-				) : (
-					<div className="px-3 py-2 text-text-primary min-h-[150px] max-h-[400px] overflow-auto">
-						<ReactMarkdown
-							remarkPlugins={[remarkGfm]}
-							components={MD_COMPONENTS}
-						>
-							{normalizeMarkdown(value || "")}
-						</ReactMarkdown>
-					</div>
-				)}
-			</HSComp.Tabs>
+			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10">
+				<span className="text-sm font-medium text-text-secondary w-[110px] shrink-0 flex items-center gap-1.5">
+					<TextInitial className="size-4 shrink-0" />
+					Markdown
+				</span>
+			</div>
+			<textarea
+				value={value}
+				onChange={(e) => update(e.target.value)}
+				placeholder="# Markdown…"
+				className="w-full min-h-[150px] max-h-[400px] px-3 py-2 typo-code outline-none resize-y bg-bg-primary text-text-primary"
+			/>
 		</div>
 	);
 }
@@ -209,7 +192,7 @@ function CellWrapper({
 				type="button"
 				onClick={() => onDelete(cell.id)}
 				aria-label="Delete cell"
-				className="absolute top-0 -left-14 inline-flex items-center justify-center size-10 rounded text-critical-default hover:text-critical-hover opacity-0 group-hover/cellwrap:opacity-100 transition-opacity cursor-pointer after:absolute after:top-0 after:bottom-0 after:left-full after:w-4 after:content-['']"
+				className="absolute top-0 -right-14 inline-flex items-center justify-center size-10 rounded text-text-disabled hover:text-text-primary opacity-0 group-hover/cellwrap:opacity-100 transition-opacity cursor-pointer after:absolute after:top-0 after:bottom-0 after:right-full after:w-4 after:content-['']"
 			>
 				<Trash2 className="size-6" />
 			</button>
@@ -230,6 +213,7 @@ export function NotebookEditor({
 	const navigate = useNavigate();
 	const [notebook, setNotebook] = useState<EditableNotebook>(initial);
 	const [dirty, setDirty] = useState(isNew);
+	const [previewMode, setPreviewMode] = useState(false);
 
 	useEffect(() => {
 		if (!dirty) return;
@@ -379,89 +363,162 @@ export function NotebookEditor({
 
 	const saveDisabled = !notebook.name?.trim() || saveMut.isPending;
 
-	return (
-		<>
-			<div className="h-full flex flex-col">
-				<div className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-default">
-					<div className="mx-auto max-w-[990px] w-full flex items-center gap-4 px-8">
+	const editorBody = (
+		<div className="flex flex-col h-full">
+			<div className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-default">
+				<div className="mx-auto max-w-[990px] w-full flex items-center gap-4 px-8">
+					<HSComp.Button
+						variant="ghost"
+						size="small"
+						className="px-0! text-text-link"
+						disabled={saveDisabled}
+						onClick={() => saveMut.mutate(undefined)}
+					>
+						<Save className="size-4" />
+						Save
+					</HSComp.Button>
+					{!isNew && notebook.id && (
 						<HSComp.Button
 							variant="ghost"
 							size="small"
-							className="px-0! text-text-link"
-							disabled={saveDisabled}
-							onClick={() => saveMut.mutate(undefined)}
+							className="px-0!"
+							disabled={deleteMut.isPending}
+							onClick={() => setDeleteOpen(true)}
 						>
-							<Save className="size-4" />
-							Save
+							{deleteMut.isPending ? (
+								<Loader2 className="size-4 animate-spin" />
+							) : (
+								<Trash2 className="size-4" />
+							)}
+							Delete
 						</HSComp.Button>
-						{!isNew && notebook.id && (
-							<HSComp.Button
-								variant="ghost"
-								size="small"
-								className="px-0!"
-								disabled={deleteMut.isPending}
-								onClick={() => setDeleteOpen(true)}
-							>
-								{deleteMut.isPending ? (
-									<Loader2 className="size-4 animate-spin" />
-								) : (
-									<Trash2 className="size-4" />
-								)}
-								Delete
-							</HSComp.Button>
-						)}
-					</div>
+					)}
+					{!previewMode && (
+						<HSComp.Toggle
+							variant="outline"
+							className="ml-auto"
+							pressed={previewMode}
+							onPressedChange={setPreviewMode}
+						>
+							<Eye className="size-4" />
+							Preview
+						</HSComp.Toggle>
+					)}
 				</div>
-				<div className="flex-1 min-h-0 overflow-y-auto pb-[400px]">
-					<div className="mx-auto max-w-[990px] px-8 py-8">
-						<div className="flex flex-col">
-							<div className="flex flex-col gap-1">
-								<div className="flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide text-text-warning-primary">
-									<User className="size-3.5" />
-									<span>Personal</span>
+			</div>
+			<div className="flex-1 overflow-y-auto pb-[400px]">
+				<div className="mx-auto max-w-[990px] px-8 py-8">
+					<div className="flex flex-col">
+						<div className="flex flex-col gap-1">
+							<div className="flex items-center gap-1.5 typo-label-tiny uppercase tracking-wide text-text-warning-primary">
+								<User className="size-3.5" />
+								<span>Personal</span>
+							</div>
+							<input
+								value={notebook.name ?? ""}
+								onChange={(e) => updateField("name", e.target.value)}
+								placeholder="Untitled notebook"
+								// biome-ignore lint/a11y/noAutofocus: focus the title input only on the New notebook page
+								autoFocus={isNew}
+								className="typo-page-header text-text-primary bg-transparent outline-none w-full"
+							/>
+							<input
+								value={notebook.description ?? ""}
+								onChange={(e) => updateField("description", e.target.value)}
+								placeholder="Description"
+								className="typo-body text-text-secondary bg-transparent outline-none"
+							/>
+							{saveMut.isError && (
+								<p className="typo-body-xs text-critical-default">
+									{saveMut.error.message}
+								</p>
+							)}
+							{deleteMut.isError && (
+								<p className="typo-body-xs text-critical-default">
+									{deleteMut.error.message}
+								</p>
+							)}
+						</div>
+						<div className="flex flex-col mt-7">
+							<AddCellDivider onAdd={(t) => addCellAt(0, t)} />
+							{notebook.cells.map((cell, idx) => (
+								<div key={cell.id}>
+									<CellWrapper
+										cell={cell}
+										onValueChange={updateCellValue}
+										onResultChange={updateCellResult}
+										onDelete={deleteCell}
+									/>
+									<AddCellDivider onAdd={(t) => addCellAt(idx + 1, t)} />
 								</div>
-								<input
-									value={notebook.name ?? ""}
-									onChange={(e) => updateField("name", e.target.value)}
-									placeholder="Untitled notebook"
-									// biome-ignore lint/a11y/noAutofocus: focus the title input only on the New notebook page
-									autoFocus={isNew}
-									className="typo-page-header text-text-primary bg-transparent outline-none w-full"
-								/>
-								<input
-									value={notebook.description ?? ""}
-									onChange={(e) => updateField("description", e.target.value)}
-									placeholder="Description"
-									className="typo-body text-text-secondary bg-transparent outline-none"
-								/>
-								{saveMut.isError && (
-									<p className="typo-body-xs text-critical-default">
-										{saveMut.error.message}
-									</p>
-								)}
-								{deleteMut.isError && (
-									<p className="typo-body-xs text-critical-default">
-										{deleteMut.error.message}
-									</p>
-								)}
-							</div>
-							<div className="flex flex-col mt-7">
-								<AddCellDivider onAdd={(t) => addCellAt(0, t)} />
-								{notebook.cells.map((cell, idx) => (
-									<div key={cell.id}>
-										<CellWrapper
-											cell={cell}
-											onValueChange={updateCellValue}
-											onResultChange={updateCellResult}
-											onDelete={deleteCell}
-										/>
-										<AddCellDivider onAdd={(t) => addCellAt(idx + 1, t)} />
-									</div>
-								))}
-							</div>
+							))}
 						</div>
 					</div>
 				</div>
+			</div>
+		</div>
+	);
+
+	const previewBody = (
+		<div className="flex flex-col h-full">
+			<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10! min-h-10 shrink-0">
+				<span className="typo-label text-text-secondary">Preview</span>
+				<HSComp.IconButton
+					variant="ghost"
+					aria-label="Close preview"
+					icon={<X className="w-4 h-4" />}
+					onClick={() => setPreviewMode(false)}
+				/>
+			</div>
+			<div className="flex-1 overflow-y-auto pb-[400px]">
+				<div className="mx-auto max-w-[990px] px-8 py-8">
+					{notebook.name && (
+						<h1 className="typo-page-header text-text-primary">
+							{notebook.name}
+						</h1>
+					)}
+					{notebook.description && (
+						<p className="typo-body text-text-secondary mt-2">
+							{notebook.description}
+						</p>
+					)}
+					<div className="flex flex-col mt-7">
+						{notebook.cells.map((cell) => (
+							<CellView
+								key={cell.id}
+								cell={{
+									id: cell.id,
+									type: cell.type,
+									value: cell.value,
+									result: cell.result,
+								}}
+							/>
+						))}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+
+	return (
+		<>
+			<div className="h-full">
+				{previewMode ? (
+					<HSComp.ResizablePanelGroup
+						direction="horizontal"
+						autoSaveId="notebook-edit-preview"
+					>
+						<HSComp.ResizablePanel minSize={20}>
+							{editorBody}
+						</HSComp.ResizablePanel>
+						<HSComp.ResizableHandle />
+						<HSComp.ResizablePanel minSize={20}>
+							{previewBody}
+						</HSComp.ResizablePanel>
+					</HSComp.ResizablePanelGroup>
+				) : (
+					editorBody
+				)}
 			</div>
 			<ConfirmDialog
 				open={deleteOpen}

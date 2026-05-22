@@ -4,29 +4,30 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	ResizableHandle,
-	ResizablePanel,
-	ResizablePanelGroup,
 	Table,
 	TableBody,
 	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
+	Tabs,
+	TabsBrowserList,
+	TabsContent,
+	TabsListDropdown,
+	TabsTrigger,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import {
+	AlertCircle,
 	Check,
 	ChevronDown,
 	Download,
 	Loader2,
-	Maximize2,
-	Minimize2,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
 import { LIMIT_PRESETS, TIMEOUT_PRESETS } from "./utils";
 
@@ -203,52 +204,13 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 	URL.revokeObjectURL(url);
 }
 
-// QueryResultHeader (33px) + Table header h-8 (32px) + 3 rows h-7 (3 * 28 = 84px)
-const MIN_PANEL_PX = 33 + 32 + 3 * 28;
-
 // ── Components ──
-
-function QueryResultHeader({
-	index,
-	isMaximized,
-	onToggleMaximize,
-}: {
-	index: number;
-	isMaximized: boolean;
-	onToggleMaximize: () => void;
-}) {
-	return (
-		<div className="flex-none flex items-center justify-between px-4 py-1 border-b bg-bg-secondary">
-			<span className="text-xs text-text-tertiary">Query {index + 1}</span>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<Button variant="ghost" size="small" onClick={onToggleMaximize}>
-						{isMaximized ? (
-							<Minimize2 className="w-3.5 h-3.5" />
-						) : (
-							<Maximize2 className="w-3.5 h-3.5" />
-						)}
-					</Button>
-				</TooltipTrigger>
-				<TooltipContent>{isMaximized ? "Minimize" : "Maximize"}</TooltipContent>
-			</Tooltip>
-		</div>
-	);
-}
 
 function QueryResult({
 	result,
-	index,
-	totalCount,
-	isMaximized,
-	onToggleMaximize,
 	viewMode = "table",
 }: {
 	result: QueryResultItem;
-	index: number;
-	totalCount: number;
-	isMaximized: boolean;
-	onToggleMaximize: () => void;
 	viewMode?: "table" | "list";
 }) {
 	const rows = result.result ?? [];
@@ -260,13 +222,6 @@ function QueryResult({
 	if (result.error) {
 		return (
 			<div className="flex flex-col h-full">
-				{totalCount > 1 && (
-					<QueryResultHeader
-						index={index}
-						isMaximized={isMaximized}
-						onToggleMaximize={onToggleMaximize}
-					/>
-				)}
 				<div className="p-6">
 					<pre className="text-sm text-text-error-primary whitespace-pre-wrap font-mono">
 						{result.error}
@@ -278,13 +233,6 @@ function QueryResult({
 
 	return (
 		<div className="flex flex-col h-full min-h-0 overflow-hidden">
-			{totalCount > 1 && (
-				<QueryResultHeader
-					index={index}
-					isMaximized={isMaximized}
-					onToggleMaximize={onToggleMaximize}
-				/>
-			)}
 			{rows.length === 0 ? (
 				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
 					<div className="text-center">
@@ -694,7 +642,8 @@ export function ResultContent({
 	onCancel: () => void;
 	viewMode?: "table" | "list";
 }) {
-	const [maximizedIndex, setMaximizedIndex] = useState<number | null>(null);
+	const [activeTab, setActiveTab] = useState(0);
+	const triggerRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
 	if (isLoading) {
 		return (
@@ -741,73 +690,94 @@ export function ResultContent({
 		);
 	}
 
-	if (maximizedIndex !== null && results[maximizedIndex]) {
-		return (
-			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-				<div className="flex-1 min-h-0">
-					<QueryResult
-						result={results[maximizedIndex]}
-						index={maximizedIndex}
-						totalCount={results.length}
-						isMaximized
-						onToggleMaximize={() => setMaximizedIndex(null)}
-						viewMode={viewMode}
-					/>
-				</div>
-			</div>
-		);
-	}
-
 	if (results.length === 1) {
 		const singleResult = results[0];
 		if (!singleResult) return null;
 		return (
 			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 				<div className="flex-1 min-h-0">
-					<QueryResult
-						result={singleResult}
-						index={0}
-						totalCount={1}
-						isMaximized={false}
-						onToggleMaximize={() => {}}
-						viewMode={viewMode}
-					/>
+					<QueryResult result={singleResult} viewMode={viewMode} />
 				</div>
 			</div>
 		);
 	}
 
-	const n = results.length;
+	const safeActive = Math.min(activeTab, results.length - 1);
 
 	return (
 		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-			<div className="flex-1 min-h-0 overflow-auto">
-				<ResizablePanelGroup
-					direction="vertical"
-					style={{ minHeight: `${n * MIN_PANEL_PX}px` }}
-				>
-					{results.flatMap((result, index) => {
-						const key = `${result.query}-${index}`;
-						const panel = (
-							<ResizablePanel
-								key={`panel-${key}`}
-								style={{ minHeight: `${MIN_PANEL_PX}px` }}
-							>
-								<QueryResult
-									result={result}
-									index={index}
-									totalCount={n}
-									isMaximized={false}
-									onToggleMaximize={() => setMaximizedIndex(index)}
-									viewMode={viewMode}
-								/>
-							</ResizablePanel>
-						);
-						if (index === 0) return [panel];
-						return [<ResizableHandle key={`handle-${key}`} />, panel];
-					})}
-				</ResizablePanelGroup>
-			</div>
+			<Tabs
+				variant="browser"
+				value={String(safeActive)}
+				onValueChange={(v) => setActiveTab(Number(v))}
+				className="flex flex-col flex-1 min-h-0 h-full items-stretch"
+			>
+				<div className="flex-none flex items-center bg-bg-secondary h-10 [&_[data-slot=tabs-list]]:h-full">
+					<TabsBrowserList>
+						{results.map((r, i) => {
+							const rowCount = r.result?.length ?? 0;
+							const ariaLabel = r.error
+								? `Query ${i + 1}, error`
+								: `Query ${i + 1}, ${rowCount} rows`;
+							return (
+								<TabsTrigger
+									key={`${r.query}-${i}`}
+									value={String(i)}
+									aria-label={ariaLabel}
+									ref={(el) => {
+										if (el) triggerRefs.current.set(i, el);
+										else triggerRefs.current.delete(i);
+									}}
+								>
+									<span>Query {i + 1}</span>
+									{r.error && (
+										<span className="flex items-center gap-1 text-text-error-primary text-xs ml-2">
+											<AlertCircle className="w-3 h-3" />
+											error
+										</span>
+									)}
+								</TabsTrigger>
+							);
+						})}
+					</TabsBrowserList>
+					<div className="ml-auto h-full flex items-stretch [&_[data-slot=popover-trigger]]:!pr-4">
+						<TabsListDropdown
+							tabs={results.map((r, i) => ({
+								id: String(i),
+								content: (
+									<span className="flex items-center gap-2">
+										Query {i + 1}
+										{r.error && (
+											<span className="flex items-center gap-1 text-text-error-primary text-xs">
+												<AlertCircle className="w-3 h-3" />
+												error
+											</span>
+										)}
+									</span>
+								),
+							}))}
+							handleTabSelect={(tabId) => {
+								const idx = Number(tabId);
+								setActiveTab(idx);
+								triggerRefs.current.get(idx)?.scrollIntoView({
+									behavior: "smooth",
+									block: "nearest",
+									inline: "nearest",
+								});
+							}}
+						/>
+					</div>
+				</div>
+				{results.map((r, i) => (
+					<TabsContent
+						key={`${r.query}-${i}`}
+						value={String(i)}
+						className="flex-1 min-h-0 overflow-hidden"
+					>
+						<QueryResult result={r} viewMode={viewMode} />
+					</TabsContent>
+				))}
+			</Tabs>
 		</div>
 	);
 }
