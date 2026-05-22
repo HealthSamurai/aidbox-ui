@@ -99,6 +99,7 @@ export function EditTabContent({
 							issueLineNumbers={issueLineNumbers}
 							getStructureDefinitions={getStructureDefinitions}
 							expandValueSet={expandValueSet}
+							resourceTypeHint={resourceType}
 							trailingActions={
 								!isProfileOpen && (
 									<HSComp.Toggle

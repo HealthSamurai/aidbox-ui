@@ -33,6 +33,7 @@ import {
 	Play,
 	SquareTerminalIcon,
 	Timer,
+	X,
 } from "lucide-react";
 import type React from "react";
 import {
@@ -749,6 +750,7 @@ type ResponsePaneProps = {
 	sendVersion: number;
 	onExplainSubTabChange: (subTab: "query" | "statement" | "plan") => void;
 	onFollowContentLocation?: (path: string) => void;
+	onClearResponse?: () => void;
 };
 
 function ResponseInfo({ response }: { response: ResponseData }) {
@@ -1178,6 +1180,7 @@ function ResponsePane({
 	sendVersion,
 	onExplainSubTabChange,
 	onFollowContentLocation,
+	onClearResponse,
 }: ResponsePaneProps) {
 	// Use response mode from the response itself (set at request time)
 	const responseMode = response?.mode || "json";
@@ -1214,6 +1217,21 @@ function ResponsePane({
 						onToggle={(state) => onFullScreenToggle(state)}
 						state={fullScreenState}
 					/>
+					{response && onClearResponse && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="small"
+									aria-label="Clear response"
+									onClick={onClearResponse}
+								>
+									<X className="size-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Clear response</TooltipContent>
+						</Tooltip>
+					)}
 				</div>
 			</div>
 			<div className="flex-1 min-h-0 overflow-hidden">
@@ -2341,6 +2359,9 @@ function RouteComponent() {
 										aidboxClient={client}
 										sendVersion={sendVersion}
 										onExplainSubTabChange={handleExplainSubTabChange}
+										onClearResponse={() =>
+											responseStorage.delete(selectedTab.id)
+										}
 										onFollowContentLocation={(contentPath) => {
 											const updatedTab = {
 												...selectedTab,
