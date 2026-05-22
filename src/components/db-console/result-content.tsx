@@ -740,7 +740,7 @@ export function ResultContent({
 							);
 						})}
 					</TabsBrowserList>
-					<div className="h-full flex items-stretch [&_[data-slot=popover-trigger]]:!rounded-none [&_[data-slot=popover-trigger]]:!border-l [&_[data-slot=popover-trigger]]:!px-0 [&_[data-slot=popover-trigger]]:!w-10">
+					<div className="h-full flex items-stretch [&_[data-slot=popover-trigger]]:!px-0 [&_[data-slot=popover-trigger]]:!w-10">
 						<TabsListDropdown
 							tabs={results.map((r, i) => ({
 								id: String(i),
