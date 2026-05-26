@@ -1,4 +1,7 @@
 import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
 	Button,
 	Table,
 	TableBody,
@@ -198,20 +201,18 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 			</div>
 
 			{failure ? (
-				<div className="mx-4 mt-3 flex items-start gap-2 rounded border border-border-error bg-bg-error-secondary p-3 text-sm">
-					<AlertCircle className="size-4 mt-0.5 shrink-0 text-text-error-primary" />
-					<div className="min-w-0 flex-1">
-						<div className="text-text-error-primary font-medium">
-							{status === "failed" ? "Operation failed" : "A task failed"}
-						</div>
-						<div className="text-text-error-primary mt-0.5 break-words">
-							{failure.message}
-						</div>
-						<div className="text-text-secondary text-xs mt-1 font-mono break-all">
-							{failure.taskInstance}
-						</div>
-					</div>
-				</div>
+				<Alert variant="critical" className="mx-4 mt-3">
+					<AlertCircle />
+					<AlertTitle>
+						{status === "failed" ? "Operation failed" : "A task failed"}
+					</AlertTitle>
+					<AlertDescription className="break-words">
+						{failure.message}
+					</AlertDescription>
+					<AlertDescription className="text-text-secondary text-xs font-mono break-all">
+						{failure.taskInstance}
+					</AlertDescription>
+				</Alert>
 			) : null}
 
 			<div className="flex-1 overflow-auto p-4">
