@@ -16,17 +16,20 @@ import { Route as NotebooksRouteImport } from './routes/notebooks'
 import { Route as IgRouteImport } from './routes/ig'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
 import { Route as AuditEventsRouteImport } from './routes/audit-events'
+import { Route as AsyncOperationsRouteImport } from './routes/async-operations'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
 import { Route as NotebooksIndexRouteImport } from './routes/notebooks.index'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
+import { Route as AsyncOperationsIndexRouteImport } from './routes/async-operations.index'
 import { Route as AnalyticsIndexRouteImport } from './routes/analytics.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
 import { Route as NotebooksNewRouteImport } from './routes/notebooks.new'
 import { Route as NotebooksIdRouteImport } from './routes/notebooks.$id'
 import { Route as IgAddRouteImport } from './routes/ig.add'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
+import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
 import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
 import { Route as AnalyticsQueriesRouteImport } from './routes/analytics.queries'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
@@ -77,6 +80,11 @@ const AuditEventsRoute = AuditEventsRouteImport.update({
   path: '/audit-events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AsyncOperationsRoute = AsyncOperationsRouteImport.update({
+  id: '/async-operations',
+  path: '/async-operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -101,6 +109,11 @@ const IgIndexRoute = IgIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => IgRoute,
+} as any)
+const AsyncOperationsIndexRoute = AsyncOperationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AsyncOperationsRoute,
 } as any)
 const AnalyticsIndexRoute = AnalyticsIndexRouteImport.update({
   id: '/',
@@ -132,6 +145,12 @@ const IgPackageIdRoute = IgPackageIdRouteImport.update({
   path: '/$packageId',
   getParentRoute: () => IgRoute,
 } as any)
+const AsyncOperationsOperationIdRoute =
+  AsyncOperationsOperationIdRouteImport.update({
+    id: '/$operationId',
+    path: '/$operationId',
+    getParentRoute: () => AsyncOperationsRoute,
+  } as any)
 const AnalyticsViewsRoute = AnalyticsViewsRouteImport.update({
   id: '/views',
   path: '/views',
@@ -210,6 +229,7 @@ const IgPackageIdResourceResourceTypeResourceIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRouteWithChildren
+  '/async-operations': typeof AsyncOperationsRouteWithChildren
   '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
@@ -219,12 +239,14 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/analytics/queries': typeof AnalyticsQueriesRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
+  '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
+  '/async-operations/': typeof AsyncOperationsIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
@@ -247,10 +269,12 @@ export interface FileRoutesByTo {
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/analytics': typeof AnalyticsIndexRoute
+  '/async-operations': typeof AsyncOperationsIndexRoute
   '/ig': typeof IgIndexRoute
   '/notebooks': typeof NotebooksIndexRoute
   '/resource': typeof ResourceIndexRoute
@@ -271,6 +295,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRouteWithChildren
+  '/async-operations': typeof AsyncOperationsRouteWithChildren
   '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
   '/ig': typeof IgRouteWithChildren
@@ -280,12 +305,14 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/analytics/queries': typeof AnalyticsQueriesRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
+  '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
+  '/async-operations/': typeof AsyncOperationsIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
@@ -307,6 +334,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
+    | '/async-operations'
     | '/audit-events'
     | '/db-console'
     | '/ig'
@@ -316,12 +344,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/analytics/queries'
     | '/analytics/views'
+    | '/async-operations/$operationId'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
     | '/notebooks/new'
     | '/resource/$resourceType'
     | '/analytics/'
+    | '/async-operations/'
     | '/ig/'
     | '/notebooks/'
     | '/resource/'
@@ -344,10 +374,12 @@ export interface FileRouteTypes {
     | '/db-console'
     | '/rest'
     | '/settings'
+    | '/async-operations/$operationId'
     | '/ig/add'
     | '/notebooks/$id'
     | '/notebooks/new'
     | '/analytics'
+    | '/async-operations'
     | '/ig'
     | '/notebooks'
     | '/resource'
@@ -367,6 +399,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/analytics'
+    | '/async-operations'
     | '/audit-events'
     | '/db-console'
     | '/ig'
@@ -376,12 +409,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/analytics/queries'
     | '/analytics/views'
+    | '/async-operations/$operationId'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
     | '/notebooks/new'
     | '/resource/$resourceType'
     | '/analytics/'
+    | '/async-operations/'
     | '/ig/'
     | '/notebooks/'
     | '/resource/'
@@ -402,6 +437,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRouteWithChildren
+  AsyncOperationsRoute: typeof AsyncOperationsRouteWithChildren
   AuditEventsRoute: typeof AuditEventsRoute
   DbConsoleRoute: typeof DbConsoleRoute
   IgRoute: typeof IgRouteWithChildren
@@ -462,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/async-operations': {
+      id: '/async-operations'
+      path: '/async-operations'
+      fullPath: '/async-operations'
+      preLoaderRoute: typeof AsyncOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -496,6 +539,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/ig/'
       preLoaderRoute: typeof IgIndexRouteImport
       parentRoute: typeof IgRoute
+    }
+    '/async-operations/': {
+      id: '/async-operations/'
+      path: '/'
+      fullPath: '/async-operations/'
+      preLoaderRoute: typeof AsyncOperationsIndexRouteImport
+      parentRoute: typeof AsyncOperationsRoute
     }
     '/analytics/': {
       id: '/analytics/'
@@ -538,6 +588,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/ig/$packageId'
       preLoaderRoute: typeof IgPackageIdRouteImport
       parentRoute: typeof IgRoute
+    }
+    '/async-operations/$operationId': {
+      id: '/async-operations/$operationId'
+      path: '/$operationId'
+      fullPath: '/async-operations/$operationId'
+      preLoaderRoute: typeof AsyncOperationsOperationIdRouteImport
+      parentRoute: typeof AsyncOperationsRoute
     }
     '/analytics/views': {
       id: '/analytics/views'
@@ -687,6 +744,20 @@ const AnalyticsRouteWithChildren = AnalyticsRoute._addFileChildren(
   AnalyticsRouteChildren,
 )
 
+interface AsyncOperationsRouteChildren {
+  AsyncOperationsOperationIdRoute: typeof AsyncOperationsOperationIdRoute
+  AsyncOperationsIndexRoute: typeof AsyncOperationsIndexRoute
+}
+
+const AsyncOperationsRouteChildren: AsyncOperationsRouteChildren = {
+  AsyncOperationsOperationIdRoute: AsyncOperationsOperationIdRoute,
+  AsyncOperationsIndexRoute: AsyncOperationsIndexRoute,
+}
+
+const AsyncOperationsRouteWithChildren = AsyncOperationsRoute._addFileChildren(
+  AsyncOperationsRouteChildren,
+)
+
 interface IgPackageIdRouteChildren {
   IgPackageIdIndexRoute: typeof IgPackageIdIndexRoute
   IgPackageIdResourceResourceTypeResourceIdRoute: typeof IgPackageIdResourceResourceTypeResourceIdRoute
@@ -766,6 +837,7 @@ const ResourceRouteWithChildren = ResourceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRouteWithChildren,
+  AsyncOperationsRoute: AsyncOperationsRouteWithChildren,
   AuditEventsRoute: AuditEventsRoute,
   DbConsoleRoute: DbConsoleRoute,
   IgRoute: IgRouteWithChildren,
