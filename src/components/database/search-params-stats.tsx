@@ -8,11 +8,12 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	Button,
+	Combobox,
 	Input,
 } from "@health-samurai/react-components";
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, RefreshCw, Trash2, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import {
@@ -21,6 +22,7 @@ import {
 	type SortDir,
 	useResetSearchParamStats,
 	useResetSearchParamStatsRows,
+	useResourceTypes,
 	useSearchParamStats,
 	useSearchParamStatsCount,
 } from "../../api/database";
@@ -137,8 +139,8 @@ export function SearchParamsStats() {
 
 	const queryArgs = {
 		by: "param" as const,
-		resourceType: resourceFilter.trim() || undefined,
-		searchParam: paramFilter.trim() || undefined,
+		resourceType: resourceFilter || undefined,
+		searchParamLike: paramFilter.trim() || undefined,
 		orderBy,
 		orderDir,
 		limit: pageSize,
@@ -154,8 +156,16 @@ export function SearchParamsStats() {
 	const { data: countData } = useSearchParamStatsCount({
 		by: "param",
 		resourceType: queryArgs.resourceType,
-		searchParam: queryArgs.searchParam,
+		searchParamLike: queryArgs.searchParamLike,
 	});
+	const { data: resourceTypes } = useResourceTypes();
+	const resourceTypeOptions = useMemo(
+		() => [
+			{ value: "", label: "All resource types" },
+			...(resourceTypes ?? []).map((rt) => ({ value: rt, label: rt })),
+		],
+		[resourceTypes],
+	);
 	const reset = useResetSearchParamStats();
 	const resetRows = useResetSearchParamStatsRows();
 	const total = countData?.total ?? 0;
@@ -318,10 +328,13 @@ export function SearchParamsStats() {
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<Input
-					placeholder="Resource type"
+				<Combobox
+					options={resourceTypeOptions}
 					value={resourceFilter}
-					onChange={(e) => onResourceFilterChange(e.target.value)}
+					onValueChange={onResourceFilterChange}
+					placeholder="All resource types"
+					searchPlaceholder="Search resource types…"
+					emptyText="No resource types found."
 					className="flex-1"
 				/>
 				<Input
@@ -341,12 +354,13 @@ export function SearchParamsStats() {
 					Refresh
 				</Button>
 				<Button
-					variant="secondary"
+					variant="primary"
+					danger
 					onClick={() => setResetOpen(true)}
 					disabled={reset.isPending}
 				>
-					<RotateCcw className="size-3.5" />
-					Reset stats
+					<Trash2 className="size-3.5" />
+					Reset all
 				</Button>
 			</div>
 			<div className="flex-1 overflow-auto">

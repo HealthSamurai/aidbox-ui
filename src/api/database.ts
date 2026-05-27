@@ -24,6 +24,26 @@ async function rpc<T>(
 	return json.result as T;
 }
 
+// All FHIR resource types, fetched once and reused (drives the stats filter
+// dropdown). `/$resource-types` returns an object keyed by resource type.
+export function useResourceTypes() {
+	const client = useAidboxClient();
+	return useQuery({
+		queryKey: ["database", "resource-types"],
+		staleTime: 5 * 60_000,
+		refetchOnWindowFocus: false,
+		queryFn: async () => {
+			const res = await client.rawRequest({
+				method: "GET",
+				url: "/$resource-types",
+				headers: { Accept: "application/json" },
+			});
+			const json = (await res.response.json()) as Record<string, unknown>;
+			return Object.keys(json).sort();
+		},
+	});
+}
+
 // Schema explorer
 
 export type PgTableRow = {
@@ -227,6 +247,9 @@ export type SearchParamStatsParams = {
 	by?: SearchParamStatsBy;
 	resourceType?: string;
 	searchParam?: string;
+	/** Case-insensitive `ILIKE '%q%'` substring filters (UI search box). */
+	resourceTypeLike?: string;
+	searchParamLike?: string;
 	limit?: number;
 	offset?: number;
 	orderBy?: SearchParamStatsOrderBy;
@@ -243,6 +266,9 @@ function buildSpStatsParams(
 	};
 	if (opts.resourceType) params["resource-type"] = opts.resourceType;
 	if (opts.searchParam) params["search-param"] = opts.searchParam;
+	if (opts.resourceTypeLike)
+		params["resource-type-like"] = opts.resourceTypeLike;
+	if (opts.searchParamLike) params["search-param-like"] = opts.searchParamLike;
 	if (opts.orderBy) params["order-by"] = opts.orderBy;
 	if (opts.orderDir) params["order-dir"] = opts.orderDir;
 	return params;
@@ -267,13 +293,20 @@ export function useSearchParamStats(opts: SearchParamStatsParams = {}) {
 export function useSearchParamStatsCount(
 	opts: Pick<
 		SearchParamStatsParams,
-		"by" | "resourceType" | "searchParam"
+		| "by"
+		| "resourceType"
+		| "searchParam"
+		| "resourceTypeLike"
+		| "searchParamLike"
 	> = {},
 ) {
 	const client = useAidboxClient();
 	const params: Record<string, unknown> = { by: opts.by ?? "param" };
 	if (opts.resourceType) params["resource-type"] = opts.resourceType;
 	if (opts.searchParam) params["search-param"] = opts.searchParam;
+	if (opts.resourceTypeLike)
+		params["resource-type-like"] = opts.resourceTypeLike;
+	if (opts.searchParamLike) params["search-param-like"] = opts.searchParamLike;
 	return useQuery({
 		queryKey: ["database", "search-param-stats", "count", params],
 		queryFn: () =>
