@@ -1057,7 +1057,7 @@ export function PackageDetail() {
 		onError: Utils.onMutationError,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
-			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
+			navigate({ to: "/ig", search: { q: undefined, tags: undefined } });
 		},
 	});
 

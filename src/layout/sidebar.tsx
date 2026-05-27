@@ -103,7 +103,7 @@ const mainMenuItems: {
 		url: "/ig",
 		title: "FHIR packages",
 		link: (
-			<Link to="/ig" search={{ q: undefined, sort: undefined }}>
+			<Link to="/ig" search={{ q: undefined, tags: undefined }}>
 				<Package />
 				FHIR packages
 			</Link>

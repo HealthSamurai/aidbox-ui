@@ -8,7 +8,6 @@ function textResult(text: string) {
 
 const TOOL_NAMES = [
 	"list_packages",
-	"sort_packages",
 	"select_package",
 	"open_installation_page",
 ] as const;
@@ -21,14 +20,16 @@ export function useWebMCPIGBrowser(actionsRef: RefObject<IGBrowserActions>) {
 			name: "list_packages",
 			description:
 				"[FHIR Packages] Set the search filter and return the filtered list of installed FHIR packages. " +
-				"Returns an array of {name, version, type} objects.",
+				"The query supports tag chips combined with free text matched against name, version and description. " +
+				"Tags include the install kind (#system, #direct, #transitive) and the package type (e.g. #fhir.core, #fhir.ig, #ig, #conformance). " +
+				"Returns an array of {name, version, tags} objects.",
 			inputSchema: {
 				type: "object",
 				properties: {
 					query: {
 						type: "string",
 						description:
-							"Optional search query to filter packages by name or type",
+							"Optional search query. Free text is fuzzy-matched against name, version and description; tokens prefixed with # (e.g. #system #direct #transitive) filter by tag.",
 					},
 				},
 			},
@@ -37,11 +38,9 @@ export function useWebMCPIGBrowser(actionsRef: RefObject<IGBrowserActions>) {
 					| string
 					| undefined;
 				const packages = actionsRef.current.listPackages(query);
-				const sort = actionsRef.current.getSort();
 				return textResult(
 					JSON.stringify(
 						{
-							sort,
 							total: packages.length,
 							packages,
 						},
@@ -49,30 +48,6 @@ export function useWebMCPIGBrowser(actionsRef: RefObject<IGBrowserActions>) {
 						2,
 					),
 				);
-			},
-		});
-
-		navigator.modelContext.registerTool({
-			name: "sort_packages",
-			description:
-				"[FHIR Packages] Sort the packages table by clicking a column header. " +
-				"Works like a toggle: first call sorts asc, second call on the same column flips to desc. " +
-				"Returns the resulting sort state.",
-			inputSchema: {
-				type: "object",
-				properties: {
-					column: {
-						type: "string",
-						enum: ["name", "type"],
-						description: "Column to sort by",
-					},
-				},
-				required: ["column"],
-			},
-			execute: async (args: { column: "name" | "type" }) => {
-				actionsRef.current.sortPackages(args.column);
-				const result = actionsRef.current.getSort();
-				return textResult(JSON.stringify(result));
 			},
 		});
 

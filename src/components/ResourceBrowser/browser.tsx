@@ -496,6 +496,7 @@ export function Browser() {
 		getScrollElement: () => scrollRef.current,
 		estimateSize: () => 90,
 		overscan: 8,
+		getItemKey: (index) => items[index]?.resourceType ?? index,
 	});
 
 	useEffect(() => {
