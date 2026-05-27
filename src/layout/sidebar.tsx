@@ -15,6 +15,7 @@ import {
 	ClipboardList,
 	Columns3Cog,
 	Database,
+	HardDrive,
 	ListChecks,
 	Notebook,
 	Package,
@@ -65,6 +66,16 @@ const mainMenuItems: {
 			<Link to="/db-console" search={{ query: undefined }}>
 				<Database />
 				SQL console
+			</Link>
+		),
+	},
+	{
+		url: "/database",
+		title: "Database",
+		link: (
+			<Link to="/database">
+				<HardDrive />
+				Database
 			</Link>
 		),
 	},
