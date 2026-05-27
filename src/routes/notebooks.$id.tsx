@@ -315,6 +315,7 @@ export function RestCellView({
 	const [tab, setTab] = useState<"body" | "headers">("body");
 	const responseRef = useRef<HTMLDivElement | null>(null);
 	const client = useAidboxClient();
+	const queryClient = useQueryClient();
 
 	const updateRaw = (v: string) => {
 		setRaw(v);
@@ -378,6 +379,14 @@ export function RestCellView({
 			onResultChange?.(next);
 		} finally {
 			setLoading(false);
+			// A REST call may create/update a ViewDefinition or SQLQuery that
+			// other cells reference, so refresh those lookups.
+			void queryClient.invalidateQueries({
+				queryKey: ["view-definition-by-url"],
+			});
+			void queryClient.invalidateQueries({
+				queryKey: ["sqlquery-library-by-url"],
+			});
 		}
 	};
 
