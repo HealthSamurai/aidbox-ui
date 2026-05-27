@@ -16,6 +16,7 @@ import {
 	Columns3Cog,
 	Database,
 	HardDrive,
+	ListChecks,
 	Notebook,
 	Package,
 	PanelLeftClose,
@@ -131,6 +132,16 @@ const mainMenuItems: {
 			<Link to="/audit-events">
 				<ShieldUser />
 				Audit events
+			</Link>
+		),
+	},
+	{
+		url: "/async-operations",
+		title: "Async operations",
+		link: (
+			<Link to="/async-operations">
+				<ListChecks />
+				Async operations
 			</Link>
 		),
 	},

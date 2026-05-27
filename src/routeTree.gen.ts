@@ -17,12 +17,14 @@ import { Route as IgRouteImport } from './routes/ig'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
 import { Route as DatabaseRouteImport } from './routes/database'
 import { Route as AuditEventsRouteImport } from './routes/audit-events'
+import { Route as AsyncOperationsRouteImport } from './routes/async-operations'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourceIndexRouteImport } from './routes/resource.index'
 import { Route as NotebooksIndexRouteImport } from './routes/notebooks.index'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
 import { Route as DatabaseIndexRouteImport } from './routes/database.index'
+import { Route as AsyncOperationsIndexRouteImport } from './routes/async-operations.index'
 import { Route as AnalyticsIndexRouteImport } from './routes/analytics.index'
 import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
 import { Route as NotebooksNewRouteImport } from './routes/notebooks.new'
@@ -32,6 +34,7 @@ import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
 import { Route as DatabaseSearchParamsRouteImport } from './routes/database.search-params'
 import { Route as DatabaseSchemaRouteImport } from './routes/database.schema'
 import { Route as DatabaseQueriesRouteImport } from './routes/database.queries'
+import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
 import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
 import { Route as AnalyticsQueriesRouteImport } from './routes/analytics.queries'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
@@ -87,6 +90,11 @@ const AuditEventsRoute = AuditEventsRouteImport.update({
   path: '/audit-events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AsyncOperationsRoute = AsyncOperationsRouteImport.update({
+  id: '/async-operations',
+  path: '/async-operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -116,6 +124,11 @@ const DatabaseIndexRoute = DatabaseIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DatabaseRoute,
+} as any)
+const AsyncOperationsIndexRoute = AsyncOperationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AsyncOperationsRoute,
 } as any)
 const AnalyticsIndexRoute = AnalyticsIndexRouteImport.update({
   id: '/',
@@ -162,6 +175,12 @@ const DatabaseQueriesRoute = DatabaseQueriesRouteImport.update({
   path: '/queries',
   getParentRoute: () => DatabaseRoute,
 } as any)
+const AsyncOperationsOperationIdRoute =
+  AsyncOperationsOperationIdRouteImport.update({
+    id: '/$operationId',
+    path: '/$operationId',
+    getParentRoute: () => AsyncOperationsRoute,
+  } as any)
 const AnalyticsViewsRoute = AnalyticsViewsRouteImport.update({
   id: '/views',
   path: '/views',
@@ -240,6 +259,7 @@ const IgPackageIdResourceResourceTypeResourceIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRouteWithChildren
+  '/async-operations': typeof AsyncOperationsRouteWithChildren
   '/audit-events': typeof AuditEventsRoute
   '/database': typeof DatabaseRouteWithChildren
   '/db-console': typeof DbConsoleRoute
@@ -250,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/analytics/queries': typeof AnalyticsQueriesRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
+  '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/database/queries': typeof DatabaseQueriesRoute
   '/database/schema': typeof DatabaseSchemaRoute
   '/database/search-params': typeof DatabaseSearchParamsRoute
@@ -259,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
+  '/async-operations/': typeof AsyncOperationsIndexRoute
   '/database/': typeof DatabaseIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
@@ -282,6 +304,7 @@ export interface FileRoutesByTo {
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/database/queries': typeof DatabaseQueriesRoute
   '/database/schema': typeof DatabaseSchemaRoute
   '/database/search-params': typeof DatabaseSearchParamsRoute
@@ -289,6 +312,7 @@ export interface FileRoutesByTo {
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/analytics': typeof AnalyticsIndexRoute
+  '/async-operations': typeof AsyncOperationsIndexRoute
   '/database': typeof DatabaseIndexRoute
   '/ig': typeof IgIndexRoute
   '/notebooks': typeof NotebooksIndexRoute
@@ -310,6 +334,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRouteWithChildren
+  '/async-operations': typeof AsyncOperationsRouteWithChildren
   '/audit-events': typeof AuditEventsRoute
   '/database': typeof DatabaseRouteWithChildren
   '/db-console': typeof DbConsoleRoute
@@ -320,6 +345,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/analytics/queries': typeof AnalyticsQueriesRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
+  '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/database/queries': typeof DatabaseQueriesRoute
   '/database/schema': typeof DatabaseSchemaRoute
   '/database/search-params': typeof DatabaseSearchParamsRoute
@@ -329,6 +355,7 @@ export interface FileRoutesById {
   '/notebooks/new': typeof NotebooksNewRoute
   '/resource/$resourceType': typeof ResourceResourceTypeRouteWithChildren
   '/analytics/': typeof AnalyticsIndexRoute
+  '/async-operations/': typeof AsyncOperationsIndexRoute
   '/database/': typeof DatabaseIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
@@ -351,6 +378,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
+    | '/async-operations'
     | '/audit-events'
     | '/database'
     | '/db-console'
@@ -361,6 +389,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/analytics/queries'
     | '/analytics/views'
+    | '/async-operations/$operationId'
     | '/database/queries'
     | '/database/schema'
     | '/database/search-params'
@@ -370,6 +399,7 @@ export interface FileRouteTypes {
     | '/notebooks/new'
     | '/resource/$resourceType'
     | '/analytics/'
+    | '/async-operations/'
     | '/database/'
     | '/ig/'
     | '/notebooks/'
@@ -393,6 +423,7 @@ export interface FileRouteTypes {
     | '/db-console'
     | '/rest'
     | '/settings'
+    | '/async-operations/$operationId'
     | '/database/queries'
     | '/database/schema'
     | '/database/search-params'
@@ -400,6 +431,7 @@ export interface FileRouteTypes {
     | '/notebooks/$id'
     | '/notebooks/new'
     | '/analytics'
+    | '/async-operations'
     | '/database'
     | '/ig'
     | '/notebooks'
@@ -420,6 +452,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/analytics'
+    | '/async-operations'
     | '/audit-events'
     | '/database'
     | '/db-console'
@@ -430,6 +463,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/analytics/queries'
     | '/analytics/views'
+    | '/async-operations/$operationId'
     | '/database/queries'
     | '/database/schema'
     | '/database/search-params'
@@ -439,6 +473,7 @@ export interface FileRouteTypes {
     | '/notebooks/new'
     | '/resource/$resourceType'
     | '/analytics/'
+    | '/async-operations/'
     | '/database/'
     | '/ig/'
     | '/notebooks/'
@@ -460,6 +495,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRouteWithChildren
+  AsyncOperationsRoute: typeof AsyncOperationsRouteWithChildren
   AuditEventsRoute: typeof AuditEventsRoute
   DatabaseRoute: typeof DatabaseRouteWithChildren
   DbConsoleRoute: typeof DbConsoleRoute
@@ -528,6 +564,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/async-operations': {
+      id: '/async-operations'
+      path: '/async-operations'
+      fullPath: '/async-operations'
+      preLoaderRoute: typeof AsyncOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -569,6 +612,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/database/'
       preLoaderRoute: typeof DatabaseIndexRouteImport
       parentRoute: typeof DatabaseRoute
+    }
+    '/async-operations/': {
+      id: '/async-operations/'
+      path: '/'
+      fullPath: '/async-operations/'
+      preLoaderRoute: typeof AsyncOperationsIndexRouteImport
+      parentRoute: typeof AsyncOperationsRoute
     }
     '/analytics/': {
       id: '/analytics/'
@@ -632,6 +682,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/database/queries'
       preLoaderRoute: typeof DatabaseQueriesRouteImport
       parentRoute: typeof DatabaseRoute
+    }
+    '/async-operations/$operationId': {
+      id: '/async-operations/$operationId'
+      path: '/$operationId'
+      fullPath: '/async-operations/$operationId'
+      preLoaderRoute: typeof AsyncOperationsOperationIdRouteImport
+      parentRoute: typeof AsyncOperationsRoute
     }
     '/analytics/views': {
       id: '/analytics/views'
@@ -781,6 +838,20 @@ const AnalyticsRouteWithChildren = AnalyticsRoute._addFileChildren(
   AnalyticsRouteChildren,
 )
 
+interface AsyncOperationsRouteChildren {
+  AsyncOperationsOperationIdRoute: typeof AsyncOperationsOperationIdRoute
+  AsyncOperationsIndexRoute: typeof AsyncOperationsIndexRoute
+}
+
+const AsyncOperationsRouteChildren: AsyncOperationsRouteChildren = {
+  AsyncOperationsOperationIdRoute: AsyncOperationsOperationIdRoute,
+  AsyncOperationsIndexRoute: AsyncOperationsIndexRoute,
+}
+
+const AsyncOperationsRouteWithChildren = AsyncOperationsRoute._addFileChildren(
+  AsyncOperationsRouteChildren,
+)
+
 interface DatabaseRouteChildren {
   DatabaseQueriesRoute: typeof DatabaseQueriesRoute
   DatabaseSchemaRoute: typeof DatabaseSchemaRoute
@@ -878,6 +949,7 @@ const ResourceRouteWithChildren = ResourceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRouteWithChildren,
+  AsyncOperationsRoute: AsyncOperationsRouteWithChildren,
   AuditEventsRoute: AuditEventsRoute,
   DatabaseRoute: DatabaseRouteWithChildren,
   DbConsoleRoute: DbConsoleRoute,
