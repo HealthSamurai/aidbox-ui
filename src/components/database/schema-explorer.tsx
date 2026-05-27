@@ -22,6 +22,7 @@ import {
 	useReindexTable,
 	useVacuumTable,
 } from "../../api/database";
+import { createFuzzySearch } from "../../utils/fuzzy-search";
 import type { ColumnDef, SortState } from "../data-table/types";
 
 // Schemas worth surfacing — pg_catalog/information_schema/pgagent are filtered
@@ -166,18 +167,8 @@ function tableKey(r: { table_schema: string; table_name: string }): string {
 	return `${r.table_schema}.${r.table_name}`;
 }
 
-function useDebouncedValue<T>(value: T, delay: number): T {
-	const [debounced, setDebounced] = useState(value);
-	useEffect(() => {
-		const id = setTimeout(() => setDebounced(value), delay);
-		return () => clearTimeout(id);
-	}, [value, delay]);
-	return debounced;
-}
-
 export function SchemaExplorer() {
-	const [filterInput, setFilterInput] = useState("");
-	const filter = useDebouncedValue(filterInput, 250);
+	const [filter, setFilter] = useState("");
 	const [sort, setSort] = useState<SortState>({
 		column: "total_size",
 		direction: "desc",
@@ -188,17 +179,35 @@ export function SchemaExplorer() {
 	);
 	const [pending, setPending] = useState<PendingAction | null>(null);
 
+	// Load every table once; filtering happens client-side (fuzzy), so typing
+	// doesn't round-trip to the server.
 	const { data, isLoading, refetch, isFetching } = usePgTables({
-		q: filter || undefined,
-		limit: 2000,
+		limit: 5000,
 		allSchemas: true,
 	});
 	const vacuum = useVacuumTable();
 	const analyze = useAnalyzeTable();
 	const reindex = useReindexTable();
 
+	const fuzzySearch = useMemo(
+		() =>
+			data
+				? createFuzzySearch(data, {
+						keys: [
+							{ name: "table_name", weight: 2 },
+							{ name: "table_schema", weight: 1 },
+						],
+						minMatchCharLength: 2,
+						threshold: 0.2,
+					})
+				: () => [],
+		[data],
+	);
+
+	const filtering = filter.trim().length > 0;
+
 	const grouped = useMemo(() => {
-		const rows = data ?? [];
+		const rows = filtering ? fuzzySearch(filter) : (data ?? []);
 		const bySchema = new Map<string, PgTableRow[]>();
 		for (const row of rows) {
 			const list = bySchema.get(row.table_schema) ?? [];
@@ -221,14 +230,16 @@ export function SchemaExplorer() {
 			schema,
 			rows: bySchema.get(schema) ?? [],
 		}));
-	}, [data, sort]);
+	}, [data, filtering, fuzzySearch, filter, sort]);
 
 	// First load: start with every schema collapsed.
-	const initialized = useMemo(() => grouped.length > 0, [grouped.length]);
+	const initialized = useMemo(() => (data?.length ?? 0) > 0, [data]);
 	useEffect(() => {
 		if (!initialized || collapsedSchemas.size > 0) return;
-		setCollapsedSchemas(new Set(grouped.map((g) => g.schema)));
-	}, [initialized, grouped, collapsedSchemas.size]);
+		const all = new Set<string>();
+		for (const row of data ?? []) all.add(row.table_schema);
+		setCollapsedSchemas(all);
+	}, [initialized, data, collapsedSchemas.size]);
 
 	const toggleSchema = (schema: string) => {
 		setCollapsedSchemas((prev) => {
@@ -373,17 +384,14 @@ export function SchemaExplorer() {
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<h1 className="typo-h4 text-text-primary">Schema explorer</h1>
-				<div className="flex-1" />
 				<Input
-					placeholder="Filter tables"
-					value={filterInput}
-					onChange={(e) => setFilterInput(e.target.value)}
-					className="w-72"
+					placeholder="Search"
+					value={filter}
+					onChange={(e) => setFilter(e.target.value)}
+					className="flex-1"
 				/>
 				<Button
-					variant="secondary"
-					size="small"
+					variant="primary"
 					onClick={() => refetch()}
 					disabled={isFetching}
 				>
@@ -404,7 +412,9 @@ export function SchemaExplorer() {
 					<table className="w-full typo-code">
 						<tbody>
 							{grouped.map(({ schema, rows }) => {
-								const collapsed = collapsedSchemas.has(schema);
+								// While filtering, force every matching schema open so
+								// results are visible without manual expansion.
+								const collapsed = !filtering && collapsedSchemas.has(schema);
 								return (
 									<Fragment key={schema}>
 										<tr
@@ -519,13 +529,13 @@ export function SchemaExplorer() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{actionTitle(pending?.kind)}</AlertDialogTitle>
-						<AlertDialogDescription>
-							{actionDesc(pending)}
-						</AlertDialogDescription>
 					</AlertDialogHeader>
+					<AlertDialogDescription>{actionDesc(pending)}</AlertDialogDescription>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={onConfirm}>Run</AlertDialogAction>
+						<AlertDialogAction variant="primary" onClick={onConfirm}>
+							Run
+						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

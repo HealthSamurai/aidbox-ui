@@ -12,7 +12,7 @@ import {
 } from "@health-samurai/react-components";
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, RefreshCw, RotateCcw, X } from "lucide-react";
+import { Check, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import {
@@ -20,12 +20,13 @@ import {
 	type SearchParamStatsOrderBy,
 	type SortDir,
 	useResetSearchParamStats,
+	useResetSearchParamStatsRows,
 	useSearchParamStats,
 	useSearchParamStatsCount,
 } from "../../api/database";
 import { DataTable } from "../data-table";
 import { DataTableFooter } from "../data-table/footer";
-import type { ColumnDef, SortState } from "../data-table/types";
+import type { BulkAction, ColumnDef, SortState } from "../data-table/types";
 
 function formatMs(v: number | null | undefined): string {
 	if (v == null) return "—";
@@ -127,6 +128,7 @@ export function SearchParamsStats() {
 	const [resourceFilter, setResourceFilter] = useState("");
 	const [paramFilter, setParamFilter] = useState("");
 	const [resetOpen, setResetOpen] = useState(false);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
 	const orderBy: SearchParamStatsOrderBy = sort
 		? (COLUMN_TO_ORDER_BY[sort.column] ?? "calls")
@@ -155,8 +157,43 @@ export function SearchParamsStats() {
 		searchParam: queryArgs.searchParam,
 	});
 	const reset = useResetSearchParamStats();
+	const resetRows = useResetSearchParamStatsRows();
 	const total = countData?.total ?? 0;
 	const spIdByKey = useSearchParameterIdLookup(rows ?? []);
+
+	const rowByKey = useMemo(() => {
+		const map = new Map<string, SearchParamStatRow>();
+		for (const r of rows ?? []) map.set(rowKey(r), r);
+		return map;
+	}, [rows]);
+
+	const bulkActions: BulkAction[] = [
+		{
+			id: "drop",
+			label: "Drop stats",
+			icon: <Trash2 className="size-3.5" />,
+			variant: "danger",
+			confirm: {
+				title: "Drop stats for selected params?",
+				description:
+					"Removes collected stats for the selected (resource, search param) rows. Counters restart from zero.",
+				actionLabel: "Drop",
+			},
+			onClick: () => {
+				const targets = [...selectedIds]
+					.map((id) => rowByKey.get(id))
+					.filter((r): r is SearchParamStatRow => !!r?.search_param)
+					.map((r) => ({
+						resourceType: r.resource_type,
+						searchParam: r.search_param as string,
+					}));
+				if (targets.length === 0) return;
+				resetRows.mutate(targets, {
+					onSuccess: () => setSelectedIds(new Set()),
+				});
+			},
+		},
+	];
 
 	const linkToSp = (row: SearchParamStatRow, label: ReactNode) => {
 		const code = row.search_param;
@@ -281,23 +318,20 @@ export function SearchParamsStats() {
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<h1 className="typo-h4 text-text-primary">Search params stats</h1>
-				<div className="flex-1" />
 				<Input
 					placeholder="Resource type"
 					value={resourceFilter}
 					onChange={(e) => onResourceFilterChange(e.target.value)}
-					className="w-48"
+					className="flex-1"
 				/>
 				<Input
 					placeholder="Search param"
 					value={paramFilter}
 					onChange={(e) => onParamFilterChange(e.target.value)}
-					className="w-48"
+					className="flex-1"
 				/>
 				<Button
-					variant="secondary"
-					size="small"
+					variant="primary"
 					onClick={() => refetch()}
 					disabled={isFetching}
 				>
@@ -308,7 +342,6 @@ export function SearchParamsStats() {
 				</Button>
 				<Button
 					variant="secondary"
-					size="small"
 					onClick={() => setResetOpen(true)}
 					disabled={reset.isPending}
 				>
@@ -324,6 +357,9 @@ export function SearchParamsStats() {
 					loading={isLoading}
 					sort={sort}
 					onSortToggle={onSortToggle}
+					selectable
+					selectedIds={selectedIds}
+					onSelectionChange={setSelectedIds}
 					emptyState={
 						<div className="flex items-center justify-center h-full text-text-secondary">
 							No search-param stats match. Run some FHIR searches or adjust
@@ -336,7 +372,8 @@ export function SearchParamsStats() {
 				total={total}
 				currentPage={page}
 				pageSize={pageSize}
-				selectedCount={0}
+				selectedCount={selectedIds.size}
+				bulkActions={bulkActions}
 				onPageChange={setPage}
 				onPageSizeChange={onPageSizeChange}
 			/>
@@ -344,14 +381,16 @@ export function SearchParamsStats() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Reset search-param stats?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Clears the aidbox_stat.search_param_stats table. Counters restart
-							from zero.
-						</AlertDialogDescription>
 					</AlertDialogHeader>
+					<AlertDialogDescription>
+						Clears the aidbox_stat.search_param_stats table. Counters restart
+						from zero.
+					</AlertDialogDescription>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
+							variant="primary"
+							danger
 							onClick={() => {
 								reset.mutate();
 								setResetOpen(false);

@@ -13,11 +13,8 @@ import {
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { Pause, Play, RefreshCw, Square, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import {
@@ -64,7 +61,6 @@ function compare(a: unknown, b: unknown): number {
 type PendingAction = { kind: "cancel" | "terminate"; pid: number };
 
 export function RunningQueries() {
-	const [paused, setPaused] = useState(false);
 	const [sort, setSort] = useState<SortState>({
 		column: "duration",
 		direction: "desc",
@@ -72,9 +68,7 @@ export function RunningQueries() {
 	const [openQuery, setOpenQuery] = useState<ActiveQueryRow | null>(null);
 	const [pending, setPending] = useState<PendingAction | null>(null);
 
-	const { data, isLoading, refetch, isFetching } = useActiveQueries(
-		paused ? false : 5000,
-	);
+	const { data, isLoading, refetch, isFetching } = useActiveQueries(5000);
 	const cancel = useCancelQuery();
 	const terminate = useTerminateQuery();
 
@@ -166,33 +160,25 @@ export function RunningQueries() {
 		{
 			id: "actions",
 			header: "",
-			width: "w-[100px]",
+			width: "w-[200px]",
 			cell: (r) => (
 				<div className="flex items-center gap-1 justify-end">
-					<Tooltip delayDuration={0}>
-						<TooltipTrigger asChild>
-							<Button
-								variant="ghost"
-								size="small"
-								onClick={() => setPending({ kind: "cancel", pid: r.pid })}
-							>
-								<X className="size-3.5" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>Cancel query</TooltipContent>
-					</Tooltip>
-					<Tooltip delayDuration={0}>
-						<TooltipTrigger asChild>
-							<Button
-								variant="ghost"
-								size="small"
-								onClick={() => setPending({ kind: "terminate", pid: r.pid })}
-							>
-								<Square className="size-3.5" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>Terminate backend</TooltipContent>
-					</Tooltip>
+					<Button
+						variant="ghost"
+						size="small"
+						danger
+						onClick={() => setPending({ kind: "cancel", pid: r.pid })}
+					>
+						Cancel
+					</Button>
+					<Button
+						variant="ghost"
+						size="small"
+						danger
+						onClick={() => setPending({ kind: "terminate", pid: r.pid })}
+					>
+						Terminate
+					</Button>
 				</div>
 			),
 		},
@@ -208,26 +194,13 @@ export function RunningQueries() {
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<h1 className="typo-h4 text-text-primary">Running queries</h1>
+				<h1 className="typo-h4 text-text-primary">DB Active Queries</h1>
 				<span className="typo-body-xs text-text-tertiary">
 					{sorted.length} active
 				</span>
 				<div className="flex-1" />
 				<Button
-					variant="secondary"
-					size="small"
-					onClick={() => setPaused((p) => !p)}
-				>
-					{paused ? (
-						<Play className="size-3.5" />
-					) : (
-						<Pause className="size-3.5" />
-					)}
-					{paused ? "Resume" : "Pause"}
-				</Button>
-				<Button
-					variant="secondary"
-					size="small"
+					variant="primary"
 					onClick={() => refetch()}
 					disabled={isFetching}
 				>
@@ -281,15 +254,15 @@ export function RunningQueries() {
 								? "Cancel query?"
 								: "Terminate backend?"}
 						</AlertDialogTitle>
-						<AlertDialogDescription>
-							{pending?.kind === "cancel"
-								? `pg_cancel_backend(${pending?.pid}). Asks the backend to stop the running statement.`
-								: `pg_terminate_backend(${pending?.pid}). Kills the entire connection — clients will see "terminating connection".`}
-						</AlertDialogDescription>
 					</AlertDialogHeader>
+					<AlertDialogDescription>
+						{pending?.kind === "cancel"
+							? `pg_cancel_backend(${pending?.pid}). Asks the backend to stop the running statement.`
+							: `pg_terminate_backend(${pending?.pid}). Kills the entire connection — clients will see "terminating connection".`}
+					</AlertDialogDescription>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Dismiss</AlertDialogCancel>
-						<AlertDialogAction onClick={onConfirm}>
+						<AlertDialogAction variant="primary" danger onClick={onConfirm}>
 							{pending?.kind === "cancel" ? "Cancel query" : "Terminate"}
 						</AlertDialogAction>
 					</AlertDialogFooter>

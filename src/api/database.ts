@@ -296,3 +296,25 @@ export function useResetSearchParamStats() {
 			qc.invalidateQueries({ queryKey: ["database", "search-param-stats"] }),
 	});
 }
+
+// Drop stats for specific (resource_type, search_param) rows. The backend
+// resets one filter per call, so we loop client-side (selection is UI-bound,
+// so N stays small).
+export function useResetSearchParamStatsRows() {
+	const client = useAidboxClient();
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: async (
+			rows: { resourceType: string; searchParam: string }[],
+		) => {
+			for (const row of rows) {
+				await rpc(client, "aidbox.index/reset-search-param-stats", {
+					"resource-type": row.resourceType,
+					"search-param": row.searchParam,
+				});
+			}
+		},
+		onSuccess: () =>
+			qc.invalidateQueries({ queryKey: ["database", "search-param-stats"] }),
+	});
+}
