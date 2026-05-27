@@ -20,6 +20,7 @@ import {
 	usePgTable,
 	usePgTables,
 	useReindexTable,
+	useTruncateTable,
 	useVacuumTable,
 } from "../../api/database";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
@@ -60,7 +61,7 @@ function compare(a: unknown, b: unknown): number {
 }
 
 type PendingAction = {
-	kind: "vacuum" | "analyze" | "reindex";
+	kind: "vacuum" | "analyze" | "reindex" | "truncate";
 } & TableRef;
 
 function TableDetails({
@@ -105,6 +106,14 @@ function TableDetails({
 					onClick={() => onAction("reindex", ref)}
 				>
 					Reindex
+				</Button>
+				<Button
+					variant="secondary"
+					size="small"
+					danger
+					onClick={() => onAction("truncate", ref)}
+				>
+					Truncate
 				</Button>
 			</div>
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -188,6 +197,7 @@ export function SchemaExplorer() {
 	const vacuum = useVacuumTable();
 	const analyze = useAnalyzeTable();
 	const reindex = useReindexTable();
+	const truncate = useTruncateTable();
 
 	const fuzzySearch = useMemo(
 		() =>
@@ -357,7 +367,9 @@ export function SchemaExplorer() {
 			? "Vacuum table?"
 			: k === "analyze"
 				? "Analyze table?"
-				: "Reindex table?";
+				: k === "truncate"
+					? "Truncate table?"
+					: "Reindex table?";
 
 	const actionDesc = (p: PendingAction | null) => {
 		if (!p) return "";
@@ -366,6 +378,8 @@ export function SchemaExplorer() {
 			return `REINDEX TABLE ${t}. Rebuilds all indexes — locks the table for writes.`;
 		if (p.kind === "vacuum")
 			return `VACUUM ${t}. Reclaims dead-tuple space. Runs concurrently with reads/writes.`;
+		if (p.kind === "truncate")
+			return `TRUNCATE TABLE ${t}. Permanently deletes ALL rows in the table. This cannot be undone.`;
 		return `ANALYZE ${t}. Refreshes planner stats.`;
 	};
 
@@ -375,6 +389,7 @@ export function SchemaExplorer() {
 		const ref: TableRef = { schema, table };
 		if (kind === "vacuum") vacuum.mutate(ref);
 		else if (kind === "analyze") analyze.mutate(ref);
+		else if (kind === "truncate") truncate.mutate(ref);
 		else reindex.mutate(ref);
 		setPending(null);
 	};
@@ -533,8 +548,12 @@ export function SchemaExplorer() {
 					<AlertDialogDescription>{actionDesc(pending)}</AlertDialogDescription>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction variant="primary" onClick={onConfirm}>
-							Run
+						<AlertDialogAction
+							variant="primary"
+							danger={pending?.kind === "truncate"}
+							onClick={onConfirm}
+						>
+							{pending?.kind === "truncate" ? "Truncate" : "Run"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

@@ -169,6 +169,19 @@ export function useReindexTable() {
 	});
 }
 
+export function useTruncateTable() {
+	const client = useAidboxClient();
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (vars: TableRef) =>
+			rpc(client, "aidbox.pg/truncate-table", {
+				schema: vars.schema,
+				table: vars.table,
+			}),
+		onSuccess: () => invalidateTables(qc),
+	});
+}
+
 // Active queries
 
 export type ActiveQueryRow = {
