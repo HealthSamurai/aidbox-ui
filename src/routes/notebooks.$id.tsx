@@ -5,6 +5,7 @@ import * as yaml from "js-yaml";
 import {
 	Check,
 	ChevronDown,
+	Copy,
 	Database,
 	FileCode,
 	FileDown,
@@ -29,7 +30,7 @@ import { useAidboxClient } from "../AidboxClient";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { ResultContent } from "../components/db-console/result-content";
 import { transformToQueryResultItems } from "../components/db-console/tables-view";
-import { ResourcePicker } from "../components/SQLQueryBuilder/resource-picker";
+import { NotebookResourcePicker } from "../components/notebook-resource-picker";
 import { HTTP_STATUS_CODES } from "../shared/const";
 import { prettyEdn } from "../utils/edn";
 import type { QueryResultItem } from "../webmcp/db-console-context";
@@ -297,11 +298,14 @@ export function RestCellView({
 	cell,
 	onValueChange,
 	onResultChange,
+	readOnly,
 }: {
 	cell: Cell;
 	onValueChange?: (value: string) => void;
 	onResultChange?: (result: unknown) => void;
+	readOnly?: boolean;
 }) {
+	const isReadOnly = readOnly ?? !onValueChange;
 	const [raw, setRaw] = useState(cell.value ?? "");
 	const [response, setResponse] = useState<CellResponse | null>(
 		savedRestToResponse(cell.result),
@@ -417,6 +421,7 @@ export function RestCellView({
 					mode="http"
 					defaultValue={raw}
 					onChange={updateRaw}
+					readOnly={isReadOnly}
 					lineNumbers={false}
 					foldGutter={false}
 				/>
@@ -537,11 +542,14 @@ export function SqlCellView({
 	cell,
 	onValueChange,
 	onResultChange,
+	readOnly,
 }: {
 	cell: Cell;
 	onValueChange?: (value: string) => void;
 	onResultChange?: (result: unknown) => void;
+	readOnly?: boolean;
 }) {
+	const isReadOnly = readOnly ?? !onValueChange;
 	const [query, setQuery] = useState(cell.value ?? "");
 	const [results, setResults] = useState<QueryResultItem[] | null>(() =>
 		savedSqlToResults(cell.result),
@@ -618,6 +626,7 @@ export function SqlCellView({
 					mode="sql"
 					defaultValue={query}
 					onChange={updateQuery}
+					readOnly={isReadOnly}
 					lineNumbers={false}
 					foldGutter={false}
 				/>
@@ -684,16 +693,39 @@ type ViewRunResult =
 	| { ok: true; rows: Record<string, unknown>[] }
 	| { ok: false; error: string };
 
-function useViewDefinitionByUrl(url: string | null) {
+// A notebook cell references a resource either by canonical url or, when the
+// resource has no url, by a relative "ResourceType/id" reference.
+function refToId(
+	type: "ViewDefinition" | "Library",
+	ref: string,
+): string | null {
+	if (!ref || ref.includes("://")) return null;
+	const m = ref.match(/^(\w+)\/(.+)$/);
+	return m && m[1] === type && m[2] ? m[2] : null;
+}
+
+function useViewDefinitionByUrl(ref: string | null) {
 	const client = useAidboxClient();
 	return useQuery<ViewDefinitionResource | null>({
-		queryKey: ["view-definition-by-url", url],
-		enabled: !!url,
+		queryKey: ["view-definition-by-url", ref],
+		enabled: !!ref,
 		staleTime: 60_000,
 		queryFn: async () => {
+			const id = refToId("ViewDefinition", ref ?? "");
+			if (id) {
+				try {
+					const resp = await client.rawRequest({
+						method: "GET",
+						url: `/fhir/ViewDefinition/${encodeURIComponent(id)}`,
+					});
+					return (await resp.response.json()) as ViewDefinitionResource;
+				} catch {
+					return null;
+				}
+			}
 			const resp = await client.rawRequest({
 				method: "GET",
-				url: `/fhir/ViewDefinition?url=${encodeURIComponent(url ?? "")}&_count=1`,
+				url: `/fhir/ViewDefinition?url=${encodeURIComponent(ref ?? "")}&_count=1`,
 			});
 			const json = (await resp.response.json()) as {
 				entry?: { resource: ViewDefinitionResource }[];
@@ -707,13 +739,16 @@ export function ViewDefinitionCellView({
 	cell,
 	onValueChange,
 	onResultChange,
+	readOnly,
 }: {
 	cell: Cell;
 	onValueChange?: (value: string) => void;
 	onResultChange?: (result: unknown) => void;
+	readOnly?: boolean;
 }) {
 	const client = useAidboxClient();
-	const editable = !!onValueChange;
+	const isReadOnly = readOnly ?? !onValueChange;
+	const editable = !isReadOnly;
 	const url = cell.value ?? "";
 	const { data: vd, isLoading: vdLoading } = useViewDefinitionByUrl(
 		url ? url : null,
@@ -791,7 +826,7 @@ export function ViewDefinitionCellView({
 						ViewDefinition
 					</span>
 					{editable && (
-						<ResourcePicker
+						<NotebookResourcePicker
 							value=""
 							onChange={(v) => onValueChange?.(v)}
 							kinds={["ViewDefinition"]}
@@ -927,16 +962,28 @@ type SqlQueryRunResult =
 	| { ok: true; columns: string[]; rows: unknown[][] }
 	| { ok: false; error: string };
 
-function useLibraryByUrl(url: string | null) {
+function useLibraryByUrl(ref: string | null) {
 	const client = useAidboxClient();
 	return useQuery<LibraryResource | null>({
-		queryKey: ["sqlquery-library-by-url", url],
-		enabled: !!url,
+		queryKey: ["sqlquery-library-by-url", ref],
+		enabled: !!ref,
 		staleTime: 60_000,
 		queryFn: async () => {
+			const id = refToId("Library", ref ?? "");
+			if (id) {
+				try {
+					const resp = await client.rawRequest({
+						method: "GET",
+						url: `/fhir/Library/${encodeURIComponent(id)}`,
+					});
+					return (await resp.response.json()) as LibraryResource;
+				} catch {
+					return null;
+				}
+			}
 			const resp = await client.rawRequest({
 				method: "GET",
-				url: `/fhir/Library?url=${encodeURIComponent(url ?? "")}&_count=1`,
+				url: `/fhir/Library?url=${encodeURIComponent(ref ?? "")}&_count=1`,
 			});
 			const json = (await resp.response.json()) as {
 				entry?: { resource: LibraryResource }[];
@@ -1040,13 +1087,16 @@ export function SqlQueryCellView({
 	cell,
 	onValueChange,
 	onResultChange,
+	readOnly,
 }: {
 	cell: Cell;
 	onValueChange?: (value: string) => void;
 	onResultChange?: (result: unknown) => void;
+	readOnly?: boolean;
 }) {
 	const client = useAidboxClient();
-	const editable = !!onValueChange;
+	const isReadOnly = readOnly ?? !onValueChange;
+	const editable = !isReadOnly;
 	const parsed = parseSqlQueryCellValue(cell.value ?? "");
 	const url = parsed.url;
 	const { data: lib, isLoading: libLoading } = useLibraryByUrl(
@@ -1121,7 +1171,7 @@ export function SqlQueryCellView({
 						SQLQuery
 					</span>
 					{editable && (
-						<ResourcePicker
+						<NotebookResourcePicker
 							value=""
 							onChange={(v) => {
 								setParamValues({});
@@ -1190,6 +1240,7 @@ export function SqlQueryCellView({
 								<input
 									id={`sqlq-${key}`}
 									value={paramValues[key] ?? ""}
+									disabled={isReadOnly}
 									onChange={(e) => {
 										const next = {
 											...paramValues,
@@ -1273,16 +1324,16 @@ export function SqlQueryCellView({
 export function CellView({ cell }: { cell: Cell }) {
 	const type = cell.type ?? "rest";
 	if (type === "rest" || type === "rpc") {
-		return <RestCellView cell={cell} />;
+		return <RestCellView cell={cell} readOnly />;
 	}
 	if (type === "sql") {
-		return <SqlCellView cell={cell} />;
+		return <SqlCellView cell={cell} readOnly />;
 	}
 	if (type === "view-definition") {
-		return <ViewDefinitionCellView cell={cell} />;
+		return <ViewDefinitionCellView cell={cell} readOnly />;
 	}
 	if (type === "sql-query") {
-		return <SqlQueryCellView cell={cell} />;
+		return <SqlQueryCellView cell={cell} readOnly />;
 	}
 	if (type === "markdown") {
 		return (
@@ -1324,6 +1375,26 @@ function notebookForExport(notebook: Notebook): Record<string, unknown> {
 			),
 		};
 	}
+	return cleaned;
+}
+
+function notebookForCopy(notebook: Notebook): Record<string, unknown> {
+	const cleaned = notebookForExport(notebook);
+	delete cleaned.id;
+	delete cleaned.meta;
+	// The community view delivers tags as a plain array (["Community"]);
+	// notebookForExport only strips the {value:[]} shape, so handle the array here.
+	const tags = cleaned.tags;
+	if (Array.isArray(tags)) {
+		const filtered = tags.filter(
+			(v) => typeof v !== "string" || v.toLowerCase() !== "community",
+		);
+		if (filtered.length > 0) cleaned.tags = filtered;
+		else delete cleaned.tags;
+	}
+	const trimmed = notebook.name?.trim();
+	const base = trimmed && trimmed.length > 0 ? trimmed : "Untitled notebook";
+	cleaned.name = base.startsWith("Copy of ") ? base : `Copy of ${base}`;
 	return cleaned;
 }
 
@@ -1445,6 +1516,55 @@ function ShareButton({ notebook }: { notebook: Notebook }) {
 				</HSComp.DropdownMenuItem>
 			</HSComp.DropdownMenuContent>
 		</HSComp.DropdownMenu>
+	);
+}
+
+function CopyNotebookButton({ notebook }: { notebook: Notebook }) {
+	const client = useAidboxClient();
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const mut = useMutation<{ id: string }, Error>({
+		mutationFn: async () => {
+			const body = {
+				method: "aidbox.notebooks/save-notebook",
+				params: { notebook: notebookForCopy(notebook) },
+			};
+			const resp = await client.rawRequest({
+				method: "POST",
+				url: `/rpc?_m=${body.method}`,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const json = (await resp.response.json()) as {
+				result?: { notebook?: { id?: string } };
+				error?: { message?: string };
+			};
+			const id = json.result?.notebook?.id;
+			if (!id) throw new Error(json.error?.message ?? "Copy failed");
+			return { id };
+		},
+		onSuccess: ({ id }) => {
+			void queryClient.invalidateQueries({ queryKey: ["notebooks-list"] });
+			HSComp.toast.success("Copied to your notebooks");
+			void navigate({ to: "/notebooks/$id/edit", params: { id } });
+		},
+		onError: (e) => HSComp.toast.error(e.message),
+	});
+	return (
+		<HSComp.Button
+			variant="ghost"
+			size="small"
+			className="px-0! text-text-link"
+			disabled={mut.isPending}
+			onClick={() => mut.mutate()}
+		>
+			{mut.isPending ? (
+				<Loader2 className="size-4 animate-spin" />
+			) : (
+				<Copy className="size-4" />
+			)}
+			Save a copy
+		</HSComp.Button>
 	);
 }
 
@@ -1654,28 +1774,37 @@ function NotebookViewPage() {
 
 	return (
 		<div className="h-full flex flex-col">
-			{notebook && canEdit && (
+			{notebook && (
 				<div
 					className="flex items-center bg-bg-secondary flex-none h-10 border-b border-border-default"
 					data-export-skip
 				>
 					<div className="mx-auto max-w-[990px] w-full flex items-center gap-4 px-8">
-						<Link to="/notebooks/$id/edit" params={{ id: notebook.id }}>
-							<HSComp.Button
-								variant="ghost"
-								size="small"
-								className="px-0! text-text-link"
-							>
-								<Pencil className="size-4" />
-								Edit
-							</HSComp.Button>
-						</Link>
-						<PublishButtons
-							notebook={notebook}
-							queryKey={["notebook", id, path ?? null]}
-						/>
-						<DeleteNotebookButton notebook={notebook} />
-						<ShareButton notebook={notebook} />
+						{canEdit ? (
+							<>
+								<Link to="/notebooks/$id/edit" params={{ id: notebook.id }}>
+									<HSComp.Button
+										variant="ghost"
+										size="small"
+										className="px-0! text-text-link"
+									>
+										<Pencil className="size-4" />
+										Edit
+									</HSComp.Button>
+								</Link>
+								<PublishButtons
+									notebook={notebook}
+									queryKey={["notebook", id, path ?? null]}
+								/>
+								<DeleteNotebookButton notebook={notebook} />
+								<ShareButton notebook={notebook} />
+							</>
+						) : (
+							<>
+								<CopyNotebookButton notebook={notebook} />
+								<ShareButton notebook={notebook} />
+							</>
+						)}
 					</div>
 				</div>
 			)}

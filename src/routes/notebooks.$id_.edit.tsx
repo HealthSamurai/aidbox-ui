@@ -45,6 +45,7 @@ function useNotebookForEdit(id: string) {
 					id: c.id,
 					type: c.type,
 					value: c.value,
+					result: c.result,
 				})),
 				"publication-id": nb["publication-id"],
 				"edit-secret": nb["edit-secret"],
