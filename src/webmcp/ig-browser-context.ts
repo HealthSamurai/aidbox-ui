@@ -3,18 +3,11 @@ import { createContext, use } from "react";
 export interface IGBrowserPackage {
 	name: string;
 	version: string;
-	type: string;
-}
-
-export interface IGBrowserSort {
-	column: "name" | "type";
-	direction: "asc" | "desc";
+	tags: string[];
 }
 
 export interface IGBrowserActions {
 	listPackages: (query?: string) => IGBrowserPackage[];
-	getSort: () => IGBrowserSort;
-	sortPackages: (column: "name" | "type") => void;
 	selectPackage: (id: string) => void;
 	openInstallationPage: () => void;
 }

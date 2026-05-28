@@ -326,7 +326,7 @@ function RegistryForm({
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
-			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
+			navigate({ to: "/ig", search: { q: undefined, tags: undefined } });
 		} catch (error) {
 			hadError = true;
 			await Utils.onError(error);
@@ -513,7 +513,7 @@ function UrlForm({
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
-			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
+			navigate({ to: "/ig", search: { q: undefined, tags: undefined } });
 		} catch (error) {
 			hadError = true;
 			await Utils.onError(error);
@@ -642,7 +642,7 @@ function FileForm({
 			await queryClient.invalidateQueries({
 				queryKey: ["ig-browser-packages"],
 			});
-			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
+			navigate({ to: "/ig", search: { q: undefined, tags: undefined } });
 		} catch (error) {
 			hadError = true;
 			await Utils.onError(error);
@@ -774,7 +774,7 @@ export function ImportPackage() {
 	useWebMCPImportPackage(actionsRef);
 
 	return (
-		<div className="w-full max-w-4xl px-4 py-4">
+		<div className="mx-auto max-w-[990px] px-8 py-4">
 			<MethodPicker selected={method} onSelect={setMethod} />
 
 			<div className="mt-6">

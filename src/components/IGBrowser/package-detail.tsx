@@ -1,30 +1,36 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import {
 	Link,
 	useNavigate,
 	useParams,
 	useSearch,
 } from "@tanstack/react-router";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-	ChevronLeftIcon,
-	ChevronRightIcon,
 	Loader2Icon,
 	RefreshCwIcon,
+	Search,
 	Trash2Icon,
 	X,
 } from "lucide-react";
 import {
 	type RefObject,
 	useCallback,
+	useDeferredValue,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
-import { useDebounce } from "../../hooks/useDebounce";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useWebMCPPackageDetail } from "../../webmcp/package-detail";
 import type { PackageDetailActions } from "../../webmcp/package-detail-context";
@@ -441,7 +447,6 @@ function VisualView({ meta }: { meta: PackageMeta }) {
 										tab: undefined,
 										view: undefined,
 										q: undefined,
-										page: undefined,
 									}}
 									className="text-text-link hover:underline text-sm"
 								>
@@ -554,102 +559,55 @@ function PackageInfoContent({
 	);
 }
 
-type CanonicalEntry = {
-	resource: {
-		resourceType: string;
-		id: string;
-		url?: string;
-		title?: string;
-		name?: string;
-		version?: string;
-		status?: string;
-	};
+type PackageEntity = {
+	resourceType: string;
+	id: string;
+	url?: string;
+	title?: string;
+	name?: string;
+	version?: string;
+	status?: string;
+	description?: string;
+	purpose?: string;
+	type?: string;
+	derivation?: string;
+	base?: string[];
 };
 
-type CanonicalResult = {
+type PackageEntityEntry = {
+	resource: PackageEntity;
+};
+
+type PackageEntitiesResult = {
 	total: number;
-	entry: CanonicalEntry[];
+	entry: PackageEntityEntry[];
 };
 
 const PAGE_SIZE = 50;
 
-function PaginationPages({
-	currentPage,
-	totalPages,
-	onPageChange,
-}: {
-	currentPage: number;
-	totalPages: number;
-	onPageChange: (page: number) => void;
-}) {
-	const pages: (number | string)[] = [];
-	if (totalPages <= 7) {
-		for (let i = 1; i <= totalPages; i++) pages.push(i);
-	} else {
-		pages.push(1);
-		if (currentPage > 3) pages.push("ellipsis-start");
-		const start = Math.max(2, currentPage - 1);
-		const end = Math.min(totalPages - 1, currentPage + 1);
-		for (let i = start; i <= end; i++) pages.push(i);
-		if (currentPage < totalPages - 2) pages.push("ellipsis-end");
-		pages.push(totalPages);
-	}
+const ENTITY_ELEMENTS =
+	"id,url,name,title,version,status,description,purpose,type,derivation,base";
 
-	return (
-		<div className="flex items-center gap-1">
-			<HSComp.Button
-				variant="ghost"
-				size="small"
-				disabled={currentPage <= 1}
-				onClick={() => onPageChange(currentPage - 1)}
-			>
-				<ChevronLeftIcon size={16} />
-			</HSComp.Button>
-			{pages.map((p) =>
-				typeof p === "string" ? (
-					<span key={p} className="px-1 text-text-secondary">
-						...
-					</span>
-				) : (
-					<HSComp.Button
-						key={p}
-						variant={p === currentPage ? "secondary" : "ghost"}
-						size="small"
-						onClick={() => onPageChange(p)}
-					>
-						{p}
-					</HSComp.Button>
-				),
-			)}
-			<HSComp.Button
-				variant="ghost"
-				size="small"
-				disabled={currentPage >= totalPages}
-				onClick={() => onPageChange(currentPage + 1)}
-			>
-				<ChevronRightIcon size={16} />
-			</HSComp.Button>
-		</div>
-	);
-}
-
-async function fetchCanonicals(
+async function fetchPackageEntities(
 	client: AidboxClientR5,
 	packageId: string,
+	resourceType: string,
 	substring: string,
 	page: number,
-): Promise<CanonicalResult> {
+): Promise<PackageEntitiesResult> {
 	const response = await client.rawRequest({
 		method: "POST",
-		url: "/rpc?_m=aidbox.introspector/search-package-canonicals",
+		url: "/rpc?_m=aidbox.introspector/get-package-entities",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
-			method: "aidbox.introspector/search-package-canonicals",
+			method: "aidbox.introspector/get-package-entities",
 			params: {
 				"package-coordinate": packageId,
+				"resource-type": resourceType,
 				...(substring ? { substring } : {}),
 				count: PAGE_SIZE,
 				page,
+				elements: ENTITY_ELEMENTS,
 			},
 		}),
 	});
@@ -657,98 +615,298 @@ async function fetchCanonicals(
 	return json.result ?? { total: 0, entry: [] };
 }
 
-function useCanonicals(packageId: string, substring: string, page: number) {
+function usePackageEntitiesInfinite(
+	packageId: string,
+	resourceType: string,
+	substring: string,
+) {
 	const client = useAidboxClient();
 
-	return useQuery<CanonicalResult>({
-		queryKey: ["ig-canonicals", packageId, substring, page],
+	return useInfiniteQuery<PackageEntitiesResult>({
+		queryKey: [
+			"ig-package-entities-infinite",
+			packageId,
+			resourceType,
+			substring,
+		],
 		staleTime: 5 * 60 * 1000,
-		queryFn: () => fetchCanonicals(client, packageId, substring, page),
+		initialPageParam: 1,
+		queryFn: ({ pageParam }) =>
+			fetchPackageEntities(
+				client,
+				packageId,
+				resourceType,
+				substring,
+				pageParam as number,
+			),
+		getNextPageParam: (lastPage, allPages) => {
+			const loaded = allPages.reduce((sum, p) => sum + p.entry.length, 0);
+			return loaded < lastPage.total ? allPages.length + 1 : undefined;
+		},
 	});
 }
 
-function ResizeHandle({
-	width,
-	onWidthChange,
-}: {
-	width: number;
-	onWidthChange: (width: number) => void;
-}) {
-	const handleMouseDown = useCallback(
-		(e: React.MouseEvent) => {
-			e.preventDefault();
-			const startX = e.clientX;
-			const startWidth = width;
-			const onMouseMove = (ev: MouseEvent) => {
-				onWidthChange(Math.max(80, startWidth + ev.clientX - startX));
-			};
-			const onMouseUp = () => {
-				document.removeEventListener("mousemove", onMouseMove);
-				document.removeEventListener("mouseup", onMouseUp);
-			};
-			document.addEventListener("mousemove", onMouseMove);
-			document.addEventListener("mouseup", onMouseUp);
+function usePackageResourceTypes(packageId: string) {
+	const client = useAidboxClient();
+
+	return useQuery<string[]>({
+		queryKey: ["ig-package-resource-types", packageId],
+		staleTime: 5 * 60 * 1000,
+		queryFn: async () => {
+			const response = await client.rawRequest({
+				method: "POST",
+				url: "/rpc?_m=aidbox.introspector/list-package-resource-types",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					method: "aidbox.introspector/list-package-resource-types",
+					params: { "package-coordinate": packageId },
+				}),
+			});
+			const json = await response.response.json();
+			return json.result?.["resource-types"] ?? [];
 		},
-		[width, onWidthChange],
-	);
+	});
+}
+
+function pickEntityTitle(r: PackageEntity): string {
+	return r.name || r.title || r.id;
+}
+
+function pickEntityDescription(r: PackageEntity): string | undefined {
+	return r.description || r.url;
+}
+
+const PER_RESOURCE_TYPE_TAG_FIELDS: Record<string, (keyof PackageEntity)[]> = {
+	StructureDefinition: ["type", "derivation"],
+	SearchParameter: ["base"],
+};
+
+const COMMON_TAG_FIELDS: (keyof PackageEntity)[] = ["status"];
+
+function pickEntityTags(r: PackageEntity): string[] {
+	const fields = [
+		...(PER_RESOURCE_TYPE_TAG_FIELDS[r.resourceType] ?? []),
+		...COMMON_TAG_FIELDS,
+	];
+	return fields.flatMap((f) => {
+		const v = r[f];
+		if (typeof v === "string" && v.length > 0) return [v];
+		if (Array.isArray(v))
+			return v.filter(
+				(x): x is string => typeof x === "string" && x.length > 0,
+			);
+		return [];
+	});
+}
+
+function PackageEntityCard({
+	packageId,
+	resource,
+	focused,
+}: {
+	packageId: string;
+	resource: PackageEntity;
+	focused: boolean;
+}) {
+	const tags = pickEntityTags(resource);
+	const title = pickEntityTitle(resource);
+	const description = pickEntityDescription(resource);
 
 	return (
-		<div
-			onMouseDown={handleMouseDown}
-			className="absolute top-0 right-0 h-full w-1 cursor-col-resize opacity-0 hover:opacity-100 bg-border-secondary"
-			style={{ userSelect: "none", touchAction: "none" }}
-		/>
+		<li
+			className={`relative transition-colors hover:bg-bg-secondary border-b border-border-default ${focused ? "bg-bg-secondary" : ""}`}
+		>
+			<Link
+				to="/ig/$packageId/resource/$resourceType/$resourceId"
+				params={{
+					packageId,
+					resourceType: resource.resourceType,
+					resourceId: resource.id,
+				}}
+				search={{ view: undefined }}
+				className="block"
+			>
+				<div className="flex flex-col px-4 py-3 min-w-0">
+					<div className="typo-body text-text-primary truncate">{title}</div>
+					{description && description !== title && (
+						<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-1">
+							{description}
+						</div>
+					)}
+					{tags.length > 0 && (
+						<div className="flex flex-nowrap items-center gap-x-2 mt-2 overflow-hidden">
+							{tags.map((tag) => (
+								<span
+									key={tag}
+									className="shrink-0 text-[11px] leading-4 normal-case whitespace-nowrap text-text-info-primary"
+								>
+									#{tag}
+								</span>
+							))}
+						</div>
+					)}
+				</div>
+			</Link>
+		</li>
 	);
 }
 
-function CanonicalsContent({
+function PackageEntityCardSkeleton({ index }: { index: number }) {
+	return (
+		<li className="border-b border-border-default">
+			<div className="flex flex-col gap-2 px-4 py-3">
+				<HSComp.Skeleton
+					className="h-5"
+					style={{ width: `${140 + ((index * 23) % 200)}px` }}
+				/>
+				<HSComp.Skeleton
+					className="h-4"
+					style={{ width: `${200 + ((index * 17) % 200)}px` }}
+				/>
+				<div className="flex gap-2">
+					<HSComp.Skeleton className="h-4 w-12" />
+					<HSComp.Skeleton className="h-4 w-16" />
+				</div>
+			</div>
+		</li>
+	);
+}
+
+function EntitiesContent({
 	packageId,
+	resourceType,
 	actionsRef,
 }: {
 	packageId: string;
+	resourceType: string;
 	actionsRef: RefObject<PackageDetailActions>;
 }) {
 	const client = useAidboxClient();
 	const navigate = useNavigate();
-	const { q, page: urlPage } = useSearch({ from: "/ig/$packageId/" });
-	const substring = q ?? "";
-	const page = urlPage ?? 1;
-	const [search, setSearch] = useState(substring);
-	const [resourceTypeWidth, setResourceTypeWidth] = useState(192);
-	const [titleWidth, setTitleWidth] = useState(256);
+	const { q } = useSearch({ from: "/ig/$packageId/" });
+	const urlText = q ?? "";
+
+	const [inputText, setInputText] = useState(urlText);
+	const substring = useDeferredValue(inputText);
+
+	const lastUrlTextRef = useRef(urlText);
+	useEffect(() => {
+		if (urlText !== lastUrlTextRef.current) {
+			lastUrlTextRef.current = urlText;
+			setInputText(urlText);
+		}
+	}, [urlText]);
+
+	const urlSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const setUrlText = useCallback(
+		(next: string) => {
+			if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+			urlSyncTimerRef.current = setTimeout(() => {
+				lastUrlTextRef.current = next;
+				navigate({
+					from: "/ig/$packageId/",
+					search: (prev) => ({ ...prev, q: next || undefined }),
+					replace: true,
+				});
+			}, 200);
+		},
+		[navigate],
+	);
+	useEffect(
+		() => () => {
+			if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
+		},
+		[],
+	);
+
+	const handleSearchChange = (next: string) => {
+		setInputText(next);
+		setUrlText(next);
+	};
+
+	const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
+		usePackageEntitiesInfinite(packageId, resourceType, substring);
+
+	const items = useMemo(
+		() => data?.pages.flatMap((p) => p.entry) ?? [],
+		[data],
+	);
+
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		const id = requestAnimationFrame(() => {
+			searchWrapperRef.current
+				?.querySelector<HTMLInputElement>("input")
+				?.focus();
+		});
+		return () => cancelAnimationFrame(id);
+	}, []);
+
+	const rowVirtualizer = useVirtualizer({
+		count: items.length,
+		getScrollElement: () => scrollRef.current,
+		estimateSize: () => 90,
+		overscan: 8,
+		getItemKey: (i) => items[i]?.resource.id ?? i,
+	});
+
+	const virtualItems = rowVirtualizer.getVirtualItems();
+	useEffect(() => {
+		const last = virtualItems[virtualItems.length - 1];
+		if (!last) return;
+		if (last.index >= items.length - 5 && hasNextPage && !isFetchingNextPage) {
+			fetchNextPage();
+		}
+	}, [
+		virtualItems,
+		items.length,
+		hasNextPage,
+		isFetchingNextPage,
+		fetchNextPage,
+	]);
+
+	const [focusedIndex, setFocusedIndex] = useState(-1);
+	useEffect(() => {
+		if (focusedIndex < 0) return;
+		rowVirtualizer.scrollToIndex(focusedIndex, { align: "auto" });
+	}, [focusedIndex, rowVirtualizer]);
 
 	useEffect(() => {
-		setSearch(substring);
-	}, [substring]);
+		if (substring && items.length > 0) setFocusedIndex(0);
+		else setFocusedIndex(-1);
+	}, [substring, items.length]);
 
-	const debouncedNavigate = useDebounce((value: string) => {
-		navigate({
-			from: "/ig/$packageId/",
-			search: (prev) => ({
-				...prev,
-				q: value || undefined,
-				page: undefined,
-			}),
-		});
-	}, 300);
+	const navigateToResource = useCallback(
+		(resource: PackageEntity) => {
+			navigate({
+				to: "/ig/$packageId/resource/$resourceType/$resourceId",
+				params: {
+					packageId,
+					resourceType: resource.resourceType,
+					resourceId: resource.id,
+				},
+				search: { view: undefined },
+			});
+		},
+		[navigate, packageId],
+	);
 
-	const handleSearchChange = (value: string) => {
-		setSearch(value);
-		debouncedNavigate(value);
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((p) => Math.min(p + 1, items.length - 1));
+		} else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
+			e.preventDefault();
+			setFocusedIndex((p) => Math.max(p - 1, -1));
+		} else if (e.key === "Enter") {
+			if (focusedIndex < 0) return;
+			const it = items[focusedIndex];
+			if (!it) return;
+			e.preventDefault();
+			navigateToResource(it.resource);
+		}
 	};
-
-	const setPage = (p: number) => {
-		navigate({
-			from: "/ig/$packageId/",
-			search: (prev) => ({
-				...prev,
-				page: p === 1 ? undefined : p,
-			}),
-		});
-	};
-
-	const { data, isLoading } = useCanonicals(packageId, substring, page);
-	const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
 
 	useEffect(() => {
 		actionsRef.current.searchCanonicals = async (
@@ -759,23 +917,18 @@ function CanonicalsContent({
 			const targetPage = p ?? 1;
 
 			if (query !== undefined) {
-				setSearch(query);
+				setInputText(query);
+				lastUrlTextRef.current = query;
 				navigate({
 					from: "/ig/$packageId/",
-					search: (prev) => ({
-						...prev,
-						q: query || undefined,
-						page: targetPage === 1 ? undefined : targetPage,
-					}),
+					search: (prev) => ({ ...prev, q: query || undefined }),
 				});
 			}
-			if (p !== undefined) {
-				setPage(p);
-			}
 
-			const result = await fetchCanonicals(
+			const result = await fetchPackageEntities(
 				client,
 				packageId,
+				resourceType,
 				targetQuery,
 				targetPage,
 			);
@@ -794,162 +947,85 @@ function CanonicalsContent({
 		};
 
 		actionsRef.current.selectCanonical = (id: string) => {
-			const entry = data?.entry.find((item) => item.resource.id === id);
-			if (entry) {
-				navigate({
-					to: "/ig/$packageId/resource/$resourceType/$resourceId",
-					params: {
-						packageId,
-						resourceType: entry.resource.resourceType,
-						resourceId: entry.resource.id,
-					},
-					search: { view: undefined },
-				});
-			}
+			const entry = items.find((item) => item.resource.id === id);
+			if (entry) navigateToResource(entry.resource);
 		};
 	});
 
 	return (
-		<div className="flex flex-col h-full min-h-0">
-			<div className="flex gap-4 items-center px-4 py-3 border-b border-border-secondary flex-none">
-				<HSComp.Input
-					type="text"
-					className="flex-1 bg-bg-primary"
-					placeholder="Search by resource type or URL, e.g. valueset birthsex"
-					autoFocus
-					value={search}
-					onChange={(e) => handleSearchChange(e.target.value)}
-					rightSlot={
-						search && (
-							<HSComp.IconButton
-								icon={<X />}
-								aria-label="Clear"
-								variant="link"
-								onClick={() => handleSearchChange("")}
-							/>
-						)
-					}
-				/>
-			</div>
-			<div className="grow min-h-0 overflow-hidden [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:h-full [&_table]:flex [&_table]:flex-col [&_table]:h-full">
-				<HSComp.Table zebra className="typo-code">
-					<HSComp.TableHeader className="block shrink-0 overflow-y-scroll scrollbar-none [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
-						<HSComp.TableRow>
-							<HSComp.TableHead
-								className="relative pl-7!"
-								style={{ width: resourceTypeWidth }}
-							>
-								Resource Type
-								<ResizeHandle
-									width={resourceTypeWidth}
-									onWidthChange={setResourceTypeWidth}
+		<div ref={scrollRef} className="h-full overflow-y-auto pb-[250px]">
+			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
+				<div ref={searchWrapperRef} className="mx-auto max-w-[990px] px-8">
+					<HSComp.Input
+						type="text"
+						className="bg-bg-primary"
+						placeholder={`Search ${resourceType}`}
+						leftSlot={<Search />}
+						value={inputText}
+						onChange={(e) => handleSearchChange(e.target.value)}
+						onKeyDown={handleKeyDown}
+						rightSlot={
+							inputText && (
+								<HSComp.IconButton
+									icon={<X />}
+									aria-label="Clear"
+									variant="link"
+									onClick={() => handleSearchChange("")}
 								/>
-							</HSComp.TableHead>
-							<HSComp.TableHead
-								className="relative"
-								style={{ width: titleWidth }}
-							>
-								Title
-								<ResizeHandle
-									width={titleWidth}
-									onWidthChange={setTitleWidth}
-								/>
-							</HSComp.TableHead>
-							<HSComp.TableHead>URL</HSComp.TableHead>
-						</HSComp.TableRow>
-					</HSComp.TableHeader>
-					<HSComp.TableBody className="block grow min-h-0 overflow-y-auto pb-10 [&_tr]:table [&_tr]:table-fixed [&_tr]:w-full">
-						{isLoading
-							? Array.from({ length: 30 }, (_, i) => (
-									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
-									<HSComp.TableRow key={i} zebra index={i}>
-										<HSComp.TableCell
-											className="pl-7!"
-											style={{ width: resourceTypeWidth }}
-										>
-											<HSComp.Skeleton
-												className="h-5"
-												style={{
-													width: `${80 + ((i * 23) % 60)}px`,
-												}}
-											/>
-										</HSComp.TableCell>
-										<HSComp.TableCell style={{ width: titleWidth }}>
-											<HSComp.Skeleton
-												className="h-5"
-												style={{
-													width: `${100 + ((i * 17) % 120)}px`,
-												}}
-											/>
-										</HSComp.TableCell>
-										<HSComp.TableCell>
-											<HSComp.Skeleton
-												className="h-5"
-												style={{
-													width: `${200 + ((i * 31) % 200)}px`,
-												}}
-											/>
-										</HSComp.TableCell>
-									</HSComp.TableRow>
-								))
-							: data?.entry.map((item, index) => (
-									<HSComp.TableRow
-										key={item.resource.id}
-										zebra
-										index={index}
-										className="cursor-pointer"
-										onClick={() =>
-											navigate({
-												to: "/ig/$packageId/resource/$resourceType/$resourceId",
-												params: {
-													packageId,
-													resourceType: item.resource.resourceType,
-													resourceId: item.resource.id,
-												},
-												search: { view: undefined },
-											})
-										}
-									>
-										<HSComp.TableCell
-											className="text-text-secondary text-sm pl-7!"
-											style={{ width: resourceTypeWidth }}
-										>
-											{item.resource.resourceType}
-										</HSComp.TableCell>
-										<HSComp.TableCell
-											className="text-text-secondary text-sm truncate"
-											style={{ width: titleWidth }}
-											title={item.resource.name}
-										>
-											{item.resource.title ?? item.resource.name}
-										</HSComp.TableCell>
-										<HSComp.TableCell className="text-text-primary text-sm">
-											<Link
-												to="/ig/$packageId/resource/$resourceType/$resourceId"
-												params={{
-													packageId,
-													resourceType: item.resource.resourceType,
-													resourceId: item.resource.id,
-												}}
-												search={{ view: undefined }}
-												className="text-text-link hover:underline"
-												onClick={(e) => e.stopPropagation()}
-											>
-												{item.resource.url}
-											</Link>
-										</HSComp.TableCell>
-									</HSComp.TableRow>
-								))}
-					</HSComp.TableBody>
-				</HSComp.Table>
-			</div>
-			<div className="flex items-center justify-end border-t bg-bg-secondary px-4 h-10 flex-none">
-				{totalPages > 1 && (
-					<PaginationPages
-						currentPage={page}
-						totalPages={totalPages}
-						onPageChange={setPage}
+							)
+						}
 					/>
+				</div>
+			</div>
+			<div className="mx-auto max-w-[990px] px-8 bg-bg-primary">
+				{isLoading ? (
+					<ul>
+						{Array.from({ length: 15 }, (_, i) => (
+							<PackageEntityCardSkeleton
+								// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
+								key={`skeleton-${i}`}
+								index={i}
+							/>
+						))}
+					</ul>
+				) : (
+					<ul
+						style={{
+							position: "relative",
+							height: rowVirtualizer.getTotalSize(),
+						}}
+					>
+						{virtualItems.map((vi) => {
+							const it = items[vi.index];
+							if (!it) return null;
+							return (
+								<div
+									key={it.resource.id}
+									ref={rowVirtualizer.measureElement}
+									data-index={vi.index}
+									style={{
+										position: "absolute",
+										top: 0,
+										left: 0,
+										right: 0,
+										transform: `translateY(${vi.start}px)`,
+									}}
+								>
+									<PackageEntityCard
+										packageId={packageId}
+										resource={it.resource}
+										focused={vi.index === focusedIndex}
+									/>
+								</div>
+							);
+						})}
+					</ul>
+				)}
+				{isFetchingNextPage && (
+					<div className="flex items-center justify-center py-4 text-text-secondary text-sm">
+						<Loader2Icon className="size-4 animate-spin mr-2" />
+						Loading more…
+					</div>
 				)}
 			</div>
 		</div>
@@ -1010,11 +1086,19 @@ export function PackageDetail() {
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	const { data, isLoading } = usePackageMeta(packageId);
+	const { data: resourceTypes, isPending: resourceTypesPending } =
+		usePackageResourceTypes(packageId);
 	const [storedTab, setStoredTab] = useLocalStorage<string>({
 		key: IG_TAB_KEY,
-		defaultValue: "canonicals",
+		defaultValue: "",
 	});
-	const currentTab = tab ?? storedTab;
+	const defaultTab = resourceTypes?.[0] ?? "package-info";
+	const requestedTab = tab ?? storedTab;
+	const currentTab =
+		requestedTab &&
+		(requestedTab === "package-info" || resourceTypes?.includes(requestedTab))
+			? requestedTab
+			: defaultTab;
 
 	const switchTab = (v: string) => {
 		setStoredTab(v);
@@ -1022,8 +1106,9 @@ export function PackageDetail() {
 			from: "/ig/$packageId/",
 			search: (prev) => ({
 				...prev,
-				tab: (v === "canonicals" ? undefined : v) as "package-info" | undefined,
+				tab: v,
 				view: v === "package-info" ? prev.view : undefined,
+				q: undefined,
 			}),
 			replace: true,
 		});
@@ -1057,7 +1142,7 @@ export function PackageDetail() {
 		onError: Utils.onMutationError,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["ig-browser-packages"] });
-			navigate({ to: "/ig", search: { q: undefined, sort: undefined } });
+			navigate({ to: "/ig", search: { q: undefined, tags: undefined } });
 		},
 	});
 
@@ -1074,12 +1159,9 @@ export function PackageDetail() {
 			void v;
 		},
 		searchCanonicals: async () => {
-			switchTab("canonicals");
 			return { total: 0, page: 1, totalPages: 0, entries: [] };
 		},
-		selectCanonical: () => {
-			switchTab("canonicals");
-		},
+		selectCanonical: () => {},
 		reinstallPackage: () => reinstallMutation.mutate(),
 		deletePackage: () => deleteMutation.mutate(),
 	});
@@ -1097,6 +1179,10 @@ export function PackageDetail() {
 
 	useWebMCPPackageDetail(actionsRef);
 
+	if (resourceTypesPending) {
+		return <LoadingSkeleton />;
+	}
+
 	return (
 		<HSComp.Tabs
 			value={currentTab}
@@ -1105,18 +1191,16 @@ export function PackageDetail() {
 		>
 			<div className="flex items-center bg-bg-primary flex-none border-b border-border-secondary">
 				<HSComp.TabsList className="pl-4">
-					<HSComp.TabsTrigger value="canonicals">Canonicals</HSComp.TabsTrigger>
 					<HSComp.TabsTrigger value="package-info">
 						Package Info
 					</HSComp.TabsTrigger>
+					{(resourceTypes ?? []).map((rt) => (
+						<HSComp.TabsTrigger key={rt} value={rt}>
+							{rt}
+						</HSComp.TabsTrigger>
+					))}
 				</HSComp.TabsList>
 			</div>
-			<HSComp.TabsContent
-				value="canonicals"
-				className="grow min-h-0 flex flex-col"
-			>
-				<CanonicalsContent packageId={packageId} actionsRef={actionsRef} />
-			</HSComp.TabsContent>
 			<HSComp.TabsContent value="package-info" className="overflow-auto">
 				{isLoading ? (
 					<LoadingSkeleton />
@@ -1131,6 +1215,21 @@ export function PackageDetail() {
 					/>
 				) : null}
 			</HSComp.TabsContent>
+			{(resourceTypes ?? []).map((rt) => (
+				<HSComp.TabsContent
+					key={rt}
+					value={rt}
+					className="grow min-h-0 flex flex-col"
+				>
+					{currentTab === rt && (
+						<EntitiesContent
+							packageId={packageId}
+							resourceType={rt}
+							actionsRef={actionsRef}
+						/>
+					)}
+				</HSComp.TabsContent>
+			))}
 		</HSComp.Tabs>
 	);
 }
