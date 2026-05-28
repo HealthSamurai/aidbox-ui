@@ -774,7 +774,7 @@ export function ImportPackage() {
 	useWebMCPImportPackage(actionsRef);
 
 	return (
-		<div className="w-full max-w-4xl px-4 py-4">
+		<div className="mx-auto max-w-[990px] px-8 py-4">
 			<MethodPicker selected={method} onSelect={setMethod} />
 
 			<div className="mt-6">

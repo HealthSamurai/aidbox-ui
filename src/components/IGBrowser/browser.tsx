@@ -166,7 +166,6 @@ const ItemCard = React.memo(function ItemCard({
 					tab: undefined,
 					view: undefined,
 					q: undefined,
-					page: undefined,
 				}}
 				className="block"
 			>
@@ -476,7 +475,6 @@ export function Browser() {
 					tab: undefined,
 					view: undefined,
 					q: undefined,
-					page: undefined,
 				},
 			});
 		}
@@ -528,7 +526,6 @@ export function Browser() {
 					tab: undefined,
 					view: undefined,
 					q: undefined,
-					page: undefined,
 				},
 			});
 		},
