@@ -518,9 +518,10 @@ export function SchemaExplorer() {
 					// below to zero. Pin the tab row to its content height.
 					className="h-auto! flex-none! border-b border-border-secondary"
 				>
-					{/* Indent the trigger row so the first tab's text lines up with
-					    the table-name column text below. */}
-					<TabsList className="pl-10">
+					{/* Indent so the first tab's text lines up with the search icon
+					    above: search wrapper px-4 (16px) + icon left-3 (12px) = 28px;
+					    minus the trigger's own px-3 (12px) leaves pl-4 (16px). */}
+					<TabsList className="pl-4">
 						<TabsTrigger value={ALL_TAB}>
 							All
 							<span className="ml-1.5 inline-block min-w-[5ch] text-left typo-body-xs text-text-tertiary">
