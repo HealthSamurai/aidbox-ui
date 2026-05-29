@@ -132,12 +132,14 @@ export function psqlRequest<T = Record<string, unknown>>(
 
 export function transformToQueryResultItems(
 	data: NotebookPsqlResponse,
+	blockDurationMs: number | null = null,
 ): QueryResultItem[] {
+	const blockDuration = blockDurationMs ?? data.duration;
 	if (data.status === "error") {
 		return [
 			{
 				query: data.query,
-				duration: data.duration,
+				duration: blockDuration,
 				status: "error",
 				error: data.error,
 				position: data.position,
@@ -147,11 +149,12 @@ export function transformToQueryResultItems(
 		];
 	}
 	if (!data.result) return [];
-	return data.result.map((entry) => {
+	return data.result.map((entry, idx) => {
+		const duration = idx === 0 ? blockDuration : 0;
 		if (entry.type === "rset") {
 			return {
 				query: data.query,
-				duration: data.duration,
+				duration,
 				status: "success",
 				result: entry.data,
 				rows: entry.data.length,
@@ -159,7 +162,7 @@ export function transformToQueryResultItems(
 		}
 		return {
 			query: data.query,
-			duration: data.duration,
+			duration,
 			status: "success",
 			result: [{ affected_rows: entry.data }],
 			rows: entry.data,
