@@ -10,6 +10,7 @@ import {
 	Minimize2,
 	PanelBottomClose,
 	PanelBottomOpen,
+	Timer,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
@@ -66,6 +67,12 @@ export function ResultPanel({
 		[results],
 	);
 
+	const totalDuration = useMemo(
+		() =>
+			results ? results.reduce((sum, r) => sum + (r.duration ?? 0), 0) : null,
+		[results],
+	);
+
 	return (
 		<div
 			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 left-0 w-full h-full z-30 bg-bg-primary" : ""}`}
@@ -77,6 +84,13 @@ export function ResultPanel({
 					</span>
 				</div>
 				<div className="flex items-center gap-2">
+					{totalDuration !== null && results && results.length > 0 && (
+						<span className="flex items-center text-text-secondary text-sm pl-2">
+							<Timer className="size-4 mr-1" strokeWidth={1.5} />
+							<span className="font-bold">{Math.round(totalDuration)}</span>
+							<span className="ml-1">ms</span>
+						</span>
+					)}
 					<SegmentControl
 						value={viewMode}
 						onValueChange={(v) => setViewMode(v as "table" | "list")}
