@@ -945,11 +945,48 @@ function isGetSearchRequest(tab: Tab): boolean {
 	return /^[A-Z]/.test(lastSegment);
 }
 
-type ExplainResponse = {
+type ExplainInclude = {
+	source?: string;
+	param?: string;
+	target?: string;
+	reverse?: boolean;
 	query?: [string, ...unknown[]];
-	"query-inline"?: [string];
+	"query-inline"?: [string, ...unknown[]];
 	plan?: string;
 };
+
+type ExplainResponse = {
+	query?: [string, ...unknown[]];
+	"query-inline"?: [string, ...unknown[]];
+	plan?: string;
+	includes?: ExplainInclude[];
+};
+
+function describeInclude(inc: ExplainInclude): string {
+	const param = inc.param ?? "*";
+	const source = inc.source ?? "";
+	const target = inc.target ? `:${inc.target}` : "";
+	const key = inc.reverse ? "_revinclude" : "_include";
+	return `${key}=${source}:${param}${target}`;
+}
+
+function joinSqlSections(sections: { title: string; sql: string }[]): string {
+	return sections
+		.map(
+			(s, i) =>
+				`${i === 0 ? "" : "\n\n"}-- ===== ${s.title} =====\n${s.sql || "-- no SQL generated (main query returned no rows)"}`,
+		)
+		.join("");
+}
+
+function joinPlanSections(sections: { title: string; plan: string }[]): string {
+	return sections
+		.map(
+			(s) =>
+				`===== ${s.title} =====\n${s.plan || "(no plan — main query returned no rows)"}`,
+		)
+		.join("\n\n");
+}
 
 function buildHeaders(tab: Tab): Record<string, string> {
 	return (
@@ -1043,12 +1080,53 @@ function ExplainView({
 
 	if (!data) return null;
 
-	const querySQL = data.query?.[0] ? formatSQLQuery(data.query[0]) : "";
-	const queryParams = data.query?.slice(1) ?? [];
-	const inlineSQL = data["query-inline"]?.[0]
+	const mainQuerySQL = data.query?.[0] ? formatSQLQuery(data.query[0]) : "";
+	const mainQueryParams = data.query?.slice(1) ?? [];
+	const mainInlineSQL = data["query-inline"]?.[0]
 		? formatSQLQuery(data["query-inline"][0])
 		: "";
-	const plan = data.plan ?? "";
+	const mainPlan = data.plan ?? "";
+
+	const includes = data.includes ?? [];
+	const includeSections = includes.map((inc) => {
+		const title = describeInclude(inc);
+		return {
+			title,
+			querySQL: inc.query?.[0] ? formatSQLQuery(inc.query[0]) : "",
+			queryParams: inc.query?.slice(1) ?? [],
+			inlineSQL: inc["query-inline"]?.[0]
+				? formatSQLQuery(inc["query-inline"][0])
+				: "",
+			plan: inc.plan ?? "",
+		};
+	});
+
+	const querySQL = includeSections.length
+		? joinSqlSections([
+				{ title: "Main query", sql: mainQuerySQL },
+				...includeSections.map((s) => ({ title: s.title, sql: s.querySQL })),
+			])
+		: mainQuerySQL;
+	const inlineSQL = includeSections.length
+		? joinSqlSections([
+				{ title: "Main query", sql: mainInlineSQL },
+				...includeSections.map((s) => ({ title: s.title, sql: s.inlineSQL })),
+			])
+		: mainInlineSQL;
+	const plan = includeSections.length
+		? joinPlanSections([
+				{ title: "Main query", plan: mainPlan },
+				...includeSections.map((s) => ({ title: s.title, plan: s.plan })),
+			])
+		: mainPlan;
+	const queryParams = includeSections.length
+		? [
+				...mainQueryParams.map((p) => `[Main] ${String(p)}`),
+				...includeSections.flatMap((s) =>
+					s.queryParams.map((p) => `[${s.title}] ${String(p)}`),
+				),
+			]
+		: mainQueryParams;
 
 	if (!querySQL && !inlineSQL && !plan) {
 		return (
