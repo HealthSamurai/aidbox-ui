@@ -409,27 +409,44 @@ export function SchemaExplorer() {
 		{
 			id: "index_size",
 			header: "Index",
-			headerTooltip: "Index storage size and share of total",
+			headerTooltip: "Index storage size",
 			sortable: true,
-			width: "w-[120px]",
+			width: "w-[100px]",
 			className: "text-right tabular-nums",
-			cell: (r) => `${r.index} (${r.index_part}%)`,
+			cell: (r) => r.index,
+		},
+		{
+			id: "index_part",
+			header: "Index %",
+			headerTooltip: "Index share of the table's total disk footprint.",
+			sortable: true,
+			width: "w-[90px]",
+			className: "text-right tabular-nums",
+			cell: (r) => (r.index_part == null ? EM_DASH : `${r.index_part}%`),
 		},
 		{
 			id: "toast_size",
 			header: "Toast",
 			headerTooltip:
-				"TOAST = PG out-of-line storage for oversized field values. Size and share of total.",
+				"TOAST = PG out-of-line storage for oversized field values.",
 			sortable: true,
-			width: "w-[110px]",
+			width: "w-[100px]",
 			className: "text-right tabular-nums",
-			cell: (r) => `${r.toast} (${r.toast_part}%)`,
+			cell: (r) => r.toast,
+		},
+		{
+			id: "toast_part",
+			header: "Toast %",
+			headerTooltip: "TOAST share of the table's total disk footprint.",
+			sortable: true,
+			width: "w-[80px]",
+			className: "text-right tabular-nums",
+			cell: (r) => (r.toast_part == null ? EM_DASH : `${r.toast_part}%`),
 		},
 		{
 			id: "last_autovacuum",
 			header: "Auto-vacuum",
-			headerTooltip:
-				"Time since last autovacuum (PG background worker reclaims dead-tuple space).",
+			headerTooltip: "Time since last autovacuum.",
 			sortable: true,
 			width: "w-[120px]",
 			cell: (r) => formatMinAgo(r.last_autovacuum),
@@ -437,8 +454,7 @@ export function SchemaExplorer() {
 		{
 			id: "last_vacuum",
 			header: "Vacuum",
-			headerTooltip:
-				"Time since last manual VACUUM. Reclaims dead-tuple space.",
+			headerTooltip: "Time since last manual VACUUM.",
 			sortable: true,
 			width: "w-[100px]",
 			cell: (r) => formatMinAgo(r.last_vacuum),
@@ -446,8 +462,7 @@ export function SchemaExplorer() {
 		{
 			id: "last_autoanalyze",
 			header: "Auto-analyze",
-			headerTooltip:
-				"Time since last autoanalyze (background ANALYZE; refreshes planner stats).",
+			headerTooltip: "Time since last autoanalyze.",
 			sortable: true,
 			width: "w-[120px]",
 			cell: (r) => formatMinAgo(r.last_autoanalyze),
@@ -455,7 +470,7 @@ export function SchemaExplorer() {
 		{
 			id: "last_analyze",
 			header: "Analyze",
-			headerTooltip: "Time since last manual ANALYZE. Refreshes planner stats.",
+			headerTooltip: "Time since last manual ANALYZE.",
 			sortable: true,
 			width: "w-[100px]",
 			cell: (r) => formatMinAgo(r.last_analyze),
