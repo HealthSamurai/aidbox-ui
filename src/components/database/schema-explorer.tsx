@@ -151,7 +151,7 @@ function TableDetails({
 			</div>
 			{data.indexes.length > 0 && (
 				<div>
-					<div className="typo-label-sm text-text-primary mb-2">
+					<div className="typo-label-xs text-text-tertiary uppercase mb-2">
 						Indexes ({data.indexes.length})
 					</div>
 					<div className="border border-border-secondary rounded bg-bg-primary overflow-hidden">
@@ -169,12 +169,12 @@ function TableDetails({
 							</colgroup>
 							<thead className="bg-bg-secondary">
 								<tr className="text-left text-text-secondary">
-									<th className="px-3 py-1.5 font-medium">Name</th>
-									<th className="px-3 py-1.5 font-medium">Type</th>
-									<th className="px-3 py-1.5 font-medium text-right">Size</th>
-									<th className="px-3 py-1.5 font-medium">Unique</th>
-									<th className="px-3 py-1.5 font-medium text-right">Scans</th>
-									<th className="px-3 py-1.5 font-medium text-right">Reads</th>
+									<th className="px-3 py-1.5">Name</th>
+									<th className="px-3 py-1.5">Type</th>
+									<th className="px-3 py-1.5 text-right">Size</th>
+									<th className="px-3 py-1.5">Unique</th>
+									<th className="px-3 py-1.5 text-right">Scans</th>
+									<th className="px-3 py-1.5 text-right">Reads</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -235,10 +235,15 @@ function TableDetails({
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+	// Label is flush to the section indent (matching the "Indexes (N)" header
+	// above); the value is shifted by 13px (indexes-table outer border + td
+	// px-3) so it lines up with the index-name column.
 	return (
 		<div>
 			<div className="typo-label-xs text-text-tertiary uppercase">{label}</div>
-			<div className="typo-body-sm text-text-primary tabular-nums">{value}</div>
+			<div className="typo-body-sm text-text-primary tabular-nums pl-[13px]">
+				{value}
+			</div>
 		</div>
 	);
 }
@@ -355,7 +360,7 @@ export function SchemaExplorer() {
 			sortable: true,
 			cell: (r) => (
 				<span className="font-mono">
-					<span className="font-bold">{r.table_schema}</span>
+					<span className="font-[550]">{r.table_schema}</span>
 					<span className="text-text-tertiary">.</span>
 					{r.table_name}
 				</span>
@@ -513,7 +518,11 @@ export function SchemaExplorer() {
 					// below to zero. Pin the tab row to its content height.
 					className="h-auto! flex-none! border-b border-border-secondary"
 				>
-					<TabsList>
+					{/* Indent the trigger row so the first tab's text aligns with the
+					    table-name column below. Expand column = 32px (pl-8); the
+					    trigger's own px-3 padding then matches the table-name td's
+					    px-3. */}
+					<TabsList className="pl-8">
 						<TabsTrigger value={ALL_TAB}>
 							All
 							<span className="ml-1.5 inline-block min-w-[5ch] text-left typo-body-xs text-text-tertiary">
