@@ -130,7 +130,15 @@ async function fetchBlock(
 		const text = await response.text();
 		throw new Error(`HTTP ${response.status}: ${text}`);
 	}
-	return transformToQueryResultItems(await response.json());
+	const headerNum = (name: string) => {
+		const raw = response.headers.get(name);
+		if (!raw) return null;
+		const n = Number(raw);
+		return Number.isFinite(n) ? n : null;
+	};
+	const blockDuration =
+		headerNum("x-temp-dur-in-pg") ?? headerNum("x-duration");
+	return transformToQueryResultItems(await response.json(), blockDuration);
 }
 
 async function kickOffAsync(
