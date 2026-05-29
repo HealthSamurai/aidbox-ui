@@ -518,11 +518,9 @@ export function SchemaExplorer() {
 					// below to zero. Pin the tab row to its content height.
 					className="h-auto! flex-none! border-b border-border-secondary"
 				>
-					{/* Indent the trigger row so the first tab's text aligns with the
-					    table-name column below. Expand column = 32px (pl-8); the
-					    trigger's own px-3 padding then matches the table-name td's
-					    px-3. */}
-					<TabsList className="pl-8">
+					{/* Indent the trigger row so the first tab's text lines up with
+					    the table-name column text below. */}
+					<TabsList className="pl-10">
 						<TabsTrigger value={ALL_TAB}>
 							All
 							<span className="ml-1.5 inline-block min-w-[5ch] text-left typo-body-xs text-text-tertiary">
@@ -548,7 +546,10 @@ export function SchemaExplorer() {
 						<Skeleton className="h-6 w-full" />
 					</div>
 				) : (
-					<table className="w-full typo-code">
+					// `border-separate` keeps the sticky thead's `border-b` painted —
+					// with the default collapse mode the bottom border merges with
+					// the next row and gets clipped under the sticky offset.
+					<table className="w-full typo-code border-separate border-spacing-0">
 						<thead className="sticky top-0 bg-bg-primary z-10">
 							<tr className="text-left text-text-secondary">
 								{columns.map((c) => (
