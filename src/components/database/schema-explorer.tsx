@@ -167,14 +167,26 @@ function TableDetails({
 								<col className="w-[100px]" />
 								<col className="w-[100px]" />
 							</colgroup>
-							<thead className="bg-bg-secondary">
+							<thead className="bg-bg-primary">
 								<tr className="text-left text-text-secondary">
-									<th className="px-3 py-1.5">Name</th>
-									<th className="px-3 py-1.5">Type</th>
-									<th className="px-3 py-1.5 text-right">Size</th>
-									<th className="px-3 py-1.5">Unique</th>
-									<th className="px-3 py-1.5 text-right">Scans</th>
-									<th className="px-3 py-1.5 text-right">Reads</th>
+									<th className="px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary">
+										Name
+									</th>
+									<th className="px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary">
+										Type
+									</th>
+									<th className="px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary text-right">
+										Size
+									</th>
+									<th className="px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary">
+										Unique
+									</th>
+									<th className="px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary text-right">
+										Scans
+									</th>
+									<th className="px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary text-right">
+										Reads
+									</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -240,7 +252,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 	// px-3) so it lines up with the index-name column.
 	return (
 		<div>
-			<div className="typo-label-xs text-text-tertiary uppercase">{label}</div>
+			<div className="typo-label-xs text-text-tertiary uppercase mb-2">
+				{label}
+			</div>
 			<div className="typo-body-sm text-text-primary tabular-nums pl-[13px]">
 				{value}
 			</div>
@@ -360,7 +374,7 @@ export function SchemaExplorer() {
 			sortable: true,
 			cell: (r) => (
 				<span className="font-mono">
-					<span className="font-[550]">{r.table_schema}</span>
+					<span className="text-text-secondary">{r.table_schema}</span>
 					<span className="text-text-tertiary">.</span>
 					{r.table_name}
 				</span>
