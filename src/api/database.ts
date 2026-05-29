@@ -69,6 +69,10 @@ export type PgIndexRow = {
 	index_name: string;
 	index_size: string;
 	unique: "Y" | "N";
+	/** pg_am.amname — `btree`, `hash`, `gin`, `gist`, `spgist`, `brin`. */
+	index_type: string | null;
+	/** `pg_get_indexdef` — full CREATE INDEX statement. */
+	index_def: string | null;
 	number_of_scans: number;
 	tuples_read: number;
 	tuples_fetched: number;

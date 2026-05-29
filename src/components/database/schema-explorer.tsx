@@ -8,11 +8,25 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	Button,
+	CodeEditor,
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
 	Input,
 	Skeleton,
+	Tabs,
+	TabsList,
+	TabsTrigger,
 } from "@health-samurai/react-components";
-import { ChevronDown, ChevronRight, Database, RefreshCw } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+	ArrowDown,
+	ArrowUp,
+	ChevronDown,
+	ChevronRight,
+	Search,
+} from "lucide-react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
+import { format as formatSQL } from "sql-formatter";
 import {
 	type PgTableRow,
 	type TableRef,
@@ -20,15 +34,13 @@ import {
 	usePgTable,
 	usePgTables,
 	useReindexTable,
-	useTruncateTable,
 	useVacuumTable,
 } from "../../api/database";
 import { createFuzzySearch } from "../../utils/fuzzy-search";
 import type { ColumnDef, SortState } from "../data-table/types";
 
-// Schemas worth surfacing — pg_catalog/information_schema/pgagent are filtered
-// out server-side. `public` always sorts first (the FHIR resource tables);
-// other schemas (`aidbox_stat`, custom workspaces) follow alphabetically.
+// `public` always sorts first (the FHIR resource tables); other schemas
+// (`aidbox_stat`, custom workspaces) follow alphabetically.
 function compareSchema(a: string, b: string): number {
 	if (a === b) return 0;
 	if (a === "public") return -1;
@@ -36,8 +48,12 @@ function compareSchema(a: string, b: string): number {
 	return a.localeCompare(b);
 }
 
-function formatRows(n: number): string {
-	if (n == null) return "—";
+// Dim placeholder for missing values — pg's `reltuples` returns -1 for
+// never-analyzed tables, `last_(auto)vacuum` is null until pg first runs.
+const EM_DASH = <span className="text-text-tertiary">—</span>;
+
+function formatRows(n: number): ReactNode {
+	if (n == null || n < 0) return EM_DASH;
 	const v = Math.round(n);
 	if (v < 1000) return String(v);
 	if (v < 1_000_000) return `${(v / 1000).toFixed(1)}k`;
@@ -45,11 +61,33 @@ function formatRows(n: number): string {
 	return `${(v / 1_000_000_000).toFixed(1)}B`;
 }
 
-function formatMinAgo(min: number | null): string {
-	if (min == null) return "—";
+function formatMinAgo(min: number | null): ReactNode {
+	if (min == null) return EM_DASH;
 	if (min < 60) return `${min}m ago`;
 	if (min < 24 * 60) return `${Math.floor(min / 60)}h ago`;
 	return `${Math.floor(min / (24 * 60))}d ago`;
+}
+
+function tryFormatSql(sql: string): string {
+	try {
+		// `expressionWidth` is sql-formatter's wrap target: long expressions
+		// split onto new lines once they exceed this character count. 80 fits
+		// the 640px HoverCard width comfortably in `typo-code`.
+		const formatted = formatSQL(sql, {
+			language: "postgresql",
+			expressionWidth: 80,
+		});
+		// sql-formatter keeps the `CREATE INDEX <name> ON <table> USING <am>
+		// (<cols>)` preamble on a single line — easily 100+ chars for hashed
+		// FHIR index names. Break before `ON` / `USING` so the popover doesn't
+		// scroll horizontally for the common case.
+		return formatted.replace(
+			/^(CREATE(?:\s+UNIQUE)?\s+INDEX\s+\S+)\s+ON\s+(\S+)\s+USING\s+/im,
+			"$1\n  ON $2\n  USING ",
+		);
+	} catch {
+		return sql;
+	}
 }
 
 function compare(a: unknown, b: unknown): number {
@@ -61,7 +99,7 @@ function compare(a: unknown, b: unknown): number {
 }
 
 type PendingAction = {
-	kind: "vacuum" | "analyze" | "reindex" | "truncate";
+	kind: "vacuum" | "analyze" | "reindex";
 } & TableRef;
 
 function TableDetails({
@@ -84,7 +122,7 @@ function TableDetails({
 	if (!data) return null;
 	const t = data.table;
 	return (
-		<div className="p-4 bg-bg-secondary border-l-2 border-border-link">
+		<div className="py-4 pl-3 pr-4 bg-bg-secondary">
 			<div className="flex items-center gap-2 mb-4">
 				<Button
 					variant="secondary"
@@ -107,14 +145,6 @@ function TableDetails({
 				>
 					Reindex
 				</Button>
-				<Button
-					variant="secondary"
-					size="small"
-					danger
-					onClick={() => onAction("truncate", ref)}
-				>
-					Truncate
-				</Button>
 			</div>
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
 				<Stat label="Options" value={(t.options ?? []).join(", ") || "—"} />
@@ -125,11 +155,23 @@ function TableDetails({
 						Indexes ({data.indexes.length})
 					</div>
 					<div className="border border-border-secondary rounded bg-bg-primary overflow-hidden">
-						<table className="w-full typo-body-xs">
+						{/* table-fixed + colgroup keeps column widths consistent across
+						    different tables — auto layout would otherwise reflow widths
+						    based on per-table index-name length. */}
+						<table className="w-full table-fixed typo-body-sm">
+							<colgroup>
+								<col />
+								<col className="w-[80px]" />
+								<col className="w-[120px]" />
+								<col className="w-[80px]" />
+								<col className="w-[100px]" />
+								<col className="w-[100px]" />
+							</colgroup>
 							<thead className="bg-bg-secondary">
 								<tr className="text-left text-text-secondary">
 									<th className="px-3 py-1.5 font-medium">Name</th>
-									<th className="px-3 py-1.5 font-medium">Size</th>
+									<th className="px-3 py-1.5 font-medium">Type</th>
+									<th className="px-3 py-1.5 font-medium text-right">Size</th>
 									<th className="px-3 py-1.5 font-medium">Unique</th>
 									<th className="px-3 py-1.5 font-medium text-right">Scans</th>
 									<th className="px-3 py-1.5 font-medium text-right">Reads</th>
@@ -141,16 +183,45 @@ function TableDetails({
 										key={idx.index_name}
 										className="border-t border-border-secondary"
 									>
-										<td className="px-3 py-1.5 font-mono">{idx.index_name}</td>
-										<td className="px-3 py-1.5">{idx.index_size}</td>
+										<td className="px-3 py-1.5 font-mono truncate">
+											{idx.index_def ? (
+												<HoverCard openDelay={200} closeDelay={100}>
+													<HoverCardTrigger asChild>
+														<span className="cursor-help">
+															{idx.index_name}
+														</span>
+													</HoverCardTrigger>
+													<HoverCardContent
+														side="bottom"
+														align="start"
+														sideOffset={4}
+														className="w-[640px] p-0 overflow-hidden"
+													>
+														<CodeEditor
+															readOnly
+															currentValue={tryFormatSql(idx.index_def)}
+															mode="sql"
+															foldGutter={false}
+															lineNumbers={false}
+														/>
+													</HoverCardContent>
+												</HoverCard>
+											) : (
+												idx.index_name
+											)}
+										</td>
+										<td className="px-3 py-1.5">{idx.index_type ?? EM_DASH}</td>
+										<td className="px-3 py-1.5 text-right tabular-nums">
+											{idx.index_size}
+										</td>
 										<td className="px-3 py-1.5">
 											{idx.unique === "Y" ? "yes" : "no"}
 										</td>
 										<td className="px-3 py-1.5 text-right tabular-nums">
-											{idx.number_of_scans?.toLocaleString() ?? "—"}
+											{idx.number_of_scans?.toLocaleString() ?? EM_DASH}
 										</td>
 										<td className="px-3 py-1.5 text-right tabular-nums">
-											{idx.tuples_read?.toLocaleString() ?? "—"}
+											{idx.tuples_read?.toLocaleString() ?? EM_DASH}
 										</td>
 									</tr>
 								))}
@@ -176,28 +247,28 @@ function tableKey(r: { table_schema: string; table_name: string }): string {
 	return `${r.table_schema}.${r.table_name}`;
 }
 
+// Sentinel for the "All" tab — collapses every schema into one flat list.
+const ALL_TAB = "__all__";
+
 export function SchemaExplorer() {
 	const [filter, setFilter] = useState("");
 	const [sort, setSort] = useState<SortState>({
 		column: "total_size",
 		direction: "desc",
 	});
-	const [expandedTable, setExpandedTable] = useState<string | null>(null);
-	const [collapsedSchemas, setCollapsedSchemas] = useState<Set<string>>(
-		new Set(),
-	);
+	const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
+	const [activeSchema, setActiveSchema] = useState<string | null>(null);
 	const [pending, setPending] = useState<PendingAction | null>(null);
 
 	// Load every table once; filtering happens client-side (fuzzy), so typing
 	// doesn't round-trip to the server.
-	const { data, isLoading, refetch, isFetching } = usePgTables({
+	const { data, isLoading } = usePgTables({
 		limit: 5000,
 		allSchemas: true,
 	});
 	const vacuum = useVacuumTable();
 	const analyze = useAnalyzeTable();
 	const reindex = useReindexTable();
-	const truncate = useTruncateTable();
 
 	const fuzzySearch = useMemo(
 		() =>
@@ -217,6 +288,10 @@ export function SchemaExplorer() {
 	const filtering = filter.trim().length > 0;
 
 	const grouped = useMemo(() => {
+		// Tabs (schema list) always come from the unfiltered data so they stay
+		// visible during a search; only the per-schema row list narrows down.
+		const allSchemas = new Set<string>();
+		for (const row of data ?? []) allSchemas.add(row.table_schema);
 		const rows = filtering ? fuzzySearch(filter) : (data ?? []);
 		const bySchema = new Map<string, PgTableRow[]>();
 		for (const row of rows) {
@@ -224,7 +299,7 @@ export function SchemaExplorer() {
 			list.push(row);
 			bySchema.set(row.table_schema, list);
 		}
-		const schemas = [...bySchema.keys()].sort(compareSchema);
+		const schemas = [...allSchemas].sort(compareSchema);
 		const dir = sort?.direction === "asc" ? 1 : -1;
 		const col = sort?.column as keyof PgTableRow | undefined;
 		for (const s of schemas) {
@@ -242,23 +317,13 @@ export function SchemaExplorer() {
 		}));
 	}, [data, filtering, fuzzySearch, filter, sort]);
 
-	// First load: start with every schema collapsed.
-	const initialized = useMemo(() => (data?.length ?? 0) > 0, [data]);
+	// "All" is the default tab on first load. We never auto-switch away from
+	// the user's selected tab mid-search even if it has zero matches — the
+	// empty pane is the honest answer.
 	useEffect(() => {
-		if (!initialized || collapsedSchemas.size > 0) return;
-		const all = new Set<string>();
-		for (const row of data ?? []) all.add(row.table_schema);
-		setCollapsedSchemas(all);
-	}, [initialized, data, collapsedSchemas.size]);
-
-	const toggleSchema = (schema: string) => {
-		setCollapsedSchemas((prev) => {
-			const next = new Set(prev);
-			if (next.has(schema)) next.delete(schema);
-			else next.add(schema);
-			return next;
-		});
-	};
+		if (grouped.length === 0 || activeSchema !== null) return;
+		setActiveSchema(ALL_TAB);
+	}, [grouped, activeSchema]);
 
 	const onSortToggle = (column: string) => {
 		setSort((prev) => {
@@ -278,7 +343,7 @@ export function SchemaExplorer() {
 			header: "",
 			width: "w-[32px]",
 			cell: (r) =>
-				expandedTable === tableKey(r) ? (
+				expandedTables.has(tableKey(r)) ? (
 					<ChevronDown className="size-4 text-text-tertiary" />
 				) : (
 					<ChevronRight className="size-4 text-text-tertiary" />
@@ -288,7 +353,13 @@ export function SchemaExplorer() {
 			id: "table_name",
 			header: "Table",
 			sortable: true,
-			cell: (r) => <span className="font-mono">{r.table_name}</span>,
+			cell: (r) => (
+				<span className="font-mono">
+					<span className="font-bold">{r.table_schema}</span>
+					<span className="text-text-tertiary">.</span>
+					{r.table_name}
+				</span>
+			),
 		},
 		{
 			id: "num_rows",
@@ -296,7 +367,17 @@ export function SchemaExplorer() {
 			sortable: true,
 			width: "w-[100px]",
 			className: "text-right tabular-nums",
-			cell: (r) => formatRows(r.num_rows),
+			// Show the full count on hover — the displayed value is abbreviated
+			// (`73.6k` vs `73,631`) and pg's `reltuples` is an estimate, but the
+			// exact estimate is still more useful than the rounded display.
+			cell: (r) =>
+				r.num_rows == null || r.num_rows < 0 ? (
+					formatRows(r.num_rows)
+				) : (
+					<span title={`${Math.round(r.num_rows).toLocaleString()} rows`}>
+						{formatRows(r.num_rows)}
+					</span>
+				),
 		},
 		{
 			id: "total_size",
@@ -367,9 +448,7 @@ export function SchemaExplorer() {
 			? "Vacuum table?"
 			: k === "analyze"
 				? "Analyze table?"
-				: k === "truncate"
-					? "Truncate table?"
-					: "Reindex table?";
+				: "Reindex table?";
 
 	const actionDesc = (p: PendingAction | null) => {
 		if (!p) return "";
@@ -378,8 +457,6 @@ export function SchemaExplorer() {
 			return `REINDEX TABLE ${t}. Rebuilds all indexes — locks the table for writes.`;
 		if (p.kind === "vacuum")
 			return `VACUUM ${t}. Reclaims dead-tuple space. Runs concurrently with reads/writes.`;
-		if (p.kind === "truncate")
-			return `TRUNCATE TABLE ${t}. Permanently deletes ALL rows in the table. This cannot be undone.`;
 		return `ANALYZE ${t}. Refreshes planner stats.`;
 	};
 
@@ -389,33 +466,71 @@ export function SchemaExplorer() {
 		const ref: TableRef = { schema, table };
 		if (kind === "vacuum") vacuum.mutate(ref);
 		else if (kind === "analyze") analyze.mutate(ref);
-		else if (kind === "truncate") truncate.mutate(ref);
 		else reindex.mutate(ref);
 		setPending(null);
 	};
 
 	const colCount = columns.length;
+	// Tabs `value` falls back to "All" before the effect populates
+	// `activeSchema`; mirror that here so the first render shows rows.
+	const currentTab = activeSchema ?? ALL_TAB;
+	const allRows = useMemo(() => {
+		const flat = grouped.flatMap((g) => g.rows);
+		const dir = sort?.direction === "asc" ? 1 : -1;
+		const col = sort?.column as keyof PgTableRow | undefined;
+		if (!col) return flat;
+		return [...flat].sort(
+			(a, b) => compare(a[col] as unknown, b[col] as unknown) * dir,
+		);
+	}, [grouped, sort]);
+	const activeRows =
+		currentTab === ALL_TAB
+			? allRows
+			: (grouped.find((g) => g.schema === currentTab)?.rows ?? []);
 
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<Input
-					placeholder="Search"
-					value={filter}
-					onChange={(e) => setFilter(e.target.value)}
-					className="flex-1"
-				/>
-				<Button
-					variant="primary"
-					onClick={() => refetch()}
-					disabled={isFetching}
-				>
-					<RefreshCw
-						className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
+				<div className="relative flex-1">
+					<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-tertiary pointer-events-none" />
+					<Input
+						placeholder="Search"
+						value={filter}
+						onChange={(e) => setFilter(e.target.value)}
+						className="pl-9"
 					/>
-					Refresh
-				</Button>
+				</div>
 			</div>
+			{grouped.length > 0 && (
+				<Tabs
+					value={currentTab}
+					onValueChange={(v) => {
+						setActiveSchema(v);
+						setExpandedTables(new Set());
+					}}
+					// HSComp's Tabs base style is `h-full flex-col`; inside our flex-col
+					// wrapper that grabs all remaining height and squeezes the table
+					// below to zero. Pin the tab row to its content height.
+					className="h-auto! flex-none! border-b border-border-secondary"
+				>
+					<TabsList>
+						<TabsTrigger value={ALL_TAB}>
+							All
+							<span className="ml-1.5 inline-block min-w-[5ch] text-left typo-body-xs text-text-tertiary">
+								({allRows.length})
+							</span>
+						</TabsTrigger>
+						{grouped.map(({ schema, rows }) => (
+							<TabsTrigger key={schema} value={schema}>
+								{schema}
+								<span className="ml-1.5 inline-block min-w-[5ch] text-left typo-body-xs text-text-tertiary">
+									({rows.length})
+								</span>
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
+			)}
 			<div className="flex-1 overflow-auto">
 				{isLoading ? (
 					<div className="p-4 space-y-2">
@@ -425,105 +540,85 @@ export function SchemaExplorer() {
 					</div>
 				) : (
 					<table className="w-full typo-code">
-						<tbody>
-							{grouped.map(({ schema, rows }) => {
-								// While filtering, force every matching schema open so
-								// results are visible without manual expansion.
-								const collapsed = !filtering && collapsedSchemas.has(schema);
-								return (
-									<Fragment key={schema}>
-										<tr
-											className="bg-bg-secondary cursor-pointer hover:bg-bg-tertiary border-t border-border-secondary"
-											onClick={() => toggleSchema(schema)}
-										>
-											<td colSpan={colCount} className="px-3 py-2">
-												<div className="flex items-center gap-2">
-													{collapsed ? (
-														<ChevronRight className="size-4 text-text-tertiary" />
-													) : (
-														<ChevronDown className="size-4 text-text-tertiary" />
-													)}
-													<Database className="size-3.5 text-text-tertiary" />
-													<span className="typo-label-sm font-semibold text-text-primary">
-														{schema}
-													</span>
-													<span className="typo-body-xs text-text-tertiary">
-														{rows.length}{" "}
-														{rows.length === 1 ? "table" : "tables"}
-													</span>
-												</div>
-											</td>
-										</tr>
-										{!collapsed && (
-											<tr className="border-b border-border-secondary text-left text-text-secondary bg-bg-primary">
-												{columns.map((c) => (
-													<td
-														key={c.id}
-														title={
-															typeof c.headerTooltip === "string"
-																? c.headerTooltip
-																: undefined
-														}
-														className={`px-3 py-2 typo-label-xs font-medium uppercase tracking-wide ${c.width ?? ""} ${c.className ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`}
-														onClick={
-															c.sortable ? () => onSortToggle(c.id) : undefined
-														}
-													>
-														{c.header}
-														{c.sortable && sort?.column === c.id && (
-															<span className="ml-1 text-text-tertiary">
-																{sort.direction === "asc" ? "▲" : "▼"}
-															</span>
-														)}
-													</td>
+						<thead className="sticky top-0 bg-bg-primary z-10">
+							<tr className="text-left text-text-secondary">
+								{columns.map((c) => (
+									<th
+										key={c.id}
+										title={
+											typeof c.headerTooltip === "string"
+												? c.headerTooltip
+												: undefined
+										}
+										// `border-b` on a sticky `<tr>` doesn't always paint in
+										// Chrome (the row's border gets clipped by the sticky
+										// box). Put it on each `<th>` instead so the line is
+										// visible across the whole header.
+										className={`px-3 py-2 whitespace-nowrap typo-label-xs font-medium uppercase tracking-wide border-b border-border-secondary ${c.width ?? ""} ${c.className ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`}
+										onClick={c.sortable ? () => onSortToggle(c.id) : undefined}
+									>
+										<span className="inline-flex items-center gap-1">
+											{c.header}
+											{c.sortable &&
+												sort?.column === c.id &&
+												(sort.direction === "asc" ? (
+													<ArrowUp className="size-3 text-text-tertiary" />
+												) : (
+													<ArrowDown className="size-3 text-text-tertiary" />
 												))}
+										</span>
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{activeRows.map((row) => {
+								const key = tableKey(row);
+								const isExpanded = expandedTables.has(key);
+								return (
+									<Fragment key={key}>
+										<tr
+											className="h-[38px] border-b border-border-secondary cursor-pointer hover:bg-bg-secondary"
+											onClick={() =>
+												setExpandedTables((prev) => {
+													const next = new Set(prev);
+													if (next.has(key)) next.delete(key);
+													else next.add(key);
+													return next;
+												})
+											}
+										>
+											{columns.map((c) => (
+												<td
+													key={c.id}
+													className={`px-3 whitespace-nowrap ${c.className ?? ""}`}
+												>
+													{c.cell(row)}
+												</td>
+											))}
+										</tr>
+										{isExpanded && (
+											<tr className="bg-bg-secondary">
+												{/* Skip the expand column so the details panel
+													starts at the Table column boundary; an extra
+													pl-3 inside the panel lines its content up with
+													the table-name text (matching the cell's px-3). */}
+												<td className="p-0" />
+												<td colSpan={colCount - 1} className="p-0">
+													<TableDetails
+														ref={{
+															schema: row.table_schema,
+															table: row.table_name,
+														}}
+														onAction={onAction}
+													/>
+												</td>
 											</tr>
 										)}
-										{!collapsed &&
-											rows.map((row, i) => {
-												const key = tableKey(row);
-												const isExpanded = expandedTable === key;
-												return (
-													<Fragment key={key}>
-														<tr
-															className={`border-b border-border-secondary cursor-pointer hover:bg-bg-secondary ${
-																i % 2 === 1 ? "bg-bg-secondary/30" : ""
-															}`}
-															onClick={() =>
-																setExpandedTable((cur) =>
-																	cur === key ? null : key,
-																)
-															}
-														>
-															{columns.map((c) => (
-																<td
-																	key={c.id}
-																	className={`px-3 py-1.5 ${c.className ?? ""}`}
-																>
-																	{c.cell(row)}
-																</td>
-															))}
-														</tr>
-														{isExpanded && (
-															<tr>
-																<td colSpan={colCount} className="p-0">
-																	<TableDetails
-																		ref={{
-																			schema: row.table_schema,
-																			table: row.table_name,
-																		}}
-																		onAction={onAction}
-																	/>
-																</td>
-															</tr>
-														)}
-													</Fragment>
-												);
-											})}
 									</Fragment>
 								);
 							})}
-							{grouped.length === 0 && (
+							{activeRows.length === 0 && (
 								<tr>
 									<td
 										colSpan={colCount}
@@ -548,12 +643,8 @@ export function SchemaExplorer() {
 					<AlertDialogDescription>{actionDesc(pending)}</AlertDialogDescription>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							variant="primary"
-							danger={pending?.kind === "truncate"}
-							onClick={onConfirm}
-						>
-							{pending?.kind === "truncate" ? "Truncate" : "Run"}
+						<AlertDialogAction variant="primary" onClick={onConfirm}>
+							Run
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

@@ -27,7 +27,7 @@ const items = [
 export function DatabaseLeftMenu() {
 	const path = useRouterState().location.pathname;
 	return (
-		<div className="h-full border-r border-border-secondary bg-bg-secondary">
+		<div className="h-full border-r border-border-secondary bg-bg-primary">
 			<div className="px-3 py-3 border-b border-border-secondary">
 				<h2 className="typo-label-md text-text-primary">Database</h2>
 			</div>
