@@ -37,6 +37,7 @@ export const RESOURCE_TYPES_WITH_BUILDER = new Set([
 	"ViewDefinition",
 	"AccessPolicy",
 	"SearchParameter",
+	"ValueSet",
 ]);
 
 /**

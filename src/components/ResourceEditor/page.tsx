@@ -33,6 +33,8 @@ import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
 import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
 import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
+import { ValueSetBuilderContent } from "../ValueSet/builder-content";
+import { ValueSetProvider } from "../ValueSet/page";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionLineageTab } from "../ViewDefinition/lineage/lineage-tab";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
@@ -369,6 +371,7 @@ export const ResourceEditorPage = ({
 	const isAccessPolicy = resourceType === "AccessPolicy";
 	const isSearchParameter = resourceType === "SearchParameter";
 	const isLibrary = resourceType === "Library";
+	const isValueSet = resourceType === "ValueSet";
 	const isSQLQuery =
 		isLibrary &&
 		Boolean(
@@ -394,6 +397,22 @@ export const ResourceEditorPage = ({
 			content: (
 				<HSComp.TabsContent value="builder" className="grow min-h-0">
 					<BuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isValueSet) {
+		tabs.push({
+			value: "builder",
+			trigger: (
+				<HSComp.TabsTrigger value="builder">
+					ValueSet Builder
+				</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<ValueSetBuilderContent />
 				</HSComp.TabsContent>
 			),
 		});
@@ -688,6 +707,14 @@ export const ResourceEditorPage = ({
 			<AccessPolicyProvider id={id} initialResource={initialResource}>
 				{content}
 			</AccessPolicyProvider>
+		);
+	}
+
+	if (isValueSet) {
+		return (
+			<ValueSetProvider initialResource={initialResource}>
+				{content}
+			</ValueSetProvider>
 		);
 	}
 
