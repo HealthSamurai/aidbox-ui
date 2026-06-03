@@ -679,7 +679,7 @@ function ConceptCodePicker({
 				<div className="w-full">
 					<HSComp.Input
 						ref={inputRef}
-						placeholder="code"
+						placeholder="Code from system"
 						value={local}
 						onChange={(e) => {
 							setLocal(e.target.value);
@@ -957,25 +957,33 @@ export function PropertiesTree() {
 		"_exclude",
 	]);
 
-	// auto-expand each entry's nested sections so they're always visible
-	// when the row is opened (applies to both include and exclude)
+	// auto-expand each entry's nested sections on first appearance only.
+	// Without the `seen` ref this useEffect would re-expand every node on
+	// each render (because includes/excludes are re-derived arrays), undoing
+	// the user's manual collapse.
+	const autoExpandedRef = React.useRef<Set<string>>(new Set());
 	React.useEffect(() => {
+		const need: string[] = [];
+		const collect = (kind: IncludeKind, arr: typeof includes) => {
+			arr.forEach((_, i) => {
+				const row = `_${kind}_${i}`;
+				const c = `${row}_concept`;
+				const f = `${row}_filter`;
+				for (const id of [row, c, f]) {
+					if (!autoExpandedRef.current.has(id)) {
+						autoExpandedRef.current.add(id);
+						need.push(id);
+					}
+				}
+			});
+		};
+		collect("include", includes);
+		collect("exclude", excludes);
+		if (need.length === 0) return;
 		setExpandedItems((prev) => {
-			const need: string[] = [];
-			const collect = (kind: IncludeKind, arr: typeof includes) => {
-				arr.forEach((_, i) => {
-					const row = `_${kind}_${i}`;
-					const c = `${row}_concept`;
-					const f = `${row}_filter`;
-					if (!prev.includes(row)) need.push(row);
-					if (!prev.includes(c)) need.push(c);
-					if (!prev.includes(f)) need.push(f);
-				});
-			};
-			collect("include", includes);
-			collect("exclude", excludes);
-			if (need.length === 0) return prev;
-			return [...prev, ...need];
+			const missing = need.filter((id) => !prev.includes(id));
+			if (missing.length === 0) return prev;
+			return [...prev, ...missing];
 		});
 	}, [includes, excludes]);
 
@@ -1099,7 +1107,7 @@ export function PropertiesTree() {
 				if (isVsInclude(entry)) {
 					return (
 						<div className="flex w-full items-center gap-2">
-							<div className="w-[226px] shrink-0">
+							<div className="w-[202px] shrink-0">
 								<button
 									type="button"
 									className="uppercase px-1.5 py-0.5 cursor-pointer rounded-md text-text-info-primary bg-bg-info-primary"
@@ -1127,7 +1135,7 @@ export function PropertiesTree() {
 				}
 				return (
 					<div className="flex w-full items-center gap-2">
-						<div className="w-[226px] shrink-0">{labelView(item)}</div>
+						<div className="w-[202px] shrink-0">{labelView(item)}</div>
 						<CodeSystemPicker
 							system={entry.system}
 							version={entry.version}
@@ -1162,7 +1170,7 @@ export function PropertiesTree() {
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1 shrink-0">
 							<Tag size={12} />
 						</span>
-						<div className="w-[200px] shrink-0">
+						<div className="w-[152px] shrink-0">
 							<ConceptCodePicker
 								system={parent?.system}
 								code={entry.code}
@@ -1179,7 +1187,7 @@ export function PropertiesTree() {
 						</div>
 						<div className="flex-1 min-w-0">
 							<InputView
-								placeholder="display (optional)"
+								placeholder="Text to display for this code for this value set in this valueset"
 								value={entry.display}
 								onChange={(v) =>
 									updateConcept(kind, idx, ci, { display: v || undefined })
@@ -1230,7 +1238,7 @@ export function PropertiesTree() {
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1 shrink-0">
 							<Filter size={12} />
 						</span>
-						<div className="w-[160px] shrink-0">
+						<div className="w-[152px] shrink-0">
 							<InputView
 								placeholder="property"
 								value={entry.property}
