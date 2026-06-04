@@ -36,6 +36,7 @@ import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
 import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
 import { ValueSetBuilderContent } from "../ValueSet/builder-content";
+import { ValueSetGraphTab } from "../ValueSet/graph/graph-tab";
 import { ValueSetProvider } from "../ValueSet/page";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionLineageTab } from "../ViewDefinition/lineage/lineage-tab";
@@ -416,6 +417,15 @@ export const ResourceEditorPage = ({
 			content: (
 				<HSComp.TabsContent value="builder" className="grow min-h-0">
 					<ValueSetBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+		tabs.push({
+			value: "graph",
+			trigger: <HSComp.TabsTrigger value="graph">Graph</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent value="graph" className="grow min-h-0 flex">
+					<ValueSetGraphTab />
 				</HSComp.TabsContent>
 			),
 		});

@@ -6,6 +6,7 @@ export const RESOURCE_EDITOR_TABS = [
 	"indexes",
 	"sqlquery",
 	"lineage",
+	"graph",
 ] as const;
 export type ResourceEditorTab = (typeof RESOURCE_EDITOR_TABS)[number];
 const resourceEditorTabSet = new Set(RESOURCE_EDITOR_TABS);
