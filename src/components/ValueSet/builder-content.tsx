@@ -43,10 +43,27 @@ export const ValueSetBuilderContent = () => {
 		expansion,
 		expandError,
 		setExpandDurationMs,
+		setMissingFields,
 	} = useValueSetContext();
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
+			const missing = new Set<string>();
+			if (!valueSet.status) missing.add("status");
+			if (missing.size > 0) {
+				setMissingFields(missing);
+				throw {
+					resourceType: "OperationOutcome",
+					issue: [
+						{
+							severity: "error",
+							code: "required",
+							diagnostics: `Missing required field${missing.size > 1 ? "s" : ""}: ${[...missing].join(", ")}`,
+						},
+					],
+				};
+			}
+			setMissingFields(new Set());
 			const payload = valueSet;
 			if (payload.id) {
 				const result = await client.request<ValueSet>({

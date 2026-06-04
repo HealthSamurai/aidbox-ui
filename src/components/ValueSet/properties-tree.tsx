@@ -9,6 +9,7 @@ import { Filter, Plus, Tag, X } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { useValueSetContext } from "./context";
+import type { ValueSetStatus } from "./types";
 
 type IncludeKind = "include" | "exclude";
 
@@ -18,14 +19,13 @@ type ItemMeta = {
 		| "url"
 		| "version"
 		| "title"
+		| "status"
 		| "description"
 		| "include"
 		| "include-row"
 		| "include-add"
-		| "include-concept"
 		| "include-concept-row"
 		| "include-concept-add"
-		| "include-filter"
 		| "include-filter-row"
 		| "include-filter-add";
 	kind?: IncludeKind;
@@ -33,6 +33,8 @@ type ItemMeta = {
 	conceptIndex?: number;
 	filterIndex?: number;
 };
+
+const STATUSES = ["draft", "active", "retired", "unknown"] as const;
 
 const isVsInclude = (inc: { valueSet?: string[]; system?: string }) =>
 	(inc.valueSet?.length ?? 0) > 0;
@@ -127,10 +129,12 @@ function CodeSystemPicker({
 	system,
 	version,
 	onChange,
+	autoFocusToken,
 }: {
 	system?: string;
 	version?: string;
 	onChange: (next: { system?: string; version?: string }) => void;
+	autoFocusToken?: number | null;
 }) {
 	const client = useAidboxClient();
 	const formatted = formatSystemPipeVersion(system, version);
@@ -268,13 +272,18 @@ function CodeSystemPicker({
 	}, [activeIndex]);
 
 	const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+	React.useEffect(() => {
+		if (autoFocusToken != null) inputRef.current?.focus();
+	}, [autoFocusToken]);
+
 	return (
 		<HSComp.Popover open={open} onOpenChange={setOpen}>
 			<HSComp.PopoverAnchor asChild>
 				<div className="flex-1 min-w-0">
 					<HSComp.Input
 						ref={inputRef}
-						placeholder="CodeSystem URL"
+						placeholder="CodeSystem canonical URL"
 						value={local}
 						onChange={(e) => {
 							setLocal(e.target.value);
@@ -411,15 +420,18 @@ type ValueSetHit = {
 	url?: string;
 	name?: string;
 	title?: string;
+	version?: string;
 	description?: string;
 };
 
 function ValueSetPicker({
 	value,
 	onChange,
+	autoFocusToken,
 }: {
 	value?: string;
 	onChange: (next: string | undefined) => void;
+	autoFocusToken?: number | null;
 }) {
 	const client = useAidboxClient();
 	const [local, setLocal] = React.useState(value ?? "");
@@ -438,15 +450,22 @@ function ValueSetPicker({
 		return () => clearTimeout(t);
 	}, [local]);
 
-	const { data: hits } = useQuery({
-		queryKey: ["valueset-builder", "valueset-picker", debounced],
+	// same pipe-syntax handling as CodeSystemPicker — `url|version`
+	const pipeIdx = debounced.indexOf("|");
+	const mode: "url" | "version" = pipeIdx >= 0 ? "version" : "url";
+	const urlPart =
+		pipeIdx >= 0 ? debounced.slice(0, pipeIdx).trim() : debounced.trim();
+	const versionPart = pipeIdx >= 0 ? debounced.slice(pipeIdx + 1).trim() : "";
+
+	const { data: urlHits } = useQuery({
+		queryKey: ["valueset-builder", "valueset-picker", "url", urlPart],
+		enabled: mode === "url",
 		queryFn: async () => {
-			const q = debounced.trim();
 			const params = new URLSearchParams({
 				_count: "15",
-				_elements: "url,name,title,description",
+				_elements: "url,name,title,version,description",
 			});
-			if (q) params.set("url:contains", q);
+			if (urlPart) params.set("url:contains", urlPart);
 			const res = await client.request<{
 				entry?: Array<{ resource: ValueSetHit }>;
 			}>({
@@ -461,21 +480,77 @@ function ValueSetPicker({
 		staleTime: 30_000,
 	});
 
+	const { data: versionHits } = useQuery({
+		queryKey: ["valueset-builder", "valueset-picker", "versions", urlPart],
+		enabled: mode === "version" && urlPart.length > 0,
+		queryFn: async () => {
+			const params = new URLSearchParams({
+				_count: "100",
+				_elements: "url,name,title,version",
+				url: urlPart,
+			});
+			const res = await client.request<{
+				entry?: Array<{ resource: ValueSetHit }>;
+			}>({
+				method: "GET",
+				url: `/fhir/ValueSet?${params.toString()}`,
+			});
+			if (res.isErr()) return [];
+			const seen = new Set<string>();
+			const out: Array<ValueSetHit & { url: string; version: string }> = [];
+			for (const e of res.value.resource.entry ?? []) {
+				const r = e.resource;
+				if (!r.url || !r.version) continue;
+				if (seen.has(r.version)) continue;
+				seen.add(r.version);
+				out.push({ ...r, url: r.url, version: r.version });
+			}
+			return out;
+		},
+		staleTime: 30_000,
+	});
+
 	const commit = (raw: string) => {
 		setLocal(raw);
 		const next = raw.trim() || undefined;
 		if (next !== value) onChange(next);
 	};
 
-	const selectHit = (h: ValueSetHit & { url: string }) => {
+	const selectUrlHit = (h: ValueSetHit & { url: string }) => {
+		// picking from URL list never auto-pins version
 		setLocal(h.url);
 		onChange(h.url);
 		setOpen(false);
 		setActiveIndex(-1);
 	};
 
-	const hitsList = hits ?? [];
+	const selectVersionHit = (
+		h: ValueSetHit & { url: string; version: string },
+	) => {
+		const next = `${urlPart || h.url}|${h.version}`;
+		setLocal(next);
+		onChange(next);
+		setOpen(false);
+		setActiveIndex(-1);
+	};
+
+	const hitsList =
+		mode === "version"
+			? (versionHits ?? []).filter(
+					(h) => !versionPart || h.version.includes(versionPart),
+				)
+			: (urlHits ?? []);
 	const hitsLength = hitsList.length;
+
+	const onSelectActive = () => {
+		const h = hitsList[activeIndex];
+		if (!h) return;
+		if (mode === "version") {
+			selectVersionHit(h as ValueSetHit & { url: string; version: string });
+		} else {
+			selectUrlHit(h);
+		}
+	};
 
 	React.useEffect(() => {
 		setActiveIndex(hitsLength > 0 ? 0 : -1);
@@ -485,6 +560,10 @@ function ValueSetPicker({
 		if (activeIndex < 0) return;
 		itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex]);
+
+	React.useEffect(() => {
+		if (autoFocusToken != null) inputRef.current?.focus();
+	}, [autoFocusToken]);
 
 	return (
 		<HSComp.Popover open={open} onOpenChange={setOpen}>
@@ -523,7 +602,7 @@ function ValueSetPicker({
 							} else if (e.key === "Enter") {
 								e.preventDefault();
 								if (open && activeIndex >= 0 && hitsList[activeIndex]) {
-									selectHit(hitsList[activeIndex]);
+									onSelectActive();
 								} else {
 									commit(local);
 									setOpen(false);
@@ -547,24 +626,56 @@ function ValueSetPicker({
 					if (e.target === inputRef.current) e.preventDefault();
 				}}
 			>
-				{hitsList.length === 0 ? (
+				{mode === "version" && !urlPart ? (
 					<div className="px-3 py-2 text-text-secondary text-sm">
-						No matches
+						Type a ValueSet URL before <code>|</code>
+					</div>
+				) : hitsLength === 0 ? (
+					<div className="px-3 py-2 text-text-secondary text-sm">
+						{mode === "version" ? "No versions found" : "No matches"}
 					</div>
 				) : (
 					<ul className="py-1">
 						{hitsList.map((h, i) => {
 							const isActive = i === activeIndex;
+							if (mode === "version") {
+								const ver = h.version ?? "";
+								const secondary = h.title || h.name || h.id || h.url;
+								return (
+									<li key={`${h.url}|${ver}`}>
+										<button
+											ref={(el) => {
+												itemRefs.current[i] = el;
+											}}
+											type="button"
+											onClick={() =>
+												selectVersionHit(
+													h as ValueSetHit & { url: string; version: string },
+												)
+											}
+											onMouseEnter={() => setActiveIndex(i)}
+											className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
+										>
+											<div className="typo-body text-text-primary truncate font-mono">
+												{ver}
+											</div>
+											<div className="typo-body-xs text-text-secondary line-clamp-1">
+												{secondary}
+											</div>
+										</button>
+									</li>
+								);
+							}
 							const title = h.title || h.name || h.id || h.url;
 							const secondary = h.description || h.url;
 							return (
-								<li key={h.url}>
+								<li key={`${h.url}|${h.version ?? ""}`}>
 									<button
 										ref={(el) => {
 											itemRefs.current[i] = el;
 										}}
 										type="button"
-										onClick={() => selectHit(h)}
+										onClick={() => selectUrlHit(h)}
 										onMouseEnter={() => setActiveIndex(i)}
 										className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 									>
@@ -788,9 +899,6 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 	const kind = item.getItemData()?.meta?.kind;
 	let label: string | undefined = metaType;
 	if (metaType === "include") label = kind ?? "include";
-	else if (metaType === "include-row") label = "codesystem";
-	else if (metaType === "include-concept") label = "concept";
-	else if (metaType === "include-filter") label = "filter";
 
 	const onLabelClickFn = (e: React.MouseEvent) => {
 		if (!isFolder) return;
@@ -811,7 +919,19 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 }
 
 export function PropertiesTree() {
-	const { valueSet, updateValueSet } = useValueSetContext();
+	const { valueSet, updateValueSet, missingFields, setMissingFields } =
+		useValueSetContext();
+	const dismissMissing = React.useCallback(
+		(field: string) => {
+			setMissingFields((prev) => {
+				if (!prev.has(field)) return prev;
+				const next = new Set(prev);
+				next.delete(field);
+				return next;
+			});
+		},
+		[setMissingFields],
+	);
 
 	const updateUrl = (value: string) => {
 		updateValueSet((vs) => ({ ...vs, url: value || undefined }));
@@ -821,6 +941,13 @@ export function PropertiesTree() {
 	};
 	const updateTitle = (value: string) => {
 		updateValueSet((vs) => ({ ...vs, title: value || undefined }));
+	};
+	const updateStatus = (value: string) => {
+		updateValueSet((vs) => ({
+			...vs,
+			status: (value || undefined) as ValueSetStatus | undefined,
+		}));
+		if (value) dismissMissing("status");
 	};
 	const updateDescription = (value: string) => {
 		updateValueSet((vs) => ({ ...vs, description: value || undefined }));
@@ -840,11 +967,12 @@ export function PropertiesTree() {
 			_properties: {
 				name: "_properties",
 				meta: { type: "properties" },
-				children: ["_url", "_version", "_title", "_description"],
+				children: ["_url", "_version", "_status", "_title", "_description"],
 			},
 			_url: { name: "_url", meta: { type: "url" } },
 			_version: { name: "_version", meta: { type: "version" } },
 			_title: { name: "_title", meta: { type: "title" } },
+			_status: { name: "_status", meta: { type: "status" } },
 			_description: { name: "_description", meta: { type: "description" } },
 		};
 
@@ -861,88 +989,68 @@ export function PropertiesTree() {
 				name: addId,
 				meta: { type: "include-add", kind },
 			};
-			// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: large nested tree-node builder
 			entries.forEach((entry, i) => {
 				const rowId = `${sectionId}_${i}`;
-				const conceptChildren = (entry.concept ?? []).map(
-					(_, ci) => `${rowId}_concept_${ci}`,
-				);
-				const filterChildren = (entry.filter ?? []).map(
-					(_, fi) => `${rowId}_filter_${fi}`,
-				);
 				const hasConcept = (entry.concept?.length ?? 0) > 0;
 				const hasFilter = (entry.filter?.length ?? 0) > 0;
-				// vsd-3 inherited via contentReference — applies to exclude too
-				const showConcept = hasConcept || !hasFilter;
-				const showFilter = hasFilter || !hasConcept;
+				const hasSystem = !!entry.system;
+				// vsd-2: concept/filter require system. Without system we
+				// hide the add button entirely; legacy populated arrays still
+				// render so the user can clean them up.
+				// vsd-3: cannot have both concept and filter — when one is
+				// populated we hide the add button for the other.
+				const enableConceptAdd = hasSystem && !hasFilter;
+				const enableFilterAdd = hasSystem && !hasConcept;
 				const rowChildren: string[] = [];
-				if (showConcept) rowChildren.push(`${rowId}_concept`);
-				if (showFilter) rowChildren.push(`${rowId}_filter`);
+				(entry.concept ?? []).forEach((_, ci) => {
+					const id = `${rowId}_concept_${ci}`;
+					rowChildren.push(id);
+					out[id] = {
+						name: id,
+						meta: {
+							type: "include-concept-row",
+							kind,
+							includeIndex: i,
+							conceptIndex: ci,
+						},
+					};
+				});
+				(entry.filter ?? []).forEach((_, fi) => {
+					const id = `${rowId}_filter_${fi}`;
+					rowChildren.push(id);
+					out[id] = {
+						name: id,
+						meta: {
+							type: "include-filter-row",
+							kind,
+							includeIndex: i,
+							filterIndex: fi,
+						},
+					};
+				});
+				if (enableConceptAdd) {
+					const id = `${rowId}_concept_add`;
+					rowChildren.push(id);
+					out[id] = {
+						name: id,
+						meta: { type: "include-concept-add", kind, includeIndex: i },
+					};
+				}
+				if (enableFilterAdd) {
+					const id = `${rowId}_filter_add`;
+					rowChildren.push(id);
+					out[id] = {
+						name: id,
+						meta: { type: "include-filter-add", kind, includeIndex: i },
+					};
+				}
 				out[rowId] = {
 					name: rowId,
 					meta: { type: "include-row", kind, includeIndex: i },
-					children: rowChildren,
+					// leaf when no concept/filter — drops chevron. Spacer
+					// rendered in customItemView keeps horizontal alignment.
+					...(rowChildren.length > 0 ? { children: rowChildren } : {}),
 				};
-
-				if (showConcept) {
-					const conceptSectionChildren = hasFilter
-						? conceptChildren
-						: [...conceptChildren, `${rowId}_concept_add`];
-					out[`${rowId}_concept`] = {
-						name: `${rowId}_concept`,
-						meta: { type: "include-concept", kind, includeIndex: i },
-						...(conceptSectionChildren.length > 0
-							? { children: conceptSectionChildren }
-							: {}),
-					};
-					if (!hasFilter) {
-						out[`${rowId}_concept_add`] = {
-							name: `${rowId}_concept_add`,
-							meta: { type: "include-concept-add", kind, includeIndex: i },
-						};
-					}
-					(entry.concept ?? []).forEach((_, ci) => {
-						out[`${rowId}_concept_${ci}`] = {
-							name: `${rowId}_concept_${ci}`,
-							meta: {
-								type: "include-concept-row",
-								kind,
-								includeIndex: i,
-								conceptIndex: ci,
-							},
-						};
-					});
-				}
-
-				if (showFilter) {
-					const filterSectionChildren = hasConcept
-						? filterChildren
-						: [...filterChildren, `${rowId}_filter_add`];
-					out[`${rowId}_filter`] = {
-						name: `${rowId}_filter`,
-						meta: { type: "include-filter", kind, includeIndex: i },
-						...(filterSectionChildren.length > 0
-							? { children: filterSectionChildren }
-							: {}),
-					};
-					if (!hasConcept) {
-						out[`${rowId}_filter_add`] = {
-							name: `${rowId}_filter_add`,
-							meta: { type: "include-filter-add", kind, includeIndex: i },
-						};
-					}
-					(entry.filter ?? []).forEach((_, fi) => {
-						out[`${rowId}_filter_${fi}`] = {
-							name: `${rowId}_filter_${fi}`,
-							meta: {
-								type: "include-filter-row",
-								kind,
-								includeIndex: i,
-								filterIndex: fi,
-							},
-						};
-					});
-				}
 			});
 		};
 
@@ -957,7 +1065,9 @@ export function PropertiesTree() {
 		"_exclude",
 	]);
 
-	// auto-expand each entry's nested sections on first appearance only.
+	// auto-expand each entry's nested sections on first appearance only,
+	// and only once the entry has a URL (system or valueSet). New empty
+	// entries stay collapsed so focus can land on the URL input first.
 	// Without the `seen` ref this useEffect would re-expand every node on
 	// each render (because includes/excludes are re-derived arrays), undoing
 	// the user's manual collapse.
@@ -965,15 +1075,16 @@ export function PropertiesTree() {
 	React.useEffect(() => {
 		const need: string[] = [];
 		const collect = (kind: IncludeKind, arr: typeof includes) => {
-			arr.forEach((_, i) => {
+			arr.forEach((entry, i) => {
+				// row is a folder only when it has concept or filter rows;
+				// CS-only / VS-only entries are leaves with nothing to expand.
+				const hasChildren =
+					(entry.concept?.length ?? 0) > 0 || (entry.filter?.length ?? 0) > 0;
+				if (!hasChildren) return;
 				const row = `_${kind}_${i}`;
-				const c = `${row}_concept`;
-				const f = `${row}_filter`;
-				for (const id of [row, c, f]) {
-					if (!autoExpandedRef.current.has(id)) {
-						autoExpandedRef.current.add(id);
-						need.push(id);
-					}
+				if (!autoExpandedRef.current.has(row)) {
+					autoExpandedRef.current.add(row);
+					need.push(row);
 				}
 			});
 		};
@@ -986,6 +1097,12 @@ export function PropertiesTree() {
 			return [...prev, ...missing];
 		});
 	}, [includes, excludes]);
+
+	const [focusTarget, setFocusTarget] = React.useState<{
+		kind: IncludeKind;
+		idx: number;
+		tick: number;
+	} | null>(null);
 
 	const mutateCompose = (
 		kind: IncludeKind,
@@ -1004,11 +1121,23 @@ export function PropertiesTree() {
 		});
 	};
 
-	const addCodeSystem = (kind: IncludeKind) =>
-		mutateCompose(kind, (arr) => [...arr, { system: "" }]);
+	const addCodeSystem = (kind: IncludeKind, preset?: "concept" | "filter") => {
+		const nextIdx = entriesOf(kind).length;
+		const entry: (typeof includes)[number] =
+			preset === "concept"
+				? { system: "", concept: [{}] }
+				: preset === "filter"
+					? { system: "", filter: [{ op: "is-a" }] }
+					: { system: "" };
+		mutateCompose(kind, (arr) => [...arr, entry]);
+		setFocusTarget({ kind, idx: nextIdx, tick: Date.now() });
+	};
 
-	const addValueSetEntry = (kind: IncludeKind) =>
+	const addValueSetEntry = (kind: IncludeKind) => {
+		const nextIdx = entriesOf(kind).length;
 		mutateCompose(kind, (arr) => [...arr, { valueSet: [""] }]);
+		setFocusTarget({ kind, idx: nextIdx, tick: Date.now() });
+	};
 
 	const updateEntrySystemVersion = (
 		kind: IncludeKind,
@@ -1104,20 +1233,38 @@ export function PropertiesTree() {
 				const idx = meta?.includeIndex ?? -1;
 				const entry = entriesOf(kind)[idx];
 				if (!entry) return null;
+				const focusToken =
+					focusTarget?.kind === kind && focusTarget.idx === idx
+						? focusTarget.tick
+						: null;
+				// reserve the chevron slot for leaf rows so VS-only entries
+				// align with CS rows that own a chevron
+				const isFolder = item.isFolder();
+				const leadingSpacer = isFolder ? null : (
+					<span className="size-4 shrink-0" aria-hidden />
+				);
+				const toggle = (e: React.MouseEvent) => {
+					if (!isFolder) return;
+					e.stopPropagation();
+					if (item.isExpanded()) item.collapse();
+					else item.expand();
+				};
 				if (isVsInclude(entry)) {
 					return (
 						<div className="flex w-full items-center gap-2">
+							{leadingSpacer}
 							<div className="w-[202px] shrink-0">
 								<button
 									type="button"
-									className="uppercase px-1.5 py-0.5 cursor-pointer rounded-md text-text-info-primary bg-bg-info-primary"
+									className="uppercase px-1.5 py-0.5 rounded-md text-text-info-primary bg-bg-info-primary"
 								>
-									valueset
+									ValueSet
 								</button>
 							</div>
 							<ValueSetPicker
 								value={entry.valueSet?.[0]}
 								onChange={(v) => updateEntryValueSet(kind, idx, v)}
+								autoFocusToken={focusToken}
 							/>
 							<HSComp.Button
 								variant="link"
@@ -1133,13 +1280,30 @@ export function PropertiesTree() {
 						</div>
 					);
 				}
+				const hasConcept = (entry.concept?.length ?? 0) > 0;
+				const hasFilter = (entry.filter?.length ?? 0) > 0;
+				const csLabel = hasConcept
+					? "CodeSystem Concepts"
+					: hasFilter
+						? "CodeSystem Filter"
+						: "CodeSystem";
 				return (
 					<div className="flex w-full items-center gap-2">
-						<div className="w-[202px] shrink-0">{labelView(item)}</div>
+						{leadingSpacer}
+						<div className="w-[202px] shrink-0">
+							<button
+								type="button"
+								className={`uppercase px-1.5 py-0.5 rounded-md text-text-info-primary bg-bg-info-primary ${isFolder ? "cursor-pointer" : ""}`}
+								onClick={toggle}
+							>
+								{csLabel}
+							</button>
+						</div>
 						<CodeSystemPicker
 							system={entry.system}
 							version={entry.version}
 							onChange={(next) => updateEntrySystemVersion(kind, idx, next)}
+							autoFocusToken={focusToken}
 						/>
 						<HSComp.Button
 							variant="link"
@@ -1155,9 +1319,6 @@ export function PropertiesTree() {
 					</div>
 				);
 			}
-			case "include-concept":
-			case "include-filter":
-				return <div>{labelView(item)}</div>;
 			case "include-concept-row": {
 				const kind = meta?.kind ?? "include";
 				const idx = meta?.includeIndex ?? -1;
@@ -1170,7 +1331,7 @@ export function PropertiesTree() {
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1 shrink-0">
 							<Tag size={12} />
 						</span>
-						<div className="w-[152px] shrink-0">
+						<div className="w-[175px] shrink-0">
 							<ConceptCodePicker
 								system={parent?.system}
 								code={entry.code}
@@ -1238,7 +1399,7 @@ export function PropertiesTree() {
 						<span className="text-utility-yellow bg-utility-yellow/20 rounded-md p-1 shrink-0">
 							<Filter size={12} />
 						</span>
-						<div className="w-[152px] shrink-0">
+						<div className="w-[175px] shrink-0">
 							<InputView
 								placeholder="property"
 								value={entry.property}
@@ -1325,6 +1486,16 @@ export function PropertiesTree() {
 							</HSComp.Button>
 						</HSComp.DropdownMenuTrigger>
 						<HSComp.DropdownMenuContent align="start">
+							<HSComp.DropdownMenuItem
+								onSelect={() => addCodeSystem(kind, "concept")}
+							>
+								CodeSystem concepts
+							</HSComp.DropdownMenuItem>
+							<HSComp.DropdownMenuItem
+								onSelect={() => addCodeSystem(kind, "filter")}
+							>
+								CodeSystem filter
+							</HSComp.DropdownMenuItem>
 							<HSComp.DropdownMenuItem onSelect={() => addCodeSystem(kind)}>
 								CodeSystem
 							</HSComp.DropdownMenuItem>
@@ -1374,6 +1545,33 @@ export function PropertiesTree() {
 						</div>
 					</div>
 				);
+			case "status": {
+				const isMissing = missingFields.has("status");
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
+						<div
+							className={`w-[200px] ${isMissing ? "ring-1 ring-border-error rounded-md" : ""}`}
+						>
+							<HSComp.Select
+								value={valueSet.status ?? ""}
+								onValueChange={updateStatus}
+							>
+								<HSComp.SelectTrigger className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary focus:ring-1 focus:ring-border-link group-hover/tree-item-label:bg-bg-tertiary">
+									<HSComp.SelectValue placeholder="status" />
+								</HSComp.SelectTrigger>
+								<HSComp.SelectContent>
+									{STATUSES.map((s) => (
+										<HSComp.SelectItem key={s} value={s}>
+											{s}
+										</HSComp.SelectItem>
+									))}
+								</HSComp.SelectContent>
+							</HSComp.Select>
+						</div>
+					</div>
+				);
+			}
 			case "description":
 				return (
 					<div className="flex w-full items-center gap-2">

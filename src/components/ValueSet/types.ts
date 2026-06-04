@@ -40,11 +40,14 @@ export type ValueSetCompose = {
 	exclude?: ValueSetInclude[];
 };
 
+export type ValueSetStatus = "draft" | "active" | "retired" | "unknown";
+
 export type ValueSet = Resource & {
 	resourceType: "ValueSet";
 	url?: string;
 	version?: string;
 	title?: string;
+	status?: ValueSetStatus;
 	description?: string;
 	compose?: ValueSetCompose;
 	expansion?: ValueSetExpansion;

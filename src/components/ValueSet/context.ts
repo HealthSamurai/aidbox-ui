@@ -13,6 +13,8 @@ export type ValueSetContextValue = {
 	setIsExpanding: (b: boolean) => void;
 	expandDurationMs: number | null;
 	setExpandDurationMs: (n: number | null) => void;
+	missingFields: Set<string>;
+	setMissingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
 };
 
 export const ValueSetContext = React.createContext<ValueSetContextValue | null>(

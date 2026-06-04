@@ -31,6 +31,9 @@ export function ValueSetProvider({
 	const [expandDurationMs, setExpandDurationMs] = React.useState<number | null>(
 		null,
 	);
+	const [missingFields, setMissingFields] = React.useState<Set<string>>(
+		() => new Set(),
+	);
 
 	return (
 		<ValueSetContext.Provider
@@ -45,6 +48,8 @@ export function ValueSetProvider({
 				setIsExpanding,
 				expandDurationMs,
 				setExpandDurationMs,
+				missingFields,
+				setMissingFields,
 			}}
 		>
 			{children}
