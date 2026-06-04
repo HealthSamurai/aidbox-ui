@@ -8,8 +8,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Filter, Plus, Tag, X } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { readUrlHistory } from "../../utils/url-history";
 import { useValueSetContext } from "./context";
 import type { ValueSetStatus } from "./types";
+
+const URL_HISTORY_KEY = "valueset-builder:url-history";
 
 type IncludeKind = "include" | "exclude";
 
@@ -59,10 +62,16 @@ function InputView({
 	placeholder,
 	value,
 	onChange,
+	name,
+	autoComplete,
+	list,
 }: {
 	placeholder: string;
 	value?: string;
 	onChange?: (value: string) => void;
+	name?: string;
+	autoComplete?: string;
+	list?: string;
 }) {
 	const [localValue, setLocalValue] = React.useState(value ?? "");
 
@@ -84,6 +93,9 @@ function InputView({
 
 	return (
 		<HSComp.Input
+			name={name}
+			autoComplete={autoComplete}
+			list={list}
 			className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary focus:ring-1 focus:ring-border-link"
 			placeholder={placeholder}
 			value={localValue}
@@ -167,6 +179,7 @@ function CodeSystemPicker({
 		queryFn: async () => {
 			const params = new URLSearchParams({
 				_count: "15",
+				_sort: "-_lastUpdated",
 				_elements: "url,name,title,version,description",
 			});
 			if (systemPart) params.set("url:contains", systemPart);
@@ -190,6 +203,7 @@ function CodeSystemPicker({
 		queryFn: async () => {
 			const params = new URLSearchParams({
 				_count: "100",
+				_sort: "-_lastUpdated",
 				_elements: "url,name,title,version",
 				url: systemPart,
 			});
@@ -463,6 +477,7 @@ function ValueSetPicker({
 		queryFn: async () => {
 			const params = new URLSearchParams({
 				_count: "15",
+				_sort: "-_lastUpdated",
 				_elements: "url,name,title,version,description",
 			});
 			if (urlPart) params.set("url:contains", urlPart);
@@ -486,6 +501,7 @@ function ValueSetPicker({
 		queryFn: async () => {
 			const params = new URLSearchParams({
 				_count: "100",
+				_sort: "-_lastUpdated",
 				_elements: "url,name,title,version",
 				url: urlPart,
 			});
@@ -910,6 +926,7 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 	return (
 		<button
 			type="button"
+			tabIndex={-1}
 			className={`uppercase px-1.5 py-0.5 ${isFolder ? "cursor-pointer" : ""} rounded-md ${additionalClass}`}
 			onClick={onLabelClickFn}
 		>
@@ -921,6 +938,9 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 export function PropertiesTree() {
 	const { valueSet, updateValueSet, missingFields, setMissingFields } =
 		useValueSetContext();
+	const [urlHistory] = React.useState<string[]>(() =>
+		readUrlHistory(URL_HISTORY_KEY),
+	);
 	const dismissMissing = React.useCallback(
 		(field: string) => {
 			setMissingFields((prev) => {
@@ -1256,6 +1276,7 @@ export function PropertiesTree() {
 							<div className="w-[202px] shrink-0">
 								<button
 									type="button"
+									tabIndex={-1}
 									className="uppercase px-1.5 py-0.5 rounded-md text-text-info-primary bg-bg-info-primary"
 								>
 									ValueSet
@@ -1293,6 +1314,7 @@ export function PropertiesTree() {
 						<div className="w-[202px] shrink-0">
 							<button
 								type="button"
+								tabIndex={-1}
 								className={`uppercase px-1.5 py-0.5 rounded-md text-text-info-primary bg-bg-info-primary ${isFolder ? "cursor-pointer" : ""}`}
 								onClick={toggle}
 							>
@@ -1512,6 +1534,9 @@ export function PropertiesTree() {
 						<div className="w-[226px] shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
+								name="valueset-url"
+								autoComplete="on"
+								list="valueset-builder-url-history"
 								placeholder="Canonical identifier for this value set, represented as a URI (globally unique)"
 								value={valueSet.url}
 								onChange={updateUrl}
@@ -1614,6 +1639,11 @@ export function PropertiesTree() {
 					return "pr-0";
 				}}
 			/>
+			<datalist id="valueset-builder-url-history">
+				{urlHistory.map((u) => (
+					<option key={u} value={u} />
+				))}
+			</datalist>
 		</div>
 	);
 }

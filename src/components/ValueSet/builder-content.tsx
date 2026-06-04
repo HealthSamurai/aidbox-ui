@@ -5,6 +5,8 @@ import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
+import { cleanEmptyValues } from "../../utils/clean-empty-values";
+import { addUrlToHistory } from "../../utils/url-history";
 import { useValueSetContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
@@ -44,6 +46,7 @@ export const ValueSetBuilderContent = () => {
 		expandError,
 		setExpandDurationMs,
 		setMissingFields,
+		setIsDirty,
 	} = useValueSetContext();
 
 	const saveMutation = useMutation({
@@ -64,7 +67,7 @@ export const ValueSetBuilderContent = () => {
 				};
 			}
 			setMissingFields(new Set());
-			const payload = valueSet;
+			const payload = cleanEmptyValues(valueSet);
 			if (payload.id) {
 				const result = await client.request<ValueSet>({
 					method: "PUT",
@@ -85,6 +88,8 @@ export const ValueSetBuilderContent = () => {
 			return result.value.resource;
 		},
 		onSuccess: () => {
+			addUrlToHistory("valueset-builder:url-history", valueSet.url);
+			setIsDirty(false);
 			HSComp.toast.success("ValueSet saved successfully", {
 				position: "bottom-right",
 				style: { margin: "1rem" },
@@ -109,7 +114,7 @@ export const ValueSetBuilderContent = () => {
 			expandStartRef.current = performance.now();
 			const body = {
 				resourceType: "Parameters" as const,
-				parameter: [{ name: "valueSet", resource: valueSet }],
+				parameter: [{ name: "valueSet", resource: cleanEmptyValues(valueSet) }],
 			};
 			const result = await client.request<ValueSet>({
 				method: "POST",

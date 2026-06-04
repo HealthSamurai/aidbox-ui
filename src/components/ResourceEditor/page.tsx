@@ -25,6 +25,8 @@ import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
+import { CodeSystemBuilderContent } from "../CodeSystem/builder-content";
+import { CodeSystemProvider } from "../CodeSystem/page";
 import { EmptyState } from "../empty-state";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
@@ -372,6 +374,7 @@ export const ResourceEditorPage = ({
 	const isSearchParameter = resourceType === "SearchParameter";
 	const isLibrary = resourceType === "Library";
 	const isValueSet = resourceType === "ValueSet";
+	const isCodeSystem = resourceType === "CodeSystem";
 	const isSQLQuery =
 		isLibrary &&
 		Boolean(
@@ -413,6 +416,22 @@ export const ResourceEditorPage = ({
 			content: (
 				<HSComp.TabsContent value="builder" className="grow min-h-0">
 					<ValueSetBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isCodeSystem) {
+		tabs.push({
+			value: "builder",
+			trigger: (
+				<HSComp.TabsTrigger value="builder">
+					CodeSystem Builder
+				</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<CodeSystemBuilderContent />
 				</HSComp.TabsContent>
 			),
 		});
@@ -715,6 +734,14 @@ export const ResourceEditorPage = ({
 			<ValueSetProvider initialResource={initialResource}>
 				{content}
 			</ValueSetProvider>
+		);
+	}
+
+	if (isCodeSystem) {
+		return (
+			<CodeSystemProvider initialResource={initialResource}>
+				{content}
+			</CodeSystemProvider>
 		);
 	}
 

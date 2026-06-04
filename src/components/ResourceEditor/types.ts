@@ -38,6 +38,7 @@ export const RESOURCE_TYPES_WITH_BUILDER = new Set([
 	"AccessPolicy",
 	"SearchParameter",
 	"ValueSet",
+	"CodeSystem",
 ]);
 
 /**

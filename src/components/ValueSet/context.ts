@@ -15,6 +15,8 @@ export type ValueSetContextValue = {
 	setExpandDurationMs: (n: number | null) => void;
 	missingFields: Set<string>;
 	setMissingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
+	isDirty: boolean;
+	setIsDirty: (value: boolean) => void;
 };
 
 export const ValueSetContext = React.createContext<ValueSetContextValue | null>(
