@@ -378,14 +378,15 @@ function CodeSystemPicker({
 												itemRefs.current[i] = el;
 											}}
 											type="button"
-											onClick={() =>
+											onClick={(e) => {
+												e.stopPropagation();
 												selectVersionHit(
 													h as CodeSystemHit & {
 														url: string;
 														version: string;
 													},
-												)
-											}
+												);
+											}}
 											onMouseEnter={() => setActiveIndex(i)}
 											className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 										>
@@ -408,7 +409,10 @@ function CodeSystemPicker({
 											itemRefs.current[i] = el;
 										}}
 										type="button"
-										onClick={() => selectSystemHit(h)}
+										onClick={(e) => {
+											e.stopPropagation();
+											selectSystemHit(h);
+										}}
 										onMouseEnter={() => setActiveIndex(i)}
 										className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 									>
@@ -664,11 +668,12 @@ function ValueSetPicker({
 												itemRefs.current[i] = el;
 											}}
 											type="button"
-											onClick={() =>
+											onClick={(e) => {
+												e.stopPropagation();
 												selectVersionHit(
 													h as ValueSetHit & { url: string; version: string },
-												)
-											}
+												);
+											}}
 											onMouseEnter={() => setActiveIndex(i)}
 											className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 										>
@@ -691,7 +696,10 @@ function ValueSetPicker({
 											itemRefs.current[i] = el;
 										}}
 										type="button"
-										onClick={() => selectUrlHit(h)}
+										onClick={(e) => {
+											e.stopPropagation();
+											selectUrlHit(h);
+										}}
 										onMouseEnter={() => setActiveIndex(i)}
 										className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 									>
@@ -880,7 +888,10 @@ function ConceptCodePicker({
 											itemRefs.current[i] = el;
 										}}
 										type="button"
-										onClick={() => selectHit(h)}
+										onClick={(e) => {
+											e.stopPropagation();
+											selectHit(h);
+										}}
 										onMouseEnter={() => setActiveIndex(i)}
 										className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 									>
@@ -1096,11 +1107,14 @@ export function PropertiesTree() {
 		const need: string[] = [];
 		const collect = (kind: IncludeKind, arr: typeof includes) => {
 			arr.forEach((entry, i) => {
-				// row is a folder only when it has concept or filter rows;
-				// CS-only / VS-only entries are leaves with nothing to expand.
-				const hasChildren =
-					(entry.concept?.length ?? 0) > 0 || (entry.filter?.length ?? 0) > 0;
-				if (!hasChildren) return;
+				// row becomes a folder whenever concept/filter rows exist OR
+				// the add-buttons are enabled (i.e. system is set). Auto-expand
+				// in either case so the user sees the contents straight away
+				// — picking a CodeSystem URL otherwise collapses the row.
+				const hasConcept = (entry.concept?.length ?? 0) > 0;
+				const hasFilter = (entry.filter?.length ?? 0) > 0;
+				const hasSystem = !!entry.system;
+				if (!hasConcept && !hasFilter && !hasSystem) return;
 				const row = `_${kind}_${i}`;
 				if (!autoExpandedRef.current.has(row)) {
 					autoExpandedRef.current.add(row);
