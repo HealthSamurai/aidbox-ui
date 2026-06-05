@@ -25,6 +25,8 @@ import { useWebMCPResourceEditor } from "../../webmcp/resource-editor";
 import type { ResourceEditorActions } from "../../webmcp/resource-editor-context";
 import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
+import { CodeSystemBuilderContent } from "../CodeSystem/builder-content";
+import { CodeSystemProvider } from "../CodeSystem/page";
 import { EmptyState } from "../empty-state";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
@@ -33,6 +35,9 @@ import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
 import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
 import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
+import { ValueSetBuilderContent } from "../ValueSet/builder-content";
+import { ValueSetGraphTab } from "../ValueSet/graph/graph-tab";
+import { ValueSetProvider } from "../ValueSet/page";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionLineageTab } from "../ViewDefinition/lineage/lineage-tab";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
@@ -369,6 +374,8 @@ export const ResourceEditorPage = ({
 	const isAccessPolicy = resourceType === "AccessPolicy";
 	const isSearchParameter = resourceType === "SearchParameter";
 	const isLibrary = resourceType === "Library";
+	const isValueSet = resourceType === "ValueSet";
+	const isCodeSystem = resourceType === "CodeSystem";
 	const isSQLQuery =
 		isLibrary &&
 		Boolean(
@@ -394,6 +401,47 @@ export const ResourceEditorPage = ({
 			content: (
 				<HSComp.TabsContent value="builder" className="grow min-h-0">
 					<BuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isValueSet) {
+		tabs.push({
+			value: "builder",
+			trigger: (
+				<HSComp.TabsTrigger value="builder">
+					ValueSet Builder
+				</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<ValueSetBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+		tabs.push({
+			value: "graph",
+			trigger: <HSComp.TabsTrigger value="graph">Graph</HSComp.TabsTrigger>,
+			content: (
+				<HSComp.TabsContent value="graph" className="grow min-h-0 flex">
+					<ValueSetGraphTab />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isCodeSystem) {
+		tabs.push({
+			value: "builder",
+			trigger: (
+				<HSComp.TabsTrigger value="builder">
+					CodeSystem Builder
+				</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<CodeSystemBuilderContent />
 				</HSComp.TabsContent>
 			),
 		});
@@ -688,6 +736,22 @@ export const ResourceEditorPage = ({
 			<AccessPolicyProvider id={id} initialResource={initialResource}>
 				{content}
 			</AccessPolicyProvider>
+		);
+	}
+
+	if (isValueSet) {
+		return (
+			<ValueSetProvider initialResource={initialResource}>
+				{content}
+			</ValueSetProvider>
+		);
+	}
+
+	if (isCodeSystem) {
+		return (
+			<CodeSystemProvider initialResource={initialResource}>
+				{content}
+			</CodeSystemProvider>
 		);
 	}
 
