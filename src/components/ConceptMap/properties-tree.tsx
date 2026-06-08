@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Link2, Plus, X } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { readUrlHistory } from "../../utils/url-history";
 import { useConceptMapContext } from "./context";
 import type {
 	ConceptMap,
@@ -40,6 +41,8 @@ type ItemMeta = {
 
 const STATUSES = ["draft", "active", "retired", "unknown"] as const;
 type ConceptMapStatus = (typeof STATUSES)[number];
+
+const URL_HISTORY_KEY = "conceptmap-builder:url-history";
 
 // R5+ ConceptMap.group.element.target.relationship value set
 const RELATIONSHIPS_R5 = [
@@ -95,16 +98,24 @@ function formatSystemPipeVersion(
 	return system ?? "";
 }
 
-function CodeSystemPicker({
+export function CodeSystemPicker({
 	system,
 	version,
 	onChange,
 	placeholder = "CodeSystem canonical URL",
+	pinnedSystems,
+	variant = "tree",
+	prefixLabel,
+	onEnter,
 }: {
 	system?: string;
 	version?: string;
 	onChange: (next: { system?: string; version?: string }) => void;
 	placeholder?: string;
+	pinnedSystems?: string[];
+	variant?: "tree" | "form";
+	prefixLabel?: string;
+	onEnter?: () => void;
 }) {
 	const client = useAidboxClient();
 	const formatted = formatSystemPipeVersion(system, version);
@@ -241,12 +252,33 @@ function CodeSystemPicker({
 		setActiveIndex(-1);
 	};
 
+	const pinnedHits = React.useMemo<
+		Array<CodeSystemHit & { url: string; _pinned?: true }>
+	>(() => {
+		const list = pinnedSystems ?? [];
+		const seen = new Set<string>();
+		const out: Array<CodeSystemHit & { url: string; _pinned?: true }> = [];
+		for (const u of list) {
+			if (!u) continue;
+			if (systemPart && !u.includes(systemPart)) continue;
+			if (seen.has(u)) continue;
+			seen.add(u);
+			out.push({ url: u, _pinned: true });
+		}
+		return out;
+	}, [pinnedSystems, systemPart]);
+
+	const apiSystemHits = React.useMemo(
+		() => (systemHits ?? []).filter((h) => !pinnedSystems?.includes(h.url)),
+		[systemHits, pinnedSystems],
+	);
+
 	const hitsList =
 		mode === "version"
 			? (versionHits ?? []).filter(
 					(h) => !versionPart || h.version.includes(versionPart),
 				)
-			: (systemHits ?? []);
+			: [...pinnedHits, ...apiSystemHits];
 
 	const onSelectActive = () => {
 		const h = hitsList[activeIndex];
@@ -268,64 +300,85 @@ function CodeSystemPicker({
 		itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex]);
 
+	const sharedInputProps = {
+		ref: inputRef,
+		placeholder,
+		value: local,
+		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+			setLocal(e.target.value);
+			setOpen(true);
+		},
+		onClick: (e: React.MouseEvent) => {
+			e.stopPropagation();
+			setOpen(true);
+		},
+		onFocus: () => setOpen(true),
+		onBlur: (e: React.FocusEvent) => {
+			const next = e.relatedTarget as HTMLElement | null;
+			if (next?.closest("[data-cs-picker-popover='true']")) return;
+			commit(local);
+			setOpen(false);
+		},
+		onKeyDown: (e: React.KeyboardEvent) => {
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				if (hitsList.length === 0) return;
+				setOpen(true);
+				setActiveIndex((i) => (i + 1) % hitsList.length);
+			} else if (e.key === "ArrowUp") {
+				e.preventDefault();
+				if (hitsList.length === 0) return;
+				setOpen(true);
+				setActiveIndex((i) => (i <= 0 ? hitsList.length - 1 : i - 1));
+			} else if (e.key === "Enter") {
+				e.preventDefault();
+				if (open && activeIndex >= 0 && hitsList[activeIndex]) {
+					onSelectActive();
+				} else {
+					commit(local);
+					setOpen(false);
+					onEnter?.();
+				}
+			} else if (e.key === "Escape") {
+				setOpen(false);
+				setActiveIndex(-1);
+			}
+		},
+		onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+	};
+
 	return (
 		<HSComp.Popover open={open} onOpenChange={setOpen}>
 			<HSComp.PopoverAnchor asChild>
-				<div className="shrink-0" style={{ width: `${inputWidthPx}px` }}>
-					<HSComp.Input
-						ref={inputRef}
-						placeholder={placeholder}
-						value={local}
-						onChange={(e) => {
-							setLocal(e.target.value);
-							setOpen(true);
-						}}
-						onClick={(e) => {
-							e.stopPropagation();
-							setOpen(true);
-						}}
-						onFocus={() => setOpen(true)}
-						onBlur={(e) => {
-							const next = e.relatedTarget as HTMLElement | null;
-							if (next?.closest("[data-cs-picker-popover='true']")) return;
-							commit(local);
-							setOpen(false);
-						}}
-						onKeyDown={(e) => {
-							if (e.key === "ArrowDown") {
-								e.preventDefault();
-								if (hitsList.length === 0) return;
-								setOpen(true);
-								setActiveIndex((i) => (i + 1) % hitsList.length);
-							} else if (e.key === "ArrowUp") {
-								e.preventDefault();
-								if (hitsList.length === 0) return;
-								setOpen(true);
-								setActiveIndex((i) => (i <= 0 ? hitsList.length - 1 : i - 1));
-							} else if (e.key === "Enter") {
-								e.preventDefault();
-								if (open && activeIndex >= 0 && hitsList[activeIndex]) {
-									onSelectActive();
-								} else {
-									commit(local);
-									setOpen(false);
-								}
-							} else if (e.key === "Escape") {
-								setOpen(false);
-								setActiveIndex(-1);
+				{variant === "form" ? (
+					<div className="flex-1 min-w-0 basis-0">
+						<HSComp.Input
+							{...sharedInputProps}
+							className="bg-bg-primary"
+							prefixValue={
+								prefixLabel ? (
+									<span className="text-nowrap text-elements-assistive font-medium">
+										{prefixLabel}
+									</span>
+								) : undefined
 							}
-						}}
-						onMouseDown={(e) => e.stopPropagation()}
-						className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary focus:ring-1 focus:ring-border-link font-mono text-xs"
-					/>
-					<span
-						ref={measureRef}
-						aria-hidden="true"
-						className="input-measure font-mono text-xs"
-					>
-						{local || placeholder}
-					</span>
-				</div>
+						/>
+					</div>
+				) : (
+					<div className="shrink-0" style={{ width: `${inputWidthPx}px` }}>
+						<HSComp.Input
+							{...sharedInputProps}
+							className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary focus:ring-1 focus:ring-border-link font-mono text-xs"
+						/>
+						<span
+							ref={measureRef}
+							aria-hidden="true"
+							className="input-measure font-mono text-xs"
+						>
+							{local || placeholder}
+						</span>
+					</div>
+				)}
 			</HSComp.PopoverAnchor>
 			<HSComp.PopoverContent
 				data-cs-picker-popover="true"
@@ -380,6 +433,8 @@ function CodeSystemPicker({
 									</li>
 								);
 							}
+							const isPinned = (h as CodeSystemHit & { _pinned?: boolean })
+								._pinned;
 							const title = h.title || h.name || h.id || h.url;
 							const secondary = h.description || h.url;
 							return (
@@ -396,8 +451,13 @@ function CodeSystemPicker({
 										onMouseEnter={() => setActiveIndex(i)}
 										className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
 									>
-										<div className="typo-body text-text-primary truncate">
-											{title}
+										<div className="typo-body text-text-primary truncate flex items-center gap-2">
+											<span className="truncate">{title}</span>
+											{isPinned && (
+												<span className="typo-body-xs text-text-info-primary bg-bg-info-primary rounded-md px-1.5 py-0.5 uppercase shrink-0">
+													group
+												</span>
+											)}
 										</div>
 										<div className="typo-body-xs text-text-secondary line-clamp-1 font-mono">
 											{secondary}
@@ -743,6 +803,205 @@ function CanonicalPicker({
 	);
 }
 
+type ConceptHit = { code: string; display?: string; system?: string };
+
+function ConceptCodePicker({
+	system,
+	code,
+	onChange,
+	placeholder = "code",
+}: {
+	system?: string;
+	code?: string;
+	onChange: (next: { code?: string; display?: string }) => void;
+	placeholder?: string;
+}) {
+	const client = useAidboxClient();
+	const [local, setLocal] = React.useState(code ?? "");
+	const [debounced, setDebounced] = React.useState(local);
+	const [open, setOpen] = React.useState(false);
+	const [activeIndex, setActiveIndex] = React.useState(-1);
+	const itemRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+	const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+	React.useEffect(() => {
+		setLocal(code ?? "");
+	}, [code]);
+
+	React.useEffect(() => {
+		const t = setTimeout(() => setDebounced(local), 250);
+		return () => clearTimeout(t);
+	}, [local]);
+
+	// strip "|version" — $expand wants the system URL only
+	const systemUrl = system?.split("|", 1)[0];
+
+	const { data: hits } = useQuery({
+		queryKey: ["conceptmap-builder", "concept-picker", systemUrl, debounced],
+		enabled: !!systemUrl,
+		queryFn: async () => {
+			if (!systemUrl) return [];
+			const body = {
+				resourceType: "Parameters" as const,
+				parameter: [
+					{
+						name: "valueSet",
+						resource: {
+							resourceType: "ValueSet" as const,
+							status: "active" as const,
+							compose: { include: [{ system: systemUrl }] },
+						},
+					},
+					...(debounced.trim()
+						? [{ name: "filter", valueString: debounced.trim() }]
+						: []),
+					{ name: "count", valueInteger: 15 },
+				],
+			};
+			const res = await client.request<{
+				expansion?: { contains?: ConceptHit[] };
+			}>({
+				method: "POST",
+				url: "/fhir/ValueSet/$expand",
+				body: JSON.stringify(body),
+				headers: { "Content-Type": "application/fhir+json" },
+			});
+			if (res.isErr()) return [];
+			return res.value.resource.expansion?.contains ?? [];
+		},
+		staleTime: 30_000,
+	});
+
+	const commit = (raw: string) => {
+		setLocal(raw);
+		if (raw !== code) onChange({ code: raw || undefined });
+	};
+
+	const selectHit = (h: ConceptHit) => {
+		setLocal(h.code);
+		onChange({ code: h.code, display: h.display });
+		setOpen(false);
+		setActiveIndex(-1);
+	};
+
+	const hitsList = hits ?? [];
+	const hitsLength = hitsList.length;
+
+	React.useEffect(() => {
+		setActiveIndex(hitsLength > 0 ? 0 : -1);
+	}, [hitsLength]);
+
+	React.useEffect(() => {
+		if (activeIndex < 0) return;
+		itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+	}, [activeIndex]);
+
+	return (
+		<HSComp.Popover open={open} onOpenChange={setOpen}>
+			<HSComp.PopoverAnchor asChild>
+				<div className="w-full">
+					<HSComp.Input
+						ref={inputRef}
+						placeholder={placeholder}
+						value={local}
+						onChange={(e) => {
+							setLocal(e.target.value);
+							setOpen(true);
+						}}
+						onClick={(e) => {
+							e.stopPropagation();
+							setOpen(true);
+						}}
+						onFocus={() => setOpen(true)}
+						onBlur={(e) => {
+							const next = e.relatedTarget as HTMLElement | null;
+							if (next?.closest("[data-cm-concept-popover='true']")) return;
+							commit(local);
+							setOpen(false);
+						}}
+						onKeyDown={(e) => {
+							if (e.key === "ArrowDown") {
+								e.preventDefault();
+								if (hitsLength === 0) return;
+								setOpen(true);
+								setActiveIndex((i) => (i + 1) % hitsLength);
+							} else if (e.key === "ArrowUp") {
+								e.preventDefault();
+								if (hitsLength === 0) return;
+								setOpen(true);
+								setActiveIndex((i) => (i <= 0 ? hitsLength - 1 : i - 1));
+							} else if (e.key === "Enter") {
+								e.preventDefault();
+								if (open && activeIndex >= 0 && hitsList[activeIndex]) {
+									selectHit(hitsList[activeIndex]);
+								} else {
+									commit(local);
+									setOpen(false);
+								}
+							} else if (e.key === "Escape") {
+								setOpen(false);
+								setActiveIndex(-1);
+							}
+						}}
+						onMouseDown={(e) => e.stopPropagation()}
+						className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary focus:ring-1 focus:ring-border-link font-mono text-xs"
+					/>
+				</div>
+			</HSComp.PopoverAnchor>
+			<HSComp.PopoverContent
+				data-cm-concept-popover="true"
+				className="w-[var(--radix-popover-trigger-width)] min-w-[360px] p-0 max-h-80 overflow-auto"
+				align="start"
+				onOpenAutoFocus={(e) => e.preventDefault()}
+				onInteractOutside={(e) => {
+					if (e.target === inputRef.current) e.preventDefault();
+				}}
+			>
+				{!systemUrl ? (
+					<div className="px-3 py-2 text-text-secondary text-sm">
+						Set a CodeSystem URL on the group to enable code search
+					</div>
+				) : hitsLength === 0 ? (
+					<div className="px-3 py-2 text-text-secondary text-sm">
+						No matches
+					</div>
+				) : (
+					<ul className="py-1">
+						{hitsList.map((h, i) => {
+							const isActive = i === activeIndex;
+							return (
+								<li key={`${h.code}|${h.system ?? ""}`}>
+									<button
+										ref={(el) => {
+											itemRefs.current[i] = el;
+										}}
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											selectHit(h);
+										}}
+										onMouseEnter={() => setActiveIndex(i)}
+										className={`w-full text-left px-3 py-1.5 focus:outline-none ${isActive ? "bg-bg-tertiary" : ""}`}
+									>
+										<div className="typo-body text-text-primary truncate font-mono">
+											{h.code}
+										</div>
+										{h.display && (
+											<div className="typo-body-xs text-text-secondary line-clamp-1">
+												{h.display}
+											</div>
+										)}
+									</button>
+								</li>
+							);
+						})}
+					</ul>
+				)}
+			</HSComp.PopoverContent>
+		</HSComp.Popover>
+	);
+}
+
 const LABEL_OVERRIDES: Partial<Record<ItemMeta["type"], string>> = {
 	groups: "groups",
 };
@@ -751,10 +1010,16 @@ function InputView({
 	placeholder,
 	value,
 	onChange,
+	name,
+	autoComplete,
+	list,
 }: {
 	placeholder: string;
 	value?: string;
 	onChange?: (value: string) => void;
+	name?: string;
+	autoComplete?: string;
+	list?: string;
 }) {
 	const [localValue, setLocalValue] = React.useState(value ?? "");
 	const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -775,6 +1040,9 @@ function InputView({
 
 	return (
 		<HSComp.Input
+			name={name}
+			autoComplete={autoComplete}
+			list={list}
 			className="h-7 py-1 px-2 bg-bg-primary border-none hover:bg-bg-quaternary focus:bg-bg-primary group-hover/tree-item-label:bg-bg-tertiary focus:ring-1 focus:ring-border-link"
 			placeholder={placeholder}
 			value={localValue}
@@ -1027,6 +1295,9 @@ export function PropertiesTree() {
 	const fhirVersion = useFhirServerVersion();
 	const isR4 = isR4Like(fhirVersion);
 	const relationshipOptions = isR4 ? EQUIVALENCES_R4 : RELATIONSHIPS_R5;
+	const [urlHistory] = React.useState<string[]>(() =>
+		readUrlHistory(URL_HISTORY_KEY),
+	);
 
 	const updateField = <K extends keyof ConceptMap>(
 		key: K,
@@ -1053,8 +1324,18 @@ export function PropertiesTree() {
 		});
 
 	const addGroup = () => {
+		const newIndex = conceptMap.group?.length ?? 0;
 		mutateGroups((arr) => [...arr, {}]);
-		setExpandedItems((prev) => Array.from(new Set([...prev, "_groups"])));
+		setExpandedItems((prev) =>
+			Array.from(
+				new Set([
+					...prev,
+					"_groups",
+					groupRowId(newIndex),
+					elementsSectionId(newIndex),
+				]),
+			),
+		);
 	};
 
 	const removeGroupAt = (i: number) =>
@@ -1108,12 +1389,15 @@ export function PropertiesTree() {
 		});
 
 	const addElementAt = (gi: number) => {
+		const defaultTarget: ConceptMapTarget = isR4
+			? { equivalence: "equivalent" }
+			: { relationship: "equivalent" };
 		mutateGroups((arr) => {
 			const next = arr.slice();
 			const g = next[gi] ?? {};
 			next[gi] = {
 				...g,
-				element: [...(g.element ?? []), { target: [{}] }],
+				element: [...(g.element ?? []), { target: [defaultTarget] }],
 			};
 			return next;
 		});
@@ -1298,6 +1582,9 @@ export function PropertiesTree() {
 						<div className="w-[246px] shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
+								name="conceptmap-url"
+								autoComplete="on"
+								list="conceptmap-builder-url-history"
 								placeholder="Canonical identifier for this concept map, represented as a URI (globally unique)"
 								value={conceptMap.url}
 								onChange={(v) => updateField("url", v)}
@@ -1525,7 +1812,8 @@ export function PropertiesTree() {
 			case "element-row": {
 				const gi = meta?.groupIndex ?? -1;
 				const ei = meta?.elementIndex ?? -1;
-				const el = groups[gi]?.element?.[ei];
+				const g = groups[gi];
+				const el = g?.element?.[ei];
 				const t = el?.target?.[0];
 				const relation = getTargetRel(t, isR4);
 				return (
@@ -1534,10 +1822,11 @@ export function PropertiesTree() {
 							<Link2 size={12} />
 						</span>
 						<div className="w-[200px] shrink-0">
-							<InputView
+							<ConceptCodePicker
+								system={g?.source}
+								code={el?.code}
 								placeholder="source code"
-								value={el?.code}
-								onChange={(v) => updateElementCode(gi, ei, v)}
+								onChange={(next) => updateElementCode(gi, ei, next.code ?? "")}
 							/>
 						</div>
 						<div className="w-[220px] shrink-0">
@@ -1560,10 +1849,11 @@ export function PropertiesTree() {
 							</HSComp.Select>
 						</div>
 						<div className="w-[200px] shrink-0">
-							<InputView
+							<ConceptCodePicker
+								system={g?.target}
+								code={t?.code}
 								placeholder="target code"
-								value={t?.code}
-								onChange={(v) => updateTargetCode(gi, ei, v)}
+								onChange={(next) => updateTargetCode(gi, ei, next.code ?? "")}
 							/>
 						</div>
 						<HSComp.Button
@@ -1669,6 +1959,11 @@ export function PropertiesTree() {
 					return "pr-0";
 				}}
 			/>
+			<datalist id="conceptmap-builder-url-history">
+				{urlHistory.map((u) => (
+					<option key={u} value={u} />
+				))}
+			</datalist>
 		</div>
 	);
 }

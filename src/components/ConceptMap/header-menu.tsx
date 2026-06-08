@@ -25,15 +25,16 @@ export function EditorHeaderMenu({
 					<SaveIcon className="w-4 h-4" />
 					Save
 				</HSComp.Button>
-				<HSComp.Button
-					variant="ghost"
-					size="small"
-					className={`px-0! ${isTranslateActive ? "text-text-info-primary" : ""}`}
-					onClick={onTranslate}
+			</div>
+			<div className="flex items-center gap-1 px-2">
+				<HSComp.Toggle
+					variant="outline"
+					pressed={!!isTranslateActive}
+					onPressedChange={onTranslate}
 				>
 					<ArrowRightLeft className="w-4 h-4" />
-					Translate
-				</HSComp.Button>
+					Translation
+				</HSComp.Toggle>
 			</div>
 		</div>
 	);

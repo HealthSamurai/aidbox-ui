@@ -1,10 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRightLeft, X } from "lucide-react";
+import { X } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import { cleanEmptyValues } from "../../utils/clean-empty-values";
 import { useConceptMapContext } from "./context";
+import { CodeSystemPicker } from "./properties-tree";
 import type { ConceptMap } from "./types";
 import { isR4Like, useFhirServerVersion } from "./version";
 
@@ -52,8 +53,16 @@ function buildTranslateParameters({
 	system?: string;
 	isR4: boolean;
 }): ParametersResource {
+	// Strip server-tracked fields (id, meta) from the inline conceptMap.
+	// Aidbox $translate duplicates matches when inline.id matches a saved
+	// resource — server treats it as both an inline draft AND a DB reference.
+	// Sending it as an anonymous inline avoids the bug; the test still
+	// reflects unsaved form changes (which was the whole point).
+	const { id, meta, ...inlineCm } = cleanEmptyValues(conceptMap) as ConceptMap;
+	void id;
+	void meta;
 	const parameter: ParametersParameter[] = [
-		{ name: "conceptMap", resource: cleanEmptyValues(conceptMap) },
+		{ name: "conceptMap", resource: inlineCm },
 		{ name: isR4 ? "code" : "sourceCode", valueCode: code },
 	];
 	if (system) {
@@ -83,13 +92,30 @@ function parseTranslateResult(result: ParametersResource | undefined) {
 	return { success, message, matches };
 }
 
-// Pick a reasonable default system for the user — first group with source.
-function defaultSystemFromMap(conceptMap: ConceptMap): string | undefined {
-	const g = conceptMap.group?.find((x) => x.source);
-	const src = g?.source;
-	if (!src) return undefined;
-	// strip "|version" if it's a canonical with version
-	return src.split("|", 1)[0];
+// Unique source systems pulled from the ConceptMap (version stripped from
+// canonicals). Drives both the system input shape (hidden / dropdown / text)
+// and the code suggestions filter.
+function getSourceSystems(conceptMap: ConceptMap): string[] {
+	const set = new Set<string>();
+	for (const g of conceptMap.group ?? []) {
+		if (!g.source) continue;
+		const url = g.source.split("|", 1)[0];
+		if (url) set.add(url);
+	}
+	return [...set];
+}
+
+// Unique element.code values, optionally filtered by selected source system.
+function getElementCodes(conceptMap: ConceptMap, system: string): string[] {
+	const set = new Set<string>();
+	for (const g of conceptMap.group ?? []) {
+		const gs = g.source?.split("|", 1)[0];
+		if (system && gs && gs !== system) continue;
+		for (const el of g.element ?? []) {
+			if (el.code) set.add(el.code);
+		}
+	}
+	return [...set];
 }
 
 export function TranslatePanel({ onClose }: { onClose: () => void }) {
@@ -98,18 +124,26 @@ export function TranslatePanel({ onClose }: { onClose: () => void }) {
 	const fhirVersion = useFhirServerVersion();
 	const isR4 = isR4Like(fhirVersion);
 
-	const [code, setCode] = React.useState("");
-	const [system, setSystem] = React.useState("");
+	const sourceOptions = React.useMemo(
+		() => getSourceSystems(conceptMap),
+		[conceptMap],
+	);
+	const datalistId = React.useId();
 
-	const systemPlaceholder =
-		defaultSystemFromMap(conceptMap) ?? "system (optional)";
+	const [code, setCode] = React.useState("");
+	const [system, setSystem] = React.useState(() => sourceOptions[0] ?? "");
+
+	const codeOptions = React.useMemo(
+		() => getElementCodes(conceptMap, system),
+		[conceptMap, system],
+	);
 
 	const mutation = useMutation({
 		mutationFn: async (input: { code: string; system: string }) => {
 			const params = buildTranslateParameters({
 				conceptMap,
 				code: input.code,
-				system: input.system || defaultSystemFromMap(conceptMap),
+				system: input.system || undefined,
 				isR4,
 			});
 			const res = await client.request<ParametersResource>({
@@ -123,7 +157,7 @@ export function TranslatePanel({ onClose }: { onClose: () => void }) {
 		},
 	});
 
-	const { success, message, matches } = parseTranslateResult(mutation.data);
+	const { matches } = parseTranslateResult(mutation.data);
 	const oo = mutation.error as
 		| {
 				resourceType?: string;
@@ -137,14 +171,9 @@ export function TranslatePanel({ onClose }: { onClose: () => void }) {
 	};
 
 	return (
-		<div className="flex-none border-t bg-bg-secondary flex flex-col max-h-[50%]">
+		<div className="bg-bg-secondary flex flex-col h-full">
 			<div className="flex items-center justify-between h-10 px-4 border-b flex-none">
-				<div className="flex items-center gap-2">
-					<ArrowRightLeft size={14} className="text-text-info-primary" />
-					<span className="typo-label uppercase text-text-info-primary">
-						Translate
-					</span>
-				</div>
+				<span className="typo-label text-text-secondary">Translation</span>
 				<HSComp.Button
 					variant="ghost"
 					size="small"
@@ -157,38 +186,52 @@ export function TranslatePanel({ onClose }: { onClose: () => void }) {
 					</span>
 				</HSComp.Button>
 			</div>
-			<div className="flex-1 min-h-0 overflow-auto p-4 space-y-3">
-				<div className="flex flex-wrap items-center gap-2">
-					<HSComp.Input
-						className="h-7 py-1 px-2 font-mono text-xs max-w-[200px]"
-						placeholder="source code (required)"
-						value={code}
-						onChange={(e) => setCode(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") handleRun();
-						}}
+			<div className="px-4 py-3 border-b bg-bg-tertiary flex-none">
+				<div className="flex gap-2">
+					<CodeSystemPicker
+						system={system}
+						onChange={(next) => setSystem(next.system ?? "")}
+						pinnedSystems={sourceOptions}
+						variant="form"
+						prefixLabel="system"
+						placeholder="search CodeSystem…"
+						onEnter={handleRun}
 					/>
-					<HSComp.Input
-						className="h-7 py-1 px-2 font-mono text-xs flex-1 min-w-[200px]"
-						placeholder={systemPlaceholder}
-						value={system}
-						onChange={(e) => setSystem(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") handleRun();
-						}}
-					/>
+					<div className="flex-1 min-w-0 basis-0">
+						<HSComp.Input
+							type="text"
+							className="bg-bg-primary"
+							list={datalistId}
+							prefixValue={
+								<span className="text-nowrap text-elements-assistive font-medium">
+									code
+								</span>
+							}
+							placeholder="e.g., info"
+							value={code}
+							onChange={(e) => setCode(e.target.value)}
+							onKeyPress={(e) => {
+								if (e.key === "Enter") handleRun();
+							}}
+						/>
+					</div>
+					<datalist id={datalistId}>
+						{codeOptions.map((c) => (
+							<option key={c} value={c} />
+						))}
+					</datalist>
 					<HSComp.Button
-						variant="primary"
-						size="small"
+						variant="secondary"
 						onClick={handleRun}
 						disabled={!code || mutation.isPending}
 					>
-						{mutation.isPending ? "Translating…" : "Translate"}
+						Translate
 					</HSComp.Button>
 				</div>
-
+			</div>
+			<div className="flex-1 min-h-0 overflow-auto bg-bg-primary">
 				{oo?.issue && (
-					<div className="rounded-md border border-border-error-primary bg-bg-error-primary/10 p-3 text-text-error-primary text-xs">
+					<div className="m-4 rounded-md border border-border-error-primary bg-bg-error-primary/10 p-3 text-text-error-primary text-xs">
 						{oo.issue.map((i, idx) => (
 							<div key={`${idx}-${i.diagnostics ?? ""}`}>
 								<span className="font-mono">[{i.severity ?? "error"}]</span>{" "}
@@ -197,62 +240,46 @@ export function TranslatePanel({ onClose }: { onClose: () => void }) {
 						))}
 					</div>
 				)}
-
-				{mutation.data && (
-					<div className="space-y-2">
-						<div className="flex items-center gap-2 typo-label">
-							<span
-								className={`inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs uppercase ${
-									success
-										? "text-text-success-primary bg-bg-success-primary"
-										: "text-text-warning-primary bg-bg-warning-primary"
-								}`}
-							>
-								{success ? "found" : "no match"}
-							</span>
-							<span className="text-text-secondary">
-								{matches.length} match{matches.length === 1 ? "" : "es"}
-							</span>
-							{message && (
-								<span className="text-text-secondary text-xs">— {message}</span>
-							)}
-						</div>
-						{matches.map((m, idx) => (
-							<div
-								key={`${idx}-${m.concept?.code ?? ""}`}
-								className="border border-border-primary rounded-md p-3 space-y-1"
-							>
-								<div className="flex items-baseline gap-2">
-									<span className="font-mono text-sm">
-										{m.concept?.code ?? "—"}
-									</span>
-									{m.concept?.display && (
-										<span className="text-text-secondary text-sm">
-											{m.concept.display}
-										</span>
-									)}
-								</div>
-								{m.concept?.system && (
-									<div className="font-mono text-xs text-text-secondary">
-										system: {m.concept.system}
-										{m.concept.version ? `|${m.concept.version}` : ""}
-									</div>
-								)}
-								{m.relationship && (
-									<div className="text-xs">
-										<span className="text-text-secondary">relationship: </span>
-										<span className="font-mono">{m.relationship}</span>
-									</div>
-								)}
-								{m.originMap && (
-									<div className="text-xs">
-										<span className="text-text-secondary">via: </span>
-										<span className="font-mono">{m.originMap}</span>
-									</div>
-								)}
-							</div>
-						))}
-					</div>
+				{mutation.data && matches.length > 0 && (
+					<HSComp.Table zebra stickyHeader className="typo-code">
+						<HSComp.TableHeader className="z-0">
+							<HSComp.TableRow>
+								<HSComp.TableHead>Relationship</HSComp.TableHead>
+								<HSComp.TableHead>Code</HSComp.TableHead>
+								<HSComp.TableHead>Display</HSComp.TableHead>
+								<HSComp.TableHead>System</HSComp.TableHead>
+								<HSComp.TableHead>Source</HSComp.TableHead>
+								<HSComp.TableHead className="w-full p-0" />
+							</HSComp.TableRow>
+						</HSComp.TableHeader>
+						<HSComp.TableBody>
+							{matches.map((m, idx) => (
+								<HSComp.TableRow
+									// biome-ignore lint/suspicious/noArrayIndexKey: match order is stable
+									key={idx}
+									zebra
+									index={idx}
+								>
+									<HSComp.TableCell>{m.relationship ?? "—"}</HSComp.TableCell>
+									<HSComp.TableCell>{m.concept?.code ?? "—"}</HSComp.TableCell>
+									<HSComp.TableCell>
+										{m.concept?.display ?? "—"}
+									</HSComp.TableCell>
+									<HSComp.TableCell className="text-text-secondary">
+										{m.concept?.system ?? "—"}
+										{m.concept?.version ? `|${m.concept.version}` : ""}
+									</HSComp.TableCell>
+									<HSComp.TableCell className="text-text-secondary">
+										{m.originMap ?? "—"}
+									</HSComp.TableCell>
+									<HSComp.TableCell className="p-0" />
+								</HSComp.TableRow>
+							))}
+						</HSComp.TableBody>
+					</HSComp.Table>
+				)}
+				{mutation.data && matches.length === 0 && !oo?.issue && (
+					<div className="p-4 text-text-secondary text-xs">No match</div>
 				)}
 			</div>
 		</div>
