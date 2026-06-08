@@ -32,6 +32,7 @@ import { ResultContent } from "../components/db-console/result-content";
 import { transformToQueryResultItems } from "../components/db-console/tables-view";
 import { NotebookResourcePicker } from "../components/notebook-resource-picker";
 import { HTTP_STATUS_CODES } from "../shared/const";
+import { copyToClipboard } from "../utils/clipboard";
 import { prettyEdn } from "../utils/edn";
 import type { QueryResultItem } from "../webmcp/db-console-context";
 
@@ -1469,7 +1470,7 @@ function ShareButton({ notebook }: { notebook: Notebook }) {
 			};
 			const url = json.result?.notebook?.["import-url"];
 			if (!url) throw new Error(json.error?.message ?? "No import-url");
-			await navigator.clipboard.writeText(url);
+			await copyToClipboard(url);
 			return url;
 		},
 		onSuccess: () => {

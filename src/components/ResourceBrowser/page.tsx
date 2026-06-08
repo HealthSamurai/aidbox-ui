@@ -14,6 +14,7 @@ import {
 import * as ApiUtils from "../../api/utils";
 import * as Humanize from "../../humanize";
 import * as Utils from "../../utils";
+import { copyToClipboard } from "../../utils/clipboard";
 import { useWebMCPResourceInstances } from "../../webmcp/resource-instances";
 import type { ResourceInstancesActions } from "../../webmcp/resource-instances-context";
 import {
@@ -97,7 +98,7 @@ export const ResourcesTabSarchInput = () => {
 	};
 
 	const handleCopy = () => {
-		navigator.clipboard.writeText(queryValue);
+		copyToClipboard(queryValue);
 	};
 
 	return (

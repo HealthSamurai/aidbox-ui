@@ -23,6 +23,7 @@ import React from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
+import { copyToClipboard } from "../../utils/clipboard";
 import { addUrlToHistory } from "../../utils/url-history";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
@@ -493,7 +494,7 @@ export const useViewDefinitionActions = (
 						aria-label="Copy view name"
 						icon={<Lucide.CopyIcon className="w-4 h-4" />}
 						onClick={() => {
-							navigator.clipboard.writeText(viewName);
+							copyToClipboard(viewName);
 							HSComp.toast.success("Copied to clipboard", {
 								position: "bottom-right",
 								style: { margin: "1rem" },
