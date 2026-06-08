@@ -38,6 +38,17 @@ tr:hover .pin-button {
 	opacity: 0.5 !important;
 }
 
+/* Hidden span used for cross-browser text width measurement
+   (used by CodeSystemPicker for auto-sizing the input field) */
+.input-measure {
+	position: absolute;
+	visibility: hidden;
+	pointer-events: none;
+	white-space: pre;
+	top: -9999px;
+	left: -9999px;
+}
+
 /* Fix CodeMirror tooltip containers inheriting padding from baseTheme in react-components.
    The baseTheme uses "&" selector which applies padding to all elements with theme class prefix,
    including tooltip containers appended to body. These containers are not editors but inherit

@@ -40,6 +40,7 @@ export const RESOURCE_TYPES_WITH_BUILDER = new Set([
 	"SearchParameter",
 	"ValueSet",
 	"CodeSystem",
+	"ConceptMap",
 ]);
 
 /**
