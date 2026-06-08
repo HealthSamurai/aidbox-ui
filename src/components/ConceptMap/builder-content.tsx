@@ -1,11 +1,13 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
+import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { cleanEmptyValues } from "../../utils/clean-empty-values";
 import { useConceptMapContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
+import { TranslatePanel } from "./translate-panel";
 import type { ConceptMap } from "./types";
 
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
@@ -32,6 +34,7 @@ function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
 export const ConceptMapBuilderContent = () => {
 	const client = useAidboxClient();
 	const { conceptMap } = useConceptMapContext();
+	const [translateOpen, setTranslateOpen] = React.useState(false);
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
@@ -76,12 +79,17 @@ export const ConceptMapBuilderContent = () => {
 				<EditorHeaderMenu
 					onSave={() => saveMutation.mutate()}
 					isSaveDisabled={saveMutation.isPending}
+					onTranslate={() => setTranslateOpen((v) => !v)}
+					isTranslateActive={translateOpen}
 				/>
 				<div className="flex-1 min-h-0 overflow-auto">
 					<div className="min-h-full bg-bg-primary px-2.5 pt-3 pb-[250px]">
 						<PropertiesTree />
 					</div>
 				</div>
+				{translateOpen && (
+					<TranslatePanel onClose={() => setTranslateOpen(false)} />
+				)}
 			</div>
 		</div>
 	);
