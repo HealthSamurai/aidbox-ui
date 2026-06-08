@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { copyToClipboard } from "../../utils/clipboard";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
 import { LIMIT_PRESETS, TIMEOUT_PRESETS } from "./utils";
 
@@ -525,7 +526,7 @@ export function ExportDropdown({
 				downloadFile(combined, "export.csv", "text/csv;charset=utf-8;");
 			} else {
 				const separator = format === "markdown" ? "\n\n" : "\n";
-				navigator.clipboard.writeText(parts.join(separator));
+				copyToClipboard(parts.join(separator));
 			}
 		},
 		[],
@@ -556,18 +557,14 @@ export function ExportDropdown({
 								<DropdownMenuContent side="left">
 									<DropdownMenuItem
 										onClick={() =>
-											navigator.clipboard.writeText(
-												resultsToMarkdown(columns, rows),
-											)
+											copyToClipboard(resultsToMarkdown(columns, rows))
 										}
 									>
 										Copy as Markdown
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={() =>
-											navigator.clipboard.writeText(
-												JSON.stringify(rows, null, 2),
-											)
+											copyToClipboard(JSON.stringify(rows, null, 2))
 										}
 									>
 										Copy as JSON

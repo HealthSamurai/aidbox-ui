@@ -1,5 +1,6 @@
 import { Badge } from "@health-samurai/react-components";
 import { Copy, X } from "lucide-react";
+import { copyToClipboard } from "../../utils/clipboard";
 import { useChatDispatch, useChatState } from "./chat-context";
 import { formatElementContexts } from "./types";
 
@@ -36,9 +37,7 @@ export function ElementContextBadge() {
 			<button
 				type="button"
 				className="text-text-secondary hover:text-text-primary shrink-0"
-				onClick={() =>
-					navigator.clipboard.writeText(formatElementContexts(elementContexts))
-				}
+				onClick={() => copyToClipboard(formatElementContexts(elementContexts))}
 			>
 				<Copy className="size-3.5" />
 			</button>

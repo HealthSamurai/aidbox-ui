@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { copyToClipboard } from "../../utils/clipboard";
 import { useChatDispatch, useChatState } from "./chat-context";
 import type { ElementContext } from "./types";
 
@@ -277,7 +278,7 @@ export function ElementPicker() {
 			try {
 				const context = extractElementContext(el);
 				dispatch({ type: "add_element_context", context });
-				navigator.clipboard.writeText(JSON.stringify(context, null, 2));
+				copyToClipboard(JSON.stringify(context, null, 2));
 			} catch (err) {
 				console.error("[element-picker] extraction failed:", err);
 			}
