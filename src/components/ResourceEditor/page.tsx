@@ -27,6 +27,8 @@ import { AccessPolicyBuilderContent } from "../AccessPolicy/builder-content";
 import { AccessPolicyProvider } from "../AccessPolicy/page";
 import { CodeSystemBuilderContent } from "../CodeSystem/builder-content";
 import { CodeSystemProvider } from "../CodeSystem/page";
+import { ConceptMapBuilderContent } from "../ConceptMap/builder-content";
+import { ConceptMapProvider } from "../ConceptMap/page";
 import { EmptyState } from "../empty-state";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
@@ -376,6 +378,7 @@ export const ResourceEditorPage = ({
 	const isLibrary = resourceType === "Library";
 	const isValueSet = resourceType === "ValueSet";
 	const isCodeSystem = resourceType === "CodeSystem";
+	const isConceptMap = resourceType === "ConceptMap";
 	const isSQLQuery =
 		isLibrary &&
 		Boolean(
@@ -442,6 +445,22 @@ export const ResourceEditorPage = ({
 			content: (
 				<HSComp.TabsContent value="builder" className="grow min-h-0">
 					<CodeSystemBuilderContent />
+				</HSComp.TabsContent>
+			),
+		});
+	}
+
+	if (isConceptMap) {
+		tabs.push({
+			value: "builder",
+			trigger: (
+				<HSComp.TabsTrigger value="builder">
+					ConceptMap Builder
+				</HSComp.TabsTrigger>
+			),
+			content: (
+				<HSComp.TabsContent value="builder" className="grow min-h-0">
+					<ConceptMapBuilderContent />
 				</HSComp.TabsContent>
 			),
 		});
@@ -752,6 +771,14 @@ export const ResourceEditorPage = ({
 			<CodeSystemProvider initialResource={initialResource}>
 				{content}
 			</CodeSystemProvider>
+		);
+	}
+
+	if (isConceptMap) {
+		return (
+			<ConceptMapProvider initialResource={initialResource}>
+				{content}
+			</ConceptMapProvider>
 		);
 	}
 
