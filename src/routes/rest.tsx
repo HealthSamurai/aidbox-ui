@@ -1286,7 +1286,7 @@ function ResponsePane({
 					</TabsList>
 				</div>
 				<div className="flex items-center gap-1">
-					{response && activeResponseTab !== "explain" && (
+					{response && !isLoading && activeResponseTab !== "explain" && (
 						<ResponseInfo response={response} />
 					)}
 					{fullScreenState === "normal" && (
