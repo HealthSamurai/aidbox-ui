@@ -32,6 +32,7 @@ import type { AidboxClientR5 } from "../../AidboxClient";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { getAidboxBaseURL } from "../../utils";
 import { useWebMCPPackageDetail } from "../../webmcp/package-detail";
 import type { PackageDetailActions } from "../../webmcp/package-detail-context";
 
@@ -229,6 +230,41 @@ function ReinstallPackageButton({
 }) {
 	const [open, setOpen] = useState(false);
 	const wasPendingRef = useRef(false);
+	const [entries, setEntries] = useState<{ event?: string; msg: string }[]>([]);
+	const [wsReady, setWsReady] = useState(false);
+	const scrollRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) return;
+		setEntries([]);
+		setWsReady(false);
+		const base = getAidboxBaseURL();
+		const wsUrl = base.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+		const ws = new WebSocket(`${wsUrl}/__fhir-npm-package-upload-logs-ws`);
+		ws.onopen = () => setWsReady(true);
+		ws.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				setEntries((prev) => [
+					...prev,
+					{ event: data?.event, msg: data?.msg ?? event.data },
+				]);
+			} catch {
+				setEntries((prev) => [...prev, { msg: event.data }]);
+			}
+		};
+		return () => {
+			ws.close();
+		};
+	}, [open]);
+
+	const entryCount = entries.length;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new entries
+	useEffect(() => {
+		if (scrollRef.current) {
+			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+		}
+	}, [entryCount]);
 
 	useEffect(() => {
 		if (reinstallIsPending) {
@@ -244,6 +280,7 @@ function ReinstallPackageButton({
 		: null;
 
 	const pending = reinstallIsPending;
+	const showLog = pending || entries.length > 0;
 
 	return (
 		<HSComp.AlertDialog
@@ -278,21 +315,51 @@ function ReinstallPackageButton({
 					</HSComp.AlertDialogTitle>
 				</HSComp.AlertDialogHeader>
 				<HSComp.AlertDialogDescription>
-					Package will be reloaded from the registry. This may take a moment.
+					Package will be uninstalled and installed again from the registry.
+					This may take a moment.
 				</HSComp.AlertDialogDescription>
+				{showLog && (
+					<div
+						ref={scrollRef}
+						className="typo-code h-48 overflow-y-auto rounded border border-border-secondary bg-bg-secondary p-3"
+					>
+						{entries.length === 0 ? (
+							<span className="block text-xs text-text-secondary">
+								Waiting for progress…
+							</span>
+						) : (
+							entries.map((entry, i) => (
+								<span
+									// biome-ignore lint/suspicious/noArrayIndexKey: log entries
+									key={i}
+									className="block whitespace-nowrap text-xs text-text-secondary"
+								>
+									{entry.event ? (
+										<>
+											<span className="text-text-primary">[{entry.event}]</span>{" "}
+											{entry.msg}
+										</>
+									) : (
+										entry.msg
+									)}
+								</span>
+							))
+						)}
+					</div>
+				)}
 				<HSComp.AlertDialogFooter>
 					<HSComp.AlertDialogCancel disabled={pending}>
 						Cancel
 					</HSComp.AlertDialogCancel>
 					<HSComp.AlertDialogAction
-						disabled={pending}
+						disabled={pending || !wsReady}
 						onClick={(e) => {
 							e.preventDefault();
 							reinstallMutate();
 						}}
 					>
 						{pending && <Loader2Icon className="w-4 h-4 animate-spin" />}
-						{pending ? "Reinstalling…" : "Reinstall"}
+						Reinstall
 					</HSComp.AlertDialogAction>
 				</HSComp.AlertDialogFooter>
 			</HSComp.AlertDialogContent>
@@ -1115,11 +1182,26 @@ export function PackageDetail() {
 	};
 
 	const reinstallMutation = useMutation({
-		mutationFn: () =>
-			rpcCall(client, "aidbox.profiles/reinstall-package", {
-				"package-name": data?.name ?? "",
-				"package-version": data?.version ?? "",
-			}),
+		mutationFn: async () => {
+			const coordinate = `${data?.name ?? ""}@${data?.version ?? ""}`;
+			const res = await fetch(
+				`${client.getBaseUrl()}/fhir/$fhir-package-install`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/fhir+json" },
+					credentials: "include",
+					body: JSON.stringify({
+						resourceType: "Parameters",
+						parameter: [{ name: "package", valueString: coordinate }],
+					}),
+				},
+			);
+			if (!res.ok) {
+				const text = await res.text();
+				throw new Error(text || `HTTP ${res.status}`);
+			}
+			return res.json();
+		},
 		onError: Utils.onMutationError,
 		onSuccess: () => {
 			HSComp.toast.success("Package reinstalled", {
