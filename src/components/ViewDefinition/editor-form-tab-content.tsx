@@ -2523,44 +2523,46 @@ export const FormTabContent = ({
 					<option key={u} value={u} />
 				))}
 			</datalist>
-			<TreeView
-				itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
-					const metaType = item.getItemData()?.meta?.type;
+			<div className="pb-48">
+				<TreeView
+					itemLabelClassFn={(item: ItemInstance<TreeViewItem<ItemMeta>>) => {
+						const metaType = item.getItemData()?.meta?.type;
 
-					if (
-						metaType === "constant" ||
-						metaType === "select" ||
-						metaType === "where" ||
-						metaType === "properties"
-					) {
-						return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
-					} else {
 						if (
-							metaType === "column-item" ||
-							metaType === "constant-value" ||
-							metaType === "where-value"
+							metaType === "constant" ||
+							metaType === "select" ||
+							metaType === "where" ||
+							metaType === "properties"
 						) {
-							return "pl-0! pr-0! ml-2.5 border-y border-t-transparent";
+							return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 						} else {
-							return "pr-0";
+							if (
+								metaType === "column-item" ||
+								metaType === "constant-value" ||
+								metaType === "where-value"
+							) {
+								return "pl-0! pr-0! ml-2.5 border-y border-t-transparent";
+							} else {
+								return "pr-0";
+							}
 						}
-					}
-				}}
-				items={tree}
-				rootItemId="root"
-				customItemView={customItemView}
-				disableHover={true}
-				chevronClassName="self-center cursor-pointer"
-				onItemLabelClick={(item) => {
-					if (item.isFolder()) {
-						item.isExpanded() ? item.collapse() : item.expand();
-					}
-				}}
-				canReorder={true}
-				onDropFn={onDropTreeItem}
-				expandedItems={expandedItems}
-				onExpandedItemsChange={onExpandedItemsChange}
-			/>
+					}}
+					items={tree}
+					rootItemId="root"
+					customItemView={customItemView}
+					disableHover={true}
+					chevronClassName="self-center cursor-pointer"
+					onItemLabelClick={(item) => {
+						if (item.isFolder()) {
+							item.isExpanded() ? item.collapse() : item.expand();
+						}
+					}}
+					canReorder={true}
+					onDropFn={onDropTreeItem}
+					expandedItems={expandedItems}
+					onExpandedItemsChange={onExpandedItemsChange}
+				/>
+			</div>
 		</FhirPathLspProvider>
 	);
 };
