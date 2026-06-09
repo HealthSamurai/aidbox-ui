@@ -4,12 +4,6 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
 	Tabs,
 	TabsBrowserList,
 	TabsContent,
@@ -30,6 +24,8 @@ import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { copyToClipboard } from "../../utils/clipboard";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
+import { DataTable } from "../data-table/data-table";
+import type { ColumnDef } from "../data-table/types";
 import { LIMIT_PRESETS, TIMEOUT_PRESETS } from "./utils";
 
 // ── JSON highlighting ──
@@ -271,35 +267,21 @@ function QueryResult({
 				</div>
 			) : (
 				<div className="flex-1 overflow-auto min-h-0">
-					<Table stickyHeader className="typo-code w-auto min-w-full">
-						<TableHeader>
-							<TableRow>
-								{columns.map((key, colIdx) => (
-									<TableHead
-										key={key}
-										className={`px-6 hover:bg-transparent whitespace-nowrap ${colIdx === 0 ? "pl-5.5" : ""} ${colIdx === columns.length - 1 ? "w-full" : ""}`}
-									>
-										{key}
-									</TableHead>
-								))}
-							</TableRow>
-						</TableHeader>
-						<TableBody className="[&_tr]:hover:bg-transparent">
-							{rows.map((row, rowIdx) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
-								<TableRow key={rowIdx}>
-									{columns.map((key, colIdx) => (
-										<TableCell
-											key={key}
-											className={`px-6 align-top ${colIdx === 0 ? "pl-5.5" : ""}`}
-										>
-											<CellValue value={row[key]} />
-										</TableCell>
-									))}
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
+					<DataTable<Record<string, unknown>>
+						data={rows}
+						columns={columns.map<ColumnDef<Record<string, unknown>>>((key) => ({
+							id: key,
+							header: key,
+							maxSize: 2000,
+							className: "align-top",
+							cell: (row) => <CellValue value={row[key]} />,
+						}))}
+						rowKey={(_row, idx) => String(idx)}
+						resizable
+						zebra={false}
+						noRowHover
+						tableId="db-console-result"
+					/>
 				</div>
 			)}
 		</div>
