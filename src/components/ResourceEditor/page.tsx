@@ -73,6 +73,7 @@ export const ResourceEditorPageWithLoader = (
 		data: resourceData,
 		isLoading,
 		error,
+		dataUpdatedAt,
 	} = useQuery({
 		enabled: id !== undefined,
 		queryKey: [pageId, resourceType, id],
@@ -113,16 +114,14 @@ export const ResourceEditorPageWithLoader = (
 			/>
 		);
 
-	const meta = (resourceData as unknown as Record<string, unknown>).meta as
-		| Record<string, unknown>
-		| undefined;
-
 	return (
 		<ResourceEditorPage
 			// Remount on id/type change so `useState(initialResource)` re-initializes —
 			// otherwise navigating to a sibling resource keeps the previous one's
-			// state. VersionId guards against in-place updates of the same id.
-			key={`${resourceType}/${id ?? ""}@${String(meta?.versionId ?? "")}`}
+			// state. dataUpdatedAt guards against in-place updates of the same id
+			// (e.g. Save invalidates the query and refetches): Aidbox doesn't expose
+			// meta.versionId, so we key off the query's last successful fetch time.
+			key={`${resourceType}/${id ?? ""}@${dataUpdatedAt}`}
 			initialResource={resourceData}
 			{...props}
 		/>
