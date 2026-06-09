@@ -507,6 +507,7 @@ const ResourcesTabContent = ({
 			id: "id",
 			header: "Id",
 			width: "w-0",
+			maxSize: 400,
 			cell: (resource) => (
 				<div className="group/id flex items-center gap-1">
 					<Router.Link
@@ -538,13 +539,17 @@ const ResourcesTabContent = ({
 			id: "lastUpdated",
 			header: "LastUpdated",
 			width: dynamicKeys.length > 0 ? "w-0" : undefined,
+			defaultSize: 260,
+			maxSize: 600,
 			sortable: true,
 			headerTooltip:
-				indexData === false ? (
-					<span className="bg-bg-warning-primary_inverse text-neutral-900 px-2 py-1 rounded">
-						Sort might be slow — no index for &apos;_lastUpdated&apos;
-					</span>
-				) : undefined,
+				indexData === false
+					? "Sort might be slow — no index for '_lastUpdated'"
+					: undefined,
+			headerTooltipClassName:
+				indexData === false
+					? "bg-bg-warning-primary_inverse text-neutral-900"
+					: undefined,
 			cell: (resource) =>
 				Humanize.humanizeValue("lastUpdated", resource.meta?.lastUpdated, {}),
 		},
@@ -553,6 +558,7 @@ const ResourcesTabContent = ({
 			header: k,
 			width: i < dynamicKeys.length - 1 ? "w-0" : undefined,
 			className: "max-w-[300px]",
+			maxSize: 300,
 			cell: (resource) => {
 				const v = (resource as unknown as Record<string, unknown>)[k];
 				const hasValue = v != null;
@@ -640,6 +646,8 @@ const ResourcesTabContent = ({
 						onSelectionChange={setSelectedIds}
 						sort={tableSort}
 						onSortToggle={handleSortToggle}
+						resizable
+						tableId={`resource-browser-instances:${resourcesPageContext.resourceType}`}
 						emptyState={
 							<EmptyState
 								title="No resources found"
