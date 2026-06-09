@@ -11,10 +11,14 @@ export type ColumnDef<T> = {
 	id: string;
 	header: React.ReactNode;
 	headerTooltip?: React.ReactNode;
+	headerTooltipClassName?: string;
 	cell: (row: T) => React.ReactNode;
 	width?: string;
 	className?: string;
 	sortable?: boolean;
+	defaultSize?: number;
+	minSize?: number;
+	maxSize?: number;
 };
 
 export type BulkAction = {
@@ -34,7 +38,7 @@ export type BulkAction = {
 export type DataTableProps<T> = {
 	data: T[];
 	columns: ColumnDef<T>[];
-	rowKey: (row: T) => string;
+	rowKey: (row: T, index: number) => string;
 	loading?: boolean;
 	emptyState?: React.ReactNode;
 	selectable?: boolean;
@@ -42,6 +46,10 @@ export type DataTableProps<T> = {
 	onSelectionChange?: React.Dispatch<React.SetStateAction<Set<string>>>;
 	sort?: SortState;
 	onSortToggle?: (column: string) => void;
+	resizable?: boolean;
+	tableId?: string;
+	zebra?: boolean;
+	noRowHover?: boolean;
 };
 
 export type DataTableFooterProps = {

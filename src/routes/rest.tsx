@@ -652,31 +652,35 @@ function RequestView({
 							onFormat={handleFormatBody}
 						/>
 					</div>
-					<CodeEditor
-						id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
-						key={`request-editor-${selectedTab.id}`}
-						currentValue={getEditorValue()}
-						mode={bodyMode}
-						onChange={handleBodyEditorChange}
-						additionalExtensions={[preventNewlineOnModEnter]}
-						getStructureDefinitions={getStructureDefinitions}
-						expandValueSet={expandValueSet}
-						resourceTypeHint={resourceTypeHint}
-						issueLineNumbers={responseIssueLines}
-						vimMode={vimMode}
-					/>
+					<div className="h-full">
+						<CodeEditor
+							id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
+							key={`request-editor-${selectedTab.id}`}
+							currentValue={getEditorValue()}
+							mode={bodyMode}
+							onChange={handleBodyEditorChange}
+							additionalExtensions={[preventNewlineOnModEnter]}
+							getStructureDefinitions={getStructureDefinitions}
+							expandValueSet={expandValueSet}
+							resourceTypeHint={resourceTypeHint}
+							issueLineNumbers={responseIssueLines}
+							vimMode={vimMode}
+						/>
+					</div>
 				</TabsContent>
 				<TabsContent value="raw">
-					<RawEditor
-						requestLineVersion={requestLineVersion}
-						selectedTab={selectedTab}
-						onRawChange={onRawChange}
-						getStructureDefinitions={getStructureDefinitions}
-						expandValueSet={expandValueSet}
-						resourceTypeHint={resourceTypeHint}
-						getUrlSuggestions={getUrlSuggestions}
-						issueLineNumbers={responseIssueLines}
-					/>
+					<div className="h-full">
+						<RawEditor
+							requestLineVersion={requestLineVersion}
+							selectedTab={selectedTab}
+							onRawChange={onRawChange}
+							getStructureDefinitions={getStructureDefinitions}
+							expandValueSet={expandValueSet}
+							resourceTypeHint={resourceTypeHint}
+							getUrlSuggestions={getUrlSuggestions}
+							issueLineNumbers={responseIssueLines}
+						/>
+					</div>
 				</TabsContent>
 			</Tabs>
 		</div>
@@ -1282,7 +1286,7 @@ function ResponsePane({
 					</TabsList>
 				</div>
 				<div className="flex items-center gap-1">
-					{response && activeResponseTab !== "explain" && (
+					{response && !isLoading && activeResponseTab !== "explain" && (
 						<ResponseInfo response={response} />
 					)}
 					{fullScreenState === "normal" && (

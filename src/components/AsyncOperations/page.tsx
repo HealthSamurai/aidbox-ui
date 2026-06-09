@@ -6,20 +6,17 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
 } from "@health-samurai/react-components";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DataTable } from "../data-table/data-table";
+import type { ColumnDef, SortState } from "../data-table/types";
 import { useAsyncOperationsList } from "./api";
 import { StatusBadge } from "./status-badge";
 import {
 	type AsyncOperationStatus,
+	type AsyncOperationSummary,
 	DEFAULT_LIST_QUERY,
 	type ListQuery,
 	type SortField,
@@ -27,36 +24,14 @@ import {
 } from "./types";
 import { formatDateTime } from "./utils";
 
-function SortHeader({
-	label,
-	field,
-	query,
-	onSort,
-}: {
-	label: string;
-	field: SortField;
-	query: ListQuery;
-	onSort: (field: SortField) => void;
-}) {
-	const active = query.sortField === field;
-	const Icon = !active
-		? ArrowUpDown
-		: query.sortOrder === "asc"
-			? ArrowUp
-			: ArrowDown;
-	return (
-		<TableHead className="whitespace-nowrap">
-			<button
-				type="button"
-				className={`inline-flex items-center gap-1 cursor-pointer hover:text-text-primary ${active ? "text-text-primary font-medium" : "text-text-secondary"}`}
-				onClick={() => onSort(field)}
-			>
-				{label}
-				<Icon className="size-3" />
-			</button>
-		</TableHead>
-	);
-}
+const COLUMN_TO_SORT_FIELD: Record<string, SortField> = {
+	created: "created-at",
+	lastUpdated: "last-updated",
+};
+const SORT_FIELD_TO_COLUMN: Record<SortField, string> = {
+	"created-at": "created",
+	"last-updated": "lastUpdated",
+};
 
 export function AsyncOperationsPage() {
 	const [query, setQuery] = useState<ListQuery>(DEFAULT_LIST_QUERY);
@@ -79,13 +54,95 @@ export function AsyncOperationsPage() {
 	const operations = data?.operations ?? [];
 	const total = data?.total ?? 0;
 
-	const toggleSort = (field: SortField) => {
+	const tableSort: SortState = {
+		column: SORT_FIELD_TO_COLUMN[query.sortField],
+		direction: query.sortOrder,
+	};
+
+	const handleSortToggle = (columnId: string) => {
+		const field = COLUMN_TO_SORT_FIELD[columnId];
+		if (!field) return;
 		setQuery((prev) =>
 			prev.sortField === field
 				? { ...prev, sortOrder: prev.sortOrder === "asc" ? "desc" : "asc" }
 				: { ...prev, sortField: field, sortOrder: "desc" },
 		);
 	};
+
+	const columns: ColumnDef<AsyncOperationSummary>[] = [
+		{
+			id: "operation",
+			header: "Operation",
+			maxSize: 400,
+			cell: (op) => {
+				const id = op["operation-id"];
+				return (
+					<Link
+						to="/async-operations/$operationId"
+						params={{ operationId: id }}
+						className="text-text-link hover:underline font-medium"
+						title={id}
+					>
+						{id}
+					</Link>
+				);
+			},
+		},
+		{
+			id: "task",
+			header: "Task",
+			maxSize: 300,
+			cell: (op) => op["task-name"] ?? "—",
+		},
+		{
+			id: "status",
+			header: "Status",
+			maxSize: 180,
+			cell: (op) => <StatusBadge status={op.status} />,
+		},
+		{
+			id: "tasks",
+			header: "Tasks",
+			maxSize: 180,
+			cell: (op) => (
+				<span
+					className="text-text-secondary tabular-nums"
+					title={`active=${op.active} succeeded=${op.succeeded} failed=${op.failed}`}
+				>
+					{op.succeeded}/{op.total}
+					{op.failed > 0 ? (
+						<span className="text-text-error-primary ml-1">
+							({op.failed} failed)
+						</span>
+					) : null}
+				</span>
+			),
+		},
+		{
+			id: "created",
+			header: "Created",
+			sortable: true,
+			defaultSize: 200,
+			maxSize: 320,
+			cell: (op) => (
+				<span className="text-text-secondary whitespace-nowrap">
+					{formatDateTime(op["created-at"])}
+				</span>
+			),
+		},
+		{
+			id: "lastUpdated",
+			header: "Last updated",
+			sortable: true,
+			defaultSize: 200,
+			maxSize: 320,
+			cell: (op) => (
+				<span className="text-text-secondary whitespace-nowrap">
+					{formatDateTime(op["last-updated"])}
+				</span>
+			),
+		},
+	];
 
 	return (
 		<div className="flex flex-col h-full">
@@ -135,81 +192,21 @@ export function AsyncOperationsPage() {
 			</div>
 
 			<div className="flex-1 overflow-auto">
-				{isLoading ? (
-					<div className="flex items-center justify-center h-full text-text-secondary">
-						Loading...
-					</div>
-				) : operations.length === 0 ? (
-					<div className="flex items-center justify-center h-full text-text-secondary">
-						No async operations found
-					</div>
-				) : (
-					<Table stickyHeader>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Operation</TableHead>
-								<TableHead>Task</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead className="text-right">Tasks</TableHead>
-								<SortHeader
-									label="Created"
-									field="created-at"
-									query={query}
-									onSort={toggleSort}
-								/>
-								<SortHeader
-									label="Last updated"
-									field="last-updated"
-									query={query}
-									onSort={toggleSort}
-								/>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{operations.map((op) => {
-								const id = op["operation-id"];
-								return (
-									<TableRow key={id}>
-										<TableCell className="max-w-0 truncate">
-											<Link
-												to="/async-operations/$operationId"
-												params={{ operationId: id }}
-												className="text-text-link hover:underline font-medium"
-												title={id}
-											>
-												{id}
-											</Link>
-										</TableCell>
-										<TableCell className="whitespace-nowrap">
-											{op["task-name"] ?? "—"}
-										</TableCell>
-										<TableCell>
-											<StatusBadge status={op.status} />
-										</TableCell>
-										<TableCell className="text-right text-text-secondary tabular-nums">
-											<span
-												title={`active=${op.active} succeeded=${op.succeeded} failed=${op.failed}`}
-											>
-												{op.succeeded}/{op.total}
-												{op.failed > 0 ? (
-													<span className="text-text-error-primary ml-1">
-														({op.failed} failed)
-													</span>
-												) : null}
-											</span>
-										</TableCell>
-										<TableCell className="whitespace-nowrap text-text-secondary">
-											{formatDateTime(op["created-at"])}
-										</TableCell>
-										<TableCell className="whitespace-nowrap text-text-secondary">
-											{formatDateTime(op["last-updated"])}
-										</TableCell>
-									</TableRow>
-								);
-							})}
-						</TableBody>
-					</Table>
-				)}
+				<DataTable<AsyncOperationSummary>
+					data={operations}
+					columns={columns}
+					rowKey={(op) => op["operation-id"]}
+					loading={isLoading}
+					sort={tableSort}
+					onSortToggle={handleSortToggle}
+					resizable
+					tableId="async-operations"
+					emptyState={
+						<div className="flex items-center justify-center h-full text-text-secondary">
+							No async operations found
+						</div>
+					}
+				/>
 			</div>
 		</div>
 	);

@@ -181,7 +181,7 @@ const ItemCard = React.memo(function ItemCard({
 				className="block"
 			>
 				<div className="flex flex-col pl-3 pr-10 py-3 min-w-0">
-					<div className="typo-body text-text-primary truncate">
+					<div className="typo-body text-text-primary truncate font-medium!">
 						{highlight(item.name, item.nameMatches)}
 					</div>
 					{item.description && (

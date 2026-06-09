@@ -249,6 +249,18 @@ const parseSearchParam = (
 	return val ? Number.parseInt(val, 10) || fallback : fallback;
 };
 
+const parseOptionalIntParam = (query: string, key: string): number | null => {
+	const params = new URLSearchParams(query);
+	const val = params.get(key);
+	if (!val) return null;
+	const n = Number.parseInt(val, 10);
+	return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+const ROW_HEIGHT_PX = 28;
+const HEADER_HEIGHT_PX = 32;
+const MIN_FIT_PAGE_SIZE = 5;
+
 const parseSortParam = (query: string): Types.SortState => {
 	const params = new URLSearchParams(query);
 	const sort = params.get("_sort");
@@ -286,7 +298,11 @@ const ResourcesTabContent = ({
 		: Constants.DEFAULT_SEARCH_QUERY;
 
 	const currentPage = parseSearchParam(decodedSearchQuery, "_page", 1);
-	const pageSize = parseSearchParam(decodedSearchQuery, "_count", 30);
+	const explicitPageSize = parseOptionalIntParam(decodedSearchQuery, "_count");
+	const [autoPageSize, setAutoPageSize] = React.useState(30);
+	const pageSize = explicitPageSize ?? autoPageSize;
+	const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+
 	const sort = parseSortParam(decodedSearchQuery);
 
 	const { data: indexData } = ReactQuery.useQuery({
@@ -326,17 +342,23 @@ const ResourcesTabContent = ({
 		queryFn: () => fetchDefaultSchema(client, resourceType),
 	});
 
+	const effectiveSearchQuery = React.useMemo(() => {
+		const params = new URLSearchParams(decodedSearchQuery);
+		if (!params.has("_count")) params.set("_count", String(pageSize));
+		return params.toString();
+	}, [decodedSearchQuery, pageSize]);
+
 	const { data, isLoading, error } = ReactQuery.useQuery({
 		queryKey: [
 			Constants.PageID,
 			"resource-list",
 			resourceType,
-			decodedSearchQuery,
+			effectiveSearchQuery,
 		],
 		queryFn: async () => {
 			const result = await client.searchType({
 				type: resourcesPageContext.resourceType,
-				query: Utils.formatSearchQuery(decodedSearchQuery),
+				query: Utils.formatSearchQuery(effectiveSearchQuery),
 			});
 			if (result.isErr())
 				throw new Error("error obtaining resource list", {
@@ -358,6 +380,27 @@ const ResourcesTabContent = ({
 	React.useEffect(() => {
 		setSelectedIds(new Set());
 	}, [decodedSearchQuery]);
+
+	React.useLayoutEffect(() => {
+		if (explicitPageSize !== null) return;
+		const el = scrollAreaRef.current;
+		if (!el) return;
+		const compute = () => {
+			const firstRow = el.querySelector<HTMLElement>("tbody tr");
+			const header = el.querySelector<HTMLElement>("thead");
+			const rowH = firstRow?.getBoundingClientRect().height || ROW_HEIGHT_PX;
+			const headerH =
+				header?.getBoundingClientRect().height || HEADER_HEIGHT_PX;
+			if (rowH <= 0) return;
+			const usable = el.clientHeight - headerH;
+			const fit = Math.max(MIN_FIT_PAGE_SIZE, Math.floor(usable / rowH));
+			setAutoPageSize((prev) => (prev === fit ? prev : fit));
+		};
+		compute();
+		const ro = new ResizeObserver(compute);
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, [explicitPageSize]);
 
 	const deleteMutation = ReactQuery.useMutation({
 		mutationFn: async () => {
@@ -507,6 +550,7 @@ const ResourcesTabContent = ({
 			id: "id",
 			header: "Id",
 			width: "w-0",
+			maxSize: 400,
 			cell: (resource) => (
 				<div className="group/id flex items-center gap-1">
 					<Router.Link
@@ -538,13 +582,17 @@ const ResourcesTabContent = ({
 			id: "lastUpdated",
 			header: "LastUpdated",
 			width: dynamicKeys.length > 0 ? "w-0" : undefined,
+			defaultSize: 260,
+			maxSize: 600,
 			sortable: true,
 			headerTooltip:
-				indexData === false ? (
-					<span className="bg-bg-warning-primary_inverse text-neutral-900 px-2 py-1 rounded">
-						Sort might be slow — no index for &apos;_lastUpdated&apos;
-					</span>
-				) : undefined,
+				indexData === false
+					? "Sort might be slow — no index for '_lastUpdated'"
+					: undefined,
+			headerTooltipClassName:
+				indexData === false
+					? "bg-bg-warning-primary_inverse text-neutral-900"
+					: undefined,
 			cell: (resource) =>
 				Humanize.humanizeValue("lastUpdated", resource.meta?.lastUpdated, {}),
 		},
@@ -553,6 +601,7 @@ const ResourcesTabContent = ({
 			header: k,
 			width: i < dynamicKeys.length - 1 ? "w-0" : undefined,
 			className: "max-w-[300px]",
+			maxSize: 300,
 			cell: (resource) => {
 				const v = (resource as unknown as Record<string, unknown>)[k];
 				const hasValue = v != null;
@@ -629,7 +678,7 @@ const ResourcesTabContent = ({
 		>
 			<div className="flex flex-col h-full">
 				<ResourcesTabHeader handleSearch={handleSearch} />
-				<div className="flex-1 overflow-auto">
+				<div ref={scrollAreaRef} className="flex-1 overflow-auto">
 					<DataTable<Resource>
 						data={data?.resources ?? []}
 						columns={columns}
@@ -640,6 +689,8 @@ const ResourcesTabContent = ({
 						onSelectionChange={setSelectedIds}
 						sort={tableSort}
 						onSortToggle={handleSortToggle}
+						resizable
+						tableId={`resource-browser-instances:${resourcesPageContext.resourceType}`}
 						emptyState={
 							<EmptyState
 								title="No resources found"
