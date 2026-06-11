@@ -13,6 +13,16 @@ import { PropertiesTree } from "./properties-tree";
 import { ResultPanel } from "./result-panel";
 import type { ValueSet } from "./types";
 
+const DEFAULT_PAGE_SIZE = 30;
+const PAGE_SIZE_STORAGE_KEY = "valueset-builder:result-page-size";
+
+type ExpandVariables = {
+	offset: number;
+	count: number;
+	reset: boolean;
+	seq: number;
+};
+
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
 	if (
 		typeof err === "object" &&
@@ -104,17 +114,36 @@ export const ValueSetBuilderContent = () => {
 		},
 	});
 
+	const [page, setPage] = React.useState(1);
+	const [pageSize, setPageSize] = useLocalStorage<number>({
+		key: PAGE_SIZE_STORAGE_KEY,
+		defaultValue: DEFAULT_PAGE_SIZE,
+		getInitialValueInEffect: false,
+	});
+
 	const expandStartRef = React.useRef<number>(0);
+	const expandedValueSetRef = React.useRef<ValueSet | null>(null);
+	const expandSeqRef = React.useRef(0);
 	const expandMutation = useMutation({
-		mutationFn: async () => {
+		mutationFn: async ({ offset, count, reset }: ExpandVariables) => {
 			setExpandError(null);
-			setExpansion(null);
-			setExpandDurationMs(null);
+			if (reset) {
+				setExpansion(null);
+				setExpandDurationMs(null);
+				expandedValueSetRef.current = cleanEmptyValues(valueSet);
+			}
 			setIsExpanding(true);
 			expandStartRef.current = performance.now();
 			const body = {
 				resourceType: "Parameters" as const,
-				parameter: [{ name: "valueSet", resource: cleanEmptyValues(valueSet) }],
+				parameter: [
+					{
+						name: "valueSet",
+						resource: expandedValueSetRef.current ?? cleanEmptyValues(valueSet),
+					},
+					{ name: "count", valueInteger: count },
+					{ name: "offset", valueInteger: offset },
+				],
 			};
 			const result = await client.request<ValueSet>({
 				method: "POST",
@@ -125,12 +154,14 @@ export const ValueSetBuilderContent = () => {
 			if (result.isErr()) throw result.value.resource;
 			return result.value.resource;
 		},
-		onSuccess: (resource) => {
+		onSuccess: (resource, { seq }) => {
+			if (seq !== expandSeqRef.current) return;
 			setIsExpanding(false);
 			setExpandDurationMs(performance.now() - expandStartRef.current);
 			setExpansion(resource.expansion ?? null);
 		},
-		onError: (err) => {
+		onError: (err, { seq }) => {
+			if (seq !== expandSeqRef.current) return;
 			setIsExpanding(false);
 			setExpandDurationMs(performance.now() - expandStartRef.current);
 			setExpandError(toOperationOutcome(err));
@@ -166,11 +197,41 @@ export const ValueSetBuilderContent = () => {
 		return () => document.removeEventListener("keydown", onEscape);
 	}, [isMaximized]);
 
+	const requestExpand = React.useCallback(
+		(vars: Omit<ExpandVariables, "seq">) => {
+			expandSeqRef.current += 1;
+			expandMutation.mutate({ ...vars, seq: expandSeqRef.current });
+		},
+		[expandMutation],
+	);
+
 	const triggerExpand = React.useCallback(() => {
 		if (expandMutation.isPending) return;
 		handleExpandResult();
-		expandMutation.mutate();
-	}, [expandMutation, handleExpandResult]);
+		setPage(1);
+		requestExpand({ offset: 0, count: pageSize, reset: true });
+	}, [expandMutation.isPending, handleExpandResult, requestExpand, pageSize]);
+
+	const handlePageChange = React.useCallback(
+		(nextPage: number) => {
+			setPage(nextPage);
+			requestExpand({
+				offset: (nextPage - 1) * pageSize,
+				count: pageSize,
+				reset: false,
+			});
+		},
+		[requestExpand, pageSize],
+	);
+
+	const handlePageSizeChange = React.useCallback(
+		(nextSize: number) => {
+			setPageSize(nextSize);
+			setPage(1);
+			requestExpand({ offset: 0, count: nextSize, reset: false });
+		},
+		[requestExpand, setPageSize],
+	);
 
 	const editorContent = (
 		<div className="flex flex-col h-full">
@@ -241,6 +302,10 @@ export const ValueSetBuilderContent = () => {
 								isMaximized={isMaximized}
 								onToggleMaximize={handleToggleMaximize}
 								onToggleCollapse={handleToggleCollapse}
+								page={page}
+								pageSize={pageSize}
+								onPageChange={handlePageChange}
+								onPageSizeChange={handlePageSizeChange}
 							/>
 						</div>
 					</div>

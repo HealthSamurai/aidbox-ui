@@ -1,18 +1,13 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Maximize2, Minimize2, PanelBottomClose, Timer } from "lucide-react";
-import * as React from "react";
-import { useLocalStorage } from "../../hooks";
 import { DataTableFooter } from "../data-table/footer";
 import { EmptyState } from "../empty-state";
 import { useValueSetContext } from "./context";
 
-const DEFAULT_PAGE_SIZE = 30;
-const PAGE_SIZE_STORAGE_KEY = "valueset-builder:result-page-size";
-
-function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
+function ResultBody({ offset }: { offset: number }) {
 	const { expansion, expandError, isExpanding } = useValueSetContext();
 
-	if (isExpanding) {
+	if (isExpanding && !expansion) {
 		return (
 			<div className="flex items-center justify-center h-full text-text-secondary">
 				Expanding…
@@ -39,8 +34,8 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 		);
 	}
 
-	const contains = expansion.contains ?? [];
-	if (contains.length === 0) {
+	const visibleRows = expansion.contains ?? [];
+	if (visibleRows.length === 0) {
 		return (
 			<EmptyState
 				title="Empty expansion"
@@ -49,11 +44,12 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 		);
 	}
 
-	const start = (page - 1) * pageSize;
-	const visibleRows = contains.slice(start, start + pageSize);
-
 	return (
-		<HSComp.Table zebra stickyHeader className="typo-code">
+		<HSComp.Table
+			zebra
+			stickyHeader
+			className={`typo-code ${isExpanding ? "opacity-60 pointer-events-none" : ""}`}
+		>
 			<HSComp.TableHeader className="z-0">
 				<HSComp.TableRow>
 					<HSComp.TableHead>Code</HSComp.TableHead>
@@ -65,7 +61,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 			<HSComp.TableBody>
 				{visibleRows.map((row, i) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
-					<HSComp.TableRow key={start + i} zebra index={start + i}>
+					<HSComp.TableRow key={offset + i} zebra index={offset + i}>
 						<HSComp.TableCell>{row.code ?? "—"}</HSComp.TableCell>
 						<HSComp.TableCell>{row.display ?? "—"}</HSComp.TableCell>
 						<HSComp.TableCell className="text-text-secondary">
@@ -83,34 +79,27 @@ export function ResultPanel({
 	isMaximized,
 	onToggleMaximize,
 	onToggleCollapse,
+	page,
+	pageSize,
+	onPageChange,
+	onPageSizeChange,
 }: {
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
+	page: number;
+	pageSize: number;
+	onPageChange: (page: number) => void;
+	onPageSizeChange: (size: number) => void;
 }) {
 	const { expansion, expandDurationMs } = useValueSetContext();
-	const [page, setPage] = React.useState(1);
-	const [pageSize, setPageSize] = useLocalStorage<number>({
-		key: PAGE_SIZE_STORAGE_KEY,
-		getInitialValueInEffect: false,
-		defaultValue: DEFAULT_PAGE_SIZE,
-	});
-	const total = expansion?.contains?.length ?? 0;
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-	React.useEffect(() => {
-		setPage(1);
-	}, []);
-
-	React.useEffect(() => {
-		if (page > totalPages) setPage(totalPages);
-	}, [page, totalPages]);
+	const total = expansion?.total ?? expansion?.contains?.length ?? 0;
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
 			<div className="flex gap-1 items-center justify-between bg-bg-secondary pl-4 pr-2 border-b h-10 shrink-0">
 				<span className="typo-label text-text-secondary">
-					Expansion ({expansion?.total ?? total})
+					Expansion ({total})
 				</span>
 				<div className="flex items-center gap-2">
 					{expandDurationMs != null && (
@@ -154,7 +143,7 @@ export function ResultPanel({
 			</div>
 			<div className="flex-1 min-h-0 flex flex-col">
 				<div className="flex-1 min-h-0">
-					<ResultBody page={page} pageSize={pageSize} />
+					<ResultBody offset={(page - 1) * pageSize} />
 				</div>
 				{total > 0 && (
 					<DataTableFooter
@@ -162,11 +151,8 @@ export function ResultPanel({
 						currentPage={page}
 						pageSize={pageSize}
 						selectedCount={0}
-						onPageChange={setPage}
-						onPageSizeChange={(size) => {
-							setPageSize(size);
-							setPage(1);
-						}}
+						onPageChange={onPageChange}
+						onPageSizeChange={onPageSizeChange}
 					/>
 				)}
 			</div>

@@ -55,6 +55,17 @@ const DEFAULT_RESULT_HEIGHT = 320;
 const MIN_RESULT_HEIGHT = 120;
 const MAX_RESULT_HEIGHT = 800;
 
+const DEFAULT_PAGE_SIZE = 30;
+const PAGE_SIZE_STORAGE_KEY = "valueset-graph:result-page-size";
+
+type RunVariables = {
+	target: RunTarget;
+	offset: number;
+	count: number;
+	reset: boolean;
+	seq: number;
+};
+
 const DEFAULT_DETAILS_WIDTH = 440;
 const MIN_DETAILS_WIDTH = 280;
 const MAX_DETAILS_WIDTH = 800;
@@ -261,24 +272,41 @@ export function ValueSetGraphTab() {
 		setEdges(graph.edges);
 	}, [graph.nodes, graph.edges, setNodes, setEdges]);
 
+	const [page, setPage] = React.useState(1);
+	const [pageSize, setPageSize] = useLocalStorage<number>({
+		key: PAGE_SIZE_STORAGE_KEY,
+		defaultValue: DEFAULT_PAGE_SIZE,
+		getInitialValueInEffect: false,
+	});
+
 	const runStartRef = React.useRef<number>(0);
+	const lastTargetRef = React.useRef<RunTarget | null>(null);
+	const expandedValueSetRef = React.useRef<ValueSet | null>(null);
+	const runSeqRef = React.useRef(0);
 
 	const runMutation = useMutation({
-		mutationFn: async (target: RunTarget): Promise<GraphRunResult> => {
+		mutationFn: async ({
+			target,
+			offset,
+			count,
+			reset,
+		}: RunVariables): Promise<GraphRunResult> => {
 			setRunningNodeId(target.nodeId);
 			setResultNodeId(target.nodeId);
 			setError(null);
-			setResult(null);
+			if (reset) setResult(null);
 			runStartRef.current = performance.now();
 			if (target.kind === "expand") {
 				if (target.isRoot) {
+					if (reset || !expandedValueSetRef.current) {
+						expandedValueSetRef.current = cleanEmptyValues(valueSetRef.current);
+					}
 					const body = {
 						resourceType: "Parameters" as const,
 						parameter: [
-							{
-								name: "valueSet",
-								resource: cleanEmptyValues(valueSetRef.current),
-							},
+							{ name: "valueSet", resource: expandedValueSetRef.current },
+							{ name: "count", valueInteger: count },
+							{ name: "offset", valueInteger: offset },
 						],
 					};
 					const r = await client.request<ValueSet>({
@@ -309,6 +337,7 @@ export function ValueSetGraphTab() {
 				}
 				const params: Array<[string, string]> = [["url", target.url]];
 				if (target.version) params.push(["valueSetVersion", target.version]);
+				params.push(["count", String(count)], ["offset", String(offset)]);
 				const r = await client.request<ValueSet>({
 					method: "GET",
 					url: "/fhir/ValueSet/$expand",
@@ -329,24 +358,62 @@ export function ValueSetGraphTab() {
 				durationMs: performance.now() - runStartRef.current,
 			};
 		},
-		onSuccess: (res) => {
+		onSuccess: (res, { seq }) => {
+			if (seq !== runSeqRef.current) return;
 			setRunningNodeId(null);
 			setResult(res);
 		},
-		onError: (err) => {
+		onError: (err, { seq }) => {
+			if (seq !== runSeqRef.current) return;
 			setRunningNodeId(null);
 			setError(toOperationOutcome(err));
 		},
 	});
+
+	const requestRun = React.useCallback(
+		(vars: Omit<RunVariables, "seq">) => {
+			runSeqRef.current += 1;
+			runMutation.mutate({ ...vars, seq: runSeqRef.current });
+		},
+		[runMutation],
+	);
 
 	const run = React.useCallback(
 		(target: RunTarget) => {
 			if (runMutation.isPending) return;
 			setIsResultCollapsed(false);
 			setIsMaximized(false);
-			runMutation.mutate(target);
+			setPage(1);
+			lastTargetRef.current = target;
+			requestRun({ target, offset: 0, count: pageSize, reset: true });
 		},
-		[runMutation],
+		[runMutation.isPending, requestRun, pageSize],
+	);
+
+	const handlePageChange = React.useCallback(
+		(nextPage: number) => {
+			setPage(nextPage);
+			const target = lastTargetRef.current;
+			if (!target || target.kind !== "expand") return;
+			requestRun({
+				target,
+				offset: (nextPage - 1) * pageSize,
+				count: pageSize,
+				reset: false,
+			});
+		},
+		[requestRun, pageSize],
+	);
+
+	const handlePageSizeChange = React.useCallback(
+		(nextSize: number) => {
+			setPageSize(nextSize);
+			setPage(1);
+			const target = lastTargetRef.current;
+			if (!target || target.kind !== "expand") return;
+			requestRun({ target, offset: 0, count: nextSize, reset: false });
+		},
+		[requestRun, setPageSize],
 	);
 
 	const runContextValue = React.useMemo<GraphRunContextValue>(
@@ -424,6 +491,9 @@ export function ValueSetGraphTab() {
 		setError(null);
 		setIsResultCollapsed(false);
 		setIsMaximized(false);
+		setPage(1);
+		lastTargetRef.current = null;
+		expandedValueSetRef.current = null;
 	}, []);
 
 	React.useEffect(() => {
@@ -611,6 +681,10 @@ export function ValueSetGraphTab() {
 							onToggleMaximize={handleToggleMaximize}
 							onToggleCollapse={handleToggleCollapse}
 							onClose={handleClose}
+							page={page}
+							pageSize={pageSize}
+							onPageChange={handlePageChange}
+							onPageSizeChange={handlePageSizeChange}
 						/>
 					</div>
 				)}
