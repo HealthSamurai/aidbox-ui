@@ -1,22 +1,11 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Maximize2, Minimize2, PanelBottomClose, Timer, X } from "lucide-react";
-import * as React from "react";
-import { useLocalStorage } from "../../../hooks";
 import { DataTableFooter } from "../../data-table/footer";
 import { EmptyState } from "../../empty-state";
 import { useGraphRunContext } from "./run-context";
 
-const DEFAULT_PAGE_SIZE = 30;
-const PAGE_SIZE_STORAGE_KEY = "valueset-graph:result-page-size";
-
-function ExpansionTable({
-	page,
-	pageSize,
-}: {
-	page: number;
-	pageSize: number;
-}) {
-	const { result } = useGraphRunContext();
+function ExpansionTable({ offset }: { offset: number }) {
+	const { result, runningNodeId } = useGraphRunContext();
 	if (!result || result.kind !== "expand") return null;
 	if (result.contains.length === 0) {
 		return (
@@ -26,10 +15,12 @@ function ExpansionTable({
 			/>
 		);
 	}
-	const start = (page - 1) * pageSize;
-	const visibleRows = result.contains.slice(start, start + pageSize);
 	return (
-		<HSComp.Table zebra stickyHeader className="typo-code">
+		<HSComp.Table
+			zebra
+			stickyHeader
+			className={`typo-code ${runningNodeId ? "opacity-60 pointer-events-none" : ""}`}
+		>
 			<HSComp.TableHeader className="z-0">
 				<HSComp.TableRow>
 					<HSComp.TableHead>Code</HSComp.TableHead>
@@ -39,9 +30,9 @@ function ExpansionTable({
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
 			<HSComp.TableBody>
-				{visibleRows.map((row, i) => (
+				{result.contains.map((row, i) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
-					<HSComp.TableRow key={start + i} zebra index={start + i}>
+					<HSComp.TableRow key={offset + i} zebra index={offset + i}>
 						<HSComp.TableCell>{row.code ?? "—"}</HSComp.TableCell>
 						<HSComp.TableCell>{row.display ?? "—"}</HSComp.TableCell>
 						<HSComp.TableCell className="text-text-secondary">
@@ -106,7 +97,7 @@ function ContentTable({ page, pageSize }: { page: number; pageSize: number }) {
 function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 	const { runningNodeId, error, result } = useGraphRunContext();
 
-	if (runningNodeId) {
+	if (runningNodeId && !result) {
 		return (
 			<div className="flex items-center justify-center h-full w-full text-text-secondary">
 				Loading…
@@ -134,7 +125,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 	}
 
 	if (result.kind === "expand") {
-		return <ExpansionTable page={page} pageSize={pageSize} />;
+		return <ExpansionTable offset={(page - 1) * pageSize} />;
 	}
 	return <ContentTable page={page} pageSize={pageSize} />;
 }
@@ -144,7 +135,7 @@ function getHeaderLabel(
 	total: number,
 ): string {
 	if (!result) return "Result";
-	if (result.kind === "expand") return `Expansion (${result.total ?? total})`;
+	if (result.kind === "expand") return `Expansion (${total})`;
 	return `Concepts (${total})`;
 }
 
@@ -152,7 +143,7 @@ function getTotal(
 	result: ReturnType<typeof useGraphRunContext>["result"],
 ): number {
 	if (!result) return 0;
-	if (result.kind === "expand") return result.contains.length;
+	if (result.kind === "expand") return result.total ?? result.contains.length;
 	return result.rows.length;
 }
 
@@ -161,29 +152,22 @@ export function ExpandResultPanel({
 	onToggleMaximize,
 	onToggleCollapse,
 	onClose,
+	page,
+	pageSize,
+	onPageChange,
+	onPageSizeChange,
 }: {
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
 	onClose: () => void;
+	page: number;
+	pageSize: number;
+	onPageChange: (page: number) => void;
+	onPageSizeChange: (size: number) => void;
 }) {
 	const { result } = useGraphRunContext();
-	const [page, setPage] = React.useState(1);
-	const [pageSize, setPageSize] = useLocalStorage<number>({
-		key: PAGE_SIZE_STORAGE_KEY,
-		getInitialValueInEffect: false,
-		defaultValue: DEFAULT_PAGE_SIZE,
-	});
 	const total = getTotal(result);
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-	React.useEffect(() => {
-		setPage(1);
-	}, []);
-
-	React.useEffect(() => {
-		if (page > totalPages) setPage(totalPages);
-	}, [page, totalPages]);
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
@@ -249,11 +233,8 @@ export function ExpandResultPanel({
 						currentPage={page}
 						pageSize={pageSize}
 						selectedCount={0}
-						onPageChange={setPage}
-						onPageSizeChange={(size) => {
-							setPageSize(size);
-							setPage(1);
-						}}
+						onPageChange={onPageChange}
+						onPageSizeChange={onPageSizeChange}
 					/>
 				)}
 			</div>
