@@ -76,7 +76,6 @@ export const CATEGORIES: CategoryDef[] = [
 				category: ["Modules", "SMARTbox"],
 				desc: "SMARTbox settings",
 			},
-			{ category: ["Modules", "MDM"], desc: "MDM settings" },
 			{ category: ["Modules", "MCP"], desc: "MCP settings" },
 			{ category: ["Modules", "Forms"], desc: "Forms settings" },
 			{ category: ["Modules", "GraphQL"], desc: "GraphQL settings" },

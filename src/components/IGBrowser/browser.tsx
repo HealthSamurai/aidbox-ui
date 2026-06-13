@@ -37,7 +37,6 @@ type PackageItem = {
 const SYSTEM_PREFIXES = [
 	"io.health-samurai.core",
 	"io.health-samurai.sdc",
-	"io.health-samurai.mdm",
 ];
 
 function getPackageTag(name: string, installation: Installation[]): PackageTag {
