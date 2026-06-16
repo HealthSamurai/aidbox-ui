@@ -1,28 +1,26 @@
 import {
-	SQL_QUERY_PROFILE,
-	SQL_QUERY_TYPE_CODE,
 	SQL_QUERY_TYPE_SYSTEM,
 	type SQLLibrary,
+	sqlLibraryKindMeta,
 } from "./types";
 
-export function ensureSQLQueryShape(lib: SQLLibrary): SQLLibrary {
+export function ensureSqlLibraryShape(lib: SQLLibrary): SQLLibrary {
+	const kindMeta = sqlLibraryKindMeta(lib);
 	const profiles = lib.meta?.profile ?? [];
-	const hasProfile = profiles.includes(SQL_QUERY_PROFILE);
+	const hasProfile = profiles.includes(kindMeta.profile);
 	const hasType = lib.type?.coding?.some(
-		(c) => c.system === SQL_QUERY_TYPE_SYSTEM && c.code === SQL_QUERY_TYPE_CODE,
+		(c) => c.system === SQL_QUERY_TYPE_SYSTEM && c.code === kindMeta.typeCode,
 	);
 	return {
 		...lib,
 		resourceType: "Library",
 		meta: hasProfile
 			? lib.meta
-			: { ...(lib.meta ?? {}), profile: [...profiles, SQL_QUERY_PROFILE] },
+			: { ...(lib.meta ?? {}), profile: [...profiles, kindMeta.profile] },
 		type: hasType
 			? lib.type
 			: {
-					coding: [
-						{ system: SQL_QUERY_TYPE_SYSTEM, code: SQL_QUERY_TYPE_CODE },
-					],
+					coding: [{ system: SQL_QUERY_TYPE_SYSTEM, code: kindMeta.typeCode }],
 				},
 		status: lib.status ?? "active",
 	};
@@ -84,7 +82,7 @@ export function buildRunPayload(
 	inheritedTypes: Map<string, string>,
 	paramValues: Record<string, string>,
 ): { resourceType: "Parameters"; parameter: Record<string, unknown>[] } {
-	const payload = ensureSQLQueryShape(library);
+	const payload = ensureSqlLibraryShape(library);
 	const valueEntries = buildAllParamEntries(
 		payload,
 		inheritedTypes,

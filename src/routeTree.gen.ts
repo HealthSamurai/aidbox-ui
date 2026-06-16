@@ -36,6 +36,7 @@ import { Route as DatabaseSchemaRouteImport } from './routes/database.schema'
 import { Route as DatabaseQueriesRouteImport } from './routes/database.queries'
 import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
 import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
+import { Route as AnalyticsSqlviewRouteImport } from './routes/analytics.sqlview'
 import { Route as AnalyticsQueriesRouteImport } from './routes/analytics.queries'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
 import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.index'
@@ -44,9 +45,11 @@ import { Route as AnalyticsQueriesIndexRouteImport } from './routes/analytics.qu
 import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
 import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id_.edit'
 import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.views.create'
+import { Route as AnalyticsSqlviewCreateRouteImport } from './routes/analytics.sqlview.create'
 import { Route as AnalyticsQueriesCreateRouteImport } from './routes/analytics.queries.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
 import { Route as AnalyticsViewsEditIdRouteImport } from './routes/analytics.views.edit.$id'
+import { Route as AnalyticsSqlviewEditIdRouteImport } from './routes/analytics.sqlview.edit.$id'
 import { Route as AnalyticsQueriesEditIdRouteImport } from './routes/analytics.queries.edit.$id'
 import { Route as IgPackageIdResourceResourceTypeResourceIdRouteImport } from './routes/ig.$packageId.resource.$resourceType.$resourceId'
 
@@ -186,6 +189,11 @@ const AnalyticsViewsRoute = AnalyticsViewsRouteImport.update({
   path: '/views',
   getParentRoute: () => AnalyticsRoute,
 } as any)
+const AnalyticsSqlviewRoute = AnalyticsSqlviewRouteImport.update({
+  id: '/sqlview',
+  path: '/sqlview',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
 const AnalyticsQueriesRoute = AnalyticsQueriesRouteImport.update({
   id: '/queries',
   path: '/queries',
@@ -228,6 +236,11 @@ const AnalyticsViewsCreateRoute = AnalyticsViewsCreateRouteImport.update({
   path: '/create',
   getParentRoute: () => AnalyticsViewsRoute,
 } as any)
+const AnalyticsSqlviewCreateRoute = AnalyticsSqlviewCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AnalyticsSqlviewRoute,
+} as any)
 const AnalyticsQueriesCreateRoute = AnalyticsQueriesCreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -243,6 +256,11 @@ const AnalyticsViewsEditIdRoute = AnalyticsViewsEditIdRouteImport.update({
   id: '/edit/$id',
   path: '/edit/$id',
   getParentRoute: () => AnalyticsViewsRoute,
+} as any)
+const AnalyticsSqlviewEditIdRoute = AnalyticsSqlviewEditIdRouteImport.update({
+  id: '/edit/$id',
+  path: '/edit/$id',
+  getParentRoute: () => AnalyticsSqlviewRoute,
 } as any)
 const AnalyticsQueriesEditIdRoute = AnalyticsQueriesEditIdRouteImport.update({
   id: '/edit/$id',
@@ -269,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
   '/analytics/queries': typeof AnalyticsQueriesRouteWithChildren
+  '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/database/queries': typeof DatabaseQueriesRoute
@@ -286,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
+  '/analytics/sqlview/create': typeof AnalyticsSqlviewCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
   '/notebooks/$id/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
@@ -294,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/analytics/queries/edit/$id': typeof AnalyticsQueriesEditIdRoute
+  '/analytics/sqlview/edit/$id': typeof AnalyticsSqlviewEditIdRoute
   '/analytics/views/edit/$id': typeof AnalyticsViewsEditIdRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
@@ -304,6 +325,7 @@ export interface FileRoutesByTo {
   '/db-console': typeof DbConsoleRoute
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
+  '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/database/queries': typeof DatabaseQueriesRoute
   '/database/schema': typeof DatabaseSchemaRoute
@@ -318,6 +340,7 @@ export interface FileRoutesByTo {
   '/notebooks': typeof NotebooksIndexRoute
   '/resource': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
+  '/analytics/sqlview/create': typeof AnalyticsSqlviewCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
   '/notebooks/$id/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
@@ -326,6 +349,7 @@ export interface FileRoutesByTo {
   '/ig/$packageId': typeof IgPackageIdIndexRoute
   '/resource/$resourceType': typeof ResourceResourceTypeIndexRoute
   '/analytics/queries/edit/$id': typeof AnalyticsQueriesEditIdRoute
+  '/analytics/sqlview/edit/$id': typeof AnalyticsSqlviewEditIdRoute
   '/analytics/views/edit/$id': typeof AnalyticsViewsEditIdRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
@@ -344,6 +368,7 @@ export interface FileRoutesById {
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
   '/analytics/queries': typeof AnalyticsQueriesRouteWithChildren
+  '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/database/queries': typeof DatabaseQueriesRoute
@@ -361,6 +386,7 @@ export interface FileRoutesById {
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
+  '/analytics/sqlview/create': typeof AnalyticsSqlviewCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
   '/notebooks/$id_/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
@@ -369,6 +395,7 @@ export interface FileRoutesById {
   '/ig/$packageId/': typeof IgPackageIdIndexRoute
   '/resource/$resourceType/': typeof ResourceResourceTypeIndexRoute
   '/analytics/queries/edit/$id': typeof AnalyticsQueriesEditIdRoute
+  '/analytics/sqlview/edit/$id': typeof AnalyticsSqlviewEditIdRoute
   '/analytics/views/edit/$id': typeof AnalyticsViewsEditIdRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
@@ -388,6 +415,7 @@ export interface FileRouteTypes {
     | '/rest'
     | '/settings'
     | '/analytics/queries'
+    | '/analytics/sqlview'
     | '/analytics/views'
     | '/async-operations/$operationId'
     | '/database/queries'
@@ -405,6 +433,7 @@ export interface FileRouteTypes {
     | '/notebooks/'
     | '/resource/'
     | '/analytics/queries/create'
+    | '/analytics/sqlview/create'
     | '/analytics/views/create'
     | '/notebooks/$id/edit'
     | '/resource/$resourceType/create'
@@ -413,6 +442,7 @@ export interface FileRouteTypes {
     | '/ig/$packageId/'
     | '/resource/$resourceType/'
     | '/analytics/queries/edit/$id'
+    | '/analytics/sqlview/edit/$id'
     | '/analytics/views/edit/$id'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
@@ -423,6 +453,7 @@ export interface FileRouteTypes {
     | '/db-console'
     | '/rest'
     | '/settings'
+    | '/analytics/sqlview'
     | '/async-operations/$operationId'
     | '/database/queries'
     | '/database/schema'
@@ -437,6 +468,7 @@ export interface FileRouteTypes {
     | '/notebooks'
     | '/resource'
     | '/analytics/queries/create'
+    | '/analytics/sqlview/create'
     | '/analytics/views/create'
     | '/notebooks/$id/edit'
     | '/resource/$resourceType/create'
@@ -445,6 +477,7 @@ export interface FileRouteTypes {
     | '/ig/$packageId'
     | '/resource/$resourceType'
     | '/analytics/queries/edit/$id'
+    | '/analytics/sqlview/edit/$id'
     | '/analytics/views/edit/$id'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
@@ -462,6 +495,7 @@ export interface FileRouteTypes {
     | '/rest'
     | '/settings'
     | '/analytics/queries'
+    | '/analytics/sqlview'
     | '/analytics/views'
     | '/async-operations/$operationId'
     | '/database/queries'
@@ -479,6 +513,7 @@ export interface FileRouteTypes {
     | '/notebooks/'
     | '/resource/'
     | '/analytics/queries/create'
+    | '/analytics/sqlview/create'
     | '/analytics/views/create'
     | '/notebooks/$id_/edit'
     | '/resource/$resourceType/create'
@@ -487,6 +522,7 @@ export interface FileRouteTypes {
     | '/ig/$packageId/'
     | '/resource/$resourceType/'
     | '/analytics/queries/edit/$id'
+    | '/analytics/sqlview/edit/$id'
     | '/analytics/views/edit/$id'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
@@ -697,6 +733,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsViewsRouteImport
       parentRoute: typeof AnalyticsRoute
     }
+    '/analytics/sqlview': {
+      id: '/analytics/sqlview'
+      path: '/sqlview'
+      fullPath: '/analytics/sqlview'
+      preLoaderRoute: typeof AnalyticsSqlviewRouteImport
+      parentRoute: typeof AnalyticsRoute
+    }
     '/analytics/queries': {
       id: '/analytics/queries'
       path: '/queries'
@@ -753,6 +796,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsViewsCreateRouteImport
       parentRoute: typeof AnalyticsViewsRoute
     }
+    '/analytics/sqlview/create': {
+      id: '/analytics/sqlview/create'
+      path: '/create'
+      fullPath: '/analytics/sqlview/create'
+      preLoaderRoute: typeof AnalyticsSqlviewCreateRouteImport
+      parentRoute: typeof AnalyticsSqlviewRoute
+    }
     '/analytics/queries/create': {
       id: '/analytics/queries/create'
       path: '/create'
@@ -773,6 +823,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/analytics/views/edit/$id'
       preLoaderRoute: typeof AnalyticsViewsEditIdRouteImport
       parentRoute: typeof AnalyticsViewsRoute
+    }
+    '/analytics/sqlview/edit/$id': {
+      id: '/analytics/sqlview/edit/$id'
+      path: '/edit/$id'
+      fullPath: '/analytics/sqlview/edit/$id'
+      preLoaderRoute: typeof AnalyticsSqlviewEditIdRouteImport
+      parentRoute: typeof AnalyticsSqlviewRoute
     }
     '/analytics/queries/edit/$id': {
       id: '/analytics/queries/edit/$id'
@@ -806,6 +863,19 @@ const AnalyticsQueriesRouteChildren: AnalyticsQueriesRouteChildren = {
 const AnalyticsQueriesRouteWithChildren =
   AnalyticsQueriesRoute._addFileChildren(AnalyticsQueriesRouteChildren)
 
+interface AnalyticsSqlviewRouteChildren {
+  AnalyticsSqlviewCreateRoute: typeof AnalyticsSqlviewCreateRoute
+  AnalyticsSqlviewEditIdRoute: typeof AnalyticsSqlviewEditIdRoute
+}
+
+const AnalyticsSqlviewRouteChildren: AnalyticsSqlviewRouteChildren = {
+  AnalyticsSqlviewCreateRoute: AnalyticsSqlviewCreateRoute,
+  AnalyticsSqlviewEditIdRoute: AnalyticsSqlviewEditIdRoute,
+}
+
+const AnalyticsSqlviewRouteWithChildren =
+  AnalyticsSqlviewRoute._addFileChildren(AnalyticsSqlviewRouteChildren)
+
 interface AnalyticsViewsRouteChildren {
   AnalyticsViewsCreateRoute: typeof AnalyticsViewsCreateRoute
   AnalyticsViewsIndexRoute: typeof AnalyticsViewsIndexRoute
@@ -824,12 +894,14 @@ const AnalyticsViewsRouteWithChildren = AnalyticsViewsRoute._addFileChildren(
 
 interface AnalyticsRouteChildren {
   AnalyticsQueriesRoute: typeof AnalyticsQueriesRouteWithChildren
+  AnalyticsSqlviewRoute: typeof AnalyticsSqlviewRouteWithChildren
   AnalyticsViewsRoute: typeof AnalyticsViewsRouteWithChildren
   AnalyticsIndexRoute: typeof AnalyticsIndexRoute
 }
 
 const AnalyticsRouteChildren: AnalyticsRouteChildren = {
   AnalyticsQueriesRoute: AnalyticsQueriesRouteWithChildren,
+  AnalyticsSqlviewRoute: AnalyticsSqlviewRouteWithChildren,
   AnalyticsViewsRoute: AnalyticsViewsRouteWithChildren,
   AnalyticsIndexRoute: AnalyticsIndexRoute,
 }

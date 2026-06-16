@@ -131,6 +131,12 @@ function CurrentCrumb({
 	);
 }
 
+const NON_NAVIGABLE_CRUMB_PATHS = new Set([
+	"/analytics/queries",
+	"/analytics/views",
+	"/analytics/sqlview",
+]);
+
 function MiddleCrumb({ crumb }: { crumb: { title: string; path: string } }) {
 	const isNotebookView = /^\/notebooks\/[0-9a-f-]{36}\/?$/i.test(crumb.path);
 	const isUuid = /^[0-9a-f-]{36}$/i.test(crumb.title);
@@ -138,9 +144,13 @@ function MiddleCrumb({ crumb }: { crumb: { title: string; path: string } }) {
 		isNotebookView && isUuid ? crumb.title : null,
 		null,
 	);
+	const label = display ?? crumb.title;
+	if (NON_NAVIGABLE_CRUMB_PATHS.has(crumb.path)) {
+		return <span className="px-3 py-1 text-text-tertiary">{label}</span>;
+	}
 	return (
 		<BreadcrumbLink className="px-3" asChild>
-			<Link to={crumb.path}>{display ?? crumb.title}</Link>
+			<Link to={crumb.path}>{label}</Link>
 		</BreadcrumbLink>
 	);
 }

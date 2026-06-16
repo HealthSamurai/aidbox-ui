@@ -1,6 +1,6 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Handle, Position } from "@xyflow/react";
-import { Database, FileCode2, PlayIcon, Table } from "lucide-react";
+import { Database, FileCode2, Layers, PlayIcon, Table } from "lucide-react";
 import * as React from "react";
 import {
 	BaseNode,
@@ -254,12 +254,19 @@ export function SQLQueryNode({ id, data, selected }: AnyNodeProps) {
 
 	const showInputs = (selected ?? false) && allParams.length > 0;
 
+	const isView = d.libraryKind === "sql-view";
 	const headerInner = (
 		<>
 			<div className="flex items-center gap-2">
-				<FileCode2 size={14} className="text-text-warning-primary shrink-0" />
-				<span className="font-mono text-xs text-text-warning-primary uppercase">
-					Query
+				{isView ? (
+					<Layers size={14} className="text-text-success-primary shrink-0" />
+				) : (
+					<FileCode2 size={14} className="text-text-warning-primary shrink-0" />
+				)}
+				<span
+					className={`font-mono text-xs uppercase ${isView ? "text-text-success-primary" : "text-text-warning-primary"}`}
+				>
+					{isView ? "SQLView" : "SQLQuery"}
 				</span>
 			</div>
 			<div className="font-mono text-sm font-medium text-text-primary truncate">
@@ -274,25 +281,29 @@ export function SQLQueryNode({ id, data, selected }: AnyNodeProps) {
 				selected={selected}
 				className={d.isRoot ? "border-border-link" : ""}
 			>
-				<BaseNodeHeader>{headerInner}</BaseNodeHeader>
-				<BaseNodeBody>
-					{allParams.length === 0 ? (
-						<div className="px-3 py-2 text-xs text-text-tertiary italic">
-							no parameters
-						</div>
-					) : (
-						allParams.map((p) => (
-							<BaseNodeRow key={p.name}>
-								<span className="font-mono text-xs text-text-primary truncate">
-									{p.name}
-								</span>
-								<span className="font-mono text-xs text-text-tertiary text-right truncate">
-									{p.type ?? ""}
-								</span>
-							</BaseNodeRow>
-						))
-					)}
-				</BaseNodeBody>
+				<BaseNodeHeader className={isView ? "border-b-0" : undefined}>
+					{headerInner}
+				</BaseNodeHeader>
+				{!isView && (
+					<BaseNodeBody>
+						{allParams.length === 0 ? (
+							<div className="px-3 py-2 text-xs text-text-tertiary italic">
+								no parameters
+							</div>
+						) : (
+							allParams.map((p) => (
+								<BaseNodeRow key={p.name}>
+									<span className="font-mono text-xs text-text-primary truncate">
+										{p.name}
+									</span>
+									<span className="font-mono text-xs text-text-tertiary text-right truncate">
+										{p.type ?? ""}
+									</span>
+								</BaseNodeRow>
+							))
+						)}
+					</BaseNodeBody>
+				)}
 				<QueryNodeFooter
 					nodeId={id}
 					queryId={d.id}

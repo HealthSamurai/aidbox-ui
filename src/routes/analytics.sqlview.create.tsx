@@ -8,20 +8,29 @@ import {
 import { validateSearch } from "./resource.$resourceType.create";
 
 const initialResource: Resource = {
-	resource: "Patient",
-	resourceType: "ViewDefinition",
-	status: "draft",
-	select: [],
+	resourceType: "Library",
+	meta: {
+		profile: ["https://sql-on-fhir.org/ig/StructureDefinition/SQLView"],
+	},
+	status: "active",
+	type: {
+		coding: [
+			{
+				system: "https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes",
+				code: "sql-view",
+			},
+		],
+	},
 } as Resource;
 
 const PageComponent = () => {
 	const navigate = useNavigate();
-	const { tab, mode } = useSearch({ from: "/analytics/views/create" });
+	const { tab, mode } = useSearch({ from: "/analytics/sqlview/create" });
 
 	return (
 		<ResourceEditorPage
 			initialResource={initialResource}
-			resourceType="ViewDefinition"
+			resourceType="Library"
 			tab={tab}
 			mode={mode}
 			navigate={navigate}
@@ -30,9 +39,9 @@ const PageComponent = () => {
 	);
 };
 
-export const Route = createFileRoute("/analytics/views/create")({
+export const Route = createFileRoute("/analytics/sqlview/create")({
 	component: PageComponent,
 	validateSearch,
-	staticData: { title: "Create View" },
+	staticData: { title: "Create SQLView" },
 	loader: () => ({ breadCrumb: "Create" }),
 });

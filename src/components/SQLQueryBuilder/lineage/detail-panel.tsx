@@ -1,7 +1,14 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Database, ExternalLink, FileCode2, Table, X } from "lucide-react";
+import {
+	Database,
+	ExternalLink,
+	FileCode2,
+	Layers,
+	Table,
+	X,
+} from "lucide-react";
 import type * as React from "react";
 import { useAidboxClient } from "../../../AidboxClient";
 import {
@@ -456,12 +463,15 @@ export function LineageDetailPanel({
 	}
 
 	// sql-query
+	const isView = data.libraryKind === "sql-view";
 	return (
 		<div className="h-full overflow-auto p-4 pb-20 flex flex-col gap-4 bg-bg-primary">
 			<PanelHeader
-				icon={<FileCode2 size={14} />}
-				label="Query"
-				color="text-text-warning-primary"
+				icon={isView ? <Layers size={14} /> : <FileCode2 size={14} />}
+				label={isView ? "SQLView" : "SQLQuery"}
+				color={
+					isView ? "text-text-success-primary" : "text-text-warning-primary"
+				}
 				onClose={onClose}
 			/>
 			<div className="flex flex-col gap-1">
@@ -469,7 +479,11 @@ export function LineageDetailPanel({
 					ID
 				</span>
 				<Link
-					to="/analytics/queries/edit/$id"
+					to={
+						isView
+							? "/analytics/sqlview/edit/$id"
+							: "/analytics/queries/edit/$id"
+					}
 					params={{ id: data.id }}
 					search={{
 						tab: "sqlquery" as const,
@@ -493,38 +507,39 @@ export function LineageDetailPanel({
 					</p>
 				</Section>
 			)}
-			{(() => {
-				const ownNames = new Set(data.parameters.map((p) => p.name));
-				const merged = [
-					...data.parameters.map((p) => ({ ...p, inherited: false })),
-					...data.inheritedParameters
-						.filter((p) => !ownNames.has(p.name))
-						.map((p) => ({ ...p, inherited: true })),
-				];
-				return (
-					<Section title={`Parameters (${merged.length})`}>
-						{merged.length === 0 ? (
-							<span className="text-xs text-text-tertiary italic">none</span>
-						) : (
-							<ul className="list-disc pl-4 flex flex-col gap-0.5">
-								{merged.map((p) => (
-									<li key={p.name} className="text-xs font-mono">
-										<span className="text-text-primary">{p.name}</span>
-										{p.type && (
-											<span className="text-text-tertiary"> ({p.type})</span>
-										)}
-										{p.inherited && (
-											<span className="ml-1 text-[10px] text-text-tertiary italic">
-												inherited
-											</span>
-										)}
-									</li>
-								))}
-							</ul>
-						)}
-					</Section>
-				);
-			})()}
+			{!isView &&
+				(() => {
+					const ownNames = new Set(data.parameters.map((p) => p.name));
+					const merged = [
+						...data.parameters.map((p) => ({ ...p, inherited: false })),
+						...data.inheritedParameters
+							.filter((p) => !ownNames.has(p.name))
+							.map((p) => ({ ...p, inherited: true })),
+					];
+					return (
+						<Section title={`Parameters (${merged.length})`}>
+							{merged.length === 0 ? (
+								<span className="text-xs text-text-tertiary italic">none</span>
+							) : (
+								<ul className="list-disc pl-4 flex flex-col gap-0.5">
+									{merged.map((p) => (
+										<li key={p.name} className="text-xs font-mono">
+											<span className="text-text-primary">{p.name}</span>
+											{p.type && (
+												<span className="text-text-tertiary"> ({p.type})</span>
+											)}
+											{p.inherited && (
+												<span className="ml-1 text-[10px] text-text-tertiary italic">
+													inherited
+												</span>
+											)}
+										</li>
+									))}
+								</ul>
+							)}
+						</Section>
+					);
+				})()}
 			{data.sql && (
 				<Section title="SQL">
 					<div

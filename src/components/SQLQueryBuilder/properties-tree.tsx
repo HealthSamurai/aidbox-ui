@@ -20,9 +20,8 @@ import {
 	LABEL_REGEX,
 	type SQLDependsOn,
 	type SQLParameter,
+	sqlLibraryKindMeta,
 } from "./types";
-
-const URL_HISTORY_KEY = "sqlquery-library-url-history";
 
 type ItemMeta = {
 	type:
@@ -338,6 +337,7 @@ function InheritedParameterRow({
 export function PropertiesTree() {
 	const { library, updateLibrary, paramValues, setParamValue, missingParams } =
 		useSQLQueryContext();
+	const kindMeta = sqlLibraryKindMeta(library);
 	const treeContainerRef = React.useRef<HTMLDivElement>(null);
 
 	React.useEffect(() => {
@@ -436,7 +436,9 @@ export function PropertiesTree() {
 		const out: Record<string, TreeViewItem<ItemMeta>> = {
 			root: {
 				name: "root",
-				children: ["_properties", "_depends_on", "_parameter", "_sql"],
+				children: kindMeta.supportsParameters
+					? ["_properties", "_depends_on", "_parameter", "_sql"]
+					: ["_properties", "_depends_on", "_sql"],
 			},
 			_properties: {
 				name: "_properties",
@@ -494,7 +496,7 @@ export function PropertiesTree() {
 			};
 		});
 		return out;
-	}, [dependsOn, parameters, inheritedOnly]);
+	}, [dependsOn, parameters, inheritedOnly, kindMeta.supportsParameters]);
 
 	const [expandedItems, setExpandedItems] = React.useState<string[]>([
 		"_properties",
@@ -658,9 +660,9 @@ export function PropertiesTree() {
 						<div className="w-[226px] shrink-0">{labelView(item)}</div>
 						<div className="w-[50%]">
 							<InputView
-								name="sqlquery-library-url"
+								name={`${kindMeta.kind}-library-url`}
 								autoComplete="on"
-								list="sqlquery-library-url-history"
+								list={kindMeta.urlHistoryKey}
 								placeholder="Canonical identifier for this library, represented as a URI (globally unique)"
 								value={library.url}
 								onChange={updateUrl}
@@ -719,6 +721,11 @@ export function PropertiesTree() {
 							<ResourcePicker
 								value={entry.resource}
 								onChange={(ref) => updateDependsOnResource(idx, ref)}
+								kinds={
+									kindMeta.kind === "sql-view"
+										? ["ViewDefinition", "SQLView"]
+										: ["ViewDefinition", "SQLQuery", "SQLView"]
+								}
 							/>
 						</div>
 						<HSComp.Button
@@ -850,11 +857,11 @@ export function PropertiesTree() {
 		}
 	};
 
-	const urlHistory = readUrlHistory(URL_HISTORY_KEY);
+	const urlHistory = readUrlHistory(kindMeta.urlHistoryKey);
 
 	return (
 		<div ref={treeContainerRef}>
-			<datalist id="sqlquery-library-url-history">
+			<datalist id={kindMeta.urlHistoryKey}>
 				{urlHistory.map((u) => (
 					<option key={u} value={u} />
 				))}

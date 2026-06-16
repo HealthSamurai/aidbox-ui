@@ -1,12 +1,16 @@
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, FileCode2, Info, Table } from "lucide-react";
+import { ChevronDown, FileCode2, Info, Layers, Table } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
-import { SQL_QUERY_TYPE_CODE, SQL_QUERY_TYPE_SYSTEM } from "./types";
+import {
+	SQL_QUERY_TYPE_CODE,
+	SQL_QUERY_TYPE_SYSTEM,
+	SQL_VIEW_TYPE_CODE,
+} from "./types";
 
-type CandidateKind = "ViewDefinition" | "SQLQuery";
+type CandidateKind = "ViewDefinition" | "SQLQuery" | "SQLView";
 
 type RelatedArtifactRef = { url: string; label?: string };
 
@@ -60,6 +64,7 @@ function Badge({ text, accentClass }: { text: string; accentClass: string }) {
 }
 
 const SQL_QUERY_TYPE_TOKEN = `${SQL_QUERY_TYPE_SYSTEM}|${SQL_QUERY_TYPE_CODE}`;
+const SQL_VIEW_TYPE_TOKEN = `${SQL_QUERY_TYPE_SYSTEM}|${SQL_VIEW_TYPE_CODE}`;
 
 function useDebouncedValue<T>(value: T, delay: number): T {
 	const [v, setV] = React.useState(value);
@@ -73,7 +78,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 function useCandidates(
 	search: string,
 	enabled = true,
-	kinds: CandidateKind[] = ["ViewDefinition", "SQLQuery"],
+	kinds: CandidateKind[] = ["ViewDefinition", "SQLQuery", "SQLView"],
 ) {
 	const client = useAidboxClient();
 	const debouncedSearch = useDebouncedValue(search, 200);
@@ -89,7 +94,7 @@ function useCandidates(
 			];
 			if (debouncedSearch) baseParams.push(["_ilike", debouncedSearch]);
 			const want = (k: CandidateKind) => kinds.includes(k);
-			const [vd, lib] = await Promise.all([
+			const [vd, sqlQueryLib, sqlViewLib] = await Promise.all([
 				want("ViewDefinition")
 					? client.request<Bundle>({
 							method: "GET",
@@ -102,6 +107,13 @@ function useCandidates(
 							method: "GET",
 							url: "/fhir/Library",
 							params: [...baseParams, ["type", SQL_QUERY_TYPE_TOKEN]],
+						})
+					: null,
+				want("SQLView")
+					? client.request<Bundle>({
+							method: "GET",
+							url: "/fhir/Library",
+							params: [...baseParams, ["type", SQL_VIEW_TYPE_TOKEN]],
 						})
 					: null,
 			]);
@@ -121,15 +133,19 @@ function useCandidates(
 					});
 				}
 			}
-			if (lib?.isOk()) {
-				for (const entry of lib.value.resource.entry ?? []) {
+			for (const [res, kind] of [
+				[sqlQueryLib, "SQLQuery"],
+				[sqlViewLib, "SQLView"],
+			] as const) {
+				if (!res?.isOk()) continue;
+				for (const entry of res.value.resource.entry ?? []) {
 					const r = entry.resource as unknown as RawCandidate;
 					const relatedArtifacts = (r.relatedArtifact ?? []).flatMap((ra) =>
 						ra.resource ? [{ url: ra.resource, label: ra.label }] : [],
 					);
 					out.push({
 						url: r.url,
-						kind: "SQLQuery",
+						kind,
 						id: r.id,
 						name: r.name,
 						title: r.title,
@@ -218,7 +234,8 @@ export function ResourcePicker({
 									<div className="flex items-start gap-1.5 text-left typo-body-xs text-text-secondary normal-case">
 										<Info className="size-3.5 shrink-0 mt-0.5 text-text-tertiary" />
 										<span>
-											Only ViewDefinitions and SQLQueries with a defined{" "}
+											Only ViewDefinitions, SQLQueries and SQLViews with a
+											defined{" "}
 											<span className="font-mono text-text-primary">url</span>{" "}
 											are listed — references rely on canonical URLs.
 										</span>
@@ -228,11 +245,19 @@ export function ResourcePicker({
 							{candidates.map((c) => {
 								const label = c.title || c.name || c.id;
 								const isView = c.kind === "ViewDefinition";
-								const Icon = isView ? Table : FileCode2;
-								const kindLabel = isView ? "View" : "Query";
-								const accentClass = isView
-									? "text-text-info-primary"
-									: "text-text-warning-primary";
+								const Icon =
+									c.kind === "ViewDefinition"
+										? Table
+										: c.kind === "SQLView"
+											? Layers
+											: FileCode2;
+								const kindLabel = c.kind;
+								const accentClass =
+									c.kind === "ViewDefinition"
+										? "text-text-info-primary"
+										: c.kind === "SQLView"
+											? "text-text-success-primary"
+											: "text-text-warning-primary";
 								const badges: React.ReactNode[] = [];
 								if (isView && c.resource) {
 									badges.push(

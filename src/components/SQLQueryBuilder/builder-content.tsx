@@ -11,10 +11,8 @@ import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
 import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
-import { buildRunPayload, ensureSQLQueryShape } from "./run-payload";
-import type { SQLLibrary } from "./types";
-
-const URL_HISTORY_KEY = "sqlquery-library-url-history";
+import { buildRunPayload, ensureSqlLibraryShape } from "./run-payload";
+import { type SQLLibrary, sqlLibraryKindMeta } from "./types";
 
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
 	if (
@@ -138,6 +136,8 @@ export function SQLQueryBuilderContent() {
 		onCreated,
 	} = useSQLQueryContext();
 
+	const kindMeta = sqlLibraryKindMeta(library);
+
 	const { tree: resolvedTree } = useResolvedParameterTree(library);
 	const inheritedTypes = React.useMemo(() => {
 		const m = new Map<string, string>();
@@ -150,7 +150,7 @@ export function SQLQueryBuilderContent() {
 	const saveMutation = useMutation({
 		mutationFn: async () => {
 			setRunError(null);
-			const shaped = ensureSQLQueryShape(library);
+			const shaped = ensureSqlLibraryShape(library);
 			const trimmed: SQLLibrary = {
 				...shaped,
 				relatedArtifact: (shaped.relatedArtifact ?? []).filter(
@@ -180,8 +180,8 @@ export function SQLQueryBuilderContent() {
 		},
 		onSuccess: ({ resource, created }) => {
 			setIsDirty(false);
-			addUrlToHistory(URL_HISTORY_KEY, library.url);
-			HSComp.toast.success("SQLQuery saved successfully", {
+			addUrlToHistory(kindMeta.urlHistoryKey, library.url);
+			HSComp.toast.success(`${kindMeta.label} saved successfully`, {
 				position: "bottom-right",
 				style: { margin: "1rem" },
 			});
@@ -196,7 +196,7 @@ export function SQLQueryBuilderContent() {
 		onError: (err) => {
 			const oo = toOperationOutcome(err);
 			Utils.toastError(
-				"Failed to save SQLQuery",
+				`Failed to save ${kindMeta.label}`,
 				oo.issue?.[0]?.diagnostics ?? undefined,
 			);
 		},
