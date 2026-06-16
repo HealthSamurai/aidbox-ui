@@ -15,6 +15,7 @@ import {
 	SQL_QUERY_PROFILE,
 	SQL_QUERY_TYPE_CODE,
 	SQL_QUERY_TYPE_SYSTEM,
+	sqlLibraryKind,
 } from "../../SQLQueryBuilder/types";
 import type {
 	BackrefGraph,
@@ -236,6 +237,7 @@ function sqlQueryNodeData(
 ): SQLQueryNodeData {
 	return {
 		kind: "sql-query",
+		libraryKind: sqlLibraryKind(lib),
 		id: lib.id ?? "",
 		canonical: lib.url ?? "",
 		name: lib.name ?? "",

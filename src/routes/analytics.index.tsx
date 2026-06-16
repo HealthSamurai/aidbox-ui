@@ -8,6 +8,7 @@ import {
 	EllipsisVertical,
 	FileCode2,
 	GitBranch,
+	Layers,
 	Plus,
 	Search,
 	Table,
@@ -26,6 +27,43 @@ import { parseQuery, tagSlug } from "../utils/tag-search";
 
 const SQL_QUERY_TYPE_TOKEN =
 	"https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes|sql-query";
+const SQL_VIEW_TYPE_TOKEN =
+	"https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes|sql-view";
+
+type AnalyticsKind = "view" | "query" | "sql-view";
+
+const KIND_META: Record<
+	AnalyticsKind,
+	{ label: string; accentClass: string; Icon: typeof Table }
+> = {
+	view: {
+		label: "ViewDefinition",
+		accentClass: "text-text-info-primary",
+		Icon: Table,
+	},
+	query: {
+		label: "SQLQuery",
+		accentClass: "text-text-warning-primary",
+		Icon: FileCode2,
+	},
+	"sql-view": {
+		label: "SQLView",
+		accentClass: "text-text-success-primary",
+		Icon: Layers,
+	},
+};
+
+const RECENT_QUERY_KEY: Record<AnalyticsKind, string> = {
+	view: "analytics-recent-views",
+	query: "analytics-recent-queries",
+	"sql-view": "analytics-recent-sql-views",
+};
+
+function editRoutePath(kind: AnalyticsKind) {
+	if (kind === "view") return "/analytics/views/edit/$id" as const;
+	if (kind === "sql-view") return "/analytics/sqlview/edit/$id" as const;
+	return "/analytics/queries/edit/$id" as const;
+}
 
 type LibraryResource = {
 	resourceType: "Library";
@@ -48,7 +86,7 @@ type RelatedArtifactRef = {
 };
 
 type RecentItem = {
-	kind: "view" | "query";
+	kind: AnalyticsKind;
 	id: string;
 	url?: string;
 	resource?: string;
@@ -70,7 +108,6 @@ const QUERY_EDIT_SEARCH = {
 	mode: "json" as const,
 	builderTab: "form" as const,
 };
-
 function pickLabel(r: { id?: string; name?: string; title?: string }): string {
 	return r.title || r.name || r.id || "(unnamed)";
 }
@@ -152,6 +189,44 @@ function useRecentQueries() {
 	});
 }
 
+function useRecentSqlViews() {
+	const client = useAidboxClient();
+	return useQuery<RecentItem[]>({
+		queryKey: ["analytics-recent-sql-views"],
+		queryFn: async () => {
+			const r = await client.request<Bundle>({
+				method: "GET",
+				url: "/fhir/Library",
+				params: [
+					["_count", "1000"],
+					["_sort", "-_lastUpdated"],
+					["type", SQL_VIEW_TYPE_TOKEN],
+				],
+			});
+			if (r.isErr()) return [];
+			return (r.value.resource.entry ?? []).flatMap((e) => {
+				const lib = e.resource as LibraryResource | undefined;
+				if (!lib?.id) return [];
+				const relatedArtifacts = (lib.relatedArtifact ?? []).flatMap((ra) =>
+					ra.resource ? [{ url: ra.resource, label: ra.label }] : [],
+				);
+				return [
+					{
+						kind: "sql-view",
+						id: lib.id,
+						url: lib.url,
+						relatedArtifacts:
+							relatedArtifacts.length > 0 ? relatedArtifacts : undefined,
+						label: pickLabel(lib),
+						description: lib.description,
+						lastUpdated: lib.meta?.lastUpdated,
+					} satisfies RecentItem,
+				];
+			});
+		},
+	});
+}
+
 type LookupByUrl = (url: string) => RecentItem | undefined;
 
 function getItemTagSlugs(item: RecentItem, lookup: LookupByUrl): string[] {
@@ -183,9 +258,11 @@ function chipStyleFor(tag: string, items: RecentItem[]): string {
 	const slug = tagSlug(tag);
 	for (const item of items) {
 		if (tagSlug(item.label) === slug) {
-			return item.kind === "view"
-				? "bg-blue-50 text-text-info-primary"
-				: "bg-yellow-50 text-text-warning-primary";
+			if (item.kind === "view") return "bg-blue-50 text-text-info-primary";
+			if (item.kind === "sql-view") {
+				return "bg-green-50 text-text-success-primary";
+			}
+			return "bg-yellow-50 text-text-warning-primary";
 		}
 	}
 	for (const item of items) {
@@ -236,11 +313,7 @@ function ItemRow({
 	onTagClick?: (text: string) => void;
 }) {
 	const isView = item.kind === "view";
-	const Icon = isView ? Table : FileCode2;
-	const kindLabel = isView ? "View" : "Query";
-	const accentClass = isView
-		? "text-text-info-primary"
-		: "text-text-warning-primary";
+	const { Icon, label: kindLabel, accentClass } = KIND_META[item.kind];
 	const badges: React.ReactNode[] = [];
 	if (isView && item.resource) {
 		const resourceText = item.resource;
@@ -256,18 +329,17 @@ function ItemRow({
 	if (!isView && item.relatedArtifacts) {
 		for (const ra of item.relatedArtifacts) {
 			const linked = lookup(ra.url);
-			const isLinkedView =
-				linked?.kind === "view" || ra.url.includes("/ViewDefinition/");
 			const text = linked?.label ?? ra.label ?? ra.url;
+			const accent = linked
+				? KIND_META[linked.kind].accentClass
+				: ra.url.includes("/ViewDefinition/")
+					? KIND_META.view.accentClass
+					: KIND_META.query.accentClass;
 			badges.push(
 				<Badge
 					key={ra.url}
 					text={text}
-					accentClass={
-						isLinkedView
-							? "text-text-info-primary"
-							: "text-text-warning-primary"
-					}
+					accentClass={accent}
 					onClick={onTagClick ? () => onTagClick(text) : undefined}
 				/>,
 			);
@@ -300,7 +372,7 @@ function ItemRow({
 	);
 }
 
-export type AnalyticsListKind = "view" | "query";
+export type AnalyticsListKind = AnalyticsKind;
 
 const VIEW_CREATE_SEARCH = {
 	tab: "builder" as const,
@@ -312,6 +384,7 @@ const QUERY_CREATE_SEARCH = {
 	mode: "json" as const,
 	builderTab: "form" as const,
 };
+const SQLVIEW_CREATE_SEARCH = QUERY_CREATE_SEARCH;
 
 function SearchBar({
 	chips,
@@ -392,6 +465,7 @@ export function AnalyticsListPage({
 }) {
 	const views = useRecentViews();
 	const queries = useRecentQueries();
+	const sqlViews = useRecentSqlViews();
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
@@ -407,15 +481,9 @@ export function AnalyticsListPage({
 		},
 		onSuccess: (_data, item) => {
 			queryClient.invalidateQueries({
-				queryKey: [
-					item.kind === "view"
-						? "analytics-recent-views"
-						: "analytics-recent-queries",
-				],
+				queryKey: [RECENT_QUERY_KEY[item.kind]],
 			});
-			HSComp.toast.success(
-				`${item.kind === "view" ? "View" : "Query"} deleted`,
-			);
+			HSComp.toast.success(`${KIND_META[item.kind].label} deleted`);
 		},
 		onError: () => {
 			HSComp.toast.error("Failed to delete");
@@ -425,19 +493,11 @@ export function AnalyticsListPage({
 	const [confirmingDelete, setConfirmingDelete] =
 		React.useState<RecentItem | null>(null);
 	const openLineage = (item: RecentItem) => {
-		if (item.kind === "view") {
-			navigate({
-				to: "/analytics/views/edit/$id",
-				params: { id: item.id },
-				search: { tab: "lineage", mode: "json", builderTab: "form" },
-			});
-		} else {
-			navigate({
-				to: "/analytics/queries/edit/$id",
-				params: { id: item.id },
-				search: { tab: "lineage", mode: "json", builderTab: "form" },
-			});
-		}
+		navigate({
+			to: editRoutePath(item.kind),
+			params: { id: item.id },
+			search: { tab: "lineage", mode: "json", builderTab: "form" },
+		});
 	};
 	const didFocus = React.useRef(false);
 	const setSearchInputRef = React.useCallback((el: HTMLInputElement | null) => {
@@ -450,13 +510,16 @@ export function AnalyticsListPage({
 	const combined: RecentItem[] = [
 		...(views.data ?? []),
 		...(queries.data ?? []),
+		...(sqlViews.data ?? []),
 	];
 	const allItems: RecentItem[] = (
 		kind === "view"
 			? (views.data ?? [])
 			: kind === "query"
 				? (queries.data ?? [])
-				: combined
+				: kind === "sql-view"
+					? (sqlViews.data ?? [])
+					: combined
 	)
 		.slice()
 		.sort((a, b) => {
@@ -466,11 +529,15 @@ export function AnalyticsListPage({
 		});
 	const lookup: LookupByUrl = React.useMemo(() => {
 		const map = new Map<string, RecentItem>();
-		for (const it of [...(views.data ?? []), ...(queries.data ?? [])]) {
+		for (const it of [
+			...(views.data ?? []),
+			...(queries.data ?? []),
+			...(sqlViews.data ?? []),
+		]) {
 			if (it.url) map.set(it.url, it);
 		}
 		return (url: string) => map.get(url);
-	}, [views.data, queries.data]);
+	}, [views.data, queries.data, sqlViews.data]);
 	const tagTokens = tags.map(tagSlug);
 	const textQuery = text;
 
@@ -509,20 +576,19 @@ export function AnalyticsListPage({
 			})
 		: tagFiltered;
 
-	const noun =
-		kind === "view" ? "view" : kind === "query" ? "query" : "view or query";
+	const noun = kind ? KIND_META[kind].label : "view, query or SQL view";
 	const isEmpty = allItems.length === 0 && tags.length === 0 && !text;
 
-	const placeholder =
-		kind === "view"
-			? "Search views by name or description…"
-			: kind === "query"
-				? "Search queries by name or description…"
-				: "Search by name or description…";
+	const placeholder = "Search by name or description…";
 	const createView = () =>
 		navigate({ to: "/analytics/views/create", search: VIEW_CREATE_SEARCH });
 	const createQuery = () =>
 		navigate({ to: "/analytics/queries/create", search: QUERY_CREATE_SEARCH });
+	const createSqlView = () =>
+		navigate({
+			to: "/analytics/sqlview/create",
+			search: SQLVIEW_CREATE_SEARCH,
+		});
 	const handleTagClick = (tagText: string) => {
 		const slug = tagSlug(tagText);
 		if (tags.some((t) => tagSlug(t) === slug)) return;
@@ -581,19 +647,11 @@ export function AnalyticsListPage({
 	}, [text, items.length]);
 
 	const openItem = (it: RecentItem) => {
-		if (it.kind === "view") {
-			navigate({
-				to: "/analytics/views/edit/$id",
-				params: { id: it.id },
-				search: VIEW_EDIT_SEARCH,
-			});
-		} else {
-			navigate({
-				to: "/analytics/queries/edit/$id",
-				params: { id: it.id },
-				search: QUERY_EDIT_SEARCH,
-			});
-		}
+		navigate({
+			to: editRoutePath(it.kind),
+			params: { id: it.id },
+			search: it.kind === "view" ? VIEW_EDIT_SEARCH : QUERY_EDIT_SEARCH,
+		});
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -651,14 +709,21 @@ export function AnalyticsListPage({
 									onSelect={createView}
 								>
 									<Table className="size-4 text-text-info-primary" />
-									View
+									ViewDefinition
 								</HSComp.DropdownMenuItem>
 								<HSComp.DropdownMenuItem
 									className="justify-start! text-text-warning-primary!"
 									onSelect={createQuery}
 								>
 									<FileCode2 className="size-4 text-text-warning-primary" />
-									Query
+									SQLQuery
+								</HSComp.DropdownMenuItem>
+								<HSComp.DropdownMenuItem
+									className="justify-start! text-text-success-primary!"
+									onSelect={createSqlView}
+								>
+									<Layers className="size-4 text-text-success-primary" />
+									SQLView
 								</HSComp.DropdownMenuItem>
 							</HSComp.DropdownMenuContent>
 						</HSComp.DropdownMenu>
@@ -695,14 +760,21 @@ export function AnalyticsListPage({
 											onSelect={createView}
 										>
 											<Table className="size-4 text-text-info-primary" />
-											View
+											ViewDefinition
 										</HSComp.DropdownMenuItem>
 										<HSComp.DropdownMenuItem
 											className="justify-start! text-text-warning-primary!"
 											onSelect={createQuery}
 										>
 											<FileCode2 className="size-4 text-text-warning-primary" />
-											Query
+											SQLQuery
+										</HSComp.DropdownMenuItem>
+										<HSComp.DropdownMenuItem
+											className="justify-start! text-text-success-primary!"
+											onSelect={createSqlView}
+										>
+											<Layers className="size-4 text-text-success-primary" />
+											SQLView
 										</HSComp.DropdownMenuItem>
 									</HSComp.DropdownMenuContent>
 								</HSComp.DropdownMenu>
@@ -726,35 +798,21 @@ export function AnalyticsListPage({
 									ref={focused ? focusedRowRef : undefined}
 									className={`relative group/row transition-colors hover:bg-bg-secondary first:rounded-t-lg last:rounded-b-lg ${focused ? "bg-bg-secondary" : ""}`}
 								>
-									{it.kind === "view" ? (
-										<Link
-											to="/analytics/views/edit/$id"
-											params={{ id: it.id }}
-											search={VIEW_EDIT_SEARCH}
-											className="block"
-										>
-											<ItemRow
-												item={it}
-												lookup={lookup}
-												showKindLabel={!kind}
-												onTagClick={handleTagClick}
-											/>
-										</Link>
-									) : (
-										<Link
-											to="/analytics/queries/edit/$id"
-											params={{ id: it.id }}
-											search={QUERY_EDIT_SEARCH}
-											className="block"
-										>
-											<ItemRow
-												item={it}
-												lookup={lookup}
-												showKindLabel={!kind}
-												onTagClick={handleTagClick}
-											/>
-										</Link>
-									)}
+									<Link
+										to={editRoutePath(it.kind)}
+										params={{ id: it.id }}
+										search={
+											it.kind === "view" ? VIEW_EDIT_SEARCH : QUERY_EDIT_SEARCH
+										}
+										className="block"
+									>
+										<ItemRow
+											item={it}
+											lookup={lookup}
+											showKindLabel={!kind}
+											onTagClick={handleTagClick}
+										/>
+									</Link>
 									<div
 										className={`${isMenuOpen ? "block" : "hidden group-hover/row:block focus-within:block"} absolute top-2 right-2`}
 									>
@@ -805,7 +863,8 @@ export function AnalyticsListPage({
 				<HSComp.AlertDialogContent>
 					<HSComp.AlertDialogHeader>
 						<HSComp.AlertDialogTitle>
-							Delete {confirmingDelete?.kind === "view" ? "view" : "query"}
+							Delete{" "}
+							{confirmingDelete ? KIND_META[confirmingDelete.kind].label : ""}
 						</HSComp.AlertDialogTitle>
 					</HSComp.AlertDialogHeader>
 					<HSComp.AlertDialogDescription>

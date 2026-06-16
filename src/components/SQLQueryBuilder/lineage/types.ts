@@ -44,6 +44,7 @@ export type ParamSpec = { name: string; type?: string };
 
 export type SQLQueryNodeData = {
 	kind: "sql-query";
+	libraryKind: "sql-query" | "sql-view";
 	id: string;
 	canonical: string;
 	name: string;

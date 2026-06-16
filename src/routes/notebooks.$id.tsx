@@ -11,6 +11,7 @@ import {
 	FileDown,
 	Globe,
 	GlobeOff,
+	Layers,
 	Link2,
 	Loader2,
 	Pencil,
@@ -346,7 +347,10 @@ export function RestCellView({
 					...(body ? { body } : {}),
 				});
 			} catch (e) {
-				if (e && typeof e === "object" && "response" in e) {
+				if (e && typeof e === "object" && "responseWithMeta" in e) {
+					respObj = (e as { responseWithMeta: { response: Response } })
+						.responseWithMeta;
+				} else if (e && typeof e === "object" && "response" in e) {
 					respObj = e as { response: Response };
 				} else {
 					const next: CellResponse = {
@@ -1098,12 +1102,15 @@ export function SqlQueryCellView({
 	onValueChange,
 	onResultChange,
 	readOnly,
+	kind = "sql-query",
 }: {
 	cell: Cell;
 	onValueChange?: (value: string) => void;
 	onResultChange?: (result: unknown) => void;
 	readOnly?: boolean;
+	kind?: "sql-query" | "sql-view";
 }) {
+	const isView = kind === "sql-view";
 	const client = useAidboxClient();
 	const isReadOnly = readOnly ?? !onValueChange;
 	const editable = !isReadOnly;
@@ -1177,8 +1184,12 @@ export function SqlQueryCellView({
 			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 border-b border-border-default h-10 gap-3">
 				<div className="flex items-center gap-3 min-w-0">
 					<span className="text-sm font-medium text-text-secondary w-[140px] shrink-0 flex items-center gap-1.5">
-						<FileCode className="size-4" />
-						SQLQuery
+						{isView ? (
+							<Layers className="size-4" />
+						) : (
+							<FileCode className="size-4" />
+						)}
+						{isView ? "SQLView" : "SQLQuery"}
 					</span>
 					{editable && (
 						<NotebookResourcePicker
@@ -1187,8 +1198,10 @@ export function SqlQueryCellView({
 								setParamValues({});
 								onValueChange?.(v);
 							}}
-							kinds={["SQLQuery"]}
-							placeholder={url ? "Change…" : "Select query…"}
+							kinds={[isView ? "SQLView" : "SQLQuery"]}
+							placeholder={
+								url ? "Change…" : isView ? "Select view…" : "Select query…"
+							}
 							className={url ? "max-w-[200px]" : "max-w-[500px]"}
 						/>
 					)}
@@ -1344,6 +1357,9 @@ export function CellView({ cell }: { cell: Cell }) {
 	}
 	if (type === "sql-query") {
 		return <SqlQueryCellView cell={cell} readOnly />;
+	}
+	if (type === "sql-view") {
+		return <SqlQueryCellView cell={cell} kind="sql-view" readOnly />;
 	}
 	if (type === "markdown") {
 		return (

@@ -29,7 +29,8 @@ export type CellType =
 	| "markdown"
 	| "rpc"
 	| "view-definition"
-	| "sql-query";
+	| "sql-query"
+	| "sql-view";
 
 export type EditableCell = {
 	id: string;
@@ -54,6 +55,7 @@ const CELL_TYPES: { value: CellType; label: string }[] = [
 	{ value: "markdown", label: "Markdown" },
 	{ value: "view-definition", label: "ViewDefinition" },
 	{ value: "sql-query", label: "SQLQuery" },
+	{ value: "sql-view", label: "SQLView" },
 ];
 
 const DEFAULT_CELL_VALUE: Record<CellType, string> = {
@@ -63,6 +65,7 @@ const DEFAULT_CELL_VALUE: Record<CellType, string> = {
 	markdown: "",
 	"view-definition": "",
 	"sql-query": "",
+	"sql-view": "",
 };
 
 function genCellId(): string {
@@ -173,6 +176,13 @@ function CellWrapper({
 		) : cell.type === "sql-query" ? (
 			<SqlQueryCellView
 				cell={cellLike}
+				onValueChange={handleValue}
+				onResultChange={handleResult}
+			/>
+		) : cell.type === "sql-view" ? (
+			<SqlQueryCellView
+				cell={cellLike}
+				kind="sql-view"
 				onValueChange={handleValue}
 				onResultChange={handleResult}
 			/>

@@ -11,8 +11,8 @@ function nodeLabel(data: LineageNodeData): string {
 
 function nodeKind(data: LineageNodeData): string {
 	if (data.kind === "resource-type") return "Resource";
-	if (data.kind === "view-definition") return "View";
-	return "Query";
+	if (data.kind === "view-definition") return "ViewDefinition";
+	return data.libraryKind === "sql-view" ? "SQLView" : "SQLQuery";
 }
 
 export function NodeSearch({ onSelect }: { onSelect: (id: string) => void }) {

@@ -2,7 +2,7 @@ import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import type { Edge, Node } from "@xyflow/react";
 import { type AidboxClientR5, useAidboxClient } from "../../../AidboxClient";
-import type { SQLLibrary } from "../types";
+import { type SQLLibrary, sqlLibraryKind } from "../types";
 import type {
 	LineageNodeData,
 	ResourceTypeNodeData,
@@ -193,6 +193,7 @@ function rootLibraryNode(lib: SQLLibrary): ResolvedNode {
 		id,
 		data: {
 			kind: "sql-query",
+			libraryKind: sqlLibraryKind(lib),
 			id: lib.id ?? "",
 			canonical: lib.url ?? "",
 			name: lib.name ?? "",
@@ -215,6 +216,7 @@ function libraryNode(lib: RawLibrary, canonical: string): ResolvedNode {
 		id,
 		data: {
 			kind: "sql-query",
+			libraryKind: sqlLibraryKind(lib),
 			id: lib.id ?? "",
 			canonical,
 			name: lib.name ?? "",

@@ -36,7 +36,7 @@ import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-ta
 import { SQLQueryBuilderContent } from "../SQLQueryBuilder/builder-content";
 import { LineageTab } from "../SQLQueryBuilder/lineage/lineage-tab";
 import { SQLQueryProvider } from "../SQLQueryBuilder/page";
-import { SQL_QUERY_PROFILE } from "../SQLQueryBuilder/types";
+import { SQL_QUERY_PROFILE, SQL_VIEW_PROFILE } from "../SQLQueryBuilder/types";
 import { ValueSetBuilderContent } from "../ValueSet/builder-content";
 import { ValueSetGraphTab } from "../ValueSet/graph/graph-tab";
 import { ValueSetProvider } from "../ValueSet/page";
@@ -127,6 +127,26 @@ export const ResourceEditorPageWithLoader = (
 		/>
 	);
 };
+
+function libraryHasProfile(resource: Resource, profile: string): boolean {
+	return Boolean(
+		(resource as { meta?: { profile?: string[] } }).meta?.profile?.includes(
+			profile,
+		),
+	);
+}
+
+function detectSqlLibrary(resource: Resource, isLibrary: boolean) {
+	const isSQLView = isLibrary && libraryHasProfile(resource, SQL_VIEW_PROFILE);
+	const isSQLQuery =
+		isLibrary && libraryHasProfile(resource, SQL_QUERY_PROFILE);
+	return {
+		isSQLView,
+		isSQLQuery,
+		isSqlLibrary: isSQLView || isSQLQuery,
+		builderLabel: isSQLView ? "SQLView" : "SQLQuery",
+	};
+}
 
 export const ResourceEditorPage = ({
 	id,
@@ -378,13 +398,10 @@ export const ResourceEditorPage = ({
 	const isValueSet = resourceType === "ValueSet";
 	const isCodeSystem = resourceType === "CodeSystem";
 	const isConceptMap = resourceType === "ConceptMap";
-	const isSQLQuery =
-		isLibrary &&
-		Boolean(
-			(
-				initialResource as { meta?: { profile?: string[] } }
-			).meta?.profile?.includes(SQL_QUERY_PROFILE),
-		);
+	const { isSqlLibrary, builderLabel } = detectSqlLibrary(
+		initialResource,
+		isLibrary,
+	);
 
 	const tabs: {
 		value: string;
@@ -482,7 +499,7 @@ export const ResourceEditorPage = ({
 			value: "sqlquery",
 			trigger: (
 				<HSComp.TabsTrigger value="sqlquery">
-					SQLQuery Builder
+					{builderLabel} Builder
 				</HSComp.TabsTrigger>
 			),
 			content: (
@@ -493,7 +510,7 @@ export const ResourceEditorPage = ({
 		});
 	}
 
-	if (isSQLQuery) {
+	if (isSqlLibrary) {
 		tabs.push({
 			value: "lineage",
 			trigger: <HSComp.TabsTrigger value="lineage">Lineage</HSComp.TabsTrigger>,
