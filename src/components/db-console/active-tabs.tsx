@@ -33,7 +33,7 @@ export interface SqlTab {
 	settings?: Partial<SqlTabSettings>;
 }
 
-const DEFAULT_QUERY = "select * from patient";
+const DEFAULT_QUERY = "";
 
 export const DEFAULT_SQL_TAB_ID: SqlTabId = "sql-tab-default";
 

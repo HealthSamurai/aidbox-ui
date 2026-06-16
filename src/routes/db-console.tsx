@@ -71,6 +71,18 @@ import { useWebMCPSql } from "../webmcp/sql";
 
 const TITLE = "SQL console";
 
+const SQL_PLACEHOLDER_CTAS = [
+	"Query now, panic later",
+	"Your masterpiece starts here",
+	"Every great report starts with a SELECT",
+	"Great answers begin with good queries",
+	"Big decisions start with small queries",
+	"Your query could be here",
+	"Query twice, run on prod once",
+	"Before TRUNCATE, make sure this isn't prod",
+	"Ctrl+Z works on code, not on prod",
+];
+
 /**
  * Shift-Tab handler that de-indents only when the cursor is in the leading
  * whitespace of the current line (or the line is empty / whitespace-only).
@@ -323,6 +335,20 @@ function DbConsolePage() {
 		() => new Map(),
 	);
 	const selectedTabId = selectedTab?.id;
+	const placeholderCacheRef = useRef<Map<string, string>>(new Map());
+	const sqlPlaceholder = useMemo(() => {
+		const key = selectedTabId ?? "";
+		const cache = placeholderCacheRef.current;
+		const cached = cache.get(key);
+		if (cached) return cached;
+		const cta =
+			SQL_PLACEHOLDER_CTAS[
+				Math.floor(Math.random() * SQL_PLACEHOLDER_CTAS.length)
+			];
+		const value = `-- ${cta}\nselect * from patient`;
+		cache.set(key, value);
+		return value;
+	}, [selectedTabId]);
 	const isLoading = !!(selectedTabId && runningTabs.has(selectedTabId));
 	const [showStop, setShowStop] = useState(false);
 	useEffect(() => {
@@ -1060,6 +1086,7 @@ function DbConsolePage() {
 										<CodeEditor
 											key={selectedTab?.id}
 											mode="sql"
+											placeholder={sqlPlaceholder}
 											defaultValue={query}
 											onChange={handleQueryChange}
 											additionalExtensions={sqlEditorExtensions}
