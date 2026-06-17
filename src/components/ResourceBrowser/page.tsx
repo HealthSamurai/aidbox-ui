@@ -299,8 +299,9 @@ const ResourcesTabContent = ({
 
 	const currentPage = parseSearchParam(decodedSearchQuery, "_page", 1);
 	const explicitPageSize = parseOptionalIntParam(decodedSearchQuery, "_count");
-	const [autoPageSize, setAutoPageSize] = React.useState(30);
-	const pageSize = explicitPageSize ?? autoPageSize;
+	const [autoPageSize, setAutoPageSize] = React.useState<number | null>(null);
+	const pageSizeReady = explicitPageSize !== null || autoPageSize !== null;
+	const pageSize = explicitPageSize ?? autoPageSize ?? 30;
 	const scrollAreaRef = React.useRef<HTMLDivElement>(null);
 
 	const sort = parseSortParam(decodedSearchQuery);
@@ -355,6 +356,7 @@ const ResourcesTabContent = ({
 			resourceType,
 			effectiveSearchQuery,
 		],
+		enabled: pageSizeReady,
 		queryFn: async () => {
 			const result = await client.searchType({
 				type: resourcesPageContext.resourceType,
@@ -386,14 +388,11 @@ const ResourcesTabContent = ({
 		const el = scrollAreaRef.current;
 		if (!el) return;
 		const compute = () => {
-			const firstRow = el.querySelector<HTMLElement>("tbody tr");
-			const header = el.querySelector<HTMLElement>("thead");
-			const rowH = firstRow?.getBoundingClientRect().height || ROW_HEIGHT_PX;
-			const headerH =
-				header?.getBoundingClientRect().height || HEADER_HEIGHT_PX;
-			if (rowH <= 0) return;
-			const usable = el.clientHeight - headerH;
-			const fit = Math.max(MIN_FIT_PAGE_SIZE, Math.floor(usable / rowH));
+			const usable = el.clientHeight - HEADER_HEIGHT_PX;
+			const fit = Math.max(
+				MIN_FIT_PAGE_SIZE,
+				Math.floor(usable / ROW_HEIGHT_PX),
+			);
 			setAutoPageSize((prev) => (prev === fit ? prev : fit));
 		};
 		compute();
