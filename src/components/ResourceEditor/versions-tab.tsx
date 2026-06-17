@@ -330,15 +330,27 @@ export const VersionsTab = ({
 						<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
 						<HSComp.TabsTrigger value="diff">Diff</HSComp.TabsTrigger>
 					</HSComp.TabsList>
-					{selectedVersionId !== versions[0]?.versionId && (
-						<button
-							type="button"
-							className="text-text-link font-medium text-sm cursor-pointer px-4"
-							onClick={() => setConfirmRestore(true)}
-						>
-							Restore
-						</button>
-					)}
+					<div className="flex items-center gap-2 pr-2">
+						{viewMode === "raw" && (
+							<HSComp.SegmentControl
+								value={editorMode}
+								onValueChange={(value) => setEditorMode(value as EditorMode)}
+								items={[
+									{ value: "json", label: "JSON" },
+									{ value: "yaml", label: "YAML" },
+								]}
+							/>
+						)}
+						{selectedVersionId !== versions[0]?.versionId && (
+							<button
+								type="button"
+								className="text-text-link font-medium text-sm cursor-pointer"
+								onClick={() => setConfirmRestore(true)}
+							>
+								Restore
+							</button>
+						)}
+					</div>
 				</div>
 
 				{/* Content */}
@@ -348,35 +360,6 @@ export const VersionsTab = ({
 				>
 					{selectedVersion && (
 						<div className="relative h-full w-full bg-bg-primary">
-							<div className="absolute top-2 right-3 z-10">
-								<div className="flex items-center gap-2 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
-									<HSComp.SegmentControl
-										value={editorMode}
-										onValueChange={(value) =>
-											setEditorMode(value as EditorMode)
-										}
-										items={[
-											{ value: "json", label: "JSON" },
-											{ value: "yaml", label: "YAML" },
-										]}
-									/>
-									<HSComp.Button variant="ghost" size="small" asChild>
-										<HSComp.CopyIcon
-											text={
-												editorMode === "yaml"
-													? yaml.dump(selectedVersion.resourceCurrent, {
-															indent: 2,
-														})
-													: JSON.stringify(
-															selectedVersion.resourceCurrent,
-															null,
-															2,
-														)
-											}
-										/>
-									</HSComp.Button>
-								</div>
-							</div>
 							<HSComp.CodeEditor
 								readOnly
 								currentValue={

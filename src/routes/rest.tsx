@@ -77,7 +77,10 @@ import {
 	useRoutes,
 } from "../components/rest/url-autocomplete";
 import { SplitButton, type SplitDirection } from "../components/Split";
-import { CodeEditorMenubar } from "../components/ViewDefinition/code-editor-menubar";
+import {
+	CodeEditorFormatButton,
+	CodeEditorFormatSelect,
+} from "../components/ViewDefinition/code-editor-menubar";
 import { useExpandValueSet } from "../hooks/useExpandValueSet";
 import { useGetStructureDefinitions } from "../hooks/useGetStructureDefinition";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -189,18 +192,21 @@ function updateHeadersForMode(head: string, mode: "json" | "yaml"): string {
 }
 
 function RawEditor({
-	selectedTab,
+	selectedTabId,
 	requestLineVersion,
-	onRawChange,
+	initialValue,
+	issueLineNumbers,
 	getStructureDefinitions,
 	expandValueSet,
 	resourceTypeHint,
 	getUrlSuggestions,
-	issueLineNumbers,
+	onChange,
+	viewCallback,
 }: {
-	selectedTab: Tab;
+	selectedTabId: string;
 	requestLineVersion: string;
-	onRawChange?: (rawText: string) => void;
+	initialValue: string;
+	issueLineNumbers?: { line: number; message?: string }[];
 	getStructureDefinitions?: GetStructureDefinitions;
 	expandValueSet?: (
 		url: string,
@@ -213,111 +219,26 @@ function RawEditor({
 	) =>
 		| { label: string; value: string; type?: string }[]
 		| Promise<{ label: string; value: string; type?: string }[]>;
-	issueLineNumbers?: { line: number; message?: string }[];
+	onChange: (value: string) => void;
+	viewCallback: (view: EditorView) => void;
 }) {
 	const vimMode = useVimMode();
-	const defaultRequestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
-	const defaultHeaders =
-		selectedTab.headers
-			?.filter(
-				(header) => header.name && header.value && (header.enabled ?? true),
-			)
-			.map((header) => `${header.name}: ${header.value}`)
-			.join("\n") || "";
-
-	const initialValue = `${defaultRequestLine}\n${defaultHeaders}\n\n${selectedTab.body || ""}`;
-	const [rawValue, setRawValue] = useState(initialValue);
-	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
-		key: `rest-console-raw-body-mode-${selectedTab.id}`,
-		getInitialValueInEffect: false,
-		defaultValue: "json",
-	});
-	const viewRef = useRef<EditorView | null>(null);
-
-	const bodyModeRef = useRef(bodyMode);
-	bodyModeRef.current = bodyMode;
-
-	// Shift issue line numbers to account for headers in raw mode
-	const rawIssueLines = useMemo(() => {
-		if (!issueLineNumbers) return undefined;
-		const sepIdx = rawValue.indexOf("\n\n");
-		if (sepIdx === -1) return undefined;
-		let headerLines = 0;
-		for (let i = 0; i < sepIdx; i++) {
-			if (rawValue[i] === "\n") headerLines++;
-		}
-		const offset = headerLines + 2; // +2 for the blank line
-		return issueLineNumbers.map((il) => ({
-			line: il.line + offset,
-			message: il.message,
-		}));
-	}, [issueLineNumbers, rawValue]);
-
-	const handleChange = (value: string) => {
-		setRawValue(value);
-		onRawChange?.(value);
-	};
-
-	const replaceBody = (newBody: string, newHead?: string) => {
-		const view = viewRef.current;
-		if (!view) return;
-		const doc = view.state.doc.toString();
-		const sepIdx = doc.indexOf("\n\n");
-		if (sepIdx === -1) return;
-		const head = doc.slice(0, sepIdx);
-		const finalHead = newHead ?? head;
-		const newDoc = `${finalHead}\n\n${newBody}`;
-		// Keep cursor at same relative position, clamped to new doc length
-		const cursor = Math.min(view.state.selection.main.head, newDoc.length);
-		view.dispatch({
-			changes: { from: 0, to: doc.length, insert: newDoc },
-			selection: { anchor: cursor },
-		});
-		setRawValue(newDoc);
-		onRawChange?.(newDoc);
-	};
-
-	const handleModeChange = (newMode: "json" | "yaml") => {
-		const { head, body } = splitRaw(rawValue);
-		const converted = convertBody(body, bodyMode, newMode);
-		const updatedHead = updateHeadersForMode(head, newMode);
-		setBodyMode(newMode);
-		replaceBody(converted, updatedHead);
-	};
-
-	const handleFormat = () => {
-		const { body } = splitRaw(rawValue);
-		const formatted = formatBody(body, bodyMode);
-		replaceBody(formatted);
-	};
 
 	return (
-		<div className="relative h-full">
-			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
-				<CodeEditorMenubar
-					mode={bodyMode}
-					onModeChange={handleModeChange}
-					textToCopy={rawValue}
-					onFormat={handleFormat}
-				/>
-			</div>
-			<CodeEditor
-				key={`raw-editor-${selectedTab.id}-${requestLineVersion}`}
-				defaultValue={initialValue}
-				mode="http"
-				additionalExtensions={[preventNewlineOnModEnter]}
-				getStructureDefinitions={getStructureDefinitions}
-				expandValueSet={expandValueSet}
-				resourceTypeHint={resourceTypeHint}
-				getUrlSuggestions={getUrlSuggestions}
-				issueLineNumbers={rawIssueLines}
-				vimMode={vimMode}
-				viewCallback={(v) => {
-					viewRef.current = v;
-				}}
-				onChange={handleChange}
-			/>
-		</div>
+		<CodeEditor
+			key={`raw-editor-${selectedTabId}-${requestLineVersion}`}
+			defaultValue={initialValue}
+			mode="http"
+			additionalExtensions={[preventNewlineOnModEnter]}
+			getStructureDefinitions={getStructureDefinitions}
+			expandValueSet={expandValueSet}
+			resourceTypeHint={resourceTypeHint}
+			getUrlSuggestions={getUrlSuggestions}
+			issueLineNumbers={issueLineNumbers}
+			vimMode={vimMode}
+			viewCallback={viewCallback}
+			onChange={onChange}
+		/>
 	);
 }
 
@@ -599,6 +520,90 @@ function RequestView({
 		setBodyEditedSinceResponse(true);
 	};
 
+	const rawInitialValue = `${selectedTab.method} ${selectedTab.path || "/"}\n${
+		selectedTab.headers
+			?.filter(
+				(header) => header.name && header.value && (header.enabled ?? true),
+			)
+			.map((header) => `${header.name}: ${header.value}`)
+			.join("\n") || ""
+	}\n\n${selectedTab.body || ""}`;
+	const [rawValue, setRawValue] = useState(rawInitialValue);
+	const [rawBodyMode, setRawBodyMode] = useLocalStorage<"json" | "yaml">({
+		key: `rest-console-raw-body-mode-${selectedTab.id}`,
+		getInitialValueInEffect: false,
+		defaultValue: "json",
+	});
+	const rawViewRef = useRef<EditorView | null>(null);
+
+	// Shift issue line numbers to account for headers in raw mode
+	const rawIssueLines = useMemo(() => {
+		if (!responseIssueLines) return undefined;
+		const sepIdx = rawValue.indexOf("\n\n");
+		if (sepIdx === -1) return undefined;
+		let headerLines = 0;
+		for (let i = 0; i < sepIdx; i++) {
+			if (rawValue[i] === "\n") headerLines++;
+		}
+		const offset = headerLines + 2; // +2 for the blank line
+		return responseIssueLines.map((il) => ({
+			line: il.line + offset,
+			message: il.message,
+		}));
+	}, [responseIssueLines, rawValue]);
+
+	const handleRawChange = (value: string) => {
+		setRawValue(value);
+		onRawChange(value);
+	};
+
+	const replaceRawBody = (newBody: string, newHead?: string) => {
+		const view = rawViewRef.current;
+		if (!view) return;
+		const doc = view.state.doc.toString();
+		const sepIdx = doc.indexOf("\n\n");
+		if (sepIdx === -1) return;
+		const head = doc.slice(0, sepIdx);
+		const finalHead = newHead ?? head;
+		const newDoc = `${finalHead}\n\n${newBody}`;
+		// Keep cursor at same relative position, clamped to new doc length
+		const cursor = Math.min(view.state.selection.main.head, newDoc.length);
+		view.dispatch({
+			changes: { from: 0, to: doc.length, insert: newDoc },
+			selection: { anchor: cursor },
+		});
+		setRawValue(newDoc);
+		onRawChange(newDoc);
+	};
+
+	const handleRawModeChange = (newMode: "json" | "yaml") => {
+		const view = rawViewRef.current;
+		if (!view) return;
+		const { head, body } = splitRaw(view.state.doc.toString());
+		const converted = convertBody(body, rawBodyMode, newMode);
+		const updatedHead = updateHeadersForMode(head, newMode);
+		setRawBodyMode(newMode);
+		replaceRawBody(converted, updatedHead);
+	};
+
+	const handleRawFormat = () => {
+		const view = rawViewRef.current;
+		if (!view) return;
+		const { body } = splitRaw(view.state.doc.toString());
+		const formatted = formatBody(body, rawBodyMode);
+		replaceRawBody(formatted);
+	};
+
+	const showCodeControls =
+		currentActiveSubTab === "body" || currentActiveSubTab === "raw";
+	const isRawSubTab = currentActiveSubTab === "raw";
+
+	const [rawSubTabWasActive, setRawSubTabWasActive] = useState(isRawSubTab);
+	if (isRawSubTab !== rawSubTabWasActive) {
+		setRawSubTabWasActive(isRawSubTab);
+		if (isRawSubTab) setRawValue(rawInitialValue);
+	}
+
 	// Override WebMCP stubs with real implementations
 	webmcpActionsRef.current.getBodyMode = () => bodyMode;
 	webmcpActionsRef.current.setBodyMode = handleBodyModeChange;
@@ -614,21 +619,54 @@ function RequestView({
 			>
 				<div className="flex items-center justify-between bg-bg-secondary px-4 border-b h-10">
 					<div className="flex items-center">
-						<span className="typo-label text-text-secondary pr-3">
+						<span className="typo-label text-text-secondary w-20">
 							Request:
 						</span>
 						<TabsList>
+							<TabsTrigger value="raw">Raw</TabsTrigger>
 							<TabsTrigger value="params">Params</TabsTrigger>
 							<TabsTrigger value="headers">Headers</TabsTrigger>
 							<TabsTrigger value="body">Body</TabsTrigger>
-							<TabsTrigger value="raw">Raw</TabsTrigger>
 						</TabsList>
 					</div>
-					<ExpandPane
-						onToggle={(state) => onFullScreenToggle(state)}
-						state={fullScreenState}
-					/>
+					<div className="flex items-center gap-2">
+						{showCodeControls && (
+							<>
+								<CodeEditorFormatSelect
+									mode={isRawSubTab ? rawBodyMode : bodyMode}
+									onModeChange={
+										isRawSubTab ? handleRawModeChange : handleBodyModeChange
+									}
+								/>
+								<CodeEditorFormatButton
+									onFormat={isRawSubTab ? handleRawFormat : handleFormatBody}
+								/>
+							</>
+						)}
+						<ExpandPane
+							onToggle={(state) => onFullScreenToggle(state)}
+							state={fullScreenState}
+						/>
+					</div>
 				</div>
+				<TabsContent value="raw">
+					<div className="h-full">
+						<RawEditor
+							selectedTabId={selectedTab.id}
+							requestLineVersion={requestLineVersion}
+							initialValue={rawInitialValue}
+							issueLineNumbers={rawIssueLines}
+							getStructureDefinitions={getStructureDefinitions}
+							expandValueSet={expandValueSet}
+							resourceTypeHint={resourceTypeHint}
+							getUrlSuggestions={getUrlSuggestions}
+							onChange={handleRawChange}
+							viewCallback={(view) => {
+								rawViewRef.current = view;
+							}}
+						/>
+					</div>
+				</TabsContent>
 				<TabsContent value="params">
 					<ParamsEditor
 						params={selectedTab.params || []}
@@ -644,14 +682,6 @@ function RequestView({
 					/>
 				</TabsContent>
 				<TabsContent value="body" className="relative h-full">
-					<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
-						<CodeEditorMenubar
-							mode={bodyMode}
-							onModeChange={handleBodyModeChange}
-							textToCopy={bodyEditorValue}
-							onFormat={handleFormatBody}
-						/>
-					</div>
 					<div className="h-full">
 						<CodeEditor
 							id={`request-editor-${selectedTab.id}-${currentActiveSubTab}`}
@@ -665,20 +695,6 @@ function RequestView({
 							resourceTypeHint={resourceTypeHint}
 							issueLineNumbers={responseIssueLines}
 							vimMode={vimMode}
-						/>
-					</div>
-				</TabsContent>
-				<TabsContent value="raw">
-					<div className="h-full">
-						<RawEditor
-							requestLineVersion={requestLineVersion}
-							selectedTab={selectedTab}
-							onRawChange={onRawChange}
-							getStructureDefinitions={getStructureDefinitions}
-							expandValueSet={expandValueSet}
-							resourceTypeHint={resourceTypeHint}
-							getUrlSuggestions={getUrlSuggestions}
-							issueLineNumbers={responseIssueLines}
 						/>
 					</div>
 				</TabsContent>
@@ -1275,7 +1291,7 @@ function ResponsePane({
 		>
 			<div className="flex items-center justify-between bg-bg-secondary px-4 h-10 border-b">
 				<div className="flex items-center">
-					<span className="typo-label text-text-secondary pr-3">Response:</span>
+					<span className="typo-label text-text-secondary w-20">Response:</span>
 					<TabsList>
 						<TabsTrigger value="body">Body</TabsTrigger>
 						<TabsTrigger value="headers">Headers</TabsTrigger>

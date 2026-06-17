@@ -1,3 +1,4 @@
+import type { EditorView } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
 import * as yaml from "js-yaml";
@@ -17,7 +18,10 @@ import { type Header, methodColors } from "../rest/active-tabs";
 import HeadersEditor from "../rest/headers-editor";
 import ParamsEditor from "../rest/params-editor";
 import { UrlAutocomplete } from "../rest/url-autocomplete";
-import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
+import {
+	CodeEditorFormatButton,
+	CodeEditorFormatSelect,
+} from "../ViewDefinition/code-editor-menubar";
 import { AccessPolicyContext } from "./page";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -87,6 +91,63 @@ function createTab(): RequestTab {
 		response: null,
 		activeResponseTab: "policy-eval",
 	};
+}
+
+// ── Body format helpers ────────────────────────────────────────────────
+
+function splitRaw(raw: string): { head: string; body: string } {
+	const idx = raw.indexOf("\n\n");
+	if (idx === -1) return { head: raw, body: "" };
+	return { head: raw.slice(0, idx), body: raw.slice(idx + 2) };
+}
+
+function convertBody(
+	body: string,
+	fromMode: "json" | "yaml",
+	toMode: "json" | "yaml",
+): string {
+	if (!body.trim() || fromMode === toMode) return body;
+	try {
+		const parsed = fromMode === "yaml" ? yaml.load(body) : JSON.parse(body);
+		return toMode === "yaml"
+			? yaml.dump(parsed, { indent: 2 })
+			: JSON.stringify(parsed, null, 2);
+	} catch {
+		return body;
+	}
+}
+
+function formatBody(body: string, mode: "json" | "yaml"): string {
+	if (!body.trim()) return body;
+	try {
+		if (mode === "yaml") {
+			return yaml.dump(yaml.load(body), { indent: 2 });
+		}
+		return JSON.stringify(JSON.parse(body), null, 2);
+	} catch {
+		return body;
+	}
+}
+
+function updateHeadersForMode(head: string, mode: "json" | "yaml"): string {
+	const ct = mode === "yaml" ? "text/yaml" : "application/json";
+	const lines = head.split("\n");
+	let foundCt = false;
+	let foundAccept = false;
+	const updated = lines.map((line) => {
+		if (/^content-type\s*:/i.test(line)) {
+			foundCt = true;
+			return `Content-Type: ${ct}`;
+		}
+		if (/^accept\s*:/i.test(line)) {
+			foundAccept = true;
+			return `Accept: ${ct}`;
+		}
+		return line;
+	});
+	if (!foundCt) updated.push(`Content-Type: ${ct}`);
+	if (!foundAccept) updated.push(`Accept: ${ct}`);
+	return updated.join("\n");
 }
 
 // ── Debug helpers ──────────────────────────────────────────────────────
@@ -244,86 +305,23 @@ function updateHeaderValue(
 }
 
 function RequestBodyEditor({
-	tab,
-	onBodyChange,
-	onHeadersUpdate,
+	tabId,
+	mode,
+	value,
+	onChange,
 }: {
-	tab: RequestTab;
-	onBodyChange: (body: string) => void;
-	onHeadersUpdate: (headers: Header[]) => void;
+	tabId: string;
+	mode: "json" | "yaml";
+	value: string;
+	onChange: (value: string) => void;
 }) {
-	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
-		key: "access-policy-devtool-body-mode",
-		getInitialValueInEffect: false,
-		defaultValue: "json",
-	});
-
-	const [bodyValue, setBodyValue] = React.useState(tab.body);
-
-	React.useEffect(() => {
-		setBodyValue(tab.body);
-	}, [tab.body]);
-
-	const handleChange = (value: string) => {
-		setBodyValue(value);
-		onBodyChange(value);
-	};
-
-	const handleModeChange = (newMode: "json" | "yaml") => {
-		try {
-			const parsed =
-				bodyMode === "json" ? JSON.parse(bodyValue) : yaml.load(bodyValue);
-			const converted =
-				newMode === "yaml"
-					? yaml.dump(parsed, { indent: 2 })
-					: JSON.stringify(parsed, null, 2);
-			setBodyValue(converted);
-			onBodyChange(converted);
-		} catch {
-			// If parsing fails, just switch mode without converting
-		}
-		setBodyMode(newMode);
-
-		const contentType = newMode === "yaml" ? "text/yaml" : "application/json";
-		let headers = updateHeaderValue(tab.headers, "Content-Type", contentType);
-		headers = updateHeaderValue(headers, "Accept", contentType);
-		onHeadersUpdate(headers);
-	};
-
-	const handleFormat = () => {
-		try {
-			const current = bodyValue.trim();
-			if (!current) return;
-			let formatted: string;
-			if (bodyMode === "yaml") {
-				formatted = yaml.dump(yaml.load(current), { indent: 2 });
-			} else {
-				formatted = JSON.stringify(JSON.parse(current), null, 2);
-			}
-			setBodyValue(formatted);
-			onBodyChange(formatted);
-		} catch {
-			// ignore
-		}
-	};
-
 	return (
-		<div className="relative h-full">
-			<div className="sticky min-h-0 h-0 flex justify-end pt-2 pr-3 top-0 right-0 z-10">
-				<CodeEditorMenubar
-					mode={bodyMode}
-					onModeChange={handleModeChange}
-					textToCopy={bodyValue}
-					onFormat={handleFormat}
-				/>
-			</div>
-			<HSComp.CodeEditor
-				key={`body-${tab.id}`}
-				currentValue={bodyValue}
-				mode={bodyMode}
-				onChange={handleChange}
-			/>
-		</div>
+		<HSComp.CodeEditor
+			key={`body-${tabId}`}
+			currentValue={value}
+			mode={mode}
+			onChange={onChange}
+		/>
 	);
 }
 
@@ -333,10 +331,12 @@ function RawEditor({
 	selectedTab,
 	onRawChange,
 	requestLineVersion,
+	viewCallback,
 }: {
 	selectedTab: RequestTab;
 	onRawChange: (rawText: string) => void;
 	requestLineVersion: string;
+	viewCallback: (view: EditorView) => void;
 }) {
 	const requestLine = `${selectedTab.method} ${selectedTab.path || "/"}`;
 	const headersText =
@@ -352,6 +352,7 @@ function RawEditor({
 			defaultValue={defaultValue}
 			mode="http"
 			onChange={onRawChange}
+			viewCallback={viewCallback}
 		/>
 	);
 }
@@ -493,8 +494,6 @@ function PolicyEvalView({
 // ── Response views for other tabs ──────────────────────────────────────
 
 function RequestContextView({ response }: { response: ResponseData | null }) {
-	const [mode, setMode] = React.useState<"json" | "yaml">("yaml");
-
 	if (!response) {
 		return (
 			<NoResponsePlaceholder>
@@ -504,35 +503,16 @@ function RequestContextView({ response }: { response: ResponseData | null }) {
 	}
 
 	const request = response.debugData?.request;
-	const content = request
-		? mode === "yaml"
-			? yaml.dump(request, { indent: 2 })
-			: JSON.stringify(request, null, 2)
-		: response.body;
+	const content = request ? yaml.dump(request, { indent: 2 }) : response.body;
 
 	return (
 		<div className="relative size-full">
 			<HSComp.CodeEditor
 				readOnly
-				key={`request-context-${response.status}-${mode}`}
+				key={`request-context-${response.status}`}
 				currentValue={content}
-				mode={request ? mode : "json"}
+				mode={request ? "yaml" : "json"}
 			/>
-			{request && (
-				<div className="absolute top-2 right-4 flex items-center gap-2 border rounded-full p-2 border-border-secondary bg-bg-primary shadow-sm">
-					<HSComp.SegmentControl
-						value={mode}
-						onValueChange={setMode}
-						items={[
-							{ value: "json" as const, label: "JSON" },
-							{ value: "yaml" as const, label: "YAML" },
-						]}
-					/>
-					<HSComp.Button variant="ghost" size="small" asChild>
-						<HSComp.CopyIcon text={content} />
-					</HSComp.Button>
-				</div>
-			)}
 		</div>
 	);
 }
@@ -926,6 +906,88 @@ export function DevToolRequestPanel() {
 		}
 	};
 
+	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
+		key: "access-policy-devtool-body-mode",
+		getInitialValueInEffect: false,
+		defaultValue: "json",
+	});
+	const [bodyValue, setBodyValue] = React.useState(selectedTab.body);
+	React.useEffect(() => {
+		setBodyValue(selectedTab.body);
+	}, [selectedTab.body]);
+
+	const handleBodyEditorChange = (value: string) => {
+		setBodyValue(value);
+		handleBodyChange(value);
+	};
+
+	const handleBodyModeChange = (newMode: "json" | "yaml") => {
+		const converted = convertBody(bodyValue, bodyMode, newMode);
+		setBodyValue(converted);
+		handleBodyChange(converted);
+		setBodyMode(newMode);
+		const contentType = newMode === "yaml" ? "text/yaml" : "application/json";
+		let headers = updateHeaderValue(
+			selectedTab.headers,
+			"Content-Type",
+			contentType,
+		);
+		headers = updateHeaderValue(headers, "Accept", contentType);
+		updateSelected(() => ({ headers }));
+	};
+
+	const handleBodyFormat = () => {
+		const formatted = formatBody(bodyValue, bodyMode);
+		setBodyValue(formatted);
+		handleBodyChange(formatted);
+	};
+
+	const [rawBodyMode, setRawBodyMode] = useLocalStorage<"json" | "yaml">({
+		key: "access-policy-devtool-raw-body-mode",
+		getInitialValueInEffect: false,
+		defaultValue: "json",
+	});
+	const rawViewRef = React.useRef<EditorView | null>(null);
+
+	const replaceRawBody = (newBody: string, newHead?: string) => {
+		const view = rawViewRef.current;
+		if (!view) return;
+		const doc = view.state.doc.toString();
+		const sepIdx = doc.indexOf("\n\n");
+		if (sepIdx === -1) return;
+		const head = doc.slice(0, sepIdx);
+		const finalHead = newHead ?? head;
+		const newDoc = `${finalHead}\n\n${newBody}`;
+		const cursor = Math.min(view.state.selection.main.head, newDoc.length);
+		view.dispatch({
+			changes: { from: 0, to: doc.length, insert: newDoc },
+			selection: { anchor: cursor },
+		});
+		handleRawChange(newDoc);
+	};
+
+	const handleRawModeChange = (newMode: "json" | "yaml") => {
+		const view = rawViewRef.current;
+		if (!view) return;
+		const { head, body } = splitRaw(view.state.doc.toString());
+		const converted = convertBody(body, rawBodyMode, newMode);
+		const updatedHead = updateHeadersForMode(head, newMode);
+		setRawBodyMode(newMode);
+		replaceRawBody(converted, updatedHead);
+	};
+
+	const handleRawFormat = () => {
+		const view = rawViewRef.current;
+		if (!view) return;
+		const { body } = splitRaw(view.state.doc.toString());
+		const formatted = formatBody(body, rawBodyMode);
+		replaceRawBody(formatted);
+	};
+
+	const activeSubTab = selectedTab.activeRequestSubTab;
+	const showCodeControls = activeSubTab === "body" || activeSubTab === "raw";
+	const isRawSubTab = activeSubTab === "raw";
+
 	const handleRequestSubTabChange = (subTab: RequestSubTab) =>
 		updateSelected(() => ({ activeRequestSubTab: subTab }));
 
@@ -1161,28 +1223,49 @@ export function DevToolRequestPanel() {
 										<HSComp.TabsTrigger value="raw">Raw</HSComp.TabsTrigger>
 									</HSComp.TabsList>
 								</div>
-								<HSComp.Tooltip>
-									<HSComp.TooltipTrigger asChild>
-										<HSComp.Button
-											variant="ghost"
-											size="small"
-											onClick={() =>
-												setMaximized(maximized === "request" ? null : "request")
-											}
-										>
-											{maximized === "request" ? (
-												<Lucide.PanelTopClose className="size-4" />
-											) : (
-												<Lucide.PanelTopOpen className="size-4" />
-											)}
-										</HSComp.Button>
-									</HSComp.TooltipTrigger>
-									<HSComp.TooltipContent align="end">
-										{maximized === "request"
-											? "Show response panel"
-											: "Hide response panel"}
-									</HSComp.TooltipContent>
-								</HSComp.Tooltip>
+								<div className="flex items-center gap-2">
+									{showCodeControls && (
+										<>
+											<CodeEditorFormatSelect
+												mode={isRawSubTab ? rawBodyMode : bodyMode}
+												onModeChange={
+													isRawSubTab
+														? handleRawModeChange
+														: handleBodyModeChange
+												}
+											/>
+											<CodeEditorFormatButton
+												onFormat={
+													isRawSubTab ? handleRawFormat : handleBodyFormat
+												}
+											/>
+										</>
+									)}
+									<HSComp.Tooltip>
+										<HSComp.TooltipTrigger asChild>
+											<HSComp.Button
+												variant="ghost"
+												size="small"
+												onClick={() =>
+													setMaximized(
+														maximized === "request" ? null : "request",
+													)
+												}
+											>
+												{maximized === "request" ? (
+													<Lucide.PanelTopClose className="size-4" />
+												) : (
+													<Lucide.PanelTopOpen className="size-4" />
+												)}
+											</HSComp.Button>
+										</HSComp.TooltipTrigger>
+										<HSComp.TooltipContent align="end">
+											{maximized === "request"
+												? "Show response panel"
+												: "Hide response panel"}
+										</HSComp.TooltipContent>
+									</HSComp.Tooltip>
+								</div>
 							</div>
 							<HSComp.TabsContent value="params" className="grow min-h-0">
 								<ParamsEditor
@@ -1203,11 +1286,10 @@ export function DevToolRequestPanel() {
 								className="relative grow min-h-0"
 							>
 								<RequestBodyEditor
-									tab={selectedTab}
-									onBodyChange={handleBodyChange}
-									onHeadersUpdate={(headers) =>
-										updateSelected(() => ({ headers }))
-									}
+									tabId={selectedTab.id}
+									mode={bodyMode}
+									value={bodyValue}
+									onChange={handleBodyEditorChange}
 								/>
 							</HSComp.TabsContent>
 							<HSComp.TabsContent value="raw" className="relative grow min-h-0">
@@ -1215,6 +1297,9 @@ export function DevToolRequestPanel() {
 									selectedTab={selectedTab}
 									onRawChange={handleRawChange}
 									requestLineVersion={requestLineVersion}
+									viewCallback={(view) => {
+										rawViewRef.current = view;
+									}}
 								/>
 							</HSComp.TabsContent>
 						</HSComp.Tabs>
