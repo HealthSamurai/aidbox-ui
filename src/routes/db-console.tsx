@@ -1,7 +1,5 @@
-import { indentLess, insertTab } from "@codemirror/commands";
-import { indentUnit } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
-import { type Command, type EditorView, keymap } from "@codemirror/view";
+import { type EditorView, keymap } from "@codemirror/view";
 import {
 	Button,
 	CodeEditor,
@@ -82,25 +80,6 @@ const SQL_PLACEHOLDER_CTAS = [
 	"Before TRUNCATE, make sure this isn't prod",
 	"Ctrl+Z works on code, not on prod",
 ];
-
-/**
- * Shift-Tab handler that de-indents only when the cursor is in the leading
- * whitespace of the current line (or the line is empty / whitespace-only).
- * Outdenting from the middle of a token is rarely what users want, so consume
- * the keystroke as a no-op in that case. Multi-line selections always de-indent.
- */
-const smartIndentLess: Command = (view) => {
-	const { state } = view;
-	const sel = state.selection.main;
-	if (!sel.empty) return indentLess(view);
-	const line = state.doc.lineAt(sel.head);
-	const firstNonWs = line.text.search(/\S/);
-	const cursorCol = sel.head - line.from;
-	if (firstNonWs === -1 || cursorCol <= firstNonWs) {
-		return indentLess(view);
-	}
-	return true;
-};
 
 type SqlRunOpts = {
 	autocommit: boolean;
@@ -670,10 +649,6 @@ function DbConsolePage() {
 
 	const sqlEditorExtensions = useMemo(
 		() => [
-			// Use a literal tab as the indent unit so indentMore / indentLess
-			// (multi-line Tab and Shift-Tab) work in tabs, matching what
-			// insertTab does for single-cursor Tab.
-			indentUnit.of("\t"),
 			Prec.highest(
 				keymap.of([
 					{
@@ -703,12 +678,6 @@ function DbConsolePage() {
 							return true;
 						},
 					},
-					// Tab inserts a literal tab at the cursor (or indents the
-					// selection if multi-line). Shift-Tab de-indents the line
-					// only when the cursor sits in its leading whitespace
-					// (logical start of the line) — otherwise it's a no-op so
-					// users mid-token don't accidentally outdent.
-					{ key: "Tab", run: insertTab, shift: smartIndentLess },
 				]),
 			),
 		],

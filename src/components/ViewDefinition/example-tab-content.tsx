@@ -5,20 +5,15 @@ import type {
 import {
 	Button,
 	CodeEditor,
-	CopyIcon,
-	SegmentControl,
-	Separator,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as yaml from "js-yaml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { RefObject } from "react";
 import { useContext, useState } from "react";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
-import { useLocalStorage } from "../../hooks";
 import * as Utils from "../../utils";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
 import { EmptyState } from "../empty-state";
@@ -28,7 +23,6 @@ import {
 	ViewDefinitionResourceTypeContext,
 } from "./page";
 import { SearchBar } from "./search-bar";
-import type { ViewDefinitionEditorMode } from "./types";
 
 const searchResources = async (
 	client: AidboxClientR5,
@@ -53,66 +47,44 @@ const searchResources = async (
 };
 
 const ExampleTabEditorMenu = ({
-	mode,
-	onModeChange,
-	textToCopy,
 	onPrevious,
 	onNext,
 	canGoToPrevious,
 	canGoToNext,
 }: {
-	mode: ViewDefinitionEditorMode;
-	onModeChange: (mode: ViewDefinitionEditorMode) => void;
-	textToCopy: string;
 	onPrevious: () => void;
 	onNext: () => void;
 	canGoToPrevious: boolean;
 	canGoToNext: boolean;
 }) => {
 	return (
-		<div className="flex items-center gap-2 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
-			<SegmentControl
-				value={mode}
-				onValueChange={(value) =>
-					onModeChange(value as ViewDefinitionEditorMode)
-				}
-				items={[
-					{ value: "json", label: "JSON" },
-					{ value: "yaml", label: "YAML" },
-				]}
-			/>
-			<Button variant="ghost" size="small" asChild>
-				<CopyIcon text={textToCopy} />
-			</Button>
-			<Separator orientation="vertical" className="h-6!" />
-			<div className="flex items-center gap-0.5">
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							variant="ghost"
-							size="small"
-							onClick={onPrevious}
-							disabled={!canGoToPrevious}
-						>
-							<ChevronLeft />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent>Previous instance</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							variant="ghost"
-							size="small"
-							onClick={onNext}
-							disabled={!canGoToNext}
-						>
-							<ChevronRight />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent>Next instance</TooltipContent>
-				</Tooltip>
-			</div>
+		<div className="flex items-center gap-0.5 border rounded-full py-2 pr-2 pl-2.5 border-border-secondary bg-bg-primary toolbar-shadow">
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="small"
+						onClick={onPrevious}
+						disabled={!canGoToPrevious}
+					>
+						<ChevronLeft />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>Previous instance</TooltipContent>
+			</Tooltip>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="small"
+						onClick={onNext}
+						disabled={!canGoToNext}
+					>
+						<ChevronRight />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>Next instance</TooltipContent>
+			</Tooltip>
 		</div>
 	);
 };
@@ -136,12 +108,6 @@ export function ExampleTabContent({
 	const isLoadingViewDef = viewDefinitionContext.isLoadingViewDef;
 
 	const [currentResultIndex, setCurrentResultIndex] = useState(0);
-	const [exampleMode, setExampleMode] =
-		useLocalStorage<ViewDefinitionEditorMode>({
-			key: `viewDefinition-infoPanel-exampleMode`,
-			defaultValue: "json",
-			getInitialValueInEffect: false,
-		});
 
 	const query = instancesQuery;
 	const setQuery = onInstancesQueryChange;
@@ -206,12 +172,6 @@ export function ExampleTabContent({
 		};
 	}
 
-	const getCopyText = () => {
-		return exampleMode === "yaml"
-			? yaml.dump(exampleResource, { indent: 2 })
-			: JSON.stringify(exampleResource, null, 2);
-	};
-
 	return (
 		<div className="flex flex-col flex-1 min-h-0">
 			<SearchBar
@@ -245,9 +205,6 @@ export function ExampleTabContent({
 							<>
 								<div className="absolute top-2 right-3 z-10">
 									<ExampleTabEditorMenu
-										mode={exampleMode}
-										onModeChange={setExampleMode}
-										textToCopy={getCopyText()}
 										onPrevious={handlePrevious}
 										onNext={handleNext}
 										canGoToPrevious={canGoToPrevious}
@@ -256,21 +213,14 @@ export function ExampleTabContent({
 								</div>
 								<CodeEditor
 									readOnly
-									currentValue={
-										exampleMode === "yaml"
-											? yaml.dump(exampleResource, { indent: 2 })
-											: JSON.stringify(exampleResource, null, 2)
-									}
-									mode={exampleMode}
+									currentValue={JSON.stringify(exampleResource, null, 2)}
+									mode="json"
 								/>
 							</>
 						) : status === "error" ? (
 							<>
 								<div className="absolute top-2 right-3 z-10">
 									<ExampleTabEditorMenu
-										mode={exampleMode}
-										onModeChange={setExampleMode}
-										textToCopy={getCopyText()}
 										onPrevious={() => {}}
 										onNext={() => {}}
 										canGoToPrevious={false}
@@ -279,12 +229,8 @@ export function ExampleTabContent({
 								</div>
 								<CodeEditor
 									readOnly
-									currentValue={
-										exampleMode === "yaml"
-											? yaml.dump(error.cause, { indent: 2 })
-											: JSON.stringify(error.cause, null, 2)
-									}
-									mode={exampleMode}
+									currentValue={JSON.stringify(error.cause, null, 2)}
+									mode="json"
 								/>
 							</>
 						) : (

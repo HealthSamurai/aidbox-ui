@@ -5,7 +5,10 @@ import type {
 } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
 import { useVimMode } from "../../shared/vim-mode";
-import { CodeEditorMenubar } from "../ViewDefinition/code-editor-menubar";
+import {
+	CodeEditorFormatButton,
+	CodeEditorFormatSelect,
+} from "../ViewDefinition/code-editor-menubar";
 import type { EditorMode } from "./types";
 
 type EditorTabProps = {
@@ -42,23 +45,15 @@ export const EditorTab = ({
 	const vimMode = useVimMode();
 	return (
 		<div className="flex flex-col h-full">
-			{(actions || trailingActions) && (
-				<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b px-4">
-					<div className="flex items-center gap-4">{actions}</div>
-					{trailingActions && (
-						<div className="flex items-center gap-4">{trailingActions}</div>
-					)}
+			<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b px-4">
+				<div className="flex items-center gap-4">{actions}</div>
+				<div className="flex items-center gap-2">
+					<CodeEditorFormatSelect mode={mode} onModeChange={setMode} />
+					<CodeEditorFormatButton onFormat={triggerFormat} />
+					{trailingActions}
 				</div>
-			)}
+			</div>
 			<div className="relative grow min-h-0">
-				<div className="sticky min-h-0 h-0 flex justify-end pr-3 top-0 right-0 z-10">
-					<CodeEditorMenubar
-						mode={mode}
-						onModeChange={setMode}
-						textToCopy={resourceText}
-						onFormat={triggerFormat}
-					/>
-				</div>
 				<HSComp.CodeEditor
 					mode={mode}
 					defaultValue={defaultResourceText}
