@@ -269,6 +269,7 @@ function ResizableDataTable<T>({
 	tableId,
 	zebra = true,
 	noRowHover,
+	renderExpandedRow,
 }: DataTableProps<T>) {
 	const { allSelected, someSelected, toggleAll, toggleOne } =
 		useSelectionHelpers(
@@ -290,6 +291,32 @@ function ResizableDataTable<T>({
 	});
 
 	const [resizingId, setResizingId] = React.useState<string | null>(null);
+	const [expandedKeys, setExpandedKeys] = React.useState<Set<string>>(
+		() => new Set(),
+	);
+	const toggleRow = (id: string) =>
+		setExpandedKeys((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	const expandable = !!renderExpandedRow;
+	const expandColSpan = columns.length + (selectable ? 1 : 0) + 1;
+	const [expandedWidth, setExpandedWidth] = React.useState<number | undefined>(
+		undefined,
+	);
+
+	React.useLayoutEffect(() => {
+		if (!expandable) return;
+		const scroller = containerRef.current?.parentElement;
+		if (!scroller) return;
+		const update = () => setExpandedWidth(scroller.clientWidth);
+		update();
+		const ro = new ResizeObserver(update);
+		ro.observe(scroller);
+		return () => ro.disconnect();
+	}, [expandable]);
 
 	React.useLayoutEffect(() => {
 		const container = containerRef.current;
@@ -397,36 +424,55 @@ function ResizableDataTable<T>({
 					{data.map((row, index) => {
 						const id = rowKey(row, index);
 						const isSelected = selectedIds?.has(id) ?? false;
+						const isExpanded = expandable && expandedKeys.has(id);
 						return (
-							<HSComp.TableRow
-								key={id || index}
-								zebra={zebra}
-								index={index}
-								selected={isSelected}
-							>
-								{selectable && (
-									<HSComp.TableCell style={{ width: 52 }}>
-										<HSComp.Checkbox
-											size="small"
-											className="border-border-primary"
-											checked={isSelected}
-											onCheckedChange={() => toggleOne(id)}
-											aria-label={`Select ${id}`}
-										/>
-									</HSComp.TableCell>
-								)}
-								{columns.map((column) => (
-									<HSComp.TableCell
-										key={column.id}
-										className={column.className}
-									>
-										<div className="truncate" style={wrapperStyle(column)}>
-											{column.cell(row)}
-										</div>
-									</HSComp.TableCell>
-								))}
-								<HSComp.TableCell aria-hidden />
-							</HSComp.TableRow>
+							<React.Fragment key={id || index}>
+								<HSComp.TableRow
+									zebra={zebra}
+									index={index}
+									selected={isSelected}
+									className={expandable ? "cursor-pointer" : undefined}
+									onClick={expandable ? () => toggleRow(id) : undefined}
+								>
+									{selectable && (
+										<HSComp.TableCell
+											style={{ width: 52 }}
+											onClick={(e) => e.stopPropagation()}
+										>
+											<HSComp.Checkbox
+												size="small"
+												className="border-border-primary"
+												checked={isSelected}
+												onCheckedChange={() => toggleOne(id)}
+												aria-label={`Select ${id}`}
+											/>
+										</HSComp.TableCell>
+									)}
+									{columns.map((column) => (
+										<HSComp.TableCell
+											key={column.id}
+											className={column.className}
+										>
+											<div className="truncate" style={wrapperStyle(column)}>
+												{column.cell(row)}
+											</div>
+										</HSComp.TableCell>
+									))}
+									<HSComp.TableCell aria-hidden />
+								</HSComp.TableRow>
+								{isExpanded && renderExpandedRow ? (
+									<HSComp.TableRow className="hover:bg-transparent!">
+										<HSComp.TableCell colSpan={expandColSpan} className="p-0">
+											<div
+												className="sticky left-0"
+												style={{ width: expandedWidth }}
+											>
+												{renderExpandedRow(row)}
+											</div>
+										</HSComp.TableCell>
+									</HSComp.TableRow>
+								) : null}
+							</React.Fragment>
 						);
 					})}
 				</HSComp.TableBody>

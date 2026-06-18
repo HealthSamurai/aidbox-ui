@@ -31,7 +31,16 @@ export interface AsyncOperationTask {
 	time_started?: string | null;
 	time_done?: string | null;
 	attempt?: number | null;
+	executed_by?: string | null;
+	priority?: number | null;
 	execution_time?: string | null;
+	picked?: boolean | null;
+	picked_by?: string | null;
+	last_heartbeat?: string | null;
+	last_success?: string | null;
+	last_failure?: string | null;
+	consecutive_failures?: number | null;
+	version?: number | null;
 }
 
 export interface AsyncOperationStatusResponse {

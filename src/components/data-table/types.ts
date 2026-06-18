@@ -50,6 +50,7 @@ export type DataTableProps<T> = {
 	tableId?: string;
 	zebra?: boolean;
 	noRowHover?: boolean;
+	renderExpandedRow?: (row: T) => React.ReactNode;
 };
 
 export type DataTableFooterProps = {

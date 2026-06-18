@@ -10,25 +10,16 @@ const STATUS_CLASSES: Record<AsyncOperationStatus, string> = {
 	"in-progress": "border-transparent bg-utility-blue/15 text-utility-blue",
 };
 
-const STATUS_BADGE_WIDTH = "w-24";
-
 export function StatusBadge({
 	status,
 }: {
 	status: AsyncOperationStatus | "not-found";
 }) {
 	if (status === "not-found") {
-		return (
-			<Badge variant="outline" className={STATUS_BADGE_WIDTH}>
-				Not found
-			</Badge>
-		);
+		return <Badge variant="outline">Not found</Badge>;
 	}
 	return (
-		<Badge
-			variant="outline"
-			className={`${STATUS_BADGE_WIDTH} ${STATUS_CLASSES[status]}`}
-		>
+		<Badge variant="outline" className={STATUS_CLASSES[status]}>
 			{STATUS_LABEL[status]}
 		</Badge>
 	);
