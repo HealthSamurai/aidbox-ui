@@ -19,6 +19,7 @@ export interface AsyncOperationSummary {
 export interface AsyncOperationsListResponse {
 	operations: AsyncOperationSummary[];
 	total: number;
+	"task-names": string[];
 }
 
 export interface AsyncOperationTask {
@@ -46,8 +47,8 @@ export const STATUS_FILTER_OPTIONS: {
 	{ value: "all", label: "All" },
 	{ value: "in-progress", label: "In progress" },
 	{ value: "completed", label: "Completed" },
-	{ value: "failed", label: "Failed" },
 	{ value: "cancelled", label: "Cancelled" },
+	{ value: "failed", label: "Failed" },
 ];
 
 export const STATUS_LABEL: Record<AsyncOperationStatus, string> = {
@@ -55,6 +56,13 @@ export const STATUS_LABEL: Record<AsyncOperationStatus, string> = {
 	completed: "Completed",
 	failed: "Failed",
 	cancelled: "Cancelled",
+};
+
+export const STATUS_TEXT_COLOR: Record<AsyncOperationStatus, string> = {
+	"in-progress": "text-utility-blue",
+	completed: "text-utility-green",
+	failed: "text-utility-red",
+	cancelled: "text-utility-yellow",
 };
 
 export type SortField = "created-at" | "last-updated";

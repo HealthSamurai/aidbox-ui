@@ -1,12 +1,6 @@
 "use no memo";
 
 import * as HSComp from "@health-samurai/react-components";
-import {
-	type ColumnSizingState,
-	getCoreRowModel,
-	type ColumnDef as TSColumnDef,
-	useReactTable,
-} from "@tanstack/react-table";
 import React from "react";
 import { useLocalStorage } from "../../hooks";
 import type { ColumnDef, DataTableProps, SortState } from "./types";
@@ -14,7 +8,7 @@ import type { ColumnDef, DataTableProps, SortState } from "./types";
 const DEFAULT_MIN_SIZE = 60;
 const DEFAULT_MAX_SIZE = 1000;
 const DEFAULT_SIZE = 150;
-const STORAGE_PREFIX = "data-table-sizing:";
+const STORAGE_PREFIX = "data-table-sizing:v2:";
 
 function sortedColumn(
 	sort: SortState | undefined,
@@ -28,21 +22,20 @@ function ColumnHead<T>({
 	column,
 	sort,
 	onSortToggle,
-	style,
+	wrapperStyle,
 	resizeHandle,
 	colId,
 }: {
 	column: ColumnDef<T>;
 	sort: SortState | undefined;
 	onSortToggle: ((column: string) => void) | undefined;
-	style?: React.CSSProperties;
+	wrapperStyle?: React.CSSProperties;
 	resizeHandle?: React.ReactNode;
 	colId?: string;
 }) {
 	const head = (
 		<HSComp.TableHead
 			className={resizeHandle ? "relative" : column.width}
-			style={style}
 			sortable={column.sortable}
 			sorted={sortedColumn(sort, column.id)}
 			data-col-id={colId}
@@ -52,8 +45,10 @@ function ColumnHead<T>({
 					: undefined
 			}
 		>
-			{resizeHandle ? (
-				<span className="block truncate">{column.header}</span>
+			{wrapperStyle ? (
+				<span className="block truncate" style={wrapperStyle}>
+					{column.header}
+				</span>
 			) : (
 				column.header
 			)}
@@ -78,13 +73,11 @@ function ColumnHead<T>({
 }
 
 function ResizeHandle({
-	onMouseDown,
-	onTouchStart,
+	onPointerDown,
 	isResizing,
 	columnId,
 }: {
-	onMouseDown: React.MouseEventHandler;
-	onTouchStart: React.TouchEventHandler;
+	onPointerDown: React.PointerEventHandler;
 	isResizing: boolean;
 	columnId: string;
 }) {
@@ -92,8 +85,7 @@ function ResizeHandle({
 		<button
 			type="button"
 			aria-label={`Resize ${columnId}`}
-			onMouseDown={onMouseDown}
-			onTouchStart={onTouchStart}
+			onPointerDown={onPointerDown}
 			onClick={(e) => e.stopPropagation()}
 			className={`group/resize absolute top-0 h-full w-3 cursor-col-resize select-none touch-none z-10 flex items-center justify-center ${
 				isResizing ? "z-20" : ""
@@ -288,118 +280,78 @@ function ResizableDataTable<T>({
 		);
 
 	const containerRef = React.useRef<HTMLDivElement>(null);
+	const colWidthsRef = React.useRef<Record<string, number>>({});
 
-	const [persistedSizing, setPersistedSizing] =
-		useLocalStorage<ColumnSizingState>({
-			key: `${STORAGE_PREFIX}${tableId ?? "_unkeyed"}`,
-			defaultValue: {},
-		});
-
-	const columnsById = React.useMemo(() => {
-		const map = new Map<string, ColumnDef<T>>();
-		for (const c of columns) map.set(c.id, c);
-		return map;
-	}, [columns]);
-
-	const tsColumns = React.useMemo<TSColumnDef<T>[]>(
-		() =>
-			columns.map((c) => ({
-				id: c.id,
-				size: c.defaultSize ?? DEFAULT_SIZE,
-				minSize: c.minSize ?? DEFAULT_MIN_SIZE,
-				maxSize: c.maxSize ?? DEFAULT_MAX_SIZE,
-				enableResizing: true,
-			})),
-		[columns],
-	);
-
-	const table = useReactTable({
-		data,
-		columns: tsColumns,
-		getCoreRowModel: getCoreRowModel(),
-		columnResizeMode: "onChange",
-		enableColumnResizing: true,
-		state: { columnSizing: persistedSizing },
-		onColumnSizingChange: (updater) => {
-			setPersistedSizing((prev) =>
-				typeof updater === "function" ? updater(prev) : updater,
-			);
-		},
+	const [persistedSizing, setPersistedSizing] = useLocalStorage<
+		Record<string, number>
+	>({
+		key: `${STORAGE_PREFIX}${tableId ?? "_unkeyed"}`,
+		defaultValue: {},
 	});
 
-	const needsMeasure = React.useMemo(
-		() =>
-			columns.filter(
-				(c) => c.defaultSize == null && !(c.id in persistedSizing),
-			),
-		[columns, persistedSizing],
-	);
-	const isMeasuring = needsMeasure.length > 0;
+	const [resizingId, setResizingId] = React.useState<string | null>(null);
 
 	React.useLayoutEffect(() => {
-		if (!isMeasuring) return;
 		const container = containerRef.current;
 		if (!container) return;
 		const ths = container.querySelectorAll<HTMLTableCellElement>(
 			"thead [data-col-id]",
 		);
-		const map = new Map<string, HTMLTableCellElement>();
 		ths.forEach((th) => {
 			const id = th.dataset.colId;
-			if (id) map.set(id, th);
+			if (id) colWidthsRef.current[id] = th.getBoundingClientRect().width;
 		});
-		const updates: ColumnSizingState = {};
-		for (const c of needsMeasure) {
-			const th = map.get(c.id);
-			if (!th) continue;
-			const natural = th.getBoundingClientRect().width;
-			updates[c.id] = Math.min(
-				Math.max(natural, c.minSize ?? DEFAULT_MIN_SIZE),
-				c.maxSize ?? DEFAULT_MAX_SIZE,
-			);
+	});
+
+	const wrapperStyle = (column: ColumnDef<T>): React.CSSProperties => {
+		const fixed = persistedSizing[column.id];
+		if (fixed != null) {
+			return { width: fixed, minWidth: fixed, maxWidth: fixed };
 		}
-		if (Object.keys(updates).length > 0) {
-			setPersistedSizing((prev) => ({ ...prev, ...updates }));
-		}
-	}, [isMeasuring, needsMeasure, setPersistedSizing]);
+		return {
+			minWidth: column.minSize ?? DEFAULT_MIN_SIZE,
+			maxWidth: column.maxSize ?? DEFAULT_MAX_SIZE,
+		};
+	};
 
-	const headerGroup = table.getHeaderGroups()[0];
-	if (!headerGroup) return null;
-
-	const resizingHeader = headerGroup.headers.find((h) =>
-		h.column.getIsResizing(),
-	);
-	const guideLeft =
-		!isMeasuring && resizingHeader
-			? (selectable ? 52 : 0) +
-				resizingHeader.getStart() +
-				resizingHeader.getSize()
-			: null;
-
-	const tableStyle: React.CSSProperties = isMeasuring
-		? { tableLayout: "auto", width: "100%" }
-		: {
-				tableLayout: "fixed",
-				width: "100%",
-				minWidth: table.getCenterTotalSize() + (selectable ? 52 : 0),
-			};
+	const startResize = (column: ColumnDef<T>) => (e: React.PointerEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const startX = e.clientX;
+		const startW =
+			persistedSizing[column.id] ??
+			colWidthsRef.current[column.id] ??
+			DEFAULT_SIZE;
+		const minS = column.minSize ?? DEFAULT_MIN_SIZE;
+		const maxS = column.maxSize ?? DEFAULT_MAX_SIZE;
+		setResizingId(column.id);
+		document.body.style.cursor = "col-resize";
+		document.body.style.userSelect = "none";
+		const onMove = (ev: PointerEvent) => {
+			const w = Math.min(Math.max(startW + (ev.clientX - startX), minS), maxS);
+			setPersistedSizing((prev) => ({ ...prev, [column.id]: w }));
+		};
+		const onUp = () => {
+			document.removeEventListener("pointermove", onMove);
+			document.removeEventListener("pointerup", onUp);
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+			setResizingId(null);
+		};
+		document.addEventListener("pointermove", onMove);
+		document.addEventListener("pointerup", onUp);
+	};
 
 	return (
 		<div
 			ref={containerRef}
 			className="relative [&_div[data-slot=table-container]]:overflow-visible [&_div[data-slot=table-container]]:h-auto"
 		>
-			{guideLeft !== null && (
-				<div
-					className="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-border-link z-30"
-					style={{ left: guideLeft - 1 }}
-				/>
-			)}
 			<HSComp.Table
 				zebra={zebra}
 				stickyHeader
 				className="typo-code"
-				style={tableStyle}
+				style={{ tableLayout: "auto", width: "100%" }}
 			>
 				<HSComp.TableHeader>
 					<HSComp.TableRow className="group/header">
@@ -419,37 +371,24 @@ function ResizableDataTable<T>({
 								/>
 							</HSComp.TableHead>
 						)}
-						{headerGroup.headers.map((header) => {
-							const column = columnsById.get(header.column.id);
-							if (!column) return null;
-							const isLast =
-								header.column.getIndex() === headerGroup.headers.length - 1;
-							const headStyle: React.CSSProperties | undefined = isMeasuring
-								? { maxWidth: column.maxSize ?? DEFAULT_MAX_SIZE }
-								: isLast
-									? undefined
-									: { width: header.getSize() };
-							return (
-								<ColumnHead
-									key={column.id}
-									column={column}
-									sort={sort}
-									onSortToggle={onSortToggle}
-									style={headStyle}
-									colId={column.id}
-									resizeHandle={
-										isMeasuring || isLast ? null : (
-											<ResizeHandle
-												columnId={column.id}
-												onMouseDown={header.getResizeHandler()}
-												onTouchStart={header.getResizeHandler()}
-												isResizing={header.column.getIsResizing()}
-											/>
-										)
-									}
-								/>
-							);
-						})}
+						{columns.map((column) => (
+							<ColumnHead
+								key={column.id}
+								column={column}
+								sort={sort}
+								onSortToggle={onSortToggle}
+								colId={column.id}
+								wrapperStyle={wrapperStyle(column)}
+								resizeHandle={
+									<ResizeHandle
+										columnId={column.id}
+										isResizing={resizingId === column.id}
+										onPointerDown={startResize(column)}
+									/>
+								}
+							/>
+						))}
+						<HSComp.TableHead aria-hidden style={{ width: "100%" }} />
 					</HSComp.TableRow>
 				</HSComp.TableHeader>
 				<HSComp.TableBody
@@ -476,25 +415,17 @@ function ResizableDataTable<T>({
 										/>
 									</HSComp.TableCell>
 								)}
-								{headerGroup.headers.map((header, idx) => {
-									const column = columnsById.get(header.column.id);
-									if (!column) return null;
-									const isLast = idx === headerGroup.headers.length - 1;
-									const cellStyle: React.CSSProperties | undefined = isMeasuring
-										? { maxWidth: column.maxSize ?? DEFAULT_MAX_SIZE }
-										: isLast
-											? undefined
-											: { width: header.getSize() };
-									return (
-										<HSComp.TableCell
-											key={column.id}
-											className={`${column.className ?? ""} truncate`}
-											style={cellStyle}
-										>
+								{columns.map((column) => (
+									<HSComp.TableCell
+										key={column.id}
+										className={column.className}
+									>
+										<div className="truncate" style={wrapperStyle(column)}>
 											{column.cell(row)}
-										</HSComp.TableCell>
-									);
-								})}
+										</div>
+									</HSComp.TableCell>
+								))}
+								<HSComp.TableCell aria-hidden />
 							</HSComp.TableRow>
 						);
 					})}
