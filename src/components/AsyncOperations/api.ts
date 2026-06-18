@@ -8,6 +8,7 @@ import type {
 
 const LIST_KEY = ["async-operations", "list"] as const;
 const STATUS_KEY = (id: string) => ["async-operations", "status", id] as const;
+const LIST_COUNT = 5000;
 
 function buildListUrl(q: ListQuery): string {
 	const params = new URLSearchParams();
@@ -15,6 +16,7 @@ function buildListUrl(q: ListQuery): string {
 	if (q.taskName.trim()) params.set("task-name", q.taskName.trim());
 	params.set("sort", q.sortField);
 	params.set("order", q.sortOrder);
+	params.set("_count", String(LIST_COUNT));
 	const qs = params.toString();
 	return qs ? `/$async-operations?${qs}` : "/$async-operations";
 }

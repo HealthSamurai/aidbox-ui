@@ -2,63 +2,73 @@ import {
 	Alert,
 	AlertDescription,
 	AlertTitle,
+	Badge,
 	Button,
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
+	CodeEditor,
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
 } from "@health-samurai/react-components";
-import { Link } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft, RefreshCw, XCircle } from "lucide-react";
+import { AlertCircle, Ban, Check, Loader2, X } from "lucide-react";
 import { useState } from "react";
+import { ConfirmDialog } from "../confirm-dialog";
+import { DataTable } from "../data-table/data-table";
+import type { ColumnDef, SortState } from "../data-table/types";
 import { useAsyncOperationStatus, useCancelAsyncOperation } from "./api";
 import { StatusBadge } from "./status-badge";
-import type { AsyncOperationStatus, AsyncOperationTask } from "./types";
-import { formatDateTime } from "./utils";
+import type { AsyncOperationTask } from "./types";
+
+const CANCEL_MARKER = "async-api.operation/cancel-marker";
 
 function aggregate(tasks: AsyncOperationTask[]) {
-	const total = tasks.length;
-	const succeeded = tasks.filter((t) => t.success === true).length;
-	const failed = tasks.filter((t) => t.success === false).length;
+	const real = tasks.filter((t) => t.task_name !== CANCEL_MARKER);
+	const total = real.length;
+	const succeeded = real.filter((t) => t.success === true).length;
+	const failed = real.filter((t) => t.success === false).length;
 	const pending = total - succeeded - failed;
 	return { total, succeeded, failed, pending };
 }
 
-const PROGRESS_BAR_COLOR: Record<AsyncOperationStatus, string> = {
-	completed: "bg-utility-green",
-	failed: "bg-utility-red",
-	cancelled: "bg-utility-yellow",
-	"in-progress": "bg-utility-blue",
-};
+function parseMs(value: string | null | undefined): number | null {
+	return value ? new Date(value).getTime() : null;
+}
 
-function ProgressBar({
-	status,
-	counts,
-}: {
-	status: AsyncOperationStatus | "not-found";
-	counts: { total: number; succeeded: number; failed: number };
-}) {
-	if (status === "not-found" || counts.total === 0) return null;
-	const done = counts.succeeded + counts.failed;
-	// Show 100% on terminal states regardless of recorded count — operations can
-	// finish via cancel-marker without all chunks landing.
-	const pct =
-		status === "in-progress" ? Math.min(100, (done / counts.total) * 100) : 100;
-	const color = PROGRESS_BAR_COLOR[status];
-	return (
-		<div className="h-2 rounded bg-bg-tertiary overflow-hidden">
-			<div
-				className={`h-full transition-[width] duration-300 ease-in-out ${color}`}
-				style={{ width: `${pct}%` }}
-			/>
-		</div>
-	);
+function timeBounds(tasks: AsyncOperationTask[]) {
+	let startMs: number | null = null;
+	let startRaw: string | null = null;
+	let endMs: number | null = null;
+	let endRaw: string | null = null;
+	for (const t of tasks) {
+		if (t.task_name === CANCEL_MARKER) continue;
+		const sRaw = t.time_started ?? t.execution_time ?? null;
+		const s = parseMs(sRaw);
+		if (s !== null && (startMs === null || s < startMs)) {
+			startMs = s;
+			startRaw = sRaw;
+		}
+		const eRaw = t.time_done ?? t.last_heartbeat ?? null;
+		const e = parseMs(eRaw);
+		if (e !== null && (endMs === null || e > endMs)) {
+			endMs = e;
+			endRaw = eRaw;
+		}
+	}
+	return { startMs, startRaw, endMs, endRaw };
+}
+
+function formatDuration(ms: number): string {
+	const sec = Math.max(0, Math.floor(ms / 1000));
+	if (sec < 60) return `${sec}s`;
+	if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+	return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+}
+
+function taskDurationMs(task: AsyncOperationTask): number | null {
+	const start = parseMs(task.time_started ?? task.execution_time);
+	if (start === null) return null;
+	const end =
+		parseMs(task.time_done) ?? (task.success == null ? Date.now() : null);
+	return end === null ? null : end - start;
 }
 
 function getString(
@@ -86,23 +96,181 @@ function findFailureMessage(tasks: AsyncOperationTask[]): {
 	return null;
 }
 
-function JsonBlock({ value }: { value: unknown }) {
-	const text =
-		value === null || value === undefined
-			? "—"
-			: JSON.stringify(value, null, 2);
+function TaskStatus({ task }: { task: AsyncOperationTask }) {
+	if (task.success === true) {
+		return (
+			<span className="flex items-center gap-1 text-utility-green">
+				<Check className="size-4" />
+				Succeeded
+			</span>
+		);
+	}
+	if (task.success === false) {
+		return (
+			<span className="flex items-center gap-1 text-utility-red">
+				<X className="size-4" />
+				Failed
+			</span>
+		);
+	}
 	return (
-		<pre className="text-xs bg-bg-secondary border border-border-secondary rounded p-2 overflow-auto max-h-72 whitespace-pre-wrap break-words">
-			{text}
-		</pre>
+		<span className="flex items-center gap-1 text-utility-blue">
+			<Loader2 className="size-4 animate-spin" />
+			Running
+		</span>
 	);
 }
 
+function taskSortValue(
+	task: AsyncOperationTask,
+	column: string,
+): string | number {
+	switch (column) {
+		case "status":
+			return task.success === false ? 0 : task.success === true ? 1 : 2;
+		case "started":
+			return task.time_started ?? task.execution_time ?? "";
+		case "done":
+			return task.time_done ?? "";
+		case "duration":
+			return taskDurationMs(task) ?? 0;
+		default: {
+			const v = (task as unknown as Record<string, unknown>)[column];
+			if (typeof v === "number") return v;
+			if (typeof v === "boolean") return v ? 1 : 0;
+			if (typeof v === "string") return v;
+			return 0;
+		}
+	}
+}
+
+const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
+	{
+		id: "status",
+		header: "Status",
+		sortable: true,
+		maxSize: 140,
+		cell: (t) => <TaskStatus task={t} />,
+	},
+	{
+		id: "task_instance",
+		header: "Task instance",
+		sortable: true,
+		maxSize: 400,
+		cell: (t) => <span className="font-mono">{t.task_instance}</span>,
+	},
+	{
+		id: "task_name",
+		header: "Task name",
+		sortable: true,
+		maxSize: 220,
+		cell: (t) => t.task_name,
+	},
+	{
+		id: "attempt",
+		header: "Attempt",
+		sortable: true,
+		maxSize: 100,
+		cell: (t) => t.attempt ?? "—",
+	},
+	{
+		id: "started",
+		header: "Started",
+		sortable: true,
+		maxSize: 260,
+		cell: (t) => t.time_started ?? t.execution_time ?? "—",
+	},
+	{
+		id: "done",
+		header: "Done",
+		sortable: true,
+		maxSize: 260,
+		cell: (t) => t.time_done ?? "—",
+	},
+	{
+		id: "duration",
+		header: "Duration",
+		sortable: true,
+		maxSize: 140,
+		cell: (t) => {
+			const ms = taskDurationMs(t);
+			return ms === null ? "—" : formatDuration(ms);
+		},
+	},
+	{
+		id: "execution_time",
+		header: "Execution time",
+		sortable: true,
+		maxSize: 260,
+		cell: (t) => t.execution_time ?? "—",
+	},
+	{
+		id: "executed_by",
+		header: "Executed by",
+		sortable: true,
+		maxSize: 220,
+		cell: (t) => t.executed_by ?? "—",
+	},
+	{
+		id: "picked_by",
+		header: "Picked by",
+		sortable: true,
+		maxSize: 180,
+		cell: (t) => t.picked_by ?? "—",
+	},
+	{
+		id: "last_heartbeat",
+		header: "Last heartbeat",
+		sortable: true,
+		maxSize: 260,
+		cell: (t) => t.last_heartbeat ?? "—",
+	},
+	{
+		id: "last_success",
+		header: "Last success",
+		sortable: true,
+		maxSize: 260,
+		cell: (t) => t.last_success ?? "—",
+	},
+	{
+		id: "last_failure",
+		header: "Last failure",
+		sortable: true,
+		maxSize: 260,
+		cell: (t) => t.last_failure ?? "—",
+	},
+	{
+		id: "consecutive_failures",
+		header: "Consecutive failures",
+		sortable: true,
+		maxSize: 170,
+		cell: (t) => t.consecutive_failures ?? "—",
+	},
+	{
+		id: "priority",
+		header: "Priority",
+		sortable: true,
+		maxSize: 100,
+		cell: (t) => t.priority ?? "—",
+	},
+	{
+		id: "version",
+		header: "Version",
+		sortable: true,
+		maxSize: 100,
+		cell: (t) => t.version ?? "—",
+	},
+];
+
 export function AsyncOperationDetail({ operationId }: { operationId: string }) {
-	const [tab, setTab] = useState("tasks");
-	const { data, isLoading, refetch, isFetching, error } =
+	const { data, isLoading, refetch, error } =
 		useAsyncOperationStatus(operationId);
 	const cancel = useCancelAsyncOperation();
+	const [terminateOpen, setTerminateOpen] = useState(false);
+	const [sort, setSort] = useState<SortState>({
+		column: "started",
+		direction: "desc",
+	});
 
 	if (isLoading) {
 		return (
@@ -124,80 +292,89 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 	}
 
 	const status = data.status;
-	const tasks = data.tasks ?? [];
-	const counts = aggregate(tasks);
 	const isActive = status === "in-progress";
+	const tasks = data.tasks ?? [];
+	const visibleTasks = tasks.filter((t) => t.task_name !== CANCEL_MARKER);
+	const sortedTasks = sort
+		? [...visibleTasks].sort((a, b) => {
+				const dir = sort.direction === "asc" ? 1 : -1;
+				const av = taskSortValue(a, sort.column);
+				const bv = taskSortValue(b, sort.column);
+				if (typeof av === "string" && typeof bv === "string") {
+					return dir * av.localeCompare(bv);
+				}
+				return dir * ((av as number) - (bv as number));
+			})
+		: visibleTasks;
+	const handleSortToggle = (column: string) => {
+		setSort((prev) =>
+			prev?.column === column
+				? { column, direction: prev.direction === "asc" ? "desc" : "asc" }
+				: { column, direction: "asc" },
+		);
+	};
+	const counts = aggregate(tasks);
+	const taskName =
+		tasks.find((t) => t.task_name !== CANCEL_MARKER)?.task_name ?? "—";
+	const { startMs, startRaw, endMs, endRaw } = timeBounds(tasks);
+	const createdLabel = startRaw ?? "—";
+	const updatedLabel = endRaw ?? "—";
+	const durationEnd = status === "in-progress" ? Date.now() : endMs;
+	const durationLabel =
+		startMs !== null && durationEnd !== null
+			? formatDuration(durationEnd - startMs)
+			: "—";
+	const metrics: { label: string; value: string | number }[] = [
+		{ label: "Duration", value: durationLabel },
+		{ label: "Total", value: counts.total },
+		{ label: "Succeeded", value: counts.succeeded },
+		...(counts.failed > 0 ? [{ label: "Failed", value: counts.failed }] : []),
+		...(counts.pending > 0
+			? [{ label: "Pending", value: counts.pending }]
+			: []),
+		{ label: "Created", value: createdLabel },
+		{ label: "Updated", value: updatedLabel },
+	];
 	const failure =
 		status === "failed" || counts.failed > 0 ? findFailureMessage(tasks) : null;
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="flex items-center gap-3 px-4 h-12 border-b border-border-secondary bg-bg-secondary">
-				<Link
-					to="/async-operations"
-					className="text-text-link hover:underline flex items-center gap-1"
-				>
-					<ArrowLeft className="size-4" />
-					Operations
-				</Link>
-				<span className="text-text-secondary">/</span>
-				<span className="font-mono text-sm truncate" title={operationId}>
-					{operationId}
-				</span>
-				<div className="ml-auto flex items-center gap-2">
+			{isActive ? (
+				<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b border-border-secondary px-4">
 					<Button
 						variant="ghost"
+						danger
 						size="small"
-						onClick={() => refetch()}
-						disabled={isFetching}
+						className="px-0! hover:bg-bg-secondary!"
+						disabled={cancel.isPending}
+						onClick={() => setTerminateOpen(true)}
 					>
-						<RefreshCw
-							className={isFetching ? "animate-spin size-4" : "size-4"}
-						/>
-						Refresh
+						<Ban className="size-4" />
+						Terminate
 					</Button>
-					{isActive ? (
-						<Button
-							variant="secondary"
-							danger
-							size="small"
-							disabled={cancel.isPending}
-							onClick={() => {
-								if (
-									window.confirm(
-										"Cancel this async operation? Active tasks will be removed.",
-									)
-								) {
-									cancel.mutate(operationId);
-								}
-							}}
+				</div>
+			) : null}
+			<div className="flex flex-col px-4 py-3 border-b border-border-secondary">
+				<StatusBadge status={status} />
+				<h1
+					className="mt-1.5 text-lg font-semibold text-text-primary truncate"
+					title={taskName}
+				>
+					{taskName}
+				</h1>
+				<div className="mt-3 flex items-center gap-2 flex-wrap">
+					{metrics.map((m) => (
+						<Badge
+							key={m.label}
+							variant="outline"
+							className="border-transparent gap-1.5 font-normal bg-neutral-100 text-neutral-600"
 						>
-							<XCircle className="size-4" />
-							Cancel
-						</Button>
-					) : null}
+							<span className="opacity-70">{m.label}</span>
+							<span className="font-medium tabular-nums">{m.value}</span>
+						</Badge>
+					))}
 				</div>
-			</div>
-
-			<div className="flex flex-col gap-3 px-4 py-3 border-b border-border-secondary">
-				<div className="flex items-center gap-6">
-					<div className="flex items-center gap-2">
-						<span className="text-text-secondary text-sm">Status:</span>
-						<StatusBadge status={status} />
-					</div>
-					<div className="text-sm text-text-secondary tabular-nums">
-						{counts.succeeded}/{counts.total} succeeded
-						{counts.failed > 0 ? (
-							<span className="text-text-error-primary ml-2">
-								{counts.failed} failed
-							</span>
-						) : null}
-						{counts.pending > 0 ? (
-							<span className="ml-2">{counts.pending} pending</span>
-						) : null}
-					</div>
-				</div>
-				<ProgressBar status={status} counts={counts} />
 			</div>
 
 			{failure ? (
@@ -215,100 +392,79 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 				</Alert>
 			) : null}
 
-			<div className="flex-1 overflow-auto p-4">
-				<Tabs value={tab} onValueChange={setTab}>
-					<TabsList>
-						<TabsTrigger value="tasks">Tasks ({tasks.length})</TabsTrigger>
-						<TabsTrigger value="raw">Raw JSON</TabsTrigger>
-					</TabsList>
-
-					<TabsContent value="tasks" className="mt-3">
-						{tasks.length === 0 ? (
-							<div className="text-text-secondary text-sm py-6 text-center">
-								No tasks recorded for this operation
-							</div>
-						) : (
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Task instance</TableHead>
-										<TableHead>Task name</TableHead>
-										<TableHead>Success</TableHead>
-										<TableHead className="whitespace-nowrap">Started</TableHead>
-										<TableHead className="whitespace-nowrap">Done</TableHead>
-										<TableHead>Attempt</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{tasks.map((t) => (
-										<TaskRow key={t.task_instance} task={t} />
-									))}
-								</TableBody>
-							</Table>
-						)}
-					</TabsContent>
-
-					<TabsContent value="raw" className="mt-3">
-						<JsonBlock value={data} />
-					</TabsContent>
-				</Tabs>
-			</div>
-		</div>
-	);
-}
-
-function TaskRow({ task }: { task: AsyncOperationTask }) {
-	const [expanded, setExpanded] = useState(false);
-	const successLabel =
-		task.success === true ? "yes" : task.success === false ? "no" : "—";
-	const successClass =
-		task.success === true
-			? "text-utility-green"
-			: task.success === false
-				? "text-utility-red"
-				: "text-text-secondary";
-
-	return (
-		<>
-			<TableRow
-				className="cursor-pointer"
-				onClick={() => setExpanded((v) => !v)}
-			>
-				<TableCell className="font-mono text-xs max-w-0 truncate">
-					{task.task_instance}
-				</TableCell>
-				<TableCell className="whitespace-nowrap text-xs">
-					{task.task_name}
-				</TableCell>
-				<TableCell className={successClass}>{successLabel}</TableCell>
-				<TableCell className="whitespace-nowrap text-text-secondary text-xs">
-					{formatDateTime(task.time_started ?? task.execution_time)}
-				</TableCell>
-				<TableCell className="whitespace-nowrap text-text-secondary text-xs">
-					{formatDateTime(task.time_done)}
-				</TableCell>
-				<TableCell className="text-text-secondary text-xs tabular-nums">
-					{task.attempt ?? "—"}
-				</TableCell>
-			</TableRow>
-			{expanded ? (
-				<tr className="bg-bg-secondary">
-					<td colSpan={6} className="p-3">
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-							<div>
-								<div className="text-xs text-text-secondary mb-1">
-									Input (task_data)
-								</div>
-								<JsonBlock value={task.task_data} />
-							</div>
-							<div>
-								<div className="text-xs text-text-secondary mb-1">Outcome</div>
-								<JsonBlock value={task.task_outcome} />
-							</div>
+			<div className="flex-1 overflow-auto">
+				<DataTable<AsyncOperationTask>
+					data={sortedTasks}
+					columns={TASK_COLUMNS}
+					rowKey={(t) => t.task_instance}
+					resizable
+					zebra={false}
+					sort={sort}
+					onSortToggle={handleSortToggle}
+					tableId="async-operation-tasks"
+					renderExpandedRow={(t) => (
+						<div className="h-80 w-full">
+							<ResizablePanelGroup direction="horizontal" className="size-full">
+								<ResizablePanel
+									defaultSize={50}
+									minSize={20}
+									className="flex flex-col overflow-hidden"
+								>
+									<div className="shrink-0 pl-7 pt-2 pb-1 text-sm text-text-secondary">
+										Input
+									</div>
+									<div className="flex-1 min-h-0 px-3">
+										<CodeEditor
+											readOnly
+											mode="json"
+											currentValue={JSON.stringify(
+												t.task_data ?? null,
+												null,
+												2,
+											)}
+										/>
+									</div>
+								</ResizablePanel>
+								<ResizableHandle />
+								<ResizablePanel
+									defaultSize={50}
+									minSize={20}
+									className="flex flex-col overflow-hidden"
+								>
+									<div className="shrink-0 pl-7 pt-2 pb-1 text-sm text-text-secondary">
+										Output
+									</div>
+									<div className="flex-1 min-h-0 px-3">
+										<CodeEditor
+											readOnly
+											mode="json"
+											currentValue={JSON.stringify(
+												t.task_outcome ?? null,
+												null,
+												2,
+											)}
+										/>
+									</div>
+								</ResizablePanel>
+							</ResizablePanelGroup>
 						</div>
-					</td>
-				</tr>
-			) : null}
-		</>
+					)}
+					emptyState={
+						<div className="flex items-center justify-center h-full text-text-secondary">
+							No tasks recorded for this operation
+						</div>
+					}
+				/>
+			</div>
+			<ConfirmDialog
+				open={terminateOpen}
+				onOpenChange={setTerminateOpen}
+				title="Terminate operation"
+				description="Active tasks will be removed. This cannot be undone."
+				confirmLabel="Terminate"
+				danger
+				onConfirm={() => cancel.mutate(operationId)}
+			/>
+		</div>
 	);
 }
