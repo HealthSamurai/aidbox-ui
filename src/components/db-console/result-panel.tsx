@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
+import { ChartPanel } from "../notebook-chart/chart-panel";
 import { ExportDropdown, ResultContent } from "./result-content";
 
 export function ResultPanel({
@@ -39,13 +40,14 @@ export function ResultPanel({
 	isMaximized: boolean;
 	setIsMaximized: (v: boolean) => void;
 }) {
-	const [viewMode, setViewModeState] = useState<"table" | "list">(
+	const [viewMode, setViewModeState] = useState<"table" | "list" | "chart">(
 		() =>
 			(localStorage.getItem("db-console-result-view-mode") as
 				| "table"
-				| "list") ?? "table",
+				| "list"
+				| "chart") ?? "table",
 	);
-	const setViewMode = (v: "table" | "list") => {
+	const setViewMode = (v: "table" | "list" | "chart") => {
 		localStorage.setItem("db-console-result-view-mode", v);
 		setViewModeState(v);
 	};
@@ -73,6 +75,14 @@ export function ResultPanel({
 		[results],
 	);
 
+	const chartData = useMemo(() => {
+		const first = results?.find((r) => !r.error && (r.result?.length ?? 0) > 0);
+		if (!first?.result) return null;
+		const recs = first.result;
+		const cols = Array.from(new Set(recs.flatMap((r) => Object.keys(r))));
+		return { columns: cols, rows: recs.map((rec) => cols.map((c) => rec[c])) };
+	}, [results]);
+
 	return (
 		<div
 			className={`flex flex-col h-full ${isMaximized ? "absolute top-0 left-0 w-full h-full z-30 bg-bg-primary" : ""}`}
@@ -93,10 +103,11 @@ export function ResultPanel({
 					)}
 					<SegmentControl
 						value={viewMode}
-						onValueChange={(v) => setViewMode(v as "table" | "list")}
+						onValueChange={(v) => setViewMode(v as "table" | "list" | "chart")}
 						items={[
 							{ value: "table", label: "Table" },
 							{ value: "list", label: "List" },
+							{ value: "chart", label: "Chart" },
 						]}
 					/>
 					<ExportDropdown
@@ -164,6 +175,21 @@ export function ResultPanel({
 							</div>
 						</div>
 					</div>
+				) : viewMode === "chart" ? (
+					chartData ? (
+						<div className="flex-1 min-h-0">
+							<ChartPanel
+								columns={chartData.columns}
+								rows={chartData.rows}
+								editable
+								fullHeight
+							/>
+						</div>
+					) : (
+						<div className="flex-1 flex items-center justify-center bg-bg-secondary text-text-secondary">
+							No data to chart
+						</div>
+					)
 				) : (
 					<ResultContent
 						results={results}

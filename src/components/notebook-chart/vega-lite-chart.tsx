@@ -28,5 +28,5 @@ export default function VegaLiteChart({
 		return () => observer.disconnect();
 	}, [result]);
 
-	return <div ref={ref} style={{ width: "100%" }} />;
+	return <div ref={ref} style={{ width: "100%", height: "100%" }} />;
 }
