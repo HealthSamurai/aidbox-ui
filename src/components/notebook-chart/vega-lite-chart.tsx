@@ -5,7 +5,7 @@ import type { EmbedOptions, VisualizationSpec } from "vega-embed";
 const CHART_OPTIONS: EmbedOptions = {
 	mode: "vega-lite",
 	actions: false,
-	renderer: "canvas",
+	renderer: "svg",
 };
 
 export default function VegaLiteChart({
