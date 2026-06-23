@@ -7,6 +7,7 @@ import {
 	ChevronDown,
 	Copy,
 	Database,
+	Eraser,
 	FileCode,
 	FileDown,
 	Globe,
@@ -16,6 +17,8 @@ import {
 	Loader2,
 	Pencil,
 	Play,
+	Plus,
+	Settings2,
 	Share2,
 	SquareTerminal,
 	Table,
@@ -24,18 +27,43 @@ import {
 	User,
 	X,
 } from "lucide-react";
-import { Children, useEffect, useRef, useState } from "react";
+import {
+	Children,
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { VisualizationSpec } from "vega-embed";
 import { useAidboxClient } from "../AidboxClient";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { ResultContent } from "../components/db-console/result-content";
 import { transformToQueryResultItems } from "../components/db-console/tables-view";
+import {
+	ChartIconBar,
+	ChartIconCustom,
+	ChartIconLine,
+	ChartIconPie,
+	ChartIconPyramid,
+} from "../components/notebook-chart/chart-icons";
+import {
+	chartConfigExtensions,
+	foldChartConfigData,
+} from "../components/notebook-chart/fold-data";
 import { NotebookResourcePicker } from "../components/notebook-resource-picker";
 import { HTTP_STATUS_CODES } from "../shared/const";
 import { copyToClipboard } from "../utils/clipboard";
 import { prettyEdn } from "../utils/edn";
 import type { QueryResultItem } from "../webmcp/db-console-context";
+
+const VegaLiteChart = lazy(
+	() => import("../components/notebook-chart/vega-lite-chart"),
+);
 
 type SavedRestResult = {
 	status?: number;
@@ -612,6 +640,13 @@ export function SqlCellView({
 		}
 	};
 
+	const clear = () => {
+		setResults(null);
+		setError(null);
+		setDuration(undefined);
+		onResultChange?.(null);
+	};
+
 	const hasResponse = results !== null || error !== null;
 
 	return (
@@ -621,19 +656,32 @@ export function SqlCellView({
 					<Database className="size-4" />
 					SQL
 				</span>
-				<button
-					type="button"
-					disabled={loading}
-					onClick={() => void send()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-				>
-					{loading ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : (
-						<Play className="size-4 fill-current" />
+				<div className="flex items-center gap-2">
+					{hasResponse && onResultChange && (
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							aria-label="Clear result"
+							onClick={clear}
+						>
+							<Eraser />
+							Clear result
+						</HSComp.Button>
 					)}
-					{loading ? "Sending…" : "Send"}
-				</button>
+					<button
+						type="button"
+						disabled={loading}
+						onClick={() => void send()}
+						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					>
+						{loading ? (
+							<Loader2 className="size-4 animate-spin" />
+						) : (
+							<Play className="size-4 fill-current" />
+						)}
+						{loading ? "Sending…" : "Send"}
+					</button>
+				</div>
 			</div>
 			<div className="max-h-[400px] overflow-auto [&_.cm-content]:!pl-1.5">
 				<HSComp.CodeEditor
@@ -661,21 +709,6 @@ export function SqlCellView({
 									<span className="font-bold">{Math.round(duration)}</span>
 									<span className="ml-1">ms</span>
 								</span>
-							)}
-							{onResultChange && (
-								<button
-									type="button"
-									onClick={() => {
-										setResults(null);
-										setError(null);
-										setDuration(undefined);
-										onResultChange(null);
-									}}
-									aria-label="Clear result"
-									className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-								>
-									<X className="size-4" />
-								</button>
 							)}
 						</div>
 					</div>
@@ -825,6 +858,10 @@ export function ViewDefinitionCellView({
 		onResultChange?.(null);
 	};
 
+	const triggerAutoRun = useRunOnSelect(vd?.id, () => {
+		void run();
+	});
+
 	const label = vd?.title ?? vd?.name ?? vd?.id ?? "(unknown view)";
 	const columns =
 		result?.ok && result.rows.length > 0
@@ -842,26 +879,42 @@ export function ViewDefinitionCellView({
 					{editable && (
 						<NotebookResourcePicker
 							value=""
-							onChange={(v) => onValueChange?.(v)}
+							onChange={(v) => {
+								triggerAutoRun();
+								onValueChange?.(v);
+							}}
 							kinds={["ViewDefinition"]}
 							placeholder={url ? "Change…" : "Select view…"}
 							className={url ? "max-w-[200px]" : "max-w-[500px]"}
 						/>
 					)}
 				</div>
-				<button
-					type="button"
-					disabled={loading || !vd?.id}
-					onClick={() => void run()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-				>
-					{loading ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : (
-						<Play className="size-4 fill-current" />
+				<div className="flex items-center gap-2">
+					{result && onResultChange && (
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							aria-label="Clear result"
+							onClick={clear}
+						>
+							<Eraser />
+							Clear result
+						</HSComp.Button>
 					)}
-					{loading ? "Running…" : "Run"}
-				</button>
+					<button
+						type="button"
+						disabled={loading || !vd?.id}
+						onClick={() => void run()}
+						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					>
+						{loading ? (
+							<Loader2 className="size-4 animate-spin" />
+						) : (
+							<Play className="size-4 fill-current" />
+						)}
+						{loading ? "Running…" : "Run"}
+					</button>
+				</div>
 			</div>
 			{url && (
 				<div className="px-3 py-2 border-b border-border-default flex flex-col gap-0.5">
@@ -890,21 +943,11 @@ export function ViewDefinitionCellView({
 			)}
 			{result && (
 				<>
-					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
+					<div className="flex items-center bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
 						<span className="text-sm font-medium text-text-secondary">
 							Result
 							{result.ok ? ` (${result.rows.length})` : " — error"}
 						</span>
-						{onResultChange && (
-							<button
-								type="button"
-								onClick={clear}
-								aria-label="Clear result"
-								className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-							>
-								<X className="size-4" />
-							</button>
-						)}
 					</div>
 					{result.ok ? (
 						result.rows.length === 0 ? (
@@ -1065,9 +1108,19 @@ function parseSqlQueryResponse(body: ParamsResp): SqlQueryRunResult {
 	return { ok: true, columns, rows };
 }
 
+type ChartConfig = {
+	type: "bar" | "line" | "pie" | "pyramid" | "custom";
+	x: string;
+	y: string[];
+	color: string;
+	rawSpec?: string;
+};
+
 function parseSqlQueryCellValue(raw: string): {
 	url: string;
 	params: Record<string, string>;
+	chart?: ChartConfig;
+	view?: "table" | "chart";
 } {
 	const trimmed = (raw ?? "").trim();
 	if (!trimmed) return { url: "", params: {} };
@@ -1076,8 +1129,15 @@ function parseSqlQueryCellValue(raw: string): {
 			const obj = JSON.parse(trimmed) as {
 				url?: string;
 				params?: Record<string, string>;
+				chart?: ChartConfig;
+				view?: "table" | "chart";
 			};
-			return { url: obj.url ?? "", params: obj.params ?? {} };
+			return {
+				url: obj.url ?? "",
+				params: obj.params ?? {},
+				chart: obj.chart,
+				view: obj.view,
+			};
 		} catch {
 			return { url: trimmed, params: {} };
 		}
@@ -1088,13 +1148,693 @@ function parseSqlQueryCellValue(raw: string): {
 function stringifySqlQueryCellValue(
 	url: string,
 	params: Record<string, string>,
+	chart?: ChartConfig,
+	view?: "table" | "chart",
 ): string {
 	const nonEmpty: Record<string, string> = {};
 	for (const [k, v] of Object.entries(params)) {
 		if (v !== "") nonEmpty[k] = v;
 	}
-	if (Object.keys(nonEmpty).length === 0) return url;
-	return JSON.stringify({ url, params: nonEmpty });
+	const persistView = view === "chart" ? "chart" : undefined;
+	if (Object.keys(nonEmpty).length === 0 && !chart && !persistView) return url;
+	const out: {
+		url: string;
+		params?: Record<string, string>;
+		chart?: ChartConfig;
+		view?: "table" | "chart";
+	} = { url };
+	if (Object.keys(nonEmpty).length > 0) out.params = nonEmpty;
+	if (chart) out.chart = chart;
+	if (persistView) out.view = persistView;
+	return JSON.stringify(out);
+}
+
+function useRunOnSelect(resourceId: string | undefined, run: () => void) {
+	const runRef = useRef(run);
+	runRef.current = run;
+	const pendingRef = useRef(false);
+	useEffect(() => {
+		if (resourceId && pendingRef.current) {
+			pendingRef.current = false;
+			runRef.current();
+		}
+	}, [resourceId]);
+	return () => {
+		pendingRef.current = true;
+	};
+}
+
+function buildStackedBarSpec(
+	records: Record<string, unknown>[],
+	x: string,
+	measures: string[],
+	color: string,
+): VisualizationSpec {
+	const ys = measures.filter(Boolean);
+	if (ys.length >= 2) {
+		return {
+			$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+			data: { values: records },
+			transform: [{ fold: ys, as: ["measure", "__value"] }],
+			width: "container",
+			height: 280,
+			mark: "bar",
+			encoding: {
+				x: { field: x, type: "nominal" },
+				y: { field: "__value", type: "quantitative", aggregate: "sum" },
+				color: { field: "measure", type: "nominal" },
+			},
+			config: { view: { stroke: null } },
+		} as VisualizationSpec;
+	}
+	const encoding: Record<string, unknown> = {
+		x: { field: x, type: "nominal" },
+		y: { field: ys[0] ?? "", type: "quantitative", aggregate: "sum" },
+	};
+	if (color) {
+		encoding.color = { field: color, type: "nominal" };
+	}
+	return {
+		$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+		data: { values: records },
+		width: "container",
+		height: 280,
+		mark: "bar",
+		encoding,
+		config: { view: { stroke: null } },
+	} as VisualizationSpec;
+}
+
+function buildPyramidSpec(
+	records: Record<string, unknown>[],
+	category: string,
+	measure: string,
+	group: string,
+): VisualizationSpec {
+	if (!group) {
+		return {
+			$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+			data: { values: records },
+			width: "container",
+			height: 280,
+			mark: "bar",
+			encoding: {
+				y: {
+					field: category,
+					type: "nominal",
+					sort: "descending",
+					axis: { title: null },
+				},
+				x: {
+					field: measure,
+					type: "quantitative",
+					aggregate: "sum",
+					title: measure,
+				},
+			},
+			config: { view: { stroke: null }, axis: { grid: false } },
+		} as VisualizationSpec;
+	}
+	const groupValues = Array.from(
+		new Set(records.map((r) => String(r[group]))),
+	).slice(0, 2);
+	const negated = groupValues[1] ?? "";
+	const signed = `datum[${JSON.stringify(group)}] === ${JSON.stringify(negated)} ? -datum[${JSON.stringify(measure)}] : datum[${JSON.stringify(measure)}]`;
+	return {
+		$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+		data: { values: records },
+		transform: [{ calculate: signed, as: "__signed" }],
+		width: "container",
+		height: 280,
+		mark: "bar",
+		encoding: {
+			y: {
+				field: category,
+				type: "nominal",
+				sort: "descending",
+				axis: { title: null },
+			},
+			x: {
+				aggregate: "sum",
+				field: "__signed",
+				type: "quantitative",
+				title: measure,
+				axis: { format: "s" },
+			},
+			color: {
+				field: group,
+				type: "nominal",
+				legend: { orient: "top", title: null },
+			},
+		},
+		config: { view: { stroke: null }, axis: { grid: false } },
+	} as VisualizationSpec;
+}
+
+const CHART_TYPES = [
+	{ value: "bar", label: "Stacked bar", icon: <ChartIconBar /> },
+	{ value: "line", label: "Line", icon: <ChartIconLine /> },
+	{ value: "pie", label: "Pie", icon: <ChartIconPie /> },
+	{ value: "pyramid", label: "Pyramid", icon: <ChartIconPyramid /> },
+	{ value: "custom", label: "Custom config", icon: <ChartIconCustom /> },
+] as const;
+
+function detectFieldType(
+	records: Record<string, unknown>[],
+	field: string,
+): "quantitative" | "temporal" | "nominal" {
+	let numeric = false;
+	for (const r of records) {
+		const v = r[field];
+		if (typeof v === "string" && /^\d{4}-\d{2}/.test(v)) return "temporal";
+		if (typeof v === "number") numeric = true;
+		else if (v != null) return "nominal";
+	}
+	return numeric ? "quantitative" : "nominal";
+}
+
+function buildLineSpec(
+	records: Record<string, unknown>[],
+	x: string,
+	measures: string[],
+	color: string,
+): VisualizationSpec {
+	const ys = measures.filter(Boolean);
+	if (ys.length >= 2) {
+		return {
+			$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+			data: { values: records },
+			transform: [{ fold: ys, as: ["measure", "__value"] }],
+			width: "container",
+			height: 280,
+			mark: { type: "line", point: true },
+			encoding: {
+				x: { field: x, type: detectFieldType(records, x) },
+				y: { field: "__value", type: "quantitative", aggregate: "sum" },
+				color: { field: "measure", type: "nominal" },
+			},
+			config: { view: { stroke: null } },
+		} as VisualizationSpec;
+	}
+	const encoding: Record<string, unknown> = {
+		x: { field: x, type: detectFieldType(records, x) },
+		y: { field: ys[0] ?? "", type: "quantitative", aggregate: "sum" },
+	};
+	if (color) {
+		encoding.color = { field: color, type: "nominal" };
+	}
+	return {
+		$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+		data: { values: records },
+		width: "container",
+		height: 280,
+		mark: { type: "line", point: true },
+		encoding,
+		config: { view: { stroke: null } },
+	} as VisualizationSpec;
+}
+
+function buildPieSpec(
+	records: Record<string, unknown>[],
+	category: string,
+	measure: string,
+): VisualizationSpec {
+	return {
+		$schema: "https://vega.github.io/schema/vega-lite/v6.json",
+		data: { values: records },
+		width: "container",
+		height: 280,
+		mark: { type: "arc", tooltip: true },
+		encoding: {
+			theta: {
+				field: measure,
+				type: "quantitative",
+				aggregate: "sum",
+				stack: true,
+			},
+			color: {
+				field: category,
+				type: "nominal",
+				legend: { orient: "right" },
+			},
+		},
+		config: { view: { stroke: null } },
+	} as VisualizationSpec;
+}
+
+function stripChartData(text: string): string {
+	try {
+		const obj = JSON.parse(text) as Record<string, unknown>;
+		if (obj && typeof obj === "object") delete obj.data;
+		return JSON.stringify(obj, null, 2);
+	} catch {
+		return text;
+	}
+}
+
+function computeChartPreset(
+	columns: string[],
+	records: Record<string, unknown>[],
+): { x: string; y: string; color: string } {
+	const numeric = columns.filter((c) =>
+		records.some((r) => typeof r[c] === "number"),
+	);
+	const x = columns[0] ?? "";
+	const y = numeric.find((c) => c !== x) ?? columns.find((c) => c !== x) ?? x;
+	const color = columns.find((c) => c !== x && c !== y) ?? "";
+	return { x, y, color };
+}
+
+function MeasureList({
+	label,
+	values,
+	columns,
+	onChange,
+}: {
+	label: string;
+	values: string[];
+	columns: string[];
+	onChange: (next: string[]) => void;
+}) {
+	const setAt = (i: number, v: string) =>
+		onChange(values.map((cur, idx) => (idx === i ? v : cur)));
+	const removeAt = (i: number) =>
+		onChange(values.filter((_, idx) => idx !== i));
+	const add = () => {
+		const used = new Set(values);
+		const next = columns.find((c) => !used.has(c)) ?? columns[0] ?? "";
+		onChange([...values, next]);
+	};
+	return (
+		<div className="flex flex-col gap-1.5">
+			<span className="typo-label-tiny uppercase tracking-wide text-text-tertiary">
+				{label}
+			</span>
+			{values.map((v, i) => (
+				<div key={v} className="flex items-center gap-1">
+					<HSComp.Select value={v} onValueChange={(nv) => setAt(i, nv)}>
+						<HSComp.SelectTrigger className="w-full h-8">
+							<HSComp.SelectValue placeholder="—" />
+						</HSComp.SelectTrigger>
+						<HSComp.SelectContent>
+							{columns.map((c) => (
+								<HSComp.SelectItem key={c} value={c}>
+									{c}
+								</HSComp.SelectItem>
+							))}
+						</HSComp.SelectContent>
+					</HSComp.Select>
+					{values.length > 1 && (
+						<HSComp.IconButton
+							icon={<X />}
+							aria-label="Remove measure"
+							onClick={() => removeAt(i)}
+						/>
+					)}
+				</div>
+			))}
+			{columns.length > values.length && (
+				<HSComp.Button
+					variant="ghost"
+					size="small"
+					onClick={add}
+					className="self-start"
+				>
+					<Plus />
+					Add measure
+				</HSComp.Button>
+			)}
+		</div>
+	);
+}
+
+function ColumnSelect({
+	label,
+	value,
+	columns,
+	onChange,
+	allowNone,
+}: {
+	label: string;
+	value: string;
+	columns: string[];
+	onChange: (v: string) => void;
+	allowNone?: boolean;
+}) {
+	return (
+		<div className="flex flex-col gap-1.5">
+			<span className="typo-label-tiny uppercase tracking-wide text-text-tertiary">
+				{label}
+			</span>
+			<HSComp.Select
+				value={value === "" ? "__none__" : value}
+				onValueChange={(v) => onChange(v === "__none__" ? "" : v)}
+			>
+				<HSComp.SelectTrigger className="w-full h-8">
+					<HSComp.SelectValue placeholder="—" />
+				</HSComp.SelectTrigger>
+				<HSComp.SelectContent>
+					{allowNone && (
+						<HSComp.SelectItem value="__none__">None</HSComp.SelectItem>
+					)}
+					{columns.map((c) => (
+						<HSComp.SelectItem key={c} value={c}>
+							{c}
+						</HSComp.SelectItem>
+					))}
+				</HSComp.SelectContent>
+			</HSComp.Select>
+		</div>
+	);
+}
+
+function NotebookChartPanel({
+	columns,
+	rows,
+	chart,
+	onChartChange,
+	editable,
+}: {
+	columns: string[];
+	rows: unknown[][];
+	chart?: ChartConfig;
+	onChartChange?: (config: ChartConfig) => void;
+	editable: boolean;
+}) {
+	const [showSettings, setShowSettings] = useState(editable);
+	const [chartType, setChartType] = useState<
+		"bar" | "line" | "pie" | "pyramid" | "custom"
+	>(chart?.type ?? "bar");
+	const [rawSpec, setRawSpec] = useState(chart?.rawSpec ?? "");
+	const [chartError, setChartError] = useState<string | null>(null);
+
+	const records = useMemo(() => {
+		return rows.map((row) => {
+			const obj: Record<string, unknown> = {};
+			columns.forEach((col, i) => {
+				obj[col] = row[i];
+			});
+			return obj;
+		});
+	}, [columns, rows]);
+
+	const preset = useMemo(
+		() => computeChartPreset(columns, records),
+		[columns, records],
+	);
+	const [xField, setXField] = useState(chart?.x ?? preset.x);
+	const [yFields, setYFields] = useState<string[]>(chart?.y ?? [preset.y]);
+	const [colorField, setColorField] = useState(chart?.color ?? preset.color);
+
+	const colsKey = JSON.stringify(columns);
+	const [prevColsKey, setPrevColsKey] = useState(colsKey);
+	if (prevColsKey !== colsKey) {
+		setPrevColsKey(colsKey);
+		setXField(preset.x);
+		setYFields([preset.y]);
+		setColorField(preset.color);
+	}
+
+	const reportRef = useRef(onChartChange);
+	reportRef.current = onChartChange;
+	const firstReport = useRef(true);
+	useEffect(() => {
+		if (firstReport.current) {
+			firstReport.current = false;
+			return;
+		}
+		reportRef.current?.({
+			type: chartType,
+			x: xField,
+			y: yFields,
+			color: colorField,
+			rawSpec:
+				chartType === "custom" && rawSpec ? stripChartData(rawSpec) : undefined,
+		});
+	}, [chartType, xField, yFields, colorField, rawSpec]);
+
+	const formSpec = useMemo(() => {
+		const firstY = yFields[0] ?? "";
+		if (chartType === "pyramid")
+			return buildPyramidSpec(records, xField, firstY, colorField);
+		if (chartType === "line")
+			return buildLineSpec(records, xField, yFields, colorField);
+		if (chartType === "pie")
+			return buildPieSpec(records, colorField || xField, firstY);
+		return buildStackedBarSpec(records, xField, yFields, colorField);
+	}, [chartType, records, xField, yFields, colorField]);
+
+	const multiMeasure =
+		(chartType === "bar" || chartType === "line") && yFields.length >= 2;
+
+	const { spec, error: specError } = useMemo<{
+		spec: VisualizationSpec | null;
+		error: string | null;
+	}>(() => {
+		if (chartType !== "custom") return { spec: formSpec, error: null };
+		try {
+			const parsed = JSON.parse(rawSpec) as Record<string, unknown>;
+			if (parsed && typeof parsed === "object" && !("data" in parsed)) {
+				parsed.data = { values: records };
+			}
+			return { spec: parsed as VisualizationSpec, error: null };
+		} catch (e) {
+			return { spec: null, error: e instanceof Error ? e.message : String(e) };
+		}
+	}, [chartType, rawSpec, formSpec, records]);
+
+	const [prevSpec, setPrevSpec] = useState(spec);
+	if (prevSpec !== spec) {
+		setPrevSpec(spec);
+		setChartError(null);
+	}
+
+	const chartBody = (
+		<>
+			{spec ? (
+				<Suspense
+					fallback={
+						<div className="flex items-center justify-center h-[280px] text-text-tertiary">
+							<Loader2 className="size-4 animate-spin" />
+						</div>
+					}
+				>
+					<VegaLiteChart
+						spec={spec}
+						onError={(e) => setChartError(String(e))}
+					/>
+				</Suspense>
+			) : (
+				<div className="px-1 py-2 typo-body-xs text-critical-default">
+					Invalid Vega-Lite config: {specError}
+				</div>
+			)}
+			{spec && chartError && (
+				<div className="px-1 py-2 typo-body-xs text-critical-default">
+					{chartError}
+				</div>
+			)}
+		</>
+	);
+
+	if (!showSettings) {
+		return (
+			<div className="flex flex-col max-h-[460px]">
+				<div className="flex justify-end px-2 pt-2">
+					<HSComp.Toggle
+						variant="outline"
+						pressed={false}
+						onPressedChange={() => setShowSettings(true)}
+						aria-label="Chart settings"
+					>
+						<Settings2 />
+						Settings
+					</HSComp.Toggle>
+				</div>
+				<div className="min-h-0 overflow-auto p-3 pt-2">{chartBody}</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="h-[400px]">
+			<HSComp.ResizablePanelGroup direction="horizontal">
+				<HSComp.ResizablePanel defaultSize={60} minSize={30}>
+					<div className="h-full overflow-auto p-3">{chartBody}</div>
+				</HSComp.ResizablePanel>
+				<HSComp.ResizableHandle withHandle />
+				<HSComp.ResizablePanel defaultSize={40} minSize={20}>
+					<div className="flex h-full flex-col bg-bg-primary">
+						<div className="flex items-center justify-between pl-3 pr-2 h-9 border-b border-border-default shrink-0">
+							<div className="flex items-center gap-1">
+								{CHART_TYPES.map((t) => (
+									<HSComp.Tooltip key={t.value}>
+										<HSComp.TooltipTrigger asChild>
+											<HSComp.IconButton
+												icon={t.icon}
+												aria-label={t.label}
+												onClick={() => {
+													if (t.value === "custom" && !rawSpec) {
+														setRawSpec(JSON.stringify(formSpec, null, 2));
+													}
+													setChartType(t.value);
+												}}
+												className={
+													chartType === t.value
+														? "border border-border-link text-text-info-primary bg-bg-tertiary"
+														: ""
+												}
+											/>
+										</HSComp.TooltipTrigger>
+										<HSComp.TooltipContent side="bottom">
+											{t.label}
+										</HSComp.TooltipContent>
+									</HSComp.Tooltip>
+								))}
+							</div>
+							<HSComp.IconButton
+								icon={<X />}
+								aria-label="Close chart settings"
+								onClick={() => setShowSettings(false)}
+							/>
+						</div>
+						{chartType === "custom" ? (
+							<div className="flex-1 min-h-0 overflow-auto">
+								<HSComp.CodeEditor
+									mode="json"
+									defaultValue={rawSpec}
+									onChange={setRawSpec}
+									lineNumbers={false}
+									additionalExtensions={chartConfigExtensions}
+									viewCallback={foldChartConfigData}
+								/>
+							</div>
+						) : (
+							<div className="flex flex-col gap-3 p-3 min-h-0 flex-1 overflow-auto">
+								{chartType !== "pie" && (
+									<ColumnSelect
+										label="X axis"
+										value={xField}
+										columns={columns}
+										onChange={setXField}
+									/>
+								)}
+								{chartType === "bar" || chartType === "line" ? (
+									<MeasureList
+										label="Y axis"
+										values={yFields}
+										columns={columns}
+										onChange={setYFields}
+									/>
+								) : (
+									<ColumnSelect
+										label={chartType === "pie" ? "Value" : "Y axis"}
+										value={yFields[0] ?? ""}
+										columns={columns}
+										onChange={(v) => setYFields([v])}
+									/>
+								)}
+								{!multiMeasure && (
+									<ColumnSelect
+										label={chartType === "pie" ? "Category" : "Color"}
+										value={colorField}
+										columns={columns}
+										onChange={setColorField}
+										allowNone={chartType !== "pie"}
+									/>
+								)}
+							</div>
+						)}
+					</div>
+				</HSComp.ResizablePanel>
+			</HSComp.ResizablePanelGroup>
+		</div>
+	);
+}
+
+function SqlQueryResultView({
+	result,
+	canChart,
+	viewMode,
+	onViewModeChange,
+	chart,
+	onChartChange,
+	editable,
+}: {
+	result: SqlQueryRunResult;
+	canChart: boolean;
+	viewMode: "table" | "chart";
+	onViewModeChange: (v: "table" | "chart") => void;
+	chart?: ChartConfig;
+	onChartChange?: (config: ChartConfig) => void;
+	editable: boolean;
+}) {
+	return (
+		<>
+			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
+				<span className="text-sm font-medium text-text-secondary">
+					Result
+					{result.ok ? ` (${result.rows.length})` : " — error"}
+				</span>
+				{canChart && (
+					<HSComp.SegmentControl
+						value={viewMode}
+						onValueChange={(v) => onViewModeChange(v as "table" | "chart")}
+						items={[
+							{ value: "table", label: "Table" },
+							{ value: "chart", label: "Chart" },
+						]}
+					/>
+				)}
+			</div>
+			{!result.ok ? (
+				<pre className="px-3 py-2 typo-code whitespace-pre-wrap text-critical-default">
+					{result.error}
+				</pre>
+			) : canChart && viewMode === "chart" ? (
+				<NotebookChartPanel
+					columns={result.columns}
+					rows={result.rows}
+					chart={chart}
+					onChartChange={onChartChange}
+					editable={editable}
+				/>
+			) : result.rows.length === 0 ? (
+				<div className="px-3 py-3 typo-body-xs text-text-tertiary italic">
+					No rows.
+				</div>
+			) : (
+				<div className="max-h-[400px] overflow-auto">
+					<HSComp.Table zebra stickyHeader className="typo-code">
+						<HSComp.TableHeader>
+							<HSComp.TableRow>
+								{result.columns.map((c) => (
+									<HSComp.TableHead key={c}>{c}</HSComp.TableHead>
+								))}
+							</HSComp.TableRow>
+						</HSComp.TableHeader>
+						<HSComp.TableBody>
+							{result.rows.map((row, i) => (
+								<HSComp.TableRow
+									// biome-ignore lint/suspicious/noArrayIndexKey: result rows are positional
+									key={`row-${i}`}
+								>
+									{row.map((cellVal, j) => (
+										<HSComp.TableCell
+											// biome-ignore lint/suspicious/noArrayIndexKey: column order matches schema
+											key={`${i}-${j}`}
+										>
+											{formatCellValue(cellVal)}
+										</HSComp.TableCell>
+									))}
+								</HSComp.TableRow>
+							))}
+						</HSComp.TableBody>
+					</HSComp.Table>
+				</div>
+			)}
+		</>
+	);
 }
 
 export function SqlQueryCellView({
@@ -1128,6 +1868,11 @@ export function SqlQueryCellView({
 	const initial = (cell.result as SqlQueryRunResult | null) ?? null;
 	const [result, setResult] = useState<SqlQueryRunResult | null>(initial);
 	const [loading, setLoading] = useState(false);
+	const [viewMode, setViewMode] = useState<"table" | "chart">(
+		parsed.view ?? "table",
+	);
+
+	const canChart = isView && !!result && result.ok && result.rows.length > 0;
 
 	const run = async () => {
 		if (!lib?.id) return;
@@ -1177,6 +1922,29 @@ export function SqlQueryCellView({
 		onResultChange?.(null);
 	};
 
+	const triggerAutoRun = useRunOnSelect(lib?.id, () => {
+		void run();
+	});
+
+	const persistChart = useCallback(
+		(chart: ChartConfig) => {
+			onValueChange?.(
+				stringifySqlQueryCellValue(url, paramValues, chart, viewMode),
+			);
+		},
+		[onValueChange, url, paramValues, viewMode],
+	);
+
+	const changeViewMode = useCallback(
+		(v: "table" | "chart") => {
+			setViewMode(v);
+			onValueChange?.(
+				stringifySqlQueryCellValue(url, paramValues, parsed.chart, v),
+			);
+		},
+		[onValueChange, url, paramValues, parsed.chart],
+	);
+
 	const label = lib?.title ?? lib?.name ?? lib?.id ?? "(unknown query)";
 
 	return (
@@ -1196,6 +1964,7 @@ export function SqlQueryCellView({
 							value=""
 							onChange={(v) => {
 								setParamValues({});
+								triggerAutoRun();
 								onValueChange?.(v);
 							}}
 							kinds={[isView ? "SQLView" : "SQLQuery"]}
@@ -1206,19 +1975,32 @@ export function SqlQueryCellView({
 						/>
 					)}
 				</div>
-				<button
-					type="button"
-					disabled={loading || !lib?.id}
-					onClick={() => void run()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-				>
-					{loading ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : (
-						<Play className="size-4 fill-current" />
+				<div className="flex items-center gap-2">
+					{result && onResultChange && (
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							aria-label="Clear result"
+							onClick={clear}
+						>
+							<Eraser />
+							Clear result
+						</HSComp.Button>
 					)}
-					{loading ? "Running…" : "Run"}
-				</button>
+					<button
+						type="button"
+						disabled={loading || !lib?.id}
+						onClick={() => void run()}
+						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					>
+						{loading ? (
+							<Loader2 className="size-4 animate-spin" />
+						) : (
+							<Play className="size-4 fill-current" />
+						)}
+						{loading ? "Running…" : "Run"}
+					</button>
+				</div>
 			</div>
 			{url && (
 				<div className="px-3 py-2 border-b border-border-default flex flex-col gap-0.5">
@@ -1270,7 +2052,14 @@ export function SqlQueryCellView({
 											[key]: e.target.value,
 										};
 										setParamValues(next);
-										onValueChange?.(stringifySqlQueryCellValue(url, next));
+										onValueChange?.(
+											stringifySqlQueryCellValue(
+												url,
+												next,
+												parsed.chart,
+												viewMode,
+											),
+										);
 									}}
 									placeholder={p.type ?? "string"}
 									className="w-full px-2 py-1 typo-code border border-border-default rounded text-text-primary bg-bg-primary outline-none focus:border-border-info-primary"
@@ -1281,64 +2070,15 @@ export function SqlQueryCellView({
 				</div>
 			)}
 			{result && (
-				<>
-					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
-						<span className="text-sm font-medium text-text-secondary">
-							Result
-							{result.ok ? ` (${result.rows.length})` : " — error"}
-						</span>
-						{onResultChange && (
-							<button
-								type="button"
-								onClick={clear}
-								aria-label="Clear result"
-								className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-							>
-								<X className="size-4" />
-							</button>
-						)}
-					</div>
-					{result.ok ? (
-						result.rows.length === 0 ? (
-							<div className="px-3 py-3 typo-body-xs text-text-tertiary italic">
-								No rows.
-							</div>
-						) : (
-							<div className="max-h-[400px] overflow-auto">
-								<HSComp.Table zebra stickyHeader className="typo-code">
-									<HSComp.TableHeader>
-										<HSComp.TableRow>
-											{result.columns.map((c) => (
-												<HSComp.TableHead key={c}>{c}</HSComp.TableHead>
-											))}
-										</HSComp.TableRow>
-									</HSComp.TableHeader>
-									<HSComp.TableBody>
-										{result.rows.map((row, i) => (
-											<HSComp.TableRow
-												// biome-ignore lint/suspicious/noArrayIndexKey: result rows are positional
-												key={`row-${i}`}
-											>
-												{row.map((cellVal, j) => (
-													<HSComp.TableCell
-														// biome-ignore lint/suspicious/noArrayIndexKey: column order matches schema
-														key={`${i}-${j}`}
-													>
-														{formatCellValue(cellVal)}
-													</HSComp.TableCell>
-												))}
-											</HSComp.TableRow>
-										))}
-									</HSComp.TableBody>
-								</HSComp.Table>
-							</div>
-						)
-					) : (
-						<pre className="px-3 py-2 typo-code whitespace-pre-wrap text-critical-default">
-							{result.error}
-						</pre>
-					)}
-				</>
+				<SqlQueryResultView
+					result={result}
+					canChart={canChart}
+					viewMode={viewMode}
+					onViewModeChange={changeViewMode}
+					chart={parsed.chart}
+					onChartChange={persistChart}
+					editable={editable}
+				/>
 			)}
 		</div>
 	);
