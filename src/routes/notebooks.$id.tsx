@@ -7,6 +7,7 @@ import {
 	ChevronDown,
 	Copy,
 	Database,
+	Eraser,
 	FileCode,
 	FileDown,
 	Globe,
@@ -24,13 +25,17 @@ import {
 	User,
 	X,
 } from "lucide-react";
-import { Children, useEffect, useRef, useState } from "react";
+import { Children, useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAidboxClient } from "../AidboxClient";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { ResultContent } from "../components/db-console/result-content";
 import { transformToQueryResultItems } from "../components/db-console/tables-view";
+import {
+	type ChartConfig,
+	ChartPanel,
+} from "../components/notebook-chart/chart-panel";
 import { NotebookResourcePicker } from "../components/notebook-resource-picker";
 import { HTTP_STATUS_CODES } from "../shared/const";
 import { copyToClipboard } from "../utils/clipboard";
@@ -612,6 +617,13 @@ export function SqlCellView({
 		}
 	};
 
+	const clear = () => {
+		setResults(null);
+		setError(null);
+		setDuration(undefined);
+		onResultChange?.(null);
+	};
+
 	const hasResponse = results !== null || error !== null;
 
 	return (
@@ -621,19 +633,32 @@ export function SqlCellView({
 					<Database className="size-4" />
 					SQL
 				</span>
-				<button
-					type="button"
-					disabled={loading}
-					onClick={() => void send()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-				>
-					{loading ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : (
-						<Play className="size-4 fill-current" />
+				<div className="flex items-center gap-2">
+					{hasResponse && onResultChange && (
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							aria-label="Clear result"
+							onClick={clear}
+						>
+							<Eraser />
+							Clear result
+						</HSComp.Button>
 					)}
-					{loading ? "Sending…" : "Send"}
-				</button>
+					<button
+						type="button"
+						disabled={loading}
+						onClick={() => void send()}
+						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					>
+						{loading ? (
+							<Loader2 className="size-4 animate-spin" />
+						) : (
+							<Play className="size-4 fill-current" />
+						)}
+						{loading ? "Sending…" : "Send"}
+					</button>
+				</div>
 			</div>
 			<div className="max-h-[400px] overflow-auto [&_.cm-content]:!pl-1.5">
 				<HSComp.CodeEditor
@@ -661,21 +686,6 @@ export function SqlCellView({
 									<span className="font-bold">{Math.round(duration)}</span>
 									<span className="ml-1">ms</span>
 								</span>
-							)}
-							{onResultChange && (
-								<button
-									type="button"
-									onClick={() => {
-										setResults(null);
-										setError(null);
-										setDuration(undefined);
-										onResultChange(null);
-									}}
-									aria-label="Clear result"
-									className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-								>
-									<X className="size-4" />
-								</button>
 							)}
 						</div>
 					</div>
@@ -825,6 +835,10 @@ export function ViewDefinitionCellView({
 		onResultChange?.(null);
 	};
 
+	const triggerAutoRun = useRunOnSelect(vd?.id, () => {
+		void run();
+	});
+
 	const label = vd?.title ?? vd?.name ?? vd?.id ?? "(unknown view)";
 	const columns =
 		result?.ok && result.rows.length > 0
@@ -842,26 +856,42 @@ export function ViewDefinitionCellView({
 					{editable && (
 						<NotebookResourcePicker
 							value=""
-							onChange={(v) => onValueChange?.(v)}
+							onChange={(v) => {
+								triggerAutoRun();
+								onValueChange?.(v);
+							}}
 							kinds={["ViewDefinition"]}
 							placeholder={url ? "Change…" : "Select view…"}
 							className={url ? "max-w-[200px]" : "max-w-[500px]"}
 						/>
 					)}
 				</div>
-				<button
-					type="button"
-					disabled={loading || !vd?.id}
-					onClick={() => void run()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-				>
-					{loading ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : (
-						<Play className="size-4 fill-current" />
+				<div className="flex items-center gap-2">
+					{result && onResultChange && (
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							aria-label="Clear result"
+							onClick={clear}
+						>
+							<Eraser />
+							Clear result
+						</HSComp.Button>
 					)}
-					{loading ? "Running…" : "Run"}
-				</button>
+					<button
+						type="button"
+						disabled={loading || !vd?.id}
+						onClick={() => void run()}
+						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					>
+						{loading ? (
+							<Loader2 className="size-4 animate-spin" />
+						) : (
+							<Play className="size-4 fill-current" />
+						)}
+						{loading ? "Running…" : "Run"}
+					</button>
+				</div>
 			</div>
 			{url && (
 				<div className="px-3 py-2 border-b border-border-default flex flex-col gap-0.5">
@@ -890,21 +920,11 @@ export function ViewDefinitionCellView({
 			)}
 			{result && (
 				<>
-					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
+					<div className="flex items-center bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
 						<span className="text-sm font-medium text-text-secondary">
 							Result
 							{result.ok ? ` (${result.rows.length})` : " — error"}
 						</span>
-						{onResultChange && (
-							<button
-								type="button"
-								onClick={clear}
-								aria-label="Clear result"
-								className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-							>
-								<X className="size-4" />
-							</button>
-						)}
 					</div>
 					{result.ok ? (
 						result.rows.length === 0 ? (
@@ -1068,6 +1088,8 @@ function parseSqlQueryResponse(body: ParamsResp): SqlQueryRunResult {
 function parseSqlQueryCellValue(raw: string): {
 	url: string;
 	params: Record<string, string>;
+	chart?: ChartConfig;
+	view?: "table" | "chart";
 } {
 	const trimmed = (raw ?? "").trim();
 	if (!trimmed) return { url: "", params: {} };
@@ -1076,8 +1098,15 @@ function parseSqlQueryCellValue(raw: string): {
 			const obj = JSON.parse(trimmed) as {
 				url?: string;
 				params?: Record<string, string>;
+				chart?: ChartConfig;
+				view?: "table" | "chart";
 			};
-			return { url: obj.url ?? "", params: obj.params ?? {} };
+			return {
+				url: obj.url ?? "",
+				params: obj.params ?? {},
+				chart: obj.chart,
+				view: obj.view,
+			};
 		} catch {
 			return { url: trimmed, params: {} };
 		}
@@ -1088,13 +1117,125 @@ function parseSqlQueryCellValue(raw: string): {
 function stringifySqlQueryCellValue(
 	url: string,
 	params: Record<string, string>,
+	chart?: ChartConfig,
+	view?: "table" | "chart",
 ): string {
 	const nonEmpty: Record<string, string> = {};
 	for (const [k, v] of Object.entries(params)) {
 		if (v !== "") nonEmpty[k] = v;
 	}
-	if (Object.keys(nonEmpty).length === 0) return url;
-	return JSON.stringify({ url, params: nonEmpty });
+	const persistView = view === "chart" ? "chart" : undefined;
+	if (Object.keys(nonEmpty).length === 0 && !chart && !persistView) return url;
+	const out: {
+		url: string;
+		params?: Record<string, string>;
+		chart?: ChartConfig;
+		view?: "table" | "chart";
+	} = { url };
+	if (Object.keys(nonEmpty).length > 0) out.params = nonEmpty;
+	if (chart) out.chart = chart;
+	if (persistView) out.view = persistView;
+	return JSON.stringify(out);
+}
+
+function useRunOnSelect(resourceId: string | undefined, run: () => void) {
+	const runRef = useRef(run);
+	runRef.current = run;
+	const pendingRef = useRef(false);
+	useEffect(() => {
+		if (resourceId && pendingRef.current) {
+			pendingRef.current = false;
+			runRef.current();
+		}
+	}, [resourceId]);
+	return () => {
+		pendingRef.current = true;
+	};
+}
+
+function SqlQueryResultView({
+	result,
+	canChart,
+	viewMode,
+	onViewModeChange,
+	chart,
+	onChartChange,
+	editable,
+}: {
+	result: SqlQueryRunResult;
+	canChart: boolean;
+	viewMode: "table" | "chart";
+	onViewModeChange: (v: "table" | "chart") => void;
+	chart?: ChartConfig;
+	onChartChange?: (config: ChartConfig) => void;
+	editable: boolean;
+}) {
+	return (
+		<>
+			<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
+				<span className="text-sm font-medium text-text-secondary">
+					Result
+					{result.ok ? ` (${result.rows.length})` : " — error"}
+				</span>
+				{canChart && (
+					<HSComp.SegmentControl
+						value={viewMode}
+						onValueChange={(v) => onViewModeChange(v as "table" | "chart")}
+						items={[
+							{ value: "table", label: "Table" },
+							{ value: "chart", label: "Chart" },
+						]}
+					/>
+				)}
+			</div>
+			{!result.ok ? (
+				<pre className="px-3 py-2 typo-code whitespace-pre-wrap text-critical-default">
+					{result.error}
+				</pre>
+			) : canChart && viewMode === "chart" ? (
+				<ChartPanel
+					columns={result.columns}
+					rows={result.rows}
+					chart={chart}
+					onChartChange={onChartChange}
+					editable={editable}
+				/>
+			) : result.rows.length === 0 ? (
+				<div className="px-3 py-3 typo-body-xs text-text-tertiary italic">
+					No rows.
+				</div>
+			) : (
+				<div className="max-h-[400px] overflow-auto">
+					<HSComp.Table zebra stickyHeader className="typo-code">
+						<HSComp.TableHeader>
+							<HSComp.TableRow>
+								{result.columns.map((c) => (
+									<HSComp.TableHead key={c}>{c}</HSComp.TableHead>
+								))}
+							</HSComp.TableRow>
+						</HSComp.TableHeader>
+						<HSComp.TableBody>
+							{result.rows.map((row, i) => (
+								<HSComp.TableRow
+									// biome-ignore lint/suspicious/noArrayIndexKey: result rows are positional
+									key={`row-${i}`}
+								>
+									{row.map((cellVal, j) => (
+										<HSComp.TableCell
+											// biome-ignore lint/suspicious/noArrayIndexKey: column order matches schema
+											key={`${i}-${j}`}
+										>
+											{formatCellValue(cellVal)}
+										</HSComp.TableCell>
+									))}
+								</HSComp.TableRow>
+							))}
+						</HSComp.TableBody>
+					</HSComp.Table>
+				</div>
+			)}
+		</>
+	);
 }
 
 export function SqlQueryCellView({
@@ -1128,6 +1269,11 @@ export function SqlQueryCellView({
 	const initial = (cell.result as SqlQueryRunResult | null) ?? null;
 	const [result, setResult] = useState<SqlQueryRunResult | null>(initial);
 	const [loading, setLoading] = useState(false);
+	const [viewMode, setViewMode] = useState<"table" | "chart">(
+		parsed.view ?? "table",
+	);
+
+	const canChart = !!result && result.ok && result.rows.length > 0;
 
 	const run = async () => {
 		if (!lib?.id) return;
@@ -1177,6 +1323,29 @@ export function SqlQueryCellView({
 		onResultChange?.(null);
 	};
 
+	const triggerAutoRun = useRunOnSelect(lib?.id, () => {
+		void run();
+	});
+
+	const persistChart = useCallback(
+		(chart: ChartConfig) => {
+			onValueChange?.(
+				stringifySqlQueryCellValue(url, paramValues, chart, viewMode),
+			);
+		},
+		[onValueChange, url, paramValues, viewMode],
+	);
+
+	const changeViewMode = useCallback(
+		(v: "table" | "chart") => {
+			setViewMode(v);
+			onValueChange?.(
+				stringifySqlQueryCellValue(url, paramValues, parsed.chart, v),
+			);
+		},
+		[onValueChange, url, paramValues, parsed.chart],
+	);
+
 	const label = lib?.title ?? lib?.name ?? lib?.id ?? "(unknown query)";
 
 	return (
@@ -1196,6 +1365,7 @@ export function SqlQueryCellView({
 							value=""
 							onChange={(v) => {
 								setParamValues({});
+								triggerAutoRun();
 								onValueChange?.(v);
 							}}
 							kinds={[isView ? "SQLView" : "SQLQuery"]}
@@ -1206,19 +1376,32 @@ export function SqlQueryCellView({
 						/>
 					)}
 				</div>
-				<button
-					type="button"
-					disabled={loading || !lib?.id}
-					onClick={() => void run()}
-					className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-				>
-					{loading ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : (
-						<Play className="size-4 fill-current" />
+				<div className="flex items-center gap-2">
+					{result && onResultChange && (
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							aria-label="Clear result"
+							onClick={clear}
+						>
+							<Eraser />
+							Clear result
+						</HSComp.Button>
 					)}
-					{loading ? "Running…" : "Run"}
-				</button>
+					<button
+						type="button"
+						disabled={loading || !lib?.id}
+						onClick={() => void run()}
+						className="flex items-center gap-2 text-text-info-primary typo-body uppercase hover:text-text-info-secondary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+					>
+						{loading ? (
+							<Loader2 className="size-4 animate-spin" />
+						) : (
+							<Play className="size-4 fill-current" />
+						)}
+						{loading ? "Running…" : "Run"}
+					</button>
+				</div>
 			</div>
 			{url && (
 				<div className="px-3 py-2 border-b border-border-default flex flex-col gap-0.5">
@@ -1270,7 +1453,14 @@ export function SqlQueryCellView({
 											[key]: e.target.value,
 										};
 										setParamValues(next);
-										onValueChange?.(stringifySqlQueryCellValue(url, next));
+										onValueChange?.(
+											stringifySqlQueryCellValue(
+												url,
+												next,
+												parsed.chart,
+												viewMode,
+											),
+										);
 									}}
 									placeholder={p.type ?? "string"}
 									className="w-full px-2 py-1 typo-code border border-border-default rounded text-text-primary bg-bg-primary outline-none focus:border-border-info-primary"
@@ -1281,64 +1471,15 @@ export function SqlQueryCellView({
 				</div>
 			)}
 			{result && (
-				<>
-					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-b border-border-default">
-						<span className="text-sm font-medium text-text-secondary">
-							Result
-							{result.ok ? ` (${result.rows.length})` : " — error"}
-						</span>
-						{onResultChange && (
-							<button
-								type="button"
-								onClick={clear}
-								aria-label="Clear result"
-								className="inline-flex items-center justify-center size-6 rounded text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-							>
-								<X className="size-4" />
-							</button>
-						)}
-					</div>
-					{result.ok ? (
-						result.rows.length === 0 ? (
-							<div className="px-3 py-3 typo-body-xs text-text-tertiary italic">
-								No rows.
-							</div>
-						) : (
-							<div className="max-h-[400px] overflow-auto">
-								<HSComp.Table zebra stickyHeader className="typo-code">
-									<HSComp.TableHeader>
-										<HSComp.TableRow>
-											{result.columns.map((c) => (
-												<HSComp.TableHead key={c}>{c}</HSComp.TableHead>
-											))}
-										</HSComp.TableRow>
-									</HSComp.TableHeader>
-									<HSComp.TableBody>
-										{result.rows.map((row, i) => (
-											<HSComp.TableRow
-												// biome-ignore lint/suspicious/noArrayIndexKey: result rows are positional
-												key={`row-${i}`}
-											>
-												{row.map((cellVal, j) => (
-													<HSComp.TableCell
-														// biome-ignore lint/suspicious/noArrayIndexKey: column order matches schema
-														key={`${i}-${j}`}
-													>
-														{formatCellValue(cellVal)}
-													</HSComp.TableCell>
-												))}
-											</HSComp.TableRow>
-										))}
-									</HSComp.TableBody>
-								</HSComp.Table>
-							</div>
-						)
-					) : (
-						<pre className="px-3 py-2 typo-code whitespace-pre-wrap text-critical-default">
-							{result.error}
-						</pre>
-					)}
-				</>
+				<SqlQueryResultView
+					result={result}
+					canChart={canChart}
+					viewMode={viewMode}
+					onViewModeChange={changeViewMode}
+					chart={parsed.chart}
+					onChartChange={persistChart}
+					editable={editable}
+				/>
 			)}
 		</div>
 	);

@@ -1,5 +1,5 @@
 import * as HSComp from "@health-samurai/react-components";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
 	Eye,
@@ -221,6 +221,7 @@ export function NotebookEditor({
 }) {
 	const client = useAidboxClient();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [notebook, setNotebook] = useState<EditableNotebook>(initial);
 	const [dirty, setDirty] = useState(isNew);
 	const [previewMode, setPreviewMode] = useState(false);
@@ -277,6 +278,9 @@ export function NotebookEditor({
 		onSuccess: (saved, override) => {
 			setNotebook((prev) => ({ ...prev, id: saved.id }));
 			setDirty(false);
+			void queryClient.invalidateQueries({
+				queryKey: ["notebook", saved.id],
+			});
 			if (override === undefined) {
 				void navigate({
 					to: "/notebooks/$id",
