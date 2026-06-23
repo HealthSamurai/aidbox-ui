@@ -39,7 +39,6 @@ type SDItem = {
 	standardsStatus?: string;
 	origin?: string;
 	nameMatches?: readonly MatchRange[];
-	descriptionMatches?: readonly MatchRange[];
 };
 
 const AIDBOX_PUBLISHER = "Health Samurai";
@@ -186,7 +185,7 @@ const ItemCard = React.memo(function ItemCard({
 					</div>
 					{item.description && (
 						<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-2">
-							{highlight(item.description, item.descriptionMatches)}
+							{item.description}
 						</div>
 					)}
 					{(item.origin || item.categoryTop || item.standardsStatus) && (
@@ -229,7 +228,7 @@ const ItemCard = React.memo(function ItemCard({
 				}}
 				className={`absolute top-2 right-2 size-7 flex items-center justify-center rounded hover:bg-bg-tertiary transition-opacity ${isFavorite ? "opacity-100 text-text-info-primary" : "opacity-0 group-hover/row:opacity-100 text-text-secondary"}`}
 			>
-				<Pin className="size-4" />
+				<Pin className="size-4" fill={isFavorite ? "currentColor" : "none"} />
 			</button>
 		</li>
 	);
@@ -280,9 +279,7 @@ function SearchBar({
 					}
 					onInputKeyDown?.(e);
 				}}
-				placeholder={
-					chips.length === 0 ? "Search resources by name or description…" : ""
-				}
+				placeholder={chips.length === 0 ? "Search resources by name…" : ""}
 				className="flex-1 min-w-[80px] bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 			/>
 			{(chips.length > 0 || textPart.length > 0) && (
@@ -388,10 +385,7 @@ export function Browser() {
 	const fuse = useMemo(
 		() =>
 			new Fuse(tagFiltered, {
-				keys: [
-					{ name: "name", weight: 10 },
-					{ name: "description", weight: 1 },
-				],
+				keys: [{ name: "name", weight: 10 }],
 				includeMatches: true,
 				ignoreLocation: true,
 				useExtendedSearch: true,
@@ -404,16 +398,11 @@ export function Browser() {
 	const textFiltered: SDItem[] = text
 		? fuse.search(text).map((r) => {
 				const nameMatch = r.matches?.find((m) => m.key === "name");
-				const descMatch = r.matches?.find((m) => m.key === "description");
 				return {
 					...r.item,
 					nameMatches: filterHighlightRanges(
 						text,
 						nameMatch?.indices as readonly MatchRange[] | undefined,
-					),
-					descriptionMatches: filterHighlightRanges(
-						text,
-						descMatch?.indices as readonly MatchRange[] | undefined,
 					),
 				};
 			})
@@ -547,10 +536,7 @@ export function Browser() {
 			const filtered = filterByTags(allItems, resolvedTags);
 			const t = resolvedText
 				? createFuzzySearch(filtered, {
-						keys: [
-							{ name: "name", weight: 2 },
-							{ name: "description", weight: 1 },
-						],
+						keys: [{ name: "name", weight: 2 }],
 						minMatchCharLength: 1,
 						threshold: 0.3,
 					})(resolvedText)
