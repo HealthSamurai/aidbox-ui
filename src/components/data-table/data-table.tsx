@@ -36,8 +36,11 @@ function ColumnHead<T>({
 	const head = (
 		<HSComp.TableHead
 			className={resizeHandle ? "relative" : column.width}
+			style={column.grow ? { width: "100%" } : undefined}
 			sortable={column.sortable}
 			sorted={sortedColumn(sort, column.id)}
+			reverseIcon={column.reverseIcon}
+			contentStyle={column.sortable ? wrapperStyle : undefined}
 			data-col-id={colId}
 			onClick={
 				column.sortable && onSortToggle
@@ -46,7 +49,10 @@ function ColumnHead<T>({
 			}
 		>
 			{wrapperStyle ? (
-				<span className="block truncate" style={wrapperStyle}>
+				<span
+					className="block truncate min-w-0"
+					style={column.sortable ? undefined : wrapperStyle}
+				>
 					{column.header}
 				</span>
 			) : (
@@ -302,7 +308,9 @@ function ResizableDataTable<T>({
 			return next;
 		});
 	const expandable = !!renderExpandedRow;
-	const expandColSpan = columns.length + (selectable ? 1 : 0) + 1;
+	const hasGrow = columns.some((c) => c.grow);
+	const expandColSpan =
+		columns.length + (selectable ? 1 : 0) + (hasGrow ? 0 : 1);
 	const [expandedWidth, setExpandedWidth] = React.useState<number | undefined>(
 		undefined,
 	);
@@ -334,6 +342,9 @@ function ResizableDataTable<T>({
 		const fixed = persistedSizing[column.id];
 		if (fixed != null) {
 			return { width: fixed, minWidth: fixed, maxWidth: fixed };
+		}
+		if (column.grow) {
+			return { minWidth: column.minSize ?? DEFAULT_MIN_SIZE };
 		}
 		return {
 			minWidth: column.minSize ?? DEFAULT_MIN_SIZE,
@@ -415,7 +426,9 @@ function ResizableDataTable<T>({
 								}
 							/>
 						))}
-						<HSComp.TableHead aria-hidden style={{ width: "100%" }} />
+						{!hasGrow && (
+							<HSComp.TableHead aria-hidden style={{ width: "100%" }} />
+						)}
 					</HSComp.TableRow>
 				</HSComp.TableHeader>
 				<HSComp.TableBody
@@ -452,13 +465,14 @@ function ResizableDataTable<T>({
 										<HSComp.TableCell
 											key={column.id}
 											className={column.className}
+											style={column.grow ? { width: "100%" } : undefined}
 										>
 											<div className="truncate" style={wrapperStyle(column)}>
 												{column.cell(row)}
 											</div>
 										</HSComp.TableCell>
 									))}
-									<HSComp.TableCell aria-hidden />
+									{!hasGrow && <HSComp.TableCell aria-hidden />}
 								</HSComp.TableRow>
 								{isExpanded && renderExpandedRow ? (
 									<HSComp.TableRow className="hover:bg-transparent!">

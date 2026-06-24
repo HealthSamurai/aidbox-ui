@@ -7,14 +7,17 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	Button,
 	CodeEditor,
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
 } from "@health-samurai/react-components";
-import { RefreshCw } from "lucide-react";
+import { EllipsisVertical } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format as formatSQL } from "sql-formatter";
 import {
@@ -68,7 +71,7 @@ export function RunningQueries() {
 	const [openQuery, setOpenQuery] = useState<ActiveQueryRow | null>(null);
 	const [pending, setPending] = useState<PendingAction | null>(null);
 
-	const { data, isLoading, refetch, isFetching } = useActiveQueries(5000);
+	const { data, isLoading } = useActiveQueries(5000);
 	const cancel = useCancelQuery();
 	const terminate = useTerminateQuery();
 
@@ -92,24 +95,10 @@ export function RunningQueries() {
 
 	const columns: ColumnDef<ActiveQueryRow>[] = [
 		{
-			id: "pid",
-			header: "PID",
-			sortable: true,
-			width: "w-[80px]",
-			className: "tabular-nums",
-			cell: (r) => r.pid,
-		},
-		{
-			id: "usename",
-			header: "User",
-			sortable: true,
-			width: "w-[120px]",
-			cell: (r) => r.usename ?? "—",
-		},
-		{
 			id: "duration",
 			header: "Duration",
 			sortable: true,
+			reverseIcon: true,
 			width: "w-[100px]",
 			className: "text-right tabular-nums",
 			cell: (r) => (
@@ -123,6 +112,22 @@ export function RunningQueries() {
 					{formatDuration(r.duration)}
 				</span>
 			),
+		},
+		{
+			id: "pid",
+			header: "PID",
+			sortable: true,
+			reverseIcon: true,
+			width: "w-[80px]",
+			className: "text-right tabular-nums",
+			cell: (r) => r.pid,
+		},
+		{
+			id: "usename",
+			header: "User",
+			sortable: true,
+			width: "w-[120px]",
+			cell: (r) => r.usename ?? "—",
 		},
 		{
 			id: "wait_event",
@@ -146,6 +151,7 @@ export function RunningQueries() {
 		{
 			id: "query",
 			header: "Query",
+			grow: true,
 			cell: (r) => (
 				<button
 					type="button"
@@ -160,25 +166,36 @@ export function RunningQueries() {
 		{
 			id: "actions",
 			header: "",
-			width: "w-[200px]",
+			maxSize: 56,
 			cell: (r) => (
-				<div className="flex items-center gap-1 justify-end">
-					<Button
-						variant="ghost"
-						size="small"
-						danger
-						onClick={() => setPending({ kind: "cancel", pid: r.pid })}
-					>
-						Cancel
-					</Button>
-					<Button
-						variant="ghost"
-						size="small"
-						danger
-						onClick={() => setPending({ kind: "terminate", pid: r.pid })}
-					>
-						Terminate
-					</Button>
+				<div className="flex justify-end">
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								aria-label="Query actions"
+								className="size-7 flex items-center justify-center rounded hover:bg-bg-tertiary text-text-secondary"
+							>
+								<EllipsisVertical className="size-4" />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								className="justify-start!"
+								variant="destructive"
+								onSelect={() => setPending({ kind: "cancel", pid: r.pid })}
+							>
+								Cancel
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								className="justify-start!"
+								variant="destructive"
+								onSelect={() => setPending({ kind: "terminate", pid: r.pid })}
+							>
+								Terminate
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			),
 		},
@@ -193,29 +210,14 @@ export function RunningQueries() {
 
 	return (
 		<div className="h-full flex flex-col">
-			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<h1 className="typo-h4 text-text-primary">DB Active Queries</h1>
-				<span className="typo-body-xs text-text-tertiary">
-					{sorted.length} active
-				</span>
-				<div className="flex-1" />
-				<Button
-					variant="primary"
-					onClick={() => refetch()}
-					disabled={isFetching}
-				>
-					<RefreshCw
-						className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
-					/>
-					Refresh
-				</Button>
-			</div>
 			<div className="flex-1 overflow-auto">
 				<DataTable
 					data={sorted}
 					columns={columns}
 					rowKey={(r) => String(r.pid)}
 					loading={isLoading}
+					resizable
+					tableId="database-running-queries"
 					sort={sort}
 					onSortToggle={onSortToggle}
 					emptyState={

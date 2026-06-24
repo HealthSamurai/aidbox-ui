@@ -23,11 +23,13 @@ function BulkActionButton({
 		}
 	};
 
+	const isDanger = action.variant === "danger";
 	const button = (
 		<HSComp.Button
 			variant="ghost"
+			danger={isDanger}
 			size="small"
-			className="text-text-secondary!"
+			className={isDanger ? undefined : "text-text-secondary!"}
 			disabled={disabled || action.disabled}
 			onClick={handleClick}
 		>
@@ -90,7 +92,7 @@ export function DataTableFooter({
 			<div className="flex items-center gap-4">
 				{selectedCount > 0 && bulkActions && bulkActions.length > 0 && (
 					<>
-						<span className="typo-default text-text-primary">
+						<span className="typo-body text-text-primary">
 							{selectedCount} selected:
 						</span>
 						{bulkActions.map((action) => (

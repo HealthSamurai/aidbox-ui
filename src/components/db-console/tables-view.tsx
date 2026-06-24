@@ -28,6 +28,7 @@ import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
 import { useLocalStorage } from "../../hooks";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
+import { useListArrowNav } from "./use-list-arrow-nav";
 import type { FunctionsMap, SchemaMap } from "./utils";
 
 // Types
@@ -69,6 +70,7 @@ const tableItem = cn(
 	"rounded",
 	"cursor-pointer",
 	"hover:bg-bg-secondary",
+	"data-[active]:bg-bg-secondary",
 );
 
 // Data fetching
@@ -294,8 +296,15 @@ function TablesListView({
 		defaultValue: {},
 		getInitialValueInEffect: false,
 	});
-	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const listRef = useRef<HTMLDivElement>(null);
+	const handleKeyDown = useListArrowNav(
+		listRef,
+		search
+			? "button[data-table-item]"
+			: "button[data-schema-row], button[data-table-item]",
+		search,
+	);
 
 	useEffect(() => {
 		if (isActive) {
@@ -365,39 +374,6 @@ function TablesListView({
 		});
 	}, [allItems, search]);
 
-	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-		const list = listRef.current;
-		if (!list) return;
-		const buttons = Array.from(
-			list.querySelectorAll<HTMLButtonElement>("button[data-table-item]"),
-		);
-		if (buttons.length === 0) return;
-		const active = list.querySelector<HTMLButtonElement>(
-			"button[data-table-item][data-active]",
-		);
-
-		if (e.key === "Enter") {
-			if (active) active.click();
-			return;
-		}
-
-		if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-		e.preventDefault();
-		let idx = active ? buttons.indexOf(active) : -1;
-		if (e.key === "ArrowDown") idx = Math.min(idx + 1, buttons.length - 1);
-		else idx = Math.max(idx - 1, 0);
-		if (active) {
-			active.removeAttribute("data-active");
-			active.classList.remove("bg-bg-secondary");
-		}
-		const next = buttons[idx];
-		if (next) {
-			next.setAttribute("data-active", "");
-			next.classList.add("bg-bg-secondary");
-			next.scrollIntoView({ block: "nearest" });
-		}
-	}, []);
-
 	const handleSearchChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
 			setSearch(e.target.value);
@@ -441,7 +417,8 @@ function TablesListView({
 					<div key={schema} className="pl-1 pr-3">
 						<button
 							type="button"
-							className="flex w-full items-center gap-1 pl-1 pt-3 pb-2 typo-label-xs text-text-tertiary uppercase cursor-pointer hover:text-text-secondary"
+							data-schema-row
+							className="flex w-full items-center gap-1 pl-1 py-2.5 typo-label-xs text-text-tertiary uppercase cursor-pointer hover:text-text-secondary data-[active]:bg-bg-secondary data-[active]:text-text-secondary"
 							onClick={() =>
 								setExpanded((prev) => ({
 									...prev,
@@ -459,6 +436,7 @@ function TablesListView({
 								item.kind === "function" ? (
 									<button
 										type="button"
+										data-table-item
 										key={item.key}
 										onClick={() =>
 											onFunctionClick(item.schema, item.name, item.arguments)
@@ -473,6 +451,7 @@ function TablesListView({
 								) : (
 									<button
 										type="button"
+										data-table-item
 										key={item.key}
 										onClick={() =>
 											onSelect({ schema: item.schema, name: item.name })
@@ -512,7 +491,7 @@ function IndexRow({
 		<>
 			<Tooltip delayDuration={0}>
 				<TooltipTrigger asChild>
-					<div className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0 group">
+					<div className="flex items-center justify-between pl-4 pr-2 py-1.5 border-b border-border-secondary last:border-b-0 group">
 						<span className="typo-body-xs text-text-primary truncate">
 							{index.indexname}
 						</span>
@@ -691,7 +670,7 @@ function TableDetailView({
 			{details && (
 				<div className="flex-1 min-h-0 overflow-auto">
 					<DetailSection title="Rows">
-						<div className="px-4 py-2">
+						<div className="pl-4 pr-8 py-2">
 							<span className="typo-body-xs text-text-primary">
 								{formatRowCount(details.rowCount)}
 							</span>
@@ -700,7 +679,7 @@ function TableDetailView({
 
 					<DetailSection title="Size">
 						<div className="flex flex-col">
-							<div className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary">
+							<div className="flex items-center justify-between pl-4 pr-8 py-1.5 border-b border-border-secondary">
 								<span className="typo-body-xs text-text-tertiary">
 									Table data
 								</span>
@@ -708,7 +687,7 @@ function TableDetailView({
 									{details.tableSize}
 								</span>
 							</div>
-							<div className="flex items-center justify-between px-4 py-1.5">
+							<div className="flex items-center justify-between pl-4 pr-8 py-1.5">
 								<span className="typo-body-xs text-text-tertiary">Indexes</span>
 								<span className="typo-body-xs text-text-primary">
 									{details.indexesSize}
@@ -723,7 +702,7 @@ function TableDetailView({
 								{details.columns.map((col) => (
 									<div
 										key={col.column_name}
-										className="flex items-center justify-between px-4 py-1.5 border-b border-border-secondary last:border-b-0"
+										className="flex items-center justify-between pl-4 pr-8 py-1.5 border-b border-border-secondary last:border-b-0"
 									>
 										<span className="typo-body-xs text-text-primary truncate">
 											{col.column_name}

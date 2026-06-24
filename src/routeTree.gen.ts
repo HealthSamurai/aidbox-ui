@@ -31,9 +31,6 @@ import { Route as NotebooksNewRouteImport } from './routes/notebooks.new'
 import { Route as NotebooksIdRouteImport } from './routes/notebooks.$id'
 import { Route as IgAddRouteImport } from './routes/ig.add'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
-import { Route as DatabaseSearchParamsRouteImport } from './routes/database.search-params'
-import { Route as DatabaseSchemaRouteImport } from './routes/database.schema'
-import { Route as DatabaseQueriesRouteImport } from './routes/database.queries'
 import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
 import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
 import { Route as AnalyticsSqlviewRouteImport } from './routes/analytics.sqlview'
@@ -48,6 +45,7 @@ import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.vie
 import { Route as AnalyticsSqlviewCreateRouteImport } from './routes/analytics.sqlview.create'
 import { Route as AnalyticsQueriesCreateRouteImport } from './routes/analytics.queries.create'
 import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
+import { Route as DatabaseSchemaSchemaTableRouteImport } from './routes/database.schema.$schema.$table'
 import { Route as AnalyticsViewsEditIdRouteImport } from './routes/analytics.views.edit.$id'
 import { Route as AnalyticsSqlviewEditIdRouteImport } from './routes/analytics.sqlview.edit.$id'
 import { Route as AnalyticsQueriesEditIdRouteImport } from './routes/analytics.queries.edit.$id'
@@ -163,21 +161,6 @@ const IgPackageIdRoute = IgPackageIdRouteImport.update({
   path: '/$packageId',
   getParentRoute: () => IgRoute,
 } as any)
-const DatabaseSearchParamsRoute = DatabaseSearchParamsRouteImport.update({
-  id: '/search-params',
-  path: '/search-params',
-  getParentRoute: () => DatabaseRoute,
-} as any)
-const DatabaseSchemaRoute = DatabaseSchemaRouteImport.update({
-  id: '/schema',
-  path: '/schema',
-  getParentRoute: () => DatabaseRoute,
-} as any)
-const DatabaseQueriesRoute = DatabaseQueriesRouteImport.update({
-  id: '/queries',
-  path: '/queries',
-  getParentRoute: () => DatabaseRoute,
-} as any)
 const AsyncOperationsOperationIdRoute =
   AsyncOperationsOperationIdRouteImport.update({
     id: '/$operationId',
@@ -252,6 +235,12 @@ const ResourceResourceTypeEditIdRoute =
     path: '/edit/$id',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
+const DatabaseSchemaSchemaTableRoute =
+  DatabaseSchemaSchemaTableRouteImport.update({
+    id: '/schema/$schema/$table',
+    path: '/schema/$schema/$table',
+    getParentRoute: () => DatabaseRoute,
+  } as any)
 const AnalyticsViewsEditIdRoute = AnalyticsViewsEditIdRouteImport.update({
   id: '/edit/$id',
   path: '/edit/$id',
@@ -290,9 +279,6 @@ export interface FileRoutesByFullPath {
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
-  '/database/queries': typeof DatabaseQueriesRoute
-  '/database/schema': typeof DatabaseSchemaRoute
-  '/database/search-params': typeof DatabaseSearchParamsRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
@@ -316,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/analytics/queries/edit/$id': typeof AnalyticsQueriesEditIdRoute
   '/analytics/sqlview/edit/$id': typeof AnalyticsSqlviewEditIdRoute
   '/analytics/views/edit/$id': typeof AnalyticsViewsEditIdRoute
+  '/database/schema/$schema/$table': typeof DatabaseSchemaSchemaTableRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
@@ -327,9 +314,6 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
-  '/database/queries': typeof DatabaseQueriesRoute
-  '/database/schema': typeof DatabaseSchemaRoute
-  '/database/search-params': typeof DatabaseSearchParamsRoute
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
@@ -351,6 +335,7 @@ export interface FileRoutesByTo {
   '/analytics/queries/edit/$id': typeof AnalyticsQueriesEditIdRoute
   '/analytics/sqlview/edit/$id': typeof AnalyticsSqlviewEditIdRoute
   '/analytics/views/edit/$id': typeof AnalyticsViewsEditIdRoute
+  '/database/schema/$schema/$table': typeof DatabaseSchemaSchemaTableRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
@@ -371,9 +356,6 @@ export interface FileRoutesById {
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
-  '/database/queries': typeof DatabaseQueriesRoute
-  '/database/schema': typeof DatabaseSchemaRoute
-  '/database/search-params': typeof DatabaseSearchParamsRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
@@ -397,6 +379,7 @@ export interface FileRoutesById {
   '/analytics/queries/edit/$id': typeof AnalyticsQueriesEditIdRoute
   '/analytics/sqlview/edit/$id': typeof AnalyticsSqlviewEditIdRoute
   '/analytics/views/edit/$id': typeof AnalyticsViewsEditIdRoute
+  '/database/schema/$schema/$table': typeof DatabaseSchemaSchemaTableRoute
   '/resource/$resourceType/edit/$id': typeof ResourceResourceTypeEditIdRoute
   '/ig/$packageId/resource/$resourceType/$resourceId': typeof IgPackageIdResourceResourceTypeResourceIdRoute
 }
@@ -418,9 +401,6 @@ export interface FileRouteTypes {
     | '/analytics/sqlview'
     | '/analytics/views'
     | '/async-operations/$operationId'
-    | '/database/queries'
-    | '/database/schema'
-    | '/database/search-params'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
@@ -444,6 +424,7 @@ export interface FileRouteTypes {
     | '/analytics/queries/edit/$id'
     | '/analytics/sqlview/edit/$id'
     | '/analytics/views/edit/$id'
+    | '/database/schema/$schema/$table'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesByTo: FileRoutesByTo
@@ -455,9 +436,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/analytics/sqlview'
     | '/async-operations/$operationId'
-    | '/database/queries'
-    | '/database/schema'
-    | '/database/search-params'
     | '/ig/add'
     | '/notebooks/$id'
     | '/notebooks/new'
@@ -479,6 +457,7 @@ export interface FileRouteTypes {
     | '/analytics/queries/edit/$id'
     | '/analytics/sqlview/edit/$id'
     | '/analytics/views/edit/$id'
+    | '/database/schema/$schema/$table'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   id:
@@ -498,9 +477,6 @@ export interface FileRouteTypes {
     | '/analytics/sqlview'
     | '/analytics/views'
     | '/async-operations/$operationId'
-    | '/database/queries'
-    | '/database/schema'
-    | '/database/search-params'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
@@ -524,6 +500,7 @@ export interface FileRouteTypes {
     | '/analytics/queries/edit/$id'
     | '/analytics/sqlview/edit/$id'
     | '/analytics/views/edit/$id'
+    | '/database/schema/$schema/$table'
     | '/resource/$resourceType/edit/$id'
     | '/ig/$packageId/resource/$resourceType/$resourceId'
   fileRoutesById: FileRoutesById
@@ -698,27 +675,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IgPackageIdRouteImport
       parentRoute: typeof IgRoute
     }
-    '/database/search-params': {
-      id: '/database/search-params'
-      path: '/search-params'
-      fullPath: '/database/search-params'
-      preLoaderRoute: typeof DatabaseSearchParamsRouteImport
-      parentRoute: typeof DatabaseRoute
-    }
-    '/database/schema': {
-      id: '/database/schema'
-      path: '/schema'
-      fullPath: '/database/schema'
-      preLoaderRoute: typeof DatabaseSchemaRouteImport
-      parentRoute: typeof DatabaseRoute
-    }
-    '/database/queries': {
-      id: '/database/queries'
-      path: '/queries'
-      fullPath: '/database/queries'
-      preLoaderRoute: typeof DatabaseQueriesRouteImport
-      parentRoute: typeof DatabaseRoute
-    }
     '/async-operations/$operationId': {
       id: '/async-operations/$operationId'
       path: '/$operationId'
@@ -816,6 +772,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/resource/$resourceType/edit/$id'
       preLoaderRoute: typeof ResourceResourceTypeEditIdRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
+    }
+    '/database/schema/$schema/$table': {
+      id: '/database/schema/$schema/$table'
+      path: '/schema/$schema/$table'
+      fullPath: '/database/schema/$schema/$table'
+      preLoaderRoute: typeof DatabaseSchemaSchemaTableRouteImport
+      parentRoute: typeof DatabaseRoute
     }
     '/analytics/views/edit/$id': {
       id: '/analytics/views/edit/$id'
@@ -925,17 +888,13 @@ const AsyncOperationsRouteWithChildren = AsyncOperationsRoute._addFileChildren(
 )
 
 interface DatabaseRouteChildren {
-  DatabaseQueriesRoute: typeof DatabaseQueriesRoute
-  DatabaseSchemaRoute: typeof DatabaseSchemaRoute
-  DatabaseSearchParamsRoute: typeof DatabaseSearchParamsRoute
   DatabaseIndexRoute: typeof DatabaseIndexRoute
+  DatabaseSchemaSchemaTableRoute: typeof DatabaseSchemaSchemaTableRoute
 }
 
 const DatabaseRouteChildren: DatabaseRouteChildren = {
-  DatabaseQueriesRoute: DatabaseQueriesRoute,
-  DatabaseSchemaRoute: DatabaseSchemaRoute,
-  DatabaseSearchParamsRoute: DatabaseSearchParamsRoute,
   DatabaseIndexRoute: DatabaseIndexRoute,
+  DatabaseSchemaSchemaTableRoute: DatabaseSchemaSchemaTableRoute,
 }
 
 const DatabaseRouteWithChildren = DatabaseRoute._addFileChildren(

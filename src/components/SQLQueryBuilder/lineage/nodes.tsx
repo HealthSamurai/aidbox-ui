@@ -178,7 +178,7 @@ export function ViewDefinitionNode({ id, data, selected }: AnyNodeProps) {
 				<div className="flex items-center gap-2">
 					<Table size={14} className="text-text-info-primary shrink-0" />
 					<span className="font-mono text-xs text-text-info-primary uppercase">
-						View
+						VIEW
 					</span>
 				</div>
 				<div className="font-mono text-sm font-medium text-text-primary truncate">

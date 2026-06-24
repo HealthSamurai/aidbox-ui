@@ -16,6 +16,8 @@ export type ColumnDef<T> = {
 	width?: string;
 	className?: string;
 	sortable?: boolean;
+	reverseIcon?: boolean;
+	grow?: boolean;
 	defaultSize?: number;
 	minSize?: number;
 	maxSize?: number;

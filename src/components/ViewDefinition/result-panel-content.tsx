@@ -3,6 +3,7 @@ import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
+	SegmentControl,
 	Skeleton,
 	Table,
 	TableBody,
@@ -31,12 +32,24 @@ import {
 } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { useLocalStorage } from "../../hooks";
 import { InfiniteScrollSentinel } from "../../utils/infinite-scroll";
 import { EmptyState } from "../empty-state";
+import { ChartPanel } from "../notebook-chart/chart-panel";
 import { ViewDefinitionContext } from "./page";
 import { SQLTab } from "./sql-tab-content";
 
 const SKELETON_MARKER = "__skeleton__";
+
+type ViewMode = "table" | "list" | "chart";
+
+const VIEW_MODE_STORAGE_KEY = "sqlview:result-view-mode";
+
+const VIEW_MODE_ITEMS: { value: ViewMode; label: string }[] = [
+	{ value: "table", label: "Table" },
+	{ value: "list", label: "List" },
+	{ value: "chart", label: "Chart" },
+];
 
 interface ProcessedTableData {
 	tableData: Record<string, unknown>[];
@@ -129,10 +142,16 @@ const ResultHeader = ({
 	isMaximized,
 	onToggleMaximize,
 	onToggleCollapse,
+	viewMode,
+	onViewModeChange,
+	showViewMode,
 }: {
 	isMaximized: boolean;
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
+	viewMode: ViewMode;
+	onViewModeChange: (mode: ViewMode) => void;
+	showViewMode: boolean;
 }) => (
 	<div className="flex gap-1 items-center justify-between bg-bg-secondary px-4 pr-2 border-b h-10">
 		<div className="flex items-center">
@@ -141,7 +160,14 @@ const ResultHeader = ({
 				<TabsTrigger value="sql">SQL</TabsTrigger>
 			</TabsList>
 		</div>
-		<div className="flex items-center gap-1">
+		<div className="flex items-center gap-2">
+			{showViewMode && (
+				<SegmentControl
+					value={viewMode}
+					onValueChange={(v) => onViewModeChange(v as ViewMode)}
+					items={VIEW_MODE_ITEMS}
+				/>
+			)}
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Button variant="ghost" size="small" onClick={onToggleCollapse}>
@@ -180,6 +206,8 @@ const ResultContent = ({
 	isEmptyArray,
 	accumulatedData,
 	columns,
+	chartRows,
+	viewMode,
 	hasMore,
 	isLoadingMore,
 	onLoadMore,
@@ -190,6 +218,8 @@ const ResultContent = ({
 	isEmptyArray: boolean;
 	accumulatedData: Record<string, unknown>[];
 	columns: string[];
+	chartRows: unknown[][];
+	viewMode: ViewMode;
 	hasMore: boolean;
 	isLoadingMore: boolean;
 	onLoadMore: () => void;
@@ -215,6 +245,14 @@ const ResultContent = ({
 	}
 
 	if (accumulatedData.length > 0) {
+		if (viewMode === "chart") {
+			return (
+				<div className="flex-1 min-h-0">
+					<ChartPanel columns={columns} rows={chartRows} editable fullHeight />
+				</div>
+			);
+		}
+
 		const skeletonRows = isLoadingMore
 			? Array.from({ length: pageSize }, () => ({ [SKELETON_MARKER]: true }))
 			: [];
@@ -224,41 +262,71 @@ const ResultContent = ({
 
 		return (
 			<div ref={containerRef} className="flex-1 overflow-auto min-h-0">
-				<Table zebra stickyHeader className="typo-code">
-					<TableHeader>
-						<TableRow>
-							{columns.map((key, i) => (
-								<TableHead
-									key={key}
-									className={`px-6 hover:bg-transparent ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
-								>
-									{key}
-								</TableHead>
-							))}
-						</TableRow>
-					</TableHeader>
-					<TableBody className="[&_tr]:hover:bg-transparent">
+				{viewMode === "list" ? (
+					<div className="divide-y divide-border-secondary">
 						{displayData.map((row, index) => (
-							// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
-							<TableRow key={index} zebra index={index}>
+							<div
+								// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
+								key={index}
+								className="grid gap-x-4 px-6 py-3"
+								style={{ gridTemplateColumns: "max-content 1fr" }}
+							>
+								{columns.map((key) => (
+									<div key={key} className="contents">
+										<div className="py-1 px-2 text-right text-text-secondary typo-label text-sm whitespace-nowrap">
+											{key}
+										</div>
+										<div className="py-1 px-2 min-w-0 typo-code">
+											{row[SKELETON_MARKER] ? (
+												<Skeleton className="h-4 w-3/4" />
+											) : (
+												<CellValue
+													value={(row as Record<string, unknown>)[key]}
+												/>
+											)}
+										</div>
+									</div>
+								))}
+							</div>
+						))}
+					</div>
+				) : (
+					<Table zebra stickyHeader className="typo-code">
+						<TableHeader>
+							<TableRow>
 								{columns.map((key, i) => (
-									<TableCell
+									<TableHead
 										key={key}
-										className={`px-6 ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
+										className={`px-6 hover:bg-transparent ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
 									>
-										{row[SKELETON_MARKER] ? (
-											<Skeleton className="h-4 w-3/4" />
-										) : (
-											<CellValue
-												value={(row as Record<string, unknown>)[key]}
-											/>
-										)}
-									</TableCell>
+										{key}
+									</TableHead>
 								))}
 							</TableRow>
-						))}
-					</TableBody>
-				</Table>
+						</TableHeader>
+						<TableBody className="[&_tr]:hover:bg-transparent">
+							{displayData.map((row, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: result rows lack stable unique identifiers
+								<TableRow key={index} zebra index={index}>
+									{columns.map((key, i) => (
+										<TableCell
+											key={key}
+											className={`px-6 ${i < columns.length - 1 ? "w-0 whitespace-nowrap" : ""}`}
+										>
+											{row[SKELETON_MARKER] ? (
+												<Skeleton className="h-4 w-3/4" />
+											) : (
+												<CellValue
+													value={(row as Record<string, unknown>)[key]}
+												/>
+											)}
+										</TableCell>
+									))}
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				)}
 				<InfiniteScrollSentinel
 					root={containerRef}
 					onLoadMore={onLoadMore}
@@ -286,6 +354,12 @@ export function ResultPanel({
 	const viewDefinitionContext = useContext(ViewDefinitionContext);
 	const rows = viewDefinitionContext.runResult;
 	const [isMaximized, setIsMaximized] = useState(false);
+	const [activeTab, setActiveTab] = useState<"result" | "sql">("result");
+	const [viewMode, setViewMode] = useLocalStorage<ViewMode>({
+		key: VIEW_MODE_STORAGE_KEY,
+		getInitialValueInEffect: false,
+		defaultValue: "table",
+	});
 
 	const {
 		tableData,
@@ -304,6 +378,11 @@ export function ResultPanel({
 	const pageRef = useRef(1);
 	const runIdRef = useRef(0);
 	const containerRef = useRef<HTMLDivElement>(null);
+
+	const chartRows = useMemo(
+		() => accumulatedData.map((rec) => columns.map((col) => rec[col])),
+		[accumulatedData, columns],
+	);
 
 	useEffect(() => {
 		runIdRef.current += 1;
@@ -396,7 +475,11 @@ export function ResultPanel({
 	}, [isMaximized]);
 
 	return (
-		<Tabs defaultValue="result" className="h-full">
+		<Tabs
+			value={activeTab}
+			onValueChange={(v) => setActiveTab(v as "result" | "sql")}
+			className="h-full"
+		>
 			<div
 				className={`flex flex-col h-full ${isMaximized ? "absolute top-0 bottom-0 h-full w-full left-0 z-30 overflow-auto bg-bg-primary" : ""}`}
 			>
@@ -404,6 +487,9 @@ export function ResultPanel({
 					isMaximized={isMaximized}
 					onToggleMaximize={toggleMaximize}
 					onToggleCollapse={onToggleCollapse || (() => {})}
+					viewMode={viewMode}
+					onViewModeChange={setViewMode}
+					showViewMode={activeTab === "result"}
 				/>
 				<TabsContent value="result" className="flex-1 min-h-0 flex flex-col">
 					<ResultContent
@@ -411,6 +497,8 @@ export function ResultPanel({
 						isEmptyArray={isEmptyArray}
 						accumulatedData={accumulatedData}
 						columns={columns}
+						chartRows={chartRows}
+						viewMode={viewMode}
 						hasMore={hasMore}
 						isLoadingMore={loadMoreMutation.isPending}
 						onLoadMore={handleLoadMore}

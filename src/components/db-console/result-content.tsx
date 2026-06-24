@@ -4,24 +4,14 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	Tabs,
-	TabsBrowserList,
 	TabsContent,
-	TabsListDropdown,
-	TabsTrigger,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import {
-	AlertCircle,
-	Check,
-	ChevronDown,
-	Download,
-	Loader2,
-} from "lucide-react";
+import { Check, ChevronDown, Download, Loader2 } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { copyToClipboard } from "../../utils/clipboard";
 import type { QueryResultItem } from "../../webmcp/db-console-context";
 import { DataTable } from "../data-table/data-table";
@@ -621,9 +611,6 @@ export function ResultContent({
 	onCancel: () => void;
 	viewMode?: "table" | "list";
 }) {
-	const [activeTab, setActiveTab] = useState(0);
-	const triggerRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
-
 	if (isLoading) {
 		return (
 			<div className="flex flex-col items-center justify-center flex-1 gap-3 text-text-secondary">
@@ -681,82 +668,17 @@ export function ResultContent({
 		);
 	}
 
-	const safeActive = Math.min(activeTab, results.length - 1);
-
 	return (
 		<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-			<Tabs
-				variant="browser"
-				value={String(safeActive)}
-				onValueChange={(v) => setActiveTab(Number(v))}
-				className="flex flex-col flex-1 min-h-0 h-full items-stretch"
-			>
-				<div className="flex-none flex items-center bg-bg-secondary h-10 [&_[data-slot=tabs-list]]:h-full">
-					<TabsBrowserList>
-						{results.map((r, i) => {
-							const rowCount = r.result?.length ?? 0;
-							const ariaLabel = r.error
-								? `Query ${i + 1}, error`
-								: `Query ${i + 1}, ${rowCount} rows`;
-							return (
-								<TabsTrigger
-									key={`${r.query}-${i}`}
-									value={String(i)}
-									aria-label={ariaLabel}
-									ref={(el) => {
-										if (el) triggerRefs.current.set(i, el);
-										else triggerRefs.current.delete(i);
-									}}
-								>
-									<span>Query {i + 1}</span>
-									{r.error && (
-										<span className="flex items-center gap-1 text-text-error-primary text-xs ml-2">
-											<AlertCircle className="w-3 h-3" />
-											error
-										</span>
-									)}
-								</TabsTrigger>
-							);
-						})}
-					</TabsBrowserList>
-					<div className="ml-auto h-full flex items-stretch [&_[data-slot=popover-trigger]]:!pr-4">
-						<TabsListDropdown
-							tabs={results.map((r, i) => ({
-								id: String(i),
-								content: (
-									<span className="flex items-center gap-2">
-										Query {i + 1}
-										{r.error && (
-											<span className="flex items-center gap-1 text-text-error-primary text-xs">
-												<AlertCircle className="w-3 h-3" />
-												error
-											</span>
-										)}
-									</span>
-								),
-							}))}
-							handleTabSelect={(tabId) => {
-								const idx = Number(tabId);
-								setActiveTab(idx);
-								triggerRefs.current.get(idx)?.scrollIntoView({
-									behavior: "smooth",
-									block: "nearest",
-									inline: "nearest",
-								});
-							}}
-						/>
-					</div>
-				</div>
-				{results.map((r, i) => (
-					<TabsContent
-						key={`${r.query}-${i}`}
-						value={String(i)}
-						className="flex-1 min-h-0 overflow-hidden"
-					>
-						<QueryResult result={r} viewMode={viewMode} />
-					</TabsContent>
-				))}
-			</Tabs>
+			{results.map((r, i) => (
+				<TabsContent
+					key={`${r.query}-${i}`}
+					value={String(i)}
+					className="flex-1 min-h-0 overflow-hidden"
+				>
+					<QueryResult result={r} viewMode={viewMode} />
+				</TabsContent>
+			))}
 		</div>
 	);
 }

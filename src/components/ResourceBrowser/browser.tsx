@@ -184,7 +184,7 @@ const ItemCard = React.memo(function ItemCard({
 						{highlight(item.name, item.nameMatches)}
 					</div>
 					{item.description && (
-						<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-2">
+						<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-1">
 							{item.description}
 						</div>
 					)}

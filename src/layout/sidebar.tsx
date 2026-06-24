@@ -15,7 +15,6 @@ import {
 	ClipboardList,
 	Columns3Cog,
 	Database,
-	HardDrive,
 	ListChecks,
 	Notebook,
 	Package,
@@ -32,6 +31,7 @@ import { useBoxInfo } from "../components/settings/api";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
 import { getAidboxBaseURL } from "../utils";
+import { DatabaseIcon } from "./database-icon";
 
 const mainMenuItems: {
 	link: React.JSX.Element;
@@ -74,7 +74,7 @@ const mainMenuItems: {
 		title: "Database",
 		link: (
 			<Link to="/database">
-				<HardDrive />
+				<DatabaseIcon />
 				Database
 			</Link>
 		),
