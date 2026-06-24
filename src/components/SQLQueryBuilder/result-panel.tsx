@@ -4,13 +4,37 @@ import * as React from "react";
 import { useLocalStorage } from "../../hooks";
 import { DataTableFooter } from "../data-table/footer";
 import { EmptyState } from "../empty-state";
+import { ChartPanel } from "../notebook-chart/chart-panel";
 import { useSQLQueryContext } from "./context";
 import { SQLTab } from "./sql-tab";
 
 const DEFAULT_PAGE_SIZE = 30;
 const PAGE_SIZE_STORAGE_KEY = "sqlquery-builder:result-page-size";
+const VIEW_MODE_STORAGE_KEY = "sqlquery-builder:result-view-mode";
 
-function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
+type ViewMode = "table" | "list" | "chart";
+
+const VIEW_MODE_ITEMS: { value: ViewMode; label: string }[] = [
+	{ value: "table", label: "Table" },
+	{ value: "list", label: "List" },
+	{ value: "chart", label: "Chart" },
+];
+
+function formatCellValue(value: unknown): string {
+	if (value === null || value === undefined) return "—";
+	if (typeof value === "object") return JSON.stringify(value);
+	return String(value);
+}
+
+function ResultBody({
+	page,
+	pageSize,
+	viewMode,
+}: {
+	page: number;
+	pageSize: number;
+	viewMode: ViewMode;
+}) {
 	const { runResult, runError, isRunning } = useSQLQueryContext();
 
 	if (isRunning) {
@@ -49,8 +73,45 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 		);
 	}
 
+	if (viewMode === "chart") {
+		return (
+			<ChartPanel
+				columns={runResult.columns}
+				rows={runResult.rows}
+				editable
+				fullHeight
+			/>
+		);
+	}
+
 	const start = (page - 1) * pageSize;
 	const visibleRows = runResult.rows.slice(start, start + pageSize);
+
+	if (viewMode === "list") {
+		return (
+			<div className="h-full overflow-auto divide-y divide-border-secondary">
+				{visibleRows.map((row, i) => (
+					<div
+						// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
+						key={start + i}
+						className="grid gap-x-4 px-6 py-3"
+						style={{ gridTemplateColumns: "max-content 1fr" }}
+					>
+						{runResult.columns.map((col, j) => (
+							<div key={col} className="contents">
+								<div className="py-1 px-2 text-right text-text-secondary typo-label text-sm whitespace-nowrap">
+									{col}
+								</div>
+								<div className="py-1 px-2 min-w-0 typo-code">
+									{formatCellValue(row[j])}
+								</div>
+							</div>
+						))}
+					</div>
+				))}
+			</div>
+		);
+	}
 
 	return (
 		<HSComp.Table zebra stickyHeader className="typo-code">
@@ -66,18 +127,11 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 				{visibleRows.map((row, i) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
 					<HSComp.TableRow key={start + i} zebra index={start + i}>
-						{runResult.columns.map((col, j) => {
-							const v = row[j];
-							return (
-								<HSComp.TableCell key={col}>
-									{v === null || v === undefined
-										? "—"
-										: typeof v === "object"
-											? JSON.stringify(v)
-											: String(v)}
-								</HSComp.TableCell>
-							);
-						})}
+						{runResult.columns.map((col, j) => (
+							<HSComp.TableCell key={col}>
+								{formatCellValue(row[j])}
+							</HSComp.TableCell>
+						))}
 						<HSComp.TableCell className="p-0" />
 					</HSComp.TableRow>
 				))}
@@ -102,6 +156,12 @@ export function ResultPanel({
 		getInitialValueInEffect: false,
 		defaultValue: DEFAULT_PAGE_SIZE,
 	});
+	const [activeTab, setActiveTab] = React.useState<"result" | "sql">("result");
+	const [viewMode, setViewMode] = useLocalStorage<ViewMode>({
+		key: VIEW_MODE_STORAGE_KEY,
+		getInitialValueInEffect: false,
+		defaultValue: "table",
+	});
 	const total = runResult?.rows.length ?? 0;
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -114,14 +174,25 @@ export function ResultPanel({
 	}, [page, totalPages]);
 
 	return (
-		<HSComp.Tabs defaultValue="result" className="h-full">
+		<HSComp.Tabs
+			value={activeTab}
+			onValueChange={(v) => setActiveTab(v as "result" | "sql")}
+			className="h-full"
+		>
 			<div className="flex flex-col h-full overflow-hidden">
 				<div className="flex gap-1 items-center justify-between bg-bg-secondary pr-2 border-b h-10 shrink-0">
 					<HSComp.TabsList>
 						<HSComp.TabsTrigger value="result">Result</HSComp.TabsTrigger>
 						<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
 					</HSComp.TabsList>
-					<div className="flex items-center gap-1">
+					<div className="flex items-center gap-2">
+						{activeTab === "result" && (
+							<HSComp.SegmentControl
+								value={viewMode}
+								onValueChange={(v) => setViewMode(v as ViewMode)}
+								items={VIEW_MODE_ITEMS}
+							/>
+						)}
 						<HSComp.Tooltip>
 							<HSComp.TooltipTrigger asChild>
 								<HSComp.Button
@@ -161,9 +232,9 @@ export function ResultPanel({
 					className="flex-1 min-h-0 flex flex-col"
 				>
 					<div className="flex-1 min-h-0">
-						<ResultBody page={page} pageSize={pageSize} />
+						<ResultBody page={page} pageSize={pageSize} viewMode={viewMode} />
 					</div>
-					{total > 0 && (
+					{total > 0 && viewMode !== "chart" && (
 						<DataTableFooter
 							total={total}
 							currentPage={page}

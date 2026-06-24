@@ -37,7 +37,7 @@ const KIND_META: Record<
 	{ label: string; accentClass: string; Icon: typeof Table }
 > = {
 	view: {
-		label: "ViewDefinition",
+		label: "VIEW",
 		accentClass: "text-text-info-primary",
 		Icon: Table,
 	},
@@ -361,7 +361,7 @@ function ItemRow({
 				{highlight(item.label, item.labelMatches)}
 			</div>
 			{item.description && (
-				<div className="typo-body-xs text-text-secondary mt-0.5">
+				<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-1">
 					{highlight(item.description, item.descriptionMatches)}
 				</div>
 			)}

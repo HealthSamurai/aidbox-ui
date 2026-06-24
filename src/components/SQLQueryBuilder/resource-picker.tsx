@@ -182,7 +182,7 @@ export function ResourcePicker({
 	const [open, setOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
 	const { data: candidates = [] } = useCandidates(search, open, kinds);
-	const { data: allCandidates = [] } = useCandidates("", open, kinds);
+	const { data: allCandidates = [] } = useCandidates("", true, kinds);
 	const commandRef = React.useRef<HTMLDivElement>(null);
 	const lookupByUrl = React.useMemo(() => {
 		const map = new Map<string, CandidateOption>();
@@ -190,6 +190,20 @@ export function ResourcePicker({
 		for (const c of candidates) map.set(c.url, c);
 		return (url: string) => map.get(url);
 	}, [allCandidates, candidates]);
+
+	const selectedKind = value ? lookupByUrl(value)?.kind : undefined;
+	const selectedAccent =
+		selectedKind === "ViewDefinition"
+			? "text-text-info-primary"
+			: selectedKind === "SQLView"
+				? "text-text-success-primary"
+				: "text-text-warning-primary";
+	const SelectedIcon =
+		selectedKind === "ViewDefinition"
+			? Table
+			: selectedKind === "SQLView"
+				? Layers
+				: FileCode2;
 
 	React.useEffect(() => {
 		if (!open) return;
@@ -211,7 +225,19 @@ export function ResourcePicker({
 					className={`h-7 px-2 justify-between font-mono text-xs bg-bg-primary hover:bg-bg-quaternary group-hover/tree-item-label:bg-bg-tertiary w-full ${value ? "text-text-primary! hover:text-text-primary!" : ""} ${className ?? ""}`}
 					onClick={(e) => e.stopPropagation()}
 				>
-					<span className={`truncate ${value ? "" : "text-text-tertiary"}`}>
+					{selectedKind && (
+						<span
+							className={`shrink-0 flex items-center gap-1 font-mono text-xs uppercase ${selectedAccent}`}
+						>
+							<SelectedIcon size={14} className="shrink-0" />
+							<span className="w-[8ch] shrink-0 text-left">
+								{selectedKind === "ViewDefinition" ? "VIEW" : selectedKind}
+							</span>
+						</span>
+					)}
+					<span
+						className={`flex-1 min-w-0 pl-2 text-left truncate ${value ? "" : "text-text-tertiary"}`}
+					>
 						{value || placeholder || "Select view or query…"}
 					</span>
 					<ChevronDown className="size-4 shrink-0 opacity-50" />
@@ -251,7 +277,7 @@ export function ResourcePicker({
 										: c.kind === "SQLView"
 											? Layers
 											: FileCode2;
-								const kindLabel = c.kind;
+								const kindLabel = c.kind === "ViewDefinition" ? "VIEW" : c.kind;
 								const accentClass =
 									c.kind === "ViewDefinition"
 										? "text-text-info-primary"

@@ -192,7 +192,7 @@ const NotebookRow = React.memo(function NotebookRow({
 					{highlight(nb.name, nb.nameMatches)}
 				</div>
 				{nb.description && (
-					<div className="typo-body-xs text-text-secondary mt-0.5">
+					<div className="typo-body-xs text-text-secondary mt-0.5 line-clamp-1">
 						{highlight(nb.description, nb.descriptionMatches)}
 					</div>
 				)}

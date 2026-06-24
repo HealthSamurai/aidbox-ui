@@ -392,7 +392,7 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 				</Alert>
 			) : null}
 
-			<div className="flex-1 overflow-auto">
+			<div className="flex-1 overflow-auto [&_tbody_tr:last-child]:border-b [&_tbody_tr:last-child]:border-border-secondary">
 				<DataTable<AsyncOperationTask>
 					data={sortedTasks}
 					columns={TASK_COLUMNS}

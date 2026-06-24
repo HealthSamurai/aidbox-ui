@@ -2,15 +2,16 @@ import { defaultToastPlacement } from "@aidbox-ui/components/config";
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
-import { updateResource } from "../ResourceEditor/api";
+import { createResource, updateResource } from "../ResourceEditor/api";
 import { EditorTab } from "../ResourceEditor/editor-tab";
 import type { EditorMode } from "../ResourceEditor/types";
-import { pageId } from "../ResourceEditor/types";
+import { defaultTabFor, pageId } from "../ResourceEditor/types";
 import { DevToolRequestPanel } from "./dev-tool-request-panel";
 import { AccessPolicyContext } from "./page";
 
@@ -42,26 +43,49 @@ export const AccessPolicyBuilderContent = () => {
 		React.useContext(AccessPolicyContext);
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
+	const navigate = Router.useNavigate();
 	const indent = 2;
 	const [mode, setMode] = React.useState<EditorMode>("yaml");
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
-			if (!accessPolicy || !accessPolicyId) return;
-			return await updateResource(
+			if (!accessPolicy) return;
+			if (accessPolicyId) {
+				return await updateResource(
+					client,
+					accessPolicy.resourceType,
+					accessPolicyId,
+					accessPolicy,
+				);
+			}
+			return await createResource(
 				client,
 				accessPolicy.resourceType,
-				accessPolicyId,
 				accessPolicy,
 			);
 		},
 		onError: Utils.onMutationError,
-		onSuccess: () => {
+		onSuccess: (saved) => {
 			HSComp.toast.success("Saved", defaultToastPlacement);
 			setIsDirty(false);
-			queryClient.invalidateQueries({
-				queryKey: [pageId, accessPolicy?.resourceType, accessPolicyId],
-			});
+			if (accessPolicyId) {
+				queryClient.invalidateQueries({
+					queryKey: [pageId, accessPolicy?.resourceType, accessPolicyId],
+				});
+				return;
+			}
+			if (saved?.id) {
+				const resourceType = accessPolicy?.resourceType ?? "AccessPolicy";
+				navigate({
+					to: "/resource/$resourceType/edit/$id",
+					params: { resourceType, id: saved.id },
+					search: {
+						tab: defaultTabFor(resourceType),
+						mode: "json" as const,
+						builderTab: "form" as const,
+					},
+				});
+			}
 		},
 	});
 
@@ -113,7 +137,7 @@ export const AccessPolicyBuilderContent = () => {
 		setStrippedText(serializeResource(strippedRef.current, mode, indent));
 	};
 
-	const actions = accessPolicyId ? (
+	const actions = (
 		<HSComp.Button
 			variant="ghost"
 			size="small"
@@ -126,7 +150,7 @@ export const AccessPolicyBuilderContent = () => {
 			<Lucide.SaveIcon className="w-4 h-4" />
 			Save
 		</HSComp.Button>
-	) : null;
+	);
 
 	return (
 		<HSComp.ResizablePanelGroup

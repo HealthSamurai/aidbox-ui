@@ -21,6 +21,7 @@ import { useSqlHistory } from "../../api/sql-history";
 import { useLocalStorage } from "../../hooks";
 import { ActiveQueriesView } from "./active-queries-view";
 import { SqlTablesCommand } from "./tables-view";
+import { useListArrowNav } from "./use-list-arrow-nav";
 import type { FunctionsMap, SchemaMap } from "./utils";
 
 // Types
@@ -57,7 +58,7 @@ const historyItem = cn(
 	"rounded",
 	"cursor-pointer",
 	"hover:bg-bg-secondary",
-	"data-[selected=true]:bg-bg-secondary",
+	"data-[active]:bg-bg-secondary",
 );
 
 const toggleButton = cn(
@@ -138,8 +139,13 @@ function SqlHistoryCommand({
 }) {
 	const [search, setSearch] = React.useState("");
 	const [visibleCount, setVisibleCount] = React.useState(HISTORY_PAGE_SIZE);
-	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const listRef = useRef<HTMLDivElement>(null);
+	const handleKeyDown = useListArrowNav(
+		listRef,
+		"button[data-history-item]",
+		search,
+	);
 
 	useEffect(() => {
 		if (isActive) {
@@ -182,6 +188,7 @@ function SqlHistoryCommand({
 					ref={inputRef}
 					value={search}
 					onChange={handleSearchChange}
+					onKeyDown={handleKeyDown}
 					placeholder="Search history..."
 					className="w-full bg-transparent outline-none typo-body text-text-primary placeholder:text-text-tertiary"
 				/>
@@ -222,6 +229,7 @@ function SqlHistoryCommand({
 										<TooltipTrigger asChild>
 											<button
 												type="button"
+												data-history-item
 												onClick={() => onItemClick(item.command)}
 												className={`${historyItem} w-full`}
 											>
@@ -262,6 +270,8 @@ function SqlHistoryCommand({
 
 // Main left menu
 
+const MENU_TAB_ORDER = ["history", "tables", "queries"];
+
 export function SqlLeftMenu({
 	schemas,
 	functions,
@@ -294,11 +304,54 @@ export function SqlLeftMenu({
 		});
 	}, [historyData]);
 
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	const handleTabArrowNav = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+			if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+			const target = e.target as HTMLElement;
+			if (target.closest('[role="tablist"]')) return;
+
+			if (
+				target instanceof HTMLInputElement ||
+				target instanceof HTMLTextAreaElement
+			) {
+				const atStart =
+					target.selectionStart === 0 && target.selectionEnd === 0;
+				const atEnd =
+					target.selectionStart === target.value.length &&
+					target.selectionEnd === target.value.length;
+				if (e.key === "ArrowLeft" && !atStart) return;
+				if (e.key === "ArrowRight" && !atEnd) return;
+			}
+
+			const currentIdx = MENU_TAB_ORDER.indexOf(selectedMenuTab);
+			if (currentIdx === -1) return;
+
+			const delta = e.key === "ArrowLeft" ? -1 : 1;
+			const nextIdx =
+				(currentIdx + delta + MENU_TAB_ORDER.length) % MENU_TAB_ORDER.length;
+			const nextTab = MENU_TAB_ORDER[nextIdx];
+			if (nextTab === undefined) return;
+
+			e.preventDefault();
+			setSelectedMenuTab(nextTab);
+
+			const triggers =
+				containerRef.current?.querySelectorAll<HTMLElement>('[role="tab"]');
+			triggers?.[nextIdx]?.focus();
+		},
+		[selectedMenuTab, setSelectedMenuTab],
+	);
+
 	return (
-		<div className={leftMenuContainer}>
+		<div ref={containerRef} className={leftMenuContainer}>
 			<Tabs
 				value={selectedMenuTab}
 				onValueChange={setSelectedMenuTab}
+				onKeyDown={handleTabArrowNav}
 				className="h-full min-w-0"
 			>
 				<div className={tabsHeader}>

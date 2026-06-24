@@ -1,26 +1,13 @@
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	Button,
-	Combobox,
-	Input,
-} from "@health-samurai/react-components";
+import { Combobox, Input } from "@health-samurai/react-components";
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, RefreshCw, Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
 import {
 	type SearchParamStatRow,
 	type SearchParamStatsOrderBy,
 	type SortDir,
-	useResetSearchParamStats,
 	useResetSearchParamStatsRows,
 	useResourceTypes,
 	useSearchParamStats,
@@ -40,15 +27,6 @@ function formatMs(v: number | null | undefined): string {
 function formatNum(v: number | null | undefined): string {
 	if (v == null) return "—";
 	return v.toLocaleString();
-}
-
-function formatTimestamp(v: string | null | undefined): string {
-	if (!v) return "—";
-	try {
-		return new Date(v).toLocaleString();
-	} catch {
-		return v;
-	}
 }
 
 function rowKey(r: SearchParamStatRow): string {
@@ -129,7 +107,6 @@ export function SearchParamsStats() {
 	const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 	const [resourceFilter, setResourceFilter] = useState("");
 	const [paramFilter, setParamFilter] = useState("");
-	const [resetOpen, setResetOpen] = useState(false);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
 	const orderBy: SearchParamStatsOrderBy = sort
@@ -147,12 +124,7 @@ export function SearchParamsStats() {
 		offset: (page - 1) * pageSize,
 	};
 
-	const {
-		data: rows,
-		isLoading,
-		refetch,
-		isFetching,
-	} = useSearchParamStats(queryArgs);
+	const { data: rows, isLoading } = useSearchParamStats(queryArgs);
 	const { data: countData } = useSearchParamStatsCount({
 		by: "param",
 		resourceType: queryArgs.resourceType,
@@ -166,7 +138,6 @@ export function SearchParamsStats() {
 		],
 		[resourceTypes],
 	);
-	const reset = useResetSearchParamStats();
 	const resetRows = useResetSearchParamStatsRows();
 	const total = countData?.total ?? 0;
 	const spIdByKey = useSearchParameterIdLookup(rows ?? []);
@@ -253,20 +224,10 @@ export function SearchParamsStats() {
 			cell: (r) => linkToSp(r, r.search_param ?? "—"),
 		},
 		{
-			id: "has_index",
-			header: "Index",
-			width: "w-[80px]",
-			cell: (r) =>
-				r.has_index ? (
-					<Check className="size-4 text-text-success-primary" />
-				) : (
-					<X className="size-4 text-text-warning-primary" />
-				),
-		},
-		{
 			id: "calls",
 			header: "Calls",
 			sortable: true,
+			reverseIcon: true,
 			width: "w-[100px]",
 			className: "text-right tabular-nums",
 			cell: (r) => formatNum(r.calls),
@@ -275,6 +236,7 @@ export function SearchParamsStats() {
 			id: "mean_time_ms",
 			header: "Mean",
 			sortable: true,
+			reverseIcon: true,
 			width: "w-[120px]",
 			className: "text-right tabular-nums",
 			cell: (r) => formatMs(r.mean_time_ms),
@@ -283,6 +245,7 @@ export function SearchParamsStats() {
 			id: "total_time_ms",
 			header: "Total",
 			sortable: true,
+			reverseIcon: true,
 			width: "w-[120px]",
 			className: "text-right tabular-nums",
 			cell: (r) => formatMs(r.total_time_ms),
@@ -291,6 +254,7 @@ export function SearchParamsStats() {
 			id: "min_time_ms",
 			header: "Min",
 			sortable: true,
+			reverseIcon: true,
 			width: "w-[100px]",
 			className: "text-right tabular-nums",
 			cell: (r) => formatMs(r.min_time_ms),
@@ -299,16 +263,23 @@ export function SearchParamsStats() {
 			id: "max_time_ms",
 			header: "Max",
 			sortable: true,
+			reverseIcon: true,
 			width: "w-[100px]",
 			className: "text-right tabular-nums",
 			cell: (r) => formatMs(r.max_time_ms),
+		},
+		{
+			id: "has_index",
+			header: "Has index",
+			width: "w-[80px]",
+			cell: (r) => (r.has_index ? "yes" : "no"),
 		},
 		{
 			id: "last_used_at",
 			header: "Last used",
 			sortable: true,
 			width: "w-[180px]",
-			cell: (r) => formatTimestamp(r.last_used_at),
+			cell: (r) => r.last_used_at ?? "—",
 		},
 	];
 
@@ -328,40 +299,23 @@ export function SearchParamsStats() {
 	return (
 		<div className="h-full flex flex-col">
 			<div className="flex items-center gap-2 px-4 py-3 border-b border-border-secondary">
-				<Combobox
-					options={resourceTypeOptions}
-					value={resourceFilter}
-					onValueChange={onResourceFilterChange}
-					placeholder="All resource types"
-					searchPlaceholder="Search resource types…"
-					emptyText="No resource types found."
-					className="flex-1"
-				/>
-				<Input
-					placeholder="Search param"
-					value={paramFilter}
-					onChange={(e) => onParamFilterChange(e.target.value)}
-					className="flex-1"
-				/>
-				<Button
-					variant="primary"
-					onClick={() => refetch()}
-					disabled={isFetching}
-				>
-					<RefreshCw
-						className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
+				<div className="flex flex-1">
+					<Combobox
+						options={resourceTypeOptions}
+						value={resourceFilter}
+						onValueChange={onResourceFilterChange}
+						placeholder="All resource types"
+						searchPlaceholder="Search resource types…"
+						emptyText="No resource types found."
+						className="w-fit shrink-0 rounded-r-none border-r-0"
 					/>
-					Refresh
-				</Button>
-				<Button
-					variant="primary"
-					danger
-					onClick={() => setResetOpen(true)}
-					disabled={reset.isPending}
-				>
-					<Trash2 className="size-3.5" />
-					Reset all
-				</Button>
+					<Input
+						placeholder="Search param"
+						value={paramFilter}
+						onChange={(e) => onParamFilterChange(e.target.value)}
+						className="flex-1 rounded-l-none"
+					/>
+				</div>
 			</div>
 			<div className="flex-1 overflow-auto">
 				<DataTable
@@ -369,6 +323,8 @@ export function SearchParamsStats() {
 					columns={columns}
 					rowKey={rowKey}
 					loading={isLoading}
+					resizable
+					tableId="database-search-params"
 					sort={sort}
 					onSortToggle={onSortToggle}
 					selectable
@@ -391,30 +347,6 @@ export function SearchParamsStats() {
 				onPageChange={setPage}
 				onPageSizeChange={onPageSizeChange}
 			/>
-			<AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Reset search-param stats?</AlertDialogTitle>
-					</AlertDialogHeader>
-					<AlertDialogDescription>
-						Clears the aidbox_stat.search_param_stats table. Counters restart
-						from zero.
-					</AlertDialogDescription>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							variant="primary"
-							danger
-							onClick={() => {
-								reset.mutate();
-								setResetOpen(false);
-							}}
-						>
-							Reset
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
 		</div>
 	);
 }
