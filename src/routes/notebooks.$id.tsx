@@ -1446,7 +1446,6 @@ export function SqlQueryCellView({
 								<input
 									id={`sqlq-${key}`}
 									value={paramValues[key] ?? ""}
-									disabled={isReadOnly}
 									onChange={(e) => {
 										const next = {
 											...paramValues,
