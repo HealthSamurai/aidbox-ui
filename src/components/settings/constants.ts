@@ -153,7 +153,6 @@ export const DEPRECATED_CAPABILITY_LABELS: Record<string, string> = {
 	"custom-attributes": "custom Attributes",
 	"custom-search-param-resource": "custom SearchParameter resources",
 	"custom-zen-search-params": "custom search parameters on Zen",
-	"zen-fhir-search-params": "zen/fhir search parameters",
 	"custom-zen-resources": "custom resources on Zen",
 	"zen-profilies": "profiles on Zen",
 };
