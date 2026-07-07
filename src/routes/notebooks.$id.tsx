@@ -624,7 +624,10 @@ export function SqlCellView({
 		onResultChange?.(null);
 	};
 
+	const [activeTab, setActiveTab] = useState(0);
 	const hasResponse = results !== null || error !== null;
+	const multiple = !!results && results.length > 1;
+	const safeActive = results ? Math.min(activeTab, results.length - 1) : 0;
 
 	return (
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
@@ -671,14 +674,28 @@ export function SqlCellView({
 				/>
 			</div>
 			{hasResponse && (
-				<>
+				<HSComp.Tabs
+					value={String(safeActive)}
+					onValueChange={(v) => setActiveTab(Number(v))}
+					className="flex flex-col min-h-0"
+				>
 					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-t border-b border-border-default">
-						<span className="text-sm font-medium text-text-secondary shrink-0">
-							Result
-							{results
-								? ` (${results.reduce((s, r) => s + (r.result?.length ?? 0), 0)})`
-								: ""}
-						</span>
+						{multiple ? (
+							<HSComp.TabsList>
+								{results?.map((r, i) => (
+									<HSComp.TabsTrigger key={`${r.query}-${i}`} value={String(i)}>
+										Query-{i + 1} ({r.result?.length ?? 0})
+									</HSComp.TabsTrigger>
+								))}
+							</HSComp.TabsList>
+						) : (
+							<span className="text-sm font-medium text-text-secondary shrink-0">
+								Result
+								{results
+									? ` (${results.reduce((s, r) => s + (r.result?.length ?? 0), 0)})`
+									: ""}
+							</span>
+						)}
 						<div className="flex items-center gap-3">
 							{duration !== undefined && (
 								<span className="flex items-center text-text-secondary text-sm">
@@ -698,7 +715,7 @@ export function SqlCellView({
 							onCancel={() => undefined}
 						/>
 					</div>
-				</>
+				</HSComp.Tabs>
 			)}
 		</div>
 	);
