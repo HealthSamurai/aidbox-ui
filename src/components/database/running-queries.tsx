@@ -92,7 +92,7 @@ function QueryCell({
 			type="button"
 			onClick={onOpen}
 			title="Click to view full query"
-			className="relative block h-5 w-full text-left cursor-pointer [&_*]:pointer-events-none [&_.cm-editor]:!bg-transparent [&_.cm-editor]:!text-xs [&_.cm-scroller]:!overflow-hidden [&_.cm-scroller]:!py-0 [&_.cm-content]:!pr-0 [&_.cm-scroller]:[mask-image:linear-gradient(to_right,black_calc(100%_-_1.25rem),transparent)] [&_.cm-scroller]:[-webkit-mask-image:linear-gradient(to_right,black_calc(100%_-_1.25rem),transparent)]"
+			className="relative block h-5 w-full text-left cursor-pointer [&_*]:pointer-events-none [&_.cm-editor]:!bg-transparent [&_.cm-editor]:!text-sm [&_.cm-scroller]:!overflow-hidden [&_.cm-scroller]:!py-0 [&_.cm-content]:!pr-0 [&_.cm-scroller]:[mask-image:linear-gradient(to_right,black_calc(100%_-_1.25rem),transparent)] [&_.cm-scroller]:[-webkit-mask-image:linear-gradient(to_right,black_calc(100%_-_1.25rem),transparent)]"
 		>
 			<span className="absolute inset-0">
 				<CodeEditor
