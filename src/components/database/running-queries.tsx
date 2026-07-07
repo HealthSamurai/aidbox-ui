@@ -7,9 +7,15 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
+	Badge,
+	Button,
 	CodeEditor,
+	CopyIcon,
 	Dialog,
+	DialogClose,
 	DialogContent,
+	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DropdownMenu,
@@ -37,9 +43,8 @@ function formatDuration(seconds: number): string {
 	return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 }
 
-function truncate(s: string, n = 80) {
-	const t = s.trim().replace(/\s+/g, " ");
-	return t.length > n ? `${t.slice(0, n)}…` : t;
+function oneLine(s: string): string {
+	return s.trim().replace(/\s+/g, " ");
 }
 
 function tryFormatSql(q: string): string {
@@ -53,6 +58,17 @@ function tryFormatSql(q: string): string {
 	}
 }
 
+function queryDetails(q: ActiveQueryRow): [string, string][] {
+	return [
+		["PID", String(q.pid)],
+		["State", q.state],
+		["Duration", formatDuration(q.duration)],
+		["User", q.usename ?? "—"],
+		["Wait", q.wait_event ? `${q.wait_event_type ?? ""}:${q.wait_event}` : "—"],
+		["Started", q.query_start],
+	];
+}
+
 function compare(a: unknown, b: unknown): number {
 	if (a == null && b == null) return 0;
 	if (a == null) return 1;
@@ -62,6 +78,35 @@ function compare(a: unknown, b: unknown): number {
 }
 
 type PendingAction = { kind: "cancel" | "terminate"; pid: number };
+
+function QueryCell({
+	row,
+	onOpen,
+}: {
+	row: ActiveQueryRow;
+	onOpen: () => void;
+}) {
+	const value = oneLine(row.query);
+	return (
+		<button
+			type="button"
+			onClick={onOpen}
+			title="Click to view full query"
+			className="relative block h-5 w-full text-left cursor-pointer [&_*]:pointer-events-none [&_.cm-editor]:!bg-transparent [&_.cm-editor]:!text-sm [&_.cm-scroller]:!overflow-hidden [&_.cm-scroller]:!py-0 [&_.cm-content]:!pr-0 [&_.cm-scroller]:[mask-image:linear-gradient(to_right,black_calc(100%_-_1.25rem),transparent)] [&_.cm-scroller]:[-webkit-mask-image:linear-gradient(to_right,black_calc(100%_-_1.25rem),transparent)]"
+		>
+			<span className="absolute inset-0">
+				<CodeEditor
+					defaultValue={value}
+					currentValue={value}
+					mode="sql"
+					readOnly
+					lineNumbers={false}
+					foldGutter={false}
+				/>
+			</span>
+		</button>
+	);
+}
 
 export function RunningQueries() {
 	const [sort, setSort] = useState<SortState>({
@@ -120,7 +165,18 @@ export function RunningQueries() {
 			reverseIcon: true,
 			width: "w-[80px]",
 			className: "text-right tabular-nums",
-			cell: (r) => r.pid,
+			cell: (r) => (
+				<div className="group/pid flex items-center justify-end gap-1">
+					<span className="opacity-0 group-hover/pid:opacity-100 transition-opacity [&_svg]:size-3.5 text-text-tertiary hover:text-text-primary">
+						<CopyIcon
+							text={String(r.pid)}
+							tooltipText="Copy PID"
+							showToast={false}
+						/>
+					</span>
+					{r.pid}
+				</div>
+			),
 		},
 		{
 			id: "usename",
@@ -152,21 +208,14 @@ export function RunningQueries() {
 			id: "query",
 			header: "Query",
 			grow: true,
-			cell: (r) => (
-				<button
-					type="button"
-					onClick={() => setOpenQuery(r)}
-					className="text-left font-mono typo-body-xs text-text-secondary hover:text-text-primary cursor-pointer truncate w-full"
-					title="Click to view full query"
-				>
-					{truncate(r.query)}
-				</button>
-			),
+			cell: (r) => <QueryCell row={r} onOpen={() => setOpenQuery(r)} />,
 		},
 		{
 			id: "actions",
 			header: "",
-			maxSize: 56,
+			minSize: 0,
+			maxSize: 40,
+			className: "px-1",
 			cell: (r) => (
 				<div className="flex justify-end">
 					<DropdownMenu>
@@ -210,7 +259,7 @@ export function RunningQueries() {
 
 	return (
 		<div className="h-full flex flex-col">
-			<div className="flex-1 overflow-auto">
+			<div className="flex-1 overflow-auto pr-1.5">
 				<DataTable
 					data={sorted}
 					columns={columns}
@@ -220,6 +269,7 @@ export function RunningQueries() {
 					tableId="database-running-queries"
 					sort={sort}
 					onSortToggle={onSortToggle}
+					onRowClick={setOpenQuery}
 					emptyState={
 						<div className="flex items-center justify-center h-full text-text-secondary">
 							No active queries.
@@ -229,18 +279,64 @@ export function RunningQueries() {
 			</div>
 
 			<Dialog open={!!openQuery} onOpenChange={(o) => !o && setOpenQuery(null)}>
-				<DialogContent className="max-w-4xl">
+				<DialogContent className="max-w-[60rem]!">
 					<DialogHeader>
-						<DialogTitle>Query (PID {openQuery?.pid})</DialogTitle>
+						<DialogTitle>Query info</DialogTitle>
+						<DialogDescription>
+							Active PostgreSQL backend — details and full statement.
+						</DialogDescription>
 					</DialogHeader>
 					{openQuery && (
-						<div className="h-[60vh] overflow-auto">
-							<CodeEditor
-								currentValue={tryFormatSql(openQuery.query)}
-								mode="sql"
-								readOnly
-							/>
-						</div>
+						<>
+							<div className="flex flex-wrap items-center gap-2">
+								{queryDetails(openQuery).map(([label, val]) => (
+									<Badge
+										key={label}
+										variant="outline"
+										className="border-transparent gap-1.5 font-normal bg-neutral-100 text-neutral-600"
+									>
+										<span className="opacity-70">{label}</span>
+										<span className="font-medium tabular-nums" title={val}>
+											{val}
+										</span>
+									</Badge>
+								))}
+							</div>
+							<div className="max-h-[50vh] overflow-auto rounded-md border border-border-primary [&_.cm-editor]:h-auto!">
+								<CodeEditor
+									currentValue={tryFormatSql(openQuery.query)}
+									mode="sql"
+									readOnly
+								/>
+							</div>
+							<DialogFooter>
+								<DialogClose asChild>
+									<Button variant="secondary" className="sm:mr-auto">
+										Close
+									</Button>
+								</DialogClose>
+								<Button
+									variant="primary"
+									danger
+									onClick={() => {
+										setPending({ kind: "cancel", pid: openQuery.pid });
+										setOpenQuery(null);
+									}}
+								>
+									Cancel query
+								</Button>
+								<Button
+									variant="primary"
+									danger
+									onClick={() => {
+										setPending({ kind: "terminate", pid: openQuery.pid });
+										setOpenQuery(null);
+									}}
+								>
+									Terminate query
+								</Button>
+							</DialogFooter>
+						</>
 					)}
 				</DialogContent>
 			</Dialog>
