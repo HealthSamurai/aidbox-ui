@@ -10,6 +10,12 @@ const DEFAULT_MAX_SIZE = 1000;
 const DEFAULT_SIZE = 150;
 const STORAGE_PREFIX = "data-table-sizing:v2:";
 
+function isInteractiveTarget(e: React.MouseEvent): boolean {
+	return !!(e.target as HTMLElement).closest(
+		"button, a, input, select, textarea, label",
+	);
+}
+
 function sortedColumn(
 	sort: SortState | undefined,
 	column: string,
@@ -184,6 +190,7 @@ function SimpleDataTable<T>({
 	onSortToggle,
 	zebra = true,
 	noRowHover,
+	onRowClick,
 }: DataTableProps<T>) {
 	const { allSelected, someSelected, toggleAll, toggleOne } =
 		useSelectionHelpers(
@@ -234,6 +241,15 @@ function SimpleDataTable<T>({
 								zebra={zebra}
 								index={index}
 								selected={isSelected}
+								className={onRowClick ? "cursor-pointer" : undefined}
+								onClick={
+									onRowClick
+										? (e) => {
+												if (isInteractiveTarget(e)) return;
+												onRowClick(row);
+											}
+										: undefined
+								}
 							>
 								{selectable && (
 									<HSComp.TableCell>
@@ -276,6 +292,7 @@ function ResizableDataTable<T>({
 	zebra = true,
 	noRowHover,
 	renderExpandedRow,
+	onRowClick,
 }: DataTableProps<T>) {
 	const { allSelected, someSelected, toggleAll, toggleOne } =
 		useSelectionHelpers(
@@ -444,8 +461,18 @@ function ResizableDataTable<T>({
 									zebra={zebra}
 									index={index}
 									selected={isSelected}
-									className={expandable ? "cursor-pointer" : undefined}
-									onClick={expandable ? () => toggleRow(id) : undefined}
+									className={
+										expandable || onRowClick ? "cursor-pointer" : undefined
+									}
+									onClick={
+										expandable || onRowClick
+											? (e) => {
+													if (isInteractiveTarget(e)) return;
+													if (expandable) toggleRow(id);
+													onRowClick?.(row);
+												}
+											: undefined
+									}
 								>
 									{selectable && (
 										<HSComp.TableCell
