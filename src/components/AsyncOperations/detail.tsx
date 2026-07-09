@@ -28,7 +28,6 @@ import { useAsyncOperationStatus, useCancelAsyncOperation } from "./api";
 import { StatusBadge } from "./status-badge";
 import type { AsyncOperationTask } from "./types";
 
-const CANCEL_MARKER = "async-api.operation/cancel-marker";
 const DEFAULT_PAGE_SIZE = 30;
 const PAGE_SIZE_STORAGE_KEY = "async-operations:tasks-page-size";
 
@@ -44,56 +43,8 @@ function taskState(task: AsyncOperationTask): TaskState {
 	return started ? "running" : "pending";
 }
 
-function aggregate(tasks: AsyncOperationTask[]) {
-	const real = tasks.filter((t) => t.task_name !== CANCEL_MARKER);
-	let succeeded = 0;
-	let failed = 0;
-	let running = 0;
-	let pending = 0;
-	for (const t of real) {
-		switch (taskState(t)) {
-			case "succeeded":
-				succeeded++;
-				break;
-			case "failed":
-				failed++;
-				break;
-			case "running":
-				running++;
-				break;
-			case "pending":
-				pending++;
-				break;
-		}
-	}
-	return { total: real.length, succeeded, failed, running, pending };
-}
-
 function parseMs(value: string | null | undefined): number | null {
 	return value ? new Date(value).getTime() : null;
-}
-
-function timeBounds(tasks: AsyncOperationTask[]) {
-	let startMs: number | null = null;
-	let startRaw: string | null = null;
-	let endMs: number | null = null;
-	let endRaw: string | null = null;
-	for (const t of tasks) {
-		if (t.task_name === CANCEL_MARKER) continue;
-		const sRaw = t.time_started ?? t.execution_time ?? null;
-		const s = parseMs(sRaw);
-		if (s !== null && (startMs === null || s < startMs)) {
-			startMs = s;
-			startRaw = sRaw;
-		}
-		const eRaw = t.time_done ?? t.last_heartbeat ?? null;
-		const e = parseMs(eRaw);
-		if (e !== null && (endMs === null || e > endMs)) {
-			endMs = e;
-			endRaw = eRaw;
-		}
-	}
-	return { startMs, startRaw, endMs, endRaw };
 }
 
 function formatDuration(ms: number): string {
@@ -104,36 +55,12 @@ function formatDuration(ms: number): string {
 }
 
 function taskDurationMs(task: AsyncOperationTask): number | null {
+	if (taskState(task) === "pending") return null;
 	const start = parseMs(task.time_started ?? task.execution_time);
 	if (start === null) return null;
 	const end =
 		parseMs(task.time_done) ?? (task.success == null ? Date.now() : null);
 	return end === null ? null : end - start;
-}
-
-function getString(
-	obj: Record<string, unknown> | null,
-	key: string,
-): string | null {
-	if (!obj) return null;
-	const v = obj[key];
-	return typeof v === "string" && v.length > 0 ? v : null;
-}
-
-function findFailureMessage(tasks: AsyncOperationTask[]): {
-	taskInstance: string;
-	message: string;
-} | null {
-	for (const t of tasks) {
-		if (t.success === false) {
-			const msg =
-				getString(t.task_outcome, "message") ??
-				getString(t.task_outcome, "error") ??
-				"Task failed (no error message recorded)";
-			return { taskInstance: t.task_instance, message: msg };
-		}
-	}
-	return null;
 }
 
 function TaskStatus({ task }: { task: AsyncOperationTask }) {
@@ -170,36 +97,6 @@ function TaskStatus({ task }: { task: AsyncOperationTask }) {
 	);
 }
 
-const STATUS_SORT_ORDER: Record<TaskState, number> = {
-	failed: 0,
-	running: 1,
-	pending: 2,
-	succeeded: 3,
-};
-
-function taskSortValue(
-	task: AsyncOperationTask,
-	column: string,
-): string | number {
-	switch (column) {
-		case "status":
-			return STATUS_SORT_ORDER[taskState(task)];
-		case "started":
-			return task.time_started ?? task.execution_time ?? "";
-		case "done":
-			return task.time_done ?? "";
-		case "duration":
-			return taskDurationMs(task) ?? 0;
-		default: {
-			const v = (task as unknown as Record<string, unknown>)[column];
-			if (typeof v === "number") return v;
-			if (typeof v === "boolean") return v ? 1 : 0;
-			if (typeof v === "string") return v;
-			return 0;
-		}
-	}
-}
-
 const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
 	{
 		id: "status",
@@ -234,7 +131,10 @@ const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
 		header: "Started",
 		sortable: true,
 		maxSize: 260,
-		cell: (t) => t.time_started ?? t.execution_time ?? "—",
+		cell: (t) =>
+			taskState(t) === "pending"
+				? "—"
+				: (t.time_started ?? t.execution_time ?? "—"),
 	},
 	{
 		id: "done",
@@ -319,8 +219,6 @@ const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
 ];
 
 export function AsyncOperationDetail({ operationId }: { operationId: string }) {
-	const { data, isLoading, isFetching, refetch, error } =
-		useAsyncOperationStatus(operationId);
 	const cancel = useCancelAsyncOperation();
 	const [terminateOpen, setTerminateOpen] = useState(false);
 	const [sort, setSort] = useState<SortState>({
@@ -334,11 +232,24 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 		defaultValue: DEFAULT_PAGE_SIZE,
 	});
 
-	// Reset to the first page when switching to a different operation.
+	const { data, isLoading, isFetching, refetch, error } =
+		useAsyncOperationStatus(operationId, {
+			page,
+			pageSize,
+			sortField: sort?.column ?? "started",
+			sortOrder: sort?.direction ?? "desc",
+		});
+
 	const prevOperationId = useRef(operationId);
 	if (prevOperationId.current !== operationId) {
 		prevOperationId.current = operationId;
 		setPage(1);
+	}
+
+	const total = data?.total ?? 0;
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	if (total > 0 && page > totalPages) {
+		setPage(totalPages);
 	}
 
 	if (isLoading) {
@@ -363,25 +274,24 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 	const status = data.status;
 	const isActive = status === "in-progress";
 	const tasks = data.tasks ?? [];
-	const visibleTasks = tasks.filter((t) => t.task_name !== CANCEL_MARKER);
-	const sortedTasks = sort
-		? [...visibleTasks].sort((a, b) => {
-				const dir = sort.direction === "asc" ? 1 : -1;
-				const av = taskSortValue(a, sort.column);
-				const bv = taskSortValue(b, sort.column);
-				if (typeof av === "string" && typeof bv === "string") {
-					return dir * av.localeCompare(bv);
-				}
-				return dir * ((av as number) - (bv as number));
-			})
-		: visibleTasks;
-	const total = sortedTasks.length;
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-	const safePage = Math.min(page, totalPages);
-	const pagedTasks = sortedTasks.slice(
-		(safePage - 1) * pageSize,
-		safePage * pageSize,
-	);
+	const counts = data.counts ?? {
+		total: 0,
+		succeeded: 0,
+		failed: 0,
+		running: 0,
+		pending: 0,
+	};
+	const failure = data.failure;
+	const taskName = data["task-name"] ?? "—";
+	const createdLabel = data["created-at"] ?? "—";
+	const updatedLabel = data["last-updated"] ?? "—";
+	const startMs = parseMs(data["created-at"]);
+	const endMs = parseMs(data["last-updated"]);
+	const durationEnd = isActive ? Date.now() : endMs;
+	const durationLabel =
+		startMs !== null && durationEnd !== null
+			? formatDuration(durationEnd - startMs)
+			: "—";
 	const handleSortToggle = (column: string) => {
 		setPage(1);
 		setSort((prev) =>
@@ -390,17 +300,6 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 				: { column, direction: "asc" },
 		);
 	};
-	const counts = aggregate(tasks);
-	const taskName =
-		tasks.find((t) => t.task_name !== CANCEL_MARKER)?.task_name ?? "—";
-	const { startMs, startRaw, endMs, endRaw } = timeBounds(tasks);
-	const createdLabel = startRaw ?? "—";
-	const updatedLabel = endRaw ?? "—";
-	const durationEnd = status === "in-progress" ? Date.now() : endMs;
-	const durationLabel =
-		startMs !== null && durationEnd !== null
-			? formatDuration(durationEnd - startMs)
-			: "—";
 	const metrics: { label: string; value: string | number }[] = [
 		{ label: "Duration", value: durationLabel },
 		{ label: "Total", value: counts.total },
@@ -415,8 +314,6 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 		{ label: "Created", value: createdLabel },
 		{ label: "Updated", value: updatedLabel },
 	];
-	const failure =
-		status === "failed" || counts.failed > 0 ? findFailureMessage(tasks) : null;
 
 	return (
 		<div className="flex flex-col h-full">
@@ -477,14 +374,14 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 						{failure.message}
 					</AlertDescription>
 					<AlertDescription className="text-text-secondary text-xs font-mono break-all">
-						{failure.taskInstance}
+						{failure["task-instance"]}
 					</AlertDescription>
 				</Alert>
 			) : null}
 
 			<div className="flex-1 overflow-auto [&_tbody_tr:last-child]:border-b [&_tbody_tr:last-child]:border-border-secondary">
 				<DataTable<AsyncOperationTask>
-					data={pagedTasks}
+					data={tasks}
 					columns={TASK_COLUMNS}
 					rowKey={(t) => t.task_instance}
 					resizable
@@ -549,7 +446,7 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 			{total > 0 ? (
 				<DataTableFooter
 					total={total}
-					currentPage={safePage}
+					currentPage={page}
 					pageSize={pageSize}
 					selectedCount={0}
 					onPageChange={setPage}

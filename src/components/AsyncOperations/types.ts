@@ -43,10 +43,29 @@ export interface AsyncOperationTask {
 	version?: number | null;
 }
 
+export interface AsyncOperationCounts {
+	total: number;
+	succeeded: number;
+	failed: number;
+	running: number;
+	pending: number;
+}
+
+export interface AsyncOperationFailure {
+	"task-instance": string;
+	message: string;
+}
+
 export interface AsyncOperationStatusResponse {
 	"operation-id": string;
 	status: AsyncOperationStatus | "not-found";
 	tasks: AsyncOperationTask[];
+	total: number;
+	counts?: AsyncOperationCounts;
+	"task-name": string | null;
+	"created-at": string | null;
+	"last-updated": string | null;
+	failure: AsyncOperationFailure | null;
 }
 
 export const STATUS_FILTER_OPTIONS: {
@@ -82,11 +101,22 @@ export interface ListQuery {
 	taskName: string;
 	sortField: SortField;
 	sortOrder: SortOrder;
+	page: number;
+	pageSize: number;
 }
 
 export const DEFAULT_LIST_QUERY: ListQuery = {
 	statusFilter: "all",
 	taskName: "",
-	sortField: "last-updated",
+	sortField: "created-at",
 	sortOrder: "desc",
+	page: 1,
+	pageSize: 30,
 };
+
+export interface StatusQuery {
+	page: number;
+	pageSize: number;
+	sortField: string;
+	sortOrder: SortOrder;
+}

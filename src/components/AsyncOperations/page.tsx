@@ -12,7 +12,9 @@ import {
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLocalStorage } from "../../hooks";
 import { DataTable } from "../data-table/data-table";
+import { DataTableFooter } from "../data-table/footer";
 import type { ColumnDef, SortState } from "../data-table/types";
 import { useAsyncOperationsList } from "./api";
 import { StatusBadge } from "./status-badge";
@@ -57,18 +59,31 @@ export function AsyncOperationsPage() {
 		sortField: DEFAULT_LIST_QUERY.sortField,
 		sortOrder: DEFAULT_LIST_QUERY.sortOrder,
 	});
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useLocalStorage<number>({
+		key: "async-operations:list-page-size",
+		getInitialValueInEffect: false,
+		defaultValue: DEFAULT_LIST_QUERY.pageSize,
+	});
 
 	const query: ListQuery = {
 		statusFilter: search.status ?? "all",
 		taskName: search.task ?? "",
 		sortField: sort.sortField,
 		sortOrder: sort.sortOrder,
+		page,
+		pageSize,
 	};
 
 	const { data, isLoading } = useAsyncOperationsList(query);
 
 	const operations = data?.operations ?? [];
 	const taskNames = data?.["task-names"] ?? [];
+	const total = data?.total ?? 0;
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	if (total > 0 && page > totalPages) {
+		setPage(totalPages);
+	}
 
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {
@@ -76,6 +91,22 @@ export function AsyncOperationsPage() {
 		const t = setInterval(() => setNow(Date.now()), 1000);
 		return () => clearInterval(t);
 	}, [operations]);
+
+	const setStatusFilter = (v: string) => {
+		setPage(1);
+		navigate({
+			search: (prev) => ({
+				...prev,
+				status:
+					v === "all" || v === "" ? undefined : (v as AsyncOperationStatus),
+			}),
+		});
+	};
+
+	const setTaskFilter = (v: string | undefined) => {
+		setPage(1);
+		navigate({ search: (prev) => ({ ...prev, task: v || undefined }) });
+	};
 
 	const tableSort: SortState = {
 		column: SORT_FIELD_TO_COLUMN[query.sortField],
@@ -85,6 +116,7 @@ export function AsyncOperationsPage() {
 	const handleSortToggle = (columnId: string) => {
 		const field = COLUMN_TO_SORT_FIELD[columnId];
 		if (!field) return;
+		setPage(1);
 		setSort((prev) =>
 			prev.sortField === field
 				? { ...prev, sortOrder: prev.sortOrder === "asc" ? "desc" : "asc" }
@@ -203,17 +235,7 @@ export function AsyncOperationsPage() {
 				<div className="flex items-center gap-2 flex-1 min-w-0">
 					<Select
 						value={query.statusFilter === "all" ? "" : query.statusFilter}
-						onValueChange={(v) =>
-							navigate({
-								search: (prev) => ({
-									...prev,
-									status:
-										v === "all" || v === ""
-											? undefined
-											: (v as AsyncOperationStatus),
-								}),
-							})
-						}
+						onValueChange={setStatusFilter}
 					>
 						<SelectTrigger className="w-44 h-8">
 							<SelectValue placeholder="Status" />
@@ -237,11 +259,7 @@ export function AsyncOperationsPage() {
 					<Combobox
 						options={taskNames.map((tn) => ({ value: tn, label: tn }))}
 						value={query.taskName}
-						onValueChange={(v) =>
-							navigate({
-								search: (prev) => ({ ...prev, task: v || undefined }),
-							})
-						}
+						onValueChange={setTaskFilter}
 						placeholder="Task"
 						searchPlaceholder="Search task..."
 						emptyText="No tasks found."
@@ -250,9 +268,7 @@ export function AsyncOperationsPage() {
 					{query.taskName ? (
 						<button
 							type="button"
-							onClick={() =>
-								navigate({ search: (prev) => ({ ...prev, task: undefined }) })
-							}
+							onClick={() => setTaskFilter(undefined)}
 							aria-label="Clear task filter"
 							className="-ml-2 flex items-center justify-center size-8 shrink-0 cursor-pointer text-text-tertiary hover:text-text-primary"
 						>
@@ -279,6 +295,19 @@ export function AsyncOperationsPage() {
 					}
 				/>
 			</div>
+			{total > 0 ? (
+				<DataTableFooter
+					total={total}
+					currentPage={page}
+					pageSize={pageSize}
+					selectedCount={0}
+					onPageChange={setPage}
+					onPageSizeChange={(size) => {
+						setPageSize(size);
+						setPage(1);
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }
