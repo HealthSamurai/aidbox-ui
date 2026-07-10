@@ -19,15 +19,16 @@ import type { ColumnDef, SortState } from "../data-table/types";
 import { useAsyncOperationsList } from "./api";
 import { StatusBadge } from "./status-badge";
 import {
-	type AsyncOperationStatus,
 	type AsyncOperationSummary,
 	DEFAULT_LIST_QUERY,
+	type DisplayStatus,
 	type ListQuery,
 	type SortField,
 	type SortOrder,
 	STATUS_FILTER_OPTIONS,
 	STATUS_TEXT_COLOR,
 } from "./types";
+import { displayStatus } from "./utils";
 
 const COLUMN_TO_SORT_FIELD: Record<string, SortField> = {
 	created: "created-at",
@@ -97,8 +98,7 @@ export function AsyncOperationsPage() {
 		navigate({
 			search: (prev) => ({
 				...prev,
-				status:
-					v === "all" || v === "" ? undefined : (v as AsyncOperationStatus),
+				status: v === "all" || v === "" ? undefined : (v as DisplayStatus),
 			}),
 		});
 	};
@@ -147,7 +147,9 @@ export function AsyncOperationsPage() {
 			id: "status",
 			header: "Status",
 			maxSize: 180,
-			cell: (op) => <StatusBadge status={op.status} />,
+			cell: (op) => (
+				<StatusBadge status={displayStatus(op.status, op.running, op.active)} />
+			),
 		},
 		{
 			id: "task",
@@ -160,10 +162,11 @@ export function AsyncOperationsPage() {
 			header: "Duration",
 			maxSize: 160,
 			cell: (op) => {
-				const start = parseTs(op["created-at"]);
+				const start = parseTs(op["started-at"]);
+				if (start === null) return "—";
 				const end =
 					op.status === "in-progress" ? now : parseTs(op["last-updated"]);
-				if (start === null || end === null) return "—";
+				if (end === null) return "—";
 				return (
 					<span className="text-text-secondary tabular-nums">
 						{formatDuration(end - start)}

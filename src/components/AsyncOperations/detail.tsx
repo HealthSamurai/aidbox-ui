@@ -27,6 +27,7 @@ import type { ColumnDef, SortState } from "../data-table/types";
 import { useAsyncOperationStatus, useCancelAsyncOperation } from "./api";
 import { StatusBadge } from "./status-badge";
 import type { AsyncOperationTask } from "./types";
+import { displayStatus } from "./utils";
 
 const DEFAULT_PAGE_SIZE = 30;
 const PAGE_SIZE_STORAGE_KEY = "async-operations:tasks-page-size";
@@ -285,7 +286,7 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 	const taskName = data["task-name"] ?? "—";
 	const createdLabel = data["created-at"] ?? "—";
 	const updatedLabel = data["last-updated"] ?? "—";
-	const startMs = parseMs(data["created-at"]);
+	const startMs = parseMs(data["started-at"]);
 	const endMs = parseMs(data["last-updated"]);
 	const durationEnd = isActive ? Date.now() : endMs;
 	const durationLabel =
@@ -343,7 +344,13 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 				) : null}
 			</div>
 			<div className="flex flex-col px-4 py-3 border-b border-border-secondary">
-				<StatusBadge status={status} />
+				<StatusBadge
+					status={displayStatus(
+						status,
+						counts.running,
+						counts.running + counts.pending,
+					)}
+				/>
 				<h1
 					className="mt-1.5 text-lg font-semibold text-text-primary truncate"
 					title={taskName}
