@@ -884,13 +884,7 @@ export function PropertiesTree() {
 						</div>
 						<div className="flex-1 min-w-0">
 							{type === "boolean" ? (
-								<div
-									className="flex items-center h-7"
-									onClick={(e) => e.stopPropagation()}
-									onMouseDown={(e) => e.stopPropagation()}
-									onKeyDown={(e) => e.stopPropagation()}
-									role="presentation"
-								>
+								<div className="flex items-center h-7">
 									<HSComp.Switch
 										checked={prop.valueBoolean === true}
 										onCheckedChange={(c) =>
@@ -899,6 +893,9 @@ export function PropertiesTree() {
 												valueBoolean: c === true,
 											})
 										}
+										onClick={(e) => e.stopPropagation()}
+										onMouseDown={(e) => e.stopPropagation()}
+										onKeyDown={(e) => e.stopPropagation()}
 									/>
 								</div>
 							) : (

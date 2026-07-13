@@ -199,16 +199,18 @@ function ParamValueField({
 		return (
 			<div
 				className={`flex-1 min-w-0 max-w-[200px] flex items-center gap-2 pl-2.5 ${missing ? "ring-1 ring-border-error rounded-md" : ""}`}
-				onClick={(e) => e.stopPropagation()}
-				onMouseDown={(e) => e.stopPropagation()}
-				onKeyDown={(e) => e.stopPropagation()}
-				role="presentation"
 				{...wrapperProps}
 			>
-				<Play size={12} className="text-text-link shrink-0" />
+				<Play
+					size={12}
+					className="text-text-link shrink-0 pointer-events-none"
+				/>
 				<HSComp.Switch
 					checked={value === "true"}
 					onCheckedChange={(c) => onChange(c ? "true" : "false")}
+					onClick={(e) => e.stopPropagation()}
+					onMouseDown={(e) => e.stopPropagation()}
+					onKeyDown={(e) => e.stopPropagation()}
 				/>
 			</div>
 		);

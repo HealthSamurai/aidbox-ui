@@ -9,51 +9,43 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@health-samurai/react-components";
-import { AlertCircle, Ban, Check, Loader2, X } from "lucide-react";
-import { useState } from "react";
+import {
+	AlertCircle,
+	Ban,
+	Check,
+	Clock,
+	Loader2,
+	RefreshCw,
+	X,
+} from "lucide-react";
+import { useRef, useState } from "react";
+import { useLocalStorage } from "../../hooks";
 import { ConfirmDialog } from "../confirm-dialog";
 import { DataTable } from "../data-table/data-table";
+import { DataTableFooter } from "../data-table/footer";
 import type { ColumnDef, SortState } from "../data-table/types";
 import { useAsyncOperationStatus, useCancelAsyncOperation } from "./api";
 import { StatusBadge } from "./status-badge";
 import type { AsyncOperationTask } from "./types";
+import { displayStatus } from "./utils";
 
-const CANCEL_MARKER = "async-api.operation/cancel-marker";
+const DEFAULT_PAGE_SIZE = 30;
+const PAGE_SIZE_STORAGE_KEY = "async-operations:tasks-page-size";
 
-function aggregate(tasks: AsyncOperationTask[]) {
-	const real = tasks.filter((t) => t.task_name !== CANCEL_MARKER);
-	const total = real.length;
-	const succeeded = real.filter((t) => t.success === true).length;
-	const failed = real.filter((t) => t.success === false).length;
-	const pending = total - succeeded - failed;
-	return { total, succeeded, failed, pending };
+type TaskState = "succeeded" | "failed" | "running" | "pending";
+
+function taskState(task: AsyncOperationTask): TaskState {
+	if (task.success === true) return "succeeded";
+	if (task.success === false) return "failed";
+	const started =
+		task.picked === true ||
+		Boolean(task.picked_by) ||
+		Boolean(task.time_started);
+	return started ? "running" : "pending";
 }
 
 function parseMs(value: string | null | undefined): number | null {
 	return value ? new Date(value).getTime() : null;
-}
-
-function timeBounds(tasks: AsyncOperationTask[]) {
-	let startMs: number | null = null;
-	let startRaw: string | null = null;
-	let endMs: number | null = null;
-	let endRaw: string | null = null;
-	for (const t of tasks) {
-		if (t.task_name === CANCEL_MARKER) continue;
-		const sRaw = t.time_started ?? t.execution_time ?? null;
-		const s = parseMs(sRaw);
-		if (s !== null && (startMs === null || s < startMs)) {
-			startMs = s;
-			startRaw = sRaw;
-		}
-		const eRaw = t.time_done ?? t.last_heartbeat ?? null;
-		const e = parseMs(eRaw);
-		if (e !== null && (endMs === null || e > endMs)) {
-			endMs = e;
-			endRaw = eRaw;
-		}
-	}
-	return { startMs, startRaw, endMs, endRaw };
 }
 
 function formatDuration(ms: number): string {
@@ -64,6 +56,7 @@ function formatDuration(ms: number): string {
 }
 
 function taskDurationMs(task: AsyncOperationTask): number | null {
+	if (taskState(task) === "pending") return null;
 	const start = parseMs(task.time_started ?? task.execution_time);
 	if (start === null) return null;
 	const end =
@@ -71,33 +64,9 @@ function taskDurationMs(task: AsyncOperationTask): number | null {
 	return end === null ? null : end - start;
 }
 
-function getString(
-	obj: Record<string, unknown> | null,
-	key: string,
-): string | null {
-	if (!obj) return null;
-	const v = obj[key];
-	return typeof v === "string" && v.length > 0 ? v : null;
-}
-
-function findFailureMessage(tasks: AsyncOperationTask[]): {
-	taskInstance: string;
-	message: string;
-} | null {
-	for (const t of tasks) {
-		if (t.success === false) {
-			const msg =
-				getString(t.task_outcome, "message") ??
-				getString(t.task_outcome, "error") ??
-				"Task failed (no error message recorded)";
-			return { taskInstance: t.task_instance, message: msg };
-		}
-	}
-	return null;
-}
-
 function TaskStatus({ task }: { task: AsyncOperationTask }) {
-	if (task.success === true) {
+	const state = taskState(task);
+	if (state === "succeeded") {
 		return (
 			<span className="flex items-center gap-1 text-utility-green">
 				<Check className="size-4" />
@@ -105,11 +74,19 @@ function TaskStatus({ task }: { task: AsyncOperationTask }) {
 			</span>
 		);
 	}
-	if (task.success === false) {
+	if (state === "failed") {
 		return (
 			<span className="flex items-center gap-1 text-utility-red">
 				<X className="size-4" />
 				Failed
+			</span>
+		);
+	}
+	if (state === "pending") {
+		return (
+			<span className="flex items-center gap-1 text-text-secondary">
+				<Clock className="size-4" />
+				Pending
 			</span>
 		);
 	}
@@ -119,29 +96,6 @@ function TaskStatus({ task }: { task: AsyncOperationTask }) {
 			Running
 		</span>
 	);
-}
-
-function taskSortValue(
-	task: AsyncOperationTask,
-	column: string,
-): string | number {
-	switch (column) {
-		case "status":
-			return task.success === false ? 0 : task.success === true ? 1 : 2;
-		case "started":
-			return task.time_started ?? task.execution_time ?? "";
-		case "done":
-			return task.time_done ?? "";
-		case "duration":
-			return taskDurationMs(task) ?? 0;
-		default: {
-			const v = (task as unknown as Record<string, unknown>)[column];
-			if (typeof v === "number") return v;
-			if (typeof v === "boolean") return v ? 1 : 0;
-			if (typeof v === "string") return v;
-			return 0;
-		}
-	}
 }
 
 const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
@@ -178,7 +132,10 @@ const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
 		header: "Started",
 		sortable: true,
 		maxSize: 260,
-		cell: (t) => t.time_started ?? t.execution_time ?? "—",
+		cell: (t) =>
+			taskState(t) === "pending"
+				? "—"
+				: (t.time_started ?? t.execution_time ?? "—"),
 	},
 	{
 		id: "done",
@@ -263,14 +220,38 @@ const TASK_COLUMNS: ColumnDef<AsyncOperationTask>[] = [
 ];
 
 export function AsyncOperationDetail({ operationId }: { operationId: string }) {
-	const { data, isLoading, refetch, error } =
-		useAsyncOperationStatus(operationId);
 	const cancel = useCancelAsyncOperation();
 	const [terminateOpen, setTerminateOpen] = useState(false);
 	const [sort, setSort] = useState<SortState>({
 		column: "started",
 		direction: "desc",
 	});
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useLocalStorage<number>({
+		key: PAGE_SIZE_STORAGE_KEY,
+		getInitialValueInEffect: false,
+		defaultValue: DEFAULT_PAGE_SIZE,
+	});
+
+	const { data, isLoading, isFetching, refetch, error } =
+		useAsyncOperationStatus(operationId, {
+			page,
+			pageSize,
+			sortField: sort?.column ?? "started",
+			sortOrder: sort?.direction ?? "desc",
+		});
+
+	const prevOperationId = useRef(operationId);
+	if (prevOperationId.current !== operationId) {
+		prevOperationId.current = operationId;
+		setPage(1);
+	}
+
+	const total = data?.total ?? 0;
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	if (total > 0 && page > totalPages) {
+		setPage(totalPages);
+	}
 
 	if (isLoading) {
 		return (
@@ -294,54 +275,61 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 	const status = data.status;
 	const isActive = status === "in-progress";
 	const tasks = data.tasks ?? [];
-	const visibleTasks = tasks.filter((t) => t.task_name !== CANCEL_MARKER);
-	const sortedTasks = sort
-		? [...visibleTasks].sort((a, b) => {
-				const dir = sort.direction === "asc" ? 1 : -1;
-				const av = taskSortValue(a, sort.column);
-				const bv = taskSortValue(b, sort.column);
-				if (typeof av === "string" && typeof bv === "string") {
-					return dir * av.localeCompare(bv);
-				}
-				return dir * ((av as number) - (bv as number));
-			})
-		: visibleTasks;
+	const counts = data.counts ?? {
+		total: 0,
+		succeeded: 0,
+		failed: 0,
+		running: 0,
+		pending: 0,
+	};
+	const failure = data.failure;
+	const taskName = data["task-name"] ?? "—";
+	const createdLabel = data["created-at"] ?? "—";
+	const updatedLabel = data["last-updated"] ?? "—";
+	const startMs = parseMs(data["started-at"]);
+	const endMs = parseMs(data["last-updated"]);
+	const durationEnd = isActive ? Date.now() : endMs;
+	const durationLabel =
+		startMs !== null && durationEnd !== null
+			? formatDuration(durationEnd - startMs)
+			: "—";
 	const handleSortToggle = (column: string) => {
+		setPage(1);
 		setSort((prev) =>
 			prev?.column === column
 				? { column, direction: prev.direction === "asc" ? "desc" : "asc" }
 				: { column, direction: "asc" },
 		);
 	};
-	const counts = aggregate(tasks);
-	const taskName =
-		tasks.find((t) => t.task_name !== CANCEL_MARKER)?.task_name ?? "—";
-	const { startMs, startRaw, endMs, endRaw } = timeBounds(tasks);
-	const createdLabel = startRaw ?? "—";
-	const updatedLabel = endRaw ?? "—";
-	const durationEnd = status === "in-progress" ? Date.now() : endMs;
-	const durationLabel =
-		startMs !== null && durationEnd !== null
-			? formatDuration(durationEnd - startMs)
-			: "—";
 	const metrics: { label: string; value: string | number }[] = [
 		{ label: "Duration", value: durationLabel },
 		{ label: "Total", value: counts.total },
 		{ label: "Succeeded", value: counts.succeeded },
 		...(counts.failed > 0 ? [{ label: "Failed", value: counts.failed }] : []),
+		...(counts.running > 0
+			? [{ label: "Running", value: counts.running }]
+			: []),
 		...(counts.pending > 0
 			? [{ label: "Pending", value: counts.pending }]
 			: []),
 		{ label: "Created", value: createdLabel },
 		{ label: "Updated", value: updatedLabel },
 	];
-	const failure =
-		status === "failed" || counts.failed > 0 ? findFailureMessage(tasks) : null;
 
 	return (
 		<div className="flex flex-col h-full">
-			{isActive ? (
-				<div className="flex items-center justify-between bg-bg-secondary flex-none h-10 border-b border-border-secondary px-4">
+			<div className="flex items-center gap-4 bg-bg-secondary flex-none h-10 border-b border-border-secondary px-4">
+				<Button
+					variant="ghost"
+					size="small"
+					className="px-0! hover:bg-bg-secondary!"
+					disabled={isFetching}
+					onClick={() => refetch()}
+				>
+					<RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
+					Refresh
+				</Button>
+				{isActive ? (
 					<Button
 						variant="ghost"
 						danger
@@ -353,10 +341,16 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 						<Ban className="size-4" />
 						Terminate
 					</Button>
-				</div>
-			) : null}
+				) : null}
+			</div>
 			<div className="flex flex-col px-4 py-3 border-b border-border-secondary">
-				<StatusBadge status={status} />
+				<StatusBadge
+					status={displayStatus(
+						status,
+						counts.running,
+						counts.running + counts.pending,
+					)}
+				/>
 				<h1
 					className="mt-1.5 text-lg font-semibold text-text-primary truncate"
 					title={taskName}
@@ -387,14 +381,14 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 						{failure.message}
 					</AlertDescription>
 					<AlertDescription className="text-text-secondary text-xs font-mono break-all">
-						{failure.taskInstance}
+						{failure["task-instance"]}
 					</AlertDescription>
 				</Alert>
 			) : null}
 
 			<div className="flex-1 overflow-auto [&_tbody_tr:last-child]:border-b [&_tbody_tr:last-child]:border-border-secondary">
 				<DataTable<AsyncOperationTask>
-					data={sortedTasks}
+					data={tasks}
 					columns={TASK_COLUMNS}
 					rowKey={(t) => t.task_instance}
 					resizable
@@ -456,6 +450,19 @@ export function AsyncOperationDetail({ operationId }: { operationId: string }) {
 					}
 				/>
 			</div>
+			{total > 0 ? (
+				<DataTableFooter
+					total={total}
+					currentPage={page}
+					pageSize={pageSize}
+					selectedCount={0}
+					onPageChange={setPage}
+					onPageSizeChange={(size) => {
+						setPageSize(size);
+						setPage(1);
+					}}
+				/>
+			) : null}
 			<ConfirmDialog
 				open={terminateOpen}
 				onOpenChange={setTerminateOpen}

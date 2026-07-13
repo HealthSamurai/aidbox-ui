@@ -4,14 +4,19 @@ export type AsyncOperationStatus =
 	| "failed"
 	| "cancelled";
 
+export type DisplayStatus = AsyncOperationStatus | "queued";
+
 export interface AsyncOperationSummary {
 	"operation-id": string;
 	status: AsyncOperationStatus;
 	"task-name": string | null;
 	total: number;
 	active: number;
+	running: number;
+	pending: number;
 	succeeded: number;
 	failed: number;
+	"started-at": string | null;
 	"created-at": string | null;
 	"last-updated": string | null;
 }
@@ -43,18 +48,39 @@ export interface AsyncOperationTask {
 	version?: number | null;
 }
 
+export interface AsyncOperationCounts {
+	total: number;
+	succeeded: number;
+	failed: number;
+	running: number;
+	pending: number;
+}
+
+export interface AsyncOperationFailure {
+	"task-instance": string;
+	message: string;
+}
+
 export interface AsyncOperationStatusResponse {
 	"operation-id": string;
 	status: AsyncOperationStatus | "not-found";
 	tasks: AsyncOperationTask[];
+	total: number;
+	counts?: AsyncOperationCounts;
+	"task-name": string | null;
+	"started-at": string | null;
+	"created-at": string | null;
+	"last-updated": string | null;
+	failure: AsyncOperationFailure | null;
 }
 
 export const STATUS_FILTER_OPTIONS: {
-	value: AsyncOperationStatus | "all";
+	value: DisplayStatus | "all";
 	label: string;
 }[] = [
 	{ value: "all", label: "All" },
 	{ value: "in-progress", label: "In progress" },
+	{ value: "queued", label: "Queued" },
 	{ value: "completed", label: "Completed" },
 	{ value: "cancelled", label: "Cancelled" },
 	{ value: "failed", label: "Failed" },
@@ -67,8 +93,9 @@ export const STATUS_LABEL: Record<AsyncOperationStatus, string> = {
 	cancelled: "Cancelled",
 };
 
-export const STATUS_TEXT_COLOR: Record<AsyncOperationStatus, string> = {
+export const STATUS_TEXT_COLOR: Record<DisplayStatus, string> = {
 	"in-progress": "text-utility-blue",
+	queued: "text-text-secondary",
 	completed: "text-utility-green",
 	failed: "text-utility-red",
 	cancelled: "text-utility-yellow",
@@ -78,15 +105,26 @@ export type SortField = "created-at" | "last-updated";
 export type SortOrder = "asc" | "desc";
 
 export interface ListQuery {
-	statusFilter: AsyncOperationStatus | "all";
+	statusFilter: DisplayStatus | "all";
 	taskName: string;
 	sortField: SortField;
 	sortOrder: SortOrder;
+	page: number;
+	pageSize: number;
 }
 
 export const DEFAULT_LIST_QUERY: ListQuery = {
 	statusFilter: "all",
 	taskName: "",
-	sortField: "last-updated",
+	sortField: "created-at",
 	sortOrder: "desc",
+	page: 1,
+	pageSize: 30,
 };
+
+export interface StatusQuery {
+	page: number;
+	pageSize: number;
+	sortField: string;
+	sortOrder: SortOrder;
+}
