@@ -38,6 +38,14 @@ tr:hover .pin-button {
 	opacity: 0.5 !important;
 }
 
+/* Lineage graph: de-emphasise nodes that are off the selected path. We fade
+   only the card's content, keeping the card itself opaque so the dotted
+   background does not show through (plain opacity on the node would). */
+.react-flow__node.lineage-node-dimmed .lineage-node-card > * {
+	opacity: 0.25;
+	transition: opacity 0.15s ease;
+}
+
 /* Hidden span used for cross-browser text width measurement
    (used by CodeSystemPicker for auto-sizing the input field) */
 .input-measure {
