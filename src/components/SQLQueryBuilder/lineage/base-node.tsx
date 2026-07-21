@@ -11,7 +11,7 @@ export function BaseNode({
 }) {
 	return (
 		<div
-			className={`rounded-md bg-bg-primary border ${
+			className={`lineage-node-card rounded-md bg-bg-primary border ${
 				selected ? "border-border-link" : "border-border-primary"
 			} shadow-sm overflow-hidden min-w-[240px] w-[440px] ${className ?? ""}`}
 		>

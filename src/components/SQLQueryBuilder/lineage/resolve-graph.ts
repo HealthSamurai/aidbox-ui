@@ -415,34 +415,338 @@ function attachInheritedParameters(
 	}
 }
 
+// Horizontal spacing between columns.
 const COL_WIDTH = 560;
-const ROW_HEIGHT = 360;
+// Vertical gap kept between neighbouring sibling subtrees in the SQL tree.
+const SUBTREE_GAP = 56;
+// Vertical gap between nodes stacked in the fixed resource / view columns.
+const COLUMN_V_GAP = 40;
+
+// Fixed left-hand columns: resource tables, then view definitions. Everything
+// to the right of them is the SQL dependency tree.
+const RESOURCE_COL_X = 0;
+const VIEW_COL_X = COL_WIDTH;
+const SQL_COL_START = COL_WIDTH * 2;
+
+// Approximate rendered heights (px) of node chrome, used to reserve enough
+// vertical room per node so that tall nodes don't overlap their siblings.
+const HEADER_H = 61;
+const ROW_H = 25;
+const FOOTER_H = 29;
+const EMPTY_BODY_H = 32;
+
+function countViewColumns(selects: ViewSelect[]): number {
+	let total = 0;
+	const walk = (list: ViewSelect[]) => {
+		for (const s of list) {
+			total += (s.column ?? []).length;
+			if (s.select) walk(s.select);
+			if (s.unionAll) walk(s.unionAll);
+		}
+	};
+	walk(selects);
+	return total;
+}
+
+function estimateNodeHeight(node: ResolvedNode): number {
+	if (node.kind === "resource-type") return HEADER_H;
+	if (node.kind === "view-definition") {
+		const cols = countViewColumns(node.data.select);
+		return HEADER_H + (cols > 0 ? cols * ROW_H : EMPTY_BODY_H) + FOOTER_H;
+	}
+	const d = node.data;
+	if (d.libraryKind === "sql-view") return HEADER_H + FOOTER_H;
+	const own = new Set(d.parameters.map((p) => p.name));
+	const paramCount =
+		d.parameters.length +
+		d.inheritedParameters.filter((p) => !own.has(p.name)).length;
+	return (
+		HEADER_H + (paramCount > 0 ? paramCount * ROW_H : EMPTY_BODY_H) + FOOTER_H
+	);
+}
+
+// Reduce the SQL sub-graph to a spanning tree: every SQL node keeps a single
+// parent — the consuming SQL node closest to the root.
+function buildSqlParentOf(
+	edges: Edge[],
+	depthById: Map<string, number>,
+	kindById: Map<string, LineageNodeData["kind"]>,
+): Map<string, string> {
+	const parentOf = new Map<string, string>();
+	for (const e of edges) {
+		if (
+			kindById.get(e.source) !== "sql-query" ||
+			kindById.get(e.target) !== "sql-query"
+		) {
+			continue;
+		}
+		// edge: source (dependency) → target (consumer / closer to root)
+		const current = parentOf.get(e.source);
+		if (current === undefined) {
+			parentOf.set(e.source, e.target);
+			continue;
+		}
+		const curDepth = depthById.get(current) ?? 0;
+		const newDepth = depthById.get(e.target) ?? 0;
+		if (newDepth < curDepth) parentOf.set(e.source, e.target);
+	}
+	return parentOf;
+}
+
+function childrenFromParents(
+	parentOf: Map<string, string>,
+): Map<string, string[]> {
+	const treeChildren = new Map<string, string[]>();
+	for (const [child, parent] of parentOf) {
+		const list = treeChildren.get(parent) ?? [];
+		list.push(child);
+		treeChildren.set(parent, list);
+	}
+	return treeChildren;
+}
+
+// Vertical extent of a subtree = max of the node's own height and the stacked
+// height of all its children (so a tall node still reserves room).
+function subtreeHeight(
+	id: string,
+	treeChildren: Map<string, string[]>,
+	heightById: Map<string, number>,
+	cache: Map<string, number>,
+): number {
+	const cached = cache.get(id);
+	if (cached !== undefined) return cached;
+	const own = heightById.get(id) ?? EMPTY_BODY_H;
+	const children = treeChildren.get(id);
+	if (!children || children.length === 0) {
+		cache.set(id, own);
+		return own;
+	}
+	let total = SUBTREE_GAP * (children.length - 1);
+	for (const c of children) {
+		total += subtreeHeight(c, treeChildren, heightById, cache);
+	}
+	const height = Math.max(own, total);
+	cache.set(id, height);
+	return height;
+}
+
+// Assign the vertical centre of each node so a parent sits centred on the band
+// occupied by its children.
+function placeSubtree(
+	id: string,
+	top: number,
+	treeChildren: Map<string, string[]>,
+	heightById: Map<string, number>,
+	cache: Map<string, number>,
+	centerYById: Map<string, number>,
+): void {
+	const band = subtreeHeight(id, treeChildren, heightById, cache);
+	centerYById.set(id, top + band / 2);
+
+	const children = treeChildren.get(id);
+	if (!children || children.length === 0) return;
+	let childrenTotal = SUBTREE_GAP * (children.length - 1);
+	for (const c of children) {
+		childrenTotal += subtreeHeight(c, treeChildren, heightById, cache);
+	}
+	let cursor = top + (band - childrenTotal) / 2;
+	for (const c of children) {
+		placeSubtree(c, cursor, treeChildren, heightById, cache, centerYById);
+		cursor += subtreeHeight(c, treeChildren, heightById, cache) + SUBTREE_GAP;
+	}
+}
+
+function centerAroundZero(
+	centerYById: Map<string, number>,
+	ids: string[],
+): void {
+	let min = Number.POSITIVE_INFINITY;
+	let max = Number.NEGATIVE_INFINITY;
+	for (const id of ids) {
+		const y = centerYById.get(id);
+		if (y === undefined) continue;
+		if (y < min) min = y;
+		if (y > max) max = y;
+	}
+	if (min === Number.POSITIVE_INFINITY) return;
+	const mid = (min + max) / 2;
+	for (const id of ids) {
+		const y = centerYById.get(id);
+		if (y !== undefined) centerYById.set(id, y - mid);
+	}
+}
+
+// Stack nodes into a single vertical column centred around y = 0.
+function stackColumn(
+	ids: string[],
+	heightById: Map<string, number>,
+	gap: number,
+): Map<string, number> {
+	let total = gap * Math.max(0, ids.length - 1);
+	for (const id of ids) total += heightById.get(id) ?? EMPTY_BODY_H;
+	const centerYById = new Map<string, number>();
+	let cursor = -total / 2;
+	for (const id of ids) {
+		const h = heightById.get(id) ?? EMPTY_BODY_H;
+		centerYById.set(id, cursor + h / 2);
+		cursor += h + gap;
+	}
+	return centerYById;
+}
+
+function buildOutgoing(edges: Edge[]): Map<string, string[]> {
+	const outgoing = new Map<string, string[]>();
+	for (const e of edges) {
+		const list = outgoing.get(e.source) ?? [];
+		list.push(e.target);
+		outgoing.set(e.source, list);
+	}
+	return outgoing;
+}
+
+// Average vertical position of the consumers (edge targets) of a node, used to
+// order the fixed columns so their nodes follow the nodes that reference them.
+function averageConsumerY(
+	id: string,
+	outgoing: Map<string, string[]>,
+	consumerYById: Map<string, number>,
+): number {
+	const consumers = outgoing.get(id);
+	if (!consumers || consumers.length === 0) return 0;
+	let sum = 0;
+	let count = 0;
+	for (const c of consumers) {
+		const y = consumerYById.get(c);
+		if (y === undefined) continue;
+		sum += y;
+		count += 1;
+	}
+	return count === 0 ? 0 : sum / count;
+}
+
+// Place each node opposite the consumers that reference it: its centre is the
+// average Y of those consumers, then overlaps are resolved by nudging the lower
+// node down so the alignment is preserved as closely as possible.
+function placeAgainstConsumers(
+	ids: string[],
+	outgoing: Map<string, string[]>,
+	consumerYById: Map<string, number>,
+	heightById: Map<string, number>,
+	gap: number,
+): Map<string, number> {
+	const desired = ids
+		.map((id) => ({ id, y: averageConsumerY(id, outgoing, consumerYById) }))
+		.sort((a, b) => a.y - b.y);
+	const centerYById = new Map<string, number>();
+	let prevBottom = Number.NEGATIVE_INFINITY;
+	for (const { id, y } of desired) {
+		const h = heightById.get(id) ?? EMPTY_BODY_H;
+		const center = Math.max(y, prevBottom + gap + h / 2);
+		centerYById.set(id, center);
+		prevBottom = center + h / 2;
+	}
+	return centerYById;
+}
+
+function nodePlacement(
+	id: string,
+	kind: LineageNodeData["kind"],
+	depthById: Map<string, number>,
+	maxSqlDepth: number,
+	columnYById: {
+		sql: Map<string, number>;
+		view: Map<string, number>;
+		resource: Map<string, number>;
+	},
+): { x: number; centerY: number } {
+	if (kind === "resource-type") {
+		return { x: RESOURCE_COL_X, centerY: columnYById.resource.get(id) ?? 0 };
+	}
+	if (kind === "view-definition") {
+		return { x: VIEW_COL_X, centerY: columnYById.view.get(id) ?? 0 };
+	}
+	// SQL nodes: rank increases towards the root, so the root sits furthest right.
+	const rank = maxSqlDepth - (depthById.get(id) ?? 0);
+	return {
+		x: SQL_COL_START + rank * COL_WIDTH,
+		centerY: columnYById.sql.get(id) ?? 0,
+	};
+}
 
 function layoutGraph(
 	nodesById: Map<string, ResolvedNode>,
 	depthById: Map<string, number>,
 	edges: Edge[],
 ): LineageGraph {
-	const byDepth = new Map<number, string[]>();
-	for (const [id, depth] of depthById) {
-		const list = byDepth.get(depth) ?? [];
-		list.push(id);
-		byDepth.set(depth, list);
+	const heightById = new Map<string, number>();
+	const kindById = new Map<string, LineageNodeData["kind"]>();
+	const sqlIds: string[] = [];
+	const viewIds: string[] = [];
+	const resourceIds: string[] = [];
+	for (const [id, resolved] of nodesById) {
+		heightById.set(id, estimateNodeHeight(resolved));
+		kindById.set(id, resolved.kind);
+		if (resolved.kind === "sql-query") sqlIds.push(id);
+		else if (resolved.kind === "view-definition") viewIds.push(id);
+		else resourceIds.push(id);
 	}
 
+	// SQL nodes form a tidy tree growing rightwards, root furthest right.
+	const sqlParentOf = buildSqlParentOf(edges, depthById, kindById);
+	const sqlChildren = childrenFromParents(sqlParentOf);
+	const cache = new Map<string, number>();
+	const sqlCenterY = new Map<string, number>();
+	let sqlTop = 0;
+	for (const id of sqlIds) {
+		if (sqlParentOf.has(id)) continue;
+		placeSubtree(id, sqlTop, sqlChildren, heightById, cache, sqlCenterY);
+		sqlTop += subtreeHeight(id, sqlChildren, heightById, cache) + SUBTREE_GAP;
+	}
+	centerAroundZero(sqlCenterY, sqlIds);
+
+	let maxSqlDepth = 0;
+	for (const id of sqlIds) {
+		maxSqlDepth = Math.max(maxSqlDepth, depthById.get(id) ?? 0);
+	}
+
+	// Views and resources: single vertical columns, ordered to follow the nodes
+	// that consume them so the connecting edges stay readable.
+	const outgoing = buildOutgoing(edges);
+	const orderedViews = [...viewIds].sort(
+		(a, b) =>
+			averageConsumerY(a, outgoing, sqlCenterY) -
+			averageConsumerY(b, outgoing, sqlCenterY),
+	);
+	const viewCenterY = stackColumn(orderedViews, heightById, COLUMN_V_GAP);
+	// Draw each resource table opposite the view definition(s) that reference it.
+	const resourceCenterY = placeAgainstConsumers(
+		resourceIds,
+		outgoing,
+		viewCenterY,
+		heightById,
+		COLUMN_V_GAP,
+	);
+
+	const columnYById = {
+		sql: sqlCenterY,
+		view: viewCenterY,
+		resource: resourceCenterY,
+	};
 	const nodes: Node<LineageNodeData>[] = [];
-	for (const [depth, ids] of byDepth) {
-		ids.forEach((id, i) => {
-			const resolved = nodesById.get(id);
-			if (!resolved) return;
-			const x = -depth * COL_WIDTH;
-			const y = (i - (ids.length - 1) / 2) * ROW_HEIGHT;
-			nodes.push({
-				id,
-				type: resolved.kind,
-				position: { x, y },
-				data: resolved.data,
-			});
+	for (const [id, resolved] of nodesById) {
+		const height = heightById.get(id) ?? EMPTY_BODY_H;
+		const { x, centerY } = nodePlacement(
+			id,
+			resolved.kind,
+			depthById,
+			maxSqlDepth,
+			columnYById,
+		);
+		nodes.push({
+			id,
+			type: resolved.kind,
+			position: { x, y: centerY - height / 2 },
+			data: resolved.data,
 		});
 	}
 

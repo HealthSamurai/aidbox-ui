@@ -1,7 +1,6 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useMutation } from "@tanstack/react-query";
 import {
-	Background,
 	Controls,
 	type Edge,
 	MarkerType,
@@ -399,6 +398,25 @@ export function LineageTab() {
 		});
 	}, [edges, selectedId]);
 
+	// Dim every node that is not on the selected node's up/downstream path so
+	// the views and resource tables along the path stand out with the edges.
+	// The dimming fades only the card content (see .lineage-node-dimmed in
+	// index.css) so the dotted background never shows through the card.
+	const styledNodes = React.useMemo<LineageNode[]>(() => {
+		if (!selectedId) return nodes;
+		const highlightedEdges = collectConnectedEdges(edges, selectedId);
+		const connected = new Set<string>([selectedId]);
+		for (const e of edges) {
+			if (!highlightedEdges.has(e.id)) continue;
+			connected.add(e.source);
+			connected.add(e.target);
+		}
+		return nodes.map((n) => ({
+			...n,
+			className: connected.has(n.id) ? undefined : "lineage-node-dimmed",
+		}));
+	}, [nodes, edges, selectedId]);
+
 	const clearSelection = React.useCallback(() => {
 		setSelectedId(null);
 		setNodes((nds) =>
@@ -519,7 +537,7 @@ export function LineageTab() {
 			<div className="relative h-full w-full overflow-hidden">
 				<div className="absolute inset-0 bg-bg-primary">
 					<ReactFlow<LineageNode>
-						nodes={nodes}
+						nodes={styledNodes}
 						edges={styledEdges}
 						onNodesChange={onNodesChange}
 						onEdgesChange={onEdgesChange}
@@ -537,7 +555,6 @@ export function LineageTab() {
 						minZoom={0.2}
 						proOptions={{ hideAttribution: true }}
 					>
-						<Background />
 						<Controls showFitView={false} />
 						<NodeSearch onSelect={handleNodeClick} />
 					</ReactFlow>
