@@ -59,7 +59,10 @@
 			"esbuild@<0.28.1": ">=0.28.1",
 			"@codemirror/view": "^6.42.0",
 			"@codemirror/autocomplete": "6.20.2",
-			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client"
+			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client",
+			"js-yaml@>=4.0.0 <=4.1.1": ">=4.2.0",
+			"@babel/core@<=7.29.0": ">=7.29.6",
+			"js-yaml@>=4.0.0 <4.3.0": ">=4.3.0"
 		}
 	},
 	"dependencies": {
