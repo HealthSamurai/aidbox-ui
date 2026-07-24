@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import * as HSComp from "@health-samurai/react-components";
+import { Link } from "@tanstack/react-router";
 import * as yaml from "js-yaml";
 import * as Lucide from "lucide-react";
 import React from "react";
@@ -405,18 +406,40 @@ function PolicyEvalRow({
 						{policy.id}
 					</span>
 				</div>
+				{policy.id !== accessPolicyId && (
+					<HSComp.Tooltip>
+						<HSComp.TooltipTrigger asChild>
+							<Link
+								to="/resource/$resourceType/edit/$id"
+								params={{
+									resourceType: "AccessPolicy",
+									id: policy.id,
+								}}
+								search={{ tab: "builder", mode: "yaml", builderTab: "form" }}
+								onClick={(e) => e.stopPropagation()}
+								className="text-text-tertiary hover:text-text-primary"
+							>
+								<Lucide.ExternalLink className="size-4" />
+							</Link>
+						</HSComp.TooltipTrigger>
+						<HSComp.TooltipContent>Debug this policy</HSComp.TooltipContent>
+					</HSComp.Tooltip>
+				)}
 			</div>
 			{expanded && (
 				<div className="px-4 pb-2">
 					<HSComp.CodeEditor
 						readOnly
 						currentValue={yaml.dump(
-							Object.fromEntries(
-								Object.entries(policy).filter(
-									([k]) =>
-										k !== "eval-result" && k !== "id" && k !== "policy-id",
+							{
+								"eval-result": policy["eval-result"] ?? null,
+								...Object.fromEntries(
+									Object.entries(policy).filter(
+										([k]) =>
+											k !== "eval-result" && k !== "id" && k !== "policy-id",
+									),
 								),
-							),
+							},
 							{ indent: 2 },
 						)}
 						mode="yaml"
@@ -1004,16 +1027,33 @@ export function DevToolRequestPanel() {
 			);
 		};
 
+		const isExpiredToken = (resp: ResponseData) =>
+			resp.status === 403 && resp.body.includes("eval-policy-debug-token");
+
 		setIsLoading(true);
 		try {
 			if (!debugTokenRef.current) {
 				debugTokenRef.current = await fetchDebugToken(client);
 			}
-			saveResponse(
-				await executeDebugRequest(selectedTab, client, debugTokenRef.current),
+			let resp = await executeDebugRequest(
+				selectedTab,
+				client,
+				debugTokenRef.current,
 			);
+			// The debug token is short-lived. executeDebugRequest returns the 403
+			// as a normal response (it doesn't throw), so detect the expired-token
+			// message here, refresh the token, and retry once.
+			if (isExpiredToken(resp)) {
+				debugTokenRef.current = await fetchDebugToken(client);
+				resp = await executeDebugRequest(
+					selectedTab,
+					client,
+					debugTokenRef.current,
+				);
+			}
+			saveResponse(resp);
 		} catch {
-			// Token may have expired, retry once
+			// fetchDebugToken itself failed — retry once
 			try {
 				debugTokenRef.current = await fetchDebugToken(client);
 				saveResponse(
