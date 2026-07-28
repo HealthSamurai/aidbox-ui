@@ -15,7 +15,10 @@ import { defaultTabFor, pageId } from "../ResourceEditor/types";
 import { DevToolRequestPanel } from "./dev-tool-request-panel";
 import { AccessPolicyContext } from "./page";
 
-const STRIPPED_KEYS = ["id", "resourceType", "meta"] as const;
+// `id` is intentionally NOT stripped: it must stay visible and editable in the
+// text so the user can set it on create (and see it on edit). `resourceType` is
+// fixed for AccessPolicy and `meta` is server-managed, so both stay hidden.
+const STRIPPED_KEYS = ["resourceType", "meta"] as const;
 
 function stripResource(resource: Resource): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
@@ -107,8 +110,9 @@ export const AccessPolicyBuilderContent = () => {
 			strippedRef.current = parsed;
 			if (accessPolicy) {
 				const full = {
+					// `id` comes from the parsed text (it is no longer stripped), so a
+					// typed id is honored on create and preserved on edit.
 					...parsed,
-					id: accessPolicy.id,
 					resourceType: accessPolicy.resourceType,
 					meta: (accessPolicy as unknown as Record<string, unknown>).meta,
 				};
