@@ -563,7 +563,10 @@ export function Browser() {
 	};
 
 	return (
-		<div ref={scrollRef} className="h-full overflow-y-auto pb-[250px]">
+		<div
+			ref={scrollRef}
+			className="h-full overflow-y-auto pb-[250px] [scrollbar-gutter:stable]"
+		>
 			<div className="sticky top-0 z-10 bg-bg-primary py-4 shadow-[0_10px_10px_0_var(--color-bg-primary)]">
 				<div className="mx-auto max-w-[990px] px-8">
 					<SearchBar
