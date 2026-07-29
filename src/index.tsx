@@ -18,7 +18,14 @@ if (
 
 const router = createRouter({ basepath: UI_BASE_PATH, routeTree });
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			refetchOnWindowFocus: false,
+			refetchOnReconnect: false,
+		},
+	},
+});
 
 declare module "@tanstack/react-router" {
 	interface Register {
