@@ -2,14 +2,7 @@ import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { type AidboxClientR5, useAidboxClient } from "../AidboxClient";
-
-async function sha1(text: string): Promise<string> {
-	const data = new TextEncoder().encode(text);
-	const hash = await crypto.subtle.digest("SHA-1", data);
-	return Array.from(new Uint8Array(hash))
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
-}
+import { hashText } from "../utils";
 
 export function useSqlHistory() {
 	const client = useAidboxClient();
@@ -48,7 +41,7 @@ export async function saveSqlHistory(
 		const trimmed = query.trim();
 		if (!trimmed) return;
 
-		const id = await sha1(trimmed);
+		const id = await hashText(trimmed);
 
 		await aidboxClient.rawRequest({
 			method: "PUT",
