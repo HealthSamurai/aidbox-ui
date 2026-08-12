@@ -17,6 +17,34 @@ export function generateId(): string {
 	});
 }
 
+export async function hashText(text: string): Promise<string> {
+	if (
+		typeof crypto !== "undefined" &&
+		typeof crypto.subtle?.digest === "function"
+	) {
+		const digest = await crypto.subtle.digest(
+			"SHA-1",
+			new TextEncoder().encode(text),
+		);
+		return Array.from(new Uint8Array(digest))
+			.map((byte) => byte.toString(16).padStart(2, "0"))
+			.join("");
+	}
+	// crypto.subtle is exposed only in secure contexts (HTTPS / localhost), so on plain
+	// HTTP hash it here instead. Callers use this as an id, which only has to be stable.
+	let h1 = 0x811c9dc5;
+	let h2 = 0x01000193;
+	for (const char of text) {
+		const code = char.codePointAt(0) ?? 0;
+		h1 = ((h1 ^ code) * 16777619) | 0;
+		h2 = ((h2 + code) * 31) | 0;
+	}
+	return (
+		(h1 >>> 0).toString(16).padStart(8, "0") +
+		(h2 >>> 0).toString(16).padStart(8, "0")
+	);
+}
+
 export function parsePathParams(path: string): Header[] {
 	const queryParams = path.split("?")[1];
 	const params =
