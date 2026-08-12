@@ -62,7 +62,8 @@
 			"@codemirror/autocomplete": "6.20.2",
 			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client",
 			"@babel/core@<=7.29.0": ">=7.29.6",
-			"js-yaml@<5.2.2": "5.2.2"
+			"js-yaml@<5.2.2": "5.2.2",
+			"nanoid@<3.3.17": ">=3.3.17"
 		}
 	},
 	"dependencies": {
