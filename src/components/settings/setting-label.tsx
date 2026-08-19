@@ -23,7 +23,7 @@ export function SettingLabel({
 				{changedByUser ? (
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<span className="text-[#2278E1]">{setting.title}</span>
+							<span className="text-text-link">{setting.title}</span>
 						</TooltipTrigger>
 						<TooltipContent side="right">Changed by user</TooltipContent>
 					</Tooltip>

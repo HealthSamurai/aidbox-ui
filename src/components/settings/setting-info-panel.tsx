@@ -123,7 +123,7 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 				{envName && (
 					<div>
 						<div
-							className={`flex items-center gap-1 text-sm ${valueFromEnv ? "text-[#2278E1]" : "text-[var(--color-elements-assistive)]"}`}
+							className={`flex items-center gap-1 text-sm ${valueFromEnv ? "text-text-link" : "text-[var(--color-elements-assistive)]"}`}
 						>
 							<span>Environment variable</span>
 							{valueFromEnv && <Check size={14} />}
@@ -133,7 +133,7 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 								label="Name:"
 								className={
 									valueFromEnv
-										? "text-[#2278E1]"
+										? "text-text-link"
 										: "text-[var(--color-elements-assistive)]"
 								}
 								value={<code className="text-xs">{envName}</code>}
@@ -158,7 +158,7 @@ export function SettingInfoPanel({ setting }: { setting: Setting }) {
 
 				<div>
 					<div
-						className={`flex items-center gap-1 text-sm ${valueFromAidbox ? "text-[#2278E1]" : "text-[var(--color-elements-assistive)]"}`}
+						className={`flex items-center gap-1 text-sm ${valueFromAidbox ? "text-text-link" : "text-[var(--color-elements-assistive)]"}`}
 					>
 						<span>Aidbox settings</span>
 						{valueFromAidbox && <Check size={14} />}
