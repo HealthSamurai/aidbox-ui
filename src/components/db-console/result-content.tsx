@@ -36,10 +36,10 @@ const JSON_TOKEN_RE =
 	/("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(\b(?:true|false|null)\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
 
 const JSON_COLORS = {
-	key: "#EA4A35",
-	string: "#405CBF",
-	keyword: "#569cd6",
-	number: "#00A984",
+	key: "var(--hs-syntax-property)",
+	string: "var(--hs-syntax-string)",
+	keyword: "var(--hs-syntax-keyword)",
+	number: "var(--hs-syntax-number)",
 };
 
 function highlightJson(json: string): React.ReactNode[] {
@@ -88,7 +88,7 @@ const CellValue = ({ value }: { value: unknown }) => {
 	if (value === null || value === undefined) {
 		return (
 			<div className="sticky top-10 typo-code">
-				<span style={{ color: "#569cd6" }}>null</span>
+				<span style={{ color: JSON_COLORS.keyword }}>null</span>
 			</div>
 		);
 	}
@@ -102,21 +102,21 @@ const CellValue = ({ value }: { value: unknown }) => {
 		}
 		return (
 			<div className="sticky top-10 typo-code">
-				<span style={{ color: "#405CBF" }}>{value}</span>
+				<span style={{ color: JSON_COLORS.string }}>{value}</span>
 			</div>
 		);
 	}
 	if (typeof value === "boolean") {
 		return (
 			<div className="sticky top-10 typo-code">
-				<span style={{ color: "#569cd6" }}>{String(value)}</span>
+				<span style={{ color: JSON_COLORS.keyword }}>{String(value)}</span>
 			</div>
 		);
 	}
 	if (typeof value === "number") {
 		return (
 			<div className="sticky top-10 typo-code">
-				<span style={{ color: "#00A984" }}>{value}</span>
+				<span style={{ color: JSON_COLORS.number }}>{value}</span>
 			</div>
 		);
 	}
