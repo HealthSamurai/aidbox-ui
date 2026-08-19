@@ -39,6 +39,7 @@ export type ResponseData = {
 	body: string;
 	duration: number;
 	mode?: "json" | "yaml";
+	redirect?: boolean;
 };
 
 export interface Tab {

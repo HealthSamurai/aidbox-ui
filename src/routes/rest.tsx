@@ -777,10 +777,17 @@ function ResponseInfo({ response }: { response: ResponseData }) {
 	if (response) {
 		return (
 			<>
-				<ResponseStatus
-					status={response.status}
-					statusText={response.statusText}
-				/>
+				{response.redirect ? (
+					<span className="flex font-medium items-center text-text-secondary text-sm min-w-0 shrink">
+						<span className="shrink-0">Status:</span>
+						<span className="ml-1 text-utility-yellow truncate">Redirect</span>
+					</span>
+				) : (
+					<ResponseStatus
+						status={response.status}
+						statusText={response.statusText}
+					/>
+				)}
 				<span className="flex items-center text-text-secondary text-sm pl-2">
 					<Timer className="size-4 mr-1" strokeWidth={1.5} />
 					<span className="font-bold">{Math.round(response.duration)}</span>
@@ -834,6 +841,7 @@ function ResponseView({
 				}
 				return JSON.stringify(response.headers, null, 2);
 			case "raw":
+				if (response.redirect) return "";
 				return `HTTP/1.1 ${response.status} ${response.statusText}\n${Object.entries(
 					response.headers,
 				)
@@ -876,6 +884,26 @@ function ResponseView({
 	}
 
 	if (response) {
+		if (response.redirect && activeResponseTab === "body") {
+			const target = `${aidboxClient.getBaseUrl()}${selectedTab.path || "/"}`;
+			return (
+				<div className="flex items-center justify-center h-full text-text-secondary bg-bg-secondary">
+					<div className="text-center">
+						<div className="mb-2">The server answered with a redirect</div>
+						{selectedTab.method === "GET" && (
+							<Button
+								variant="ghost"
+								size="small"
+								onClick={() => window.open(target, "_blank", "noopener")}
+							>
+								Open in new tab
+							</Button>
+						)}
+					</div>
+				</div>
+			);
+		}
+
 		const contentLocationRaw = Object.entries(response.headers).find(
 			([key]) => key.toLowerCase() === "content-location",
 		)?.[1];
@@ -958,7 +986,9 @@ function isGetSearchRequest(tab: Tab): boolean {
 	//   /Patient/123 (2), /fhir/Patient/123 (3 with prefix)
 	// Heuristic: if the last segment looks like an id (not a resource type name),
 	// it's an instance read. Resource type names start with uppercase.
-	if (segments.length === 0) return true; // root path like "/"
+	// "/" is the index redirect, not a search: explaining it answers with a
+	// redirect, and the response tab persists, so it would fire on every visit.
+	if (segments.length === 0) return false;
 	const lastSegment = segments[segments.length - 1] || "";
 	// If the last segment starts with uppercase, it's likely a resource type → search
 	// If it starts with lowercase or is a number/uuid, it's likely an id → instance read
@@ -1065,6 +1095,7 @@ function ExplainView({
 				method: selectedTab.method,
 				url: explainUrl,
 				headers,
+				redirect: "manual",
 				body: selectedTab.body || "",
 			});
 
@@ -1383,6 +1414,10 @@ async function executeRequest(
 				method: tab.method,
 				url: tab.path || "/",
 				headers,
+				// Any URL can be typed here, and some of them redirect — "/" answers
+				// with one to the UI. Following it would hand the auth provider a
+				// response it reads as a session gate, taking the page with it.
+				redirect: "manual",
 				...(hasBody && tab.body ? { body: tab.body } : {}),
 			});
 		return {
@@ -1402,6 +1437,16 @@ async function executeRequest(
 				headers: {},
 				body: "",
 				duration: 0,
+			};
+		}
+		if (cause.response.type === "opaqueredirect") {
+			return {
+				status: 0,
+				statusText: "Redirect",
+				headers: {},
+				body: "",
+				duration: cause.duration,
+				redirect: true,
 			};
 		}
 		const errorMode =
