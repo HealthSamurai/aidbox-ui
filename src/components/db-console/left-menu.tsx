@@ -127,6 +127,42 @@ export { SqlLeftMenuContext };
 // History list component
 
 const HISTORY_PAGE_SIZE = 50;
+const HISTORY_PREVIEW_CHARS = 100;
+const HISTORY_FORMAT_MAX_CHARS = 20000;
+
+function previewCommand(command: string): string {
+	return command
+		.slice(0, HISTORY_PREVIEW_CHARS * 8)
+		.trim()
+		.replace(/\s+/g, " ")
+		.slice(0, HISTORY_PREVIEW_CHARS);
+}
+
+function HistoryCommandPreview({ command }: { command: string }) {
+	const formatted = useMemo(() => {
+		if (command.length > HISTORY_FORMAT_MAX_CHARS) {
+			return command.slice(0, HISTORY_FORMAT_MAX_CHARS);
+		}
+		try {
+			return formatSQL(command, {
+				language: "postgresql",
+				indentStyle: "tabularRight",
+			});
+		} catch {
+			return command;
+		}
+	}, [command]);
+
+	return (
+		<CodeEditor
+			readOnly
+			currentValue={formatted}
+			mode="sql"
+			foldGutter={false}
+			lineNumbers={false}
+		/>
+	);
+}
 
 function SqlHistoryCommand({
 	history,
@@ -213,17 +249,6 @@ function SqlHistoryCommand({
 								{groupKey}
 							</div>
 							{items.map((item) => {
-								const normalized = item.command.trim().replace(/\s+/g, " ");
-								let formatted: string;
-								try {
-									formatted = formatSQL(item.command, {
-										language: "postgresql",
-										indentStyle: "tabularRight",
-									});
-								} catch {
-									formatted = item.command;
-								}
-
 								return (
 									<Tooltip key={item.id} delayDuration={50}>
 										<TooltipTrigger asChild>
@@ -234,7 +259,7 @@ function SqlHistoryCommand({
 												className={`${historyItem} w-full`}
 											>
 												<span className="typo-code text-text-body truncate">
-													{normalized}
+													{previewCommand(item.command)}
 												</span>
 												{item.meta?.lastUpdated && (
 													<span className="typo-code text-xs! text-text-tertiary shrink-0 ml-auto">
@@ -249,13 +274,7 @@ function SqlHistoryCommand({
 											sideOffset={20}
 											className="max-w-none px-2 pt-1 pb-2 rounded text-text-primary bg-bg-primary border border-border-secondary"
 										>
-											<CodeEditor
-												readOnly
-												currentValue={formatted}
-												mode="sql"
-												foldGutter={false}
-												lineNumbers={false}
-											/>
+											<HistoryCommandPreview command={item.command} />
 										</TooltipContent>
 									</Tooltip>
 								);
