@@ -106,6 +106,15 @@ type StructureDefinitionBundle = {
 	entry?: { resource: StructureDefinitionResource }[];
 };
 
+function dedupeByResourceType(items: SDItem[]): SDItem[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		if (seen.has(item.resourceType)) return false;
+		seen.add(item.resourceType);
+		return true;
+	});
+}
+
 function useStructureDefinitions(client: AidboxClientR5) {
 	return useQuery<SDItem[]>({
 		queryKey: ["resource-browser-sd"],
@@ -119,7 +128,7 @@ function useStructureDefinitions(client: AidboxClientR5) {
 				},
 			});
 			const bundle: StructureDefinitionBundle = await response.response.json();
-			return (bundle.entry ?? []).flatMap((entry) => {
+			const rows = (bundle.entry ?? []).flatMap((entry) => {
 				const r = entry.resource;
 				const resourceType = r.type ?? r.name;
 				if (!resourceType) return [];
@@ -137,6 +146,7 @@ function useStructureDefinitions(client: AidboxClientR5) {
 					} satisfies SDItem,
 				];
 			});
+			return dedupeByResourceType(rows);
 		},
 	});
 }
@@ -485,7 +495,6 @@ export function Browser() {
 		getScrollElement: () => scrollRef.current,
 		estimateSize: () => 90,
 		overscan: 8,
-		getItemKey: (index) => items[index]?.resourceType ?? index,
 	});
 
 	useEffect(() => {
@@ -600,7 +609,7 @@ export function Browser() {
 							if (!it) return null;
 							return (
 								<div
-									key={it.resourceType}
+									key={vi.key}
 									ref={rowVirtualizer.measureElement}
 									data-index={vi.index}
 									style={{
