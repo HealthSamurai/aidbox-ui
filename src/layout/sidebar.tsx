@@ -110,11 +110,11 @@ const mainMenuItems: {
 		),
 	},
 	{
-		url: `${getAidboxBaseURL()}/ui/sdc`,
+		url: `${getAidboxBaseURL()}/u/sdc`,
 		title: "FormBox",
 		link: (
 			<a
-				href={`${getAidboxBaseURL()}/ui/sdc`}
+				href={`${getAidboxBaseURL()}/u/sdc`}
 				target="_blank"
 				rel="noopener noreferrer"
 			>

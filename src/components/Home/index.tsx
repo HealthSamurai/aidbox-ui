@@ -373,7 +373,7 @@ const aidboxModulesData: CardData[] = [
 			{
 				text: "Try",
 				icon: <ArrowUpRight className="size-3.5" />,
-				href: "/ui/sdc",
+				href: "/u/sdc",
 			},
 			{
 				text: "Docs",
