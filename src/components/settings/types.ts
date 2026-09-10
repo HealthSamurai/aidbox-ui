@@ -43,15 +43,6 @@ export interface BoxInfo {
 	};
 }
 
-export interface DeprecatedCapabilities {
-	"custom-entities"?: { total: number };
-	"custom-attributes"?: { total: number };
-	"custom-search-param-resource"?: { total: number };
-	"custom-zen-search-params"?: { total: number };
-	"custom-zen-resources"?: { total: number };
-	"zen-profilies"?: { total: number };
-}
-
 export interface CategoryDef {
 	category: string[];
 	desc: string;
