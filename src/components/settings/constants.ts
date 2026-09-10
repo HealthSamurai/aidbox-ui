@@ -147,12 +147,3 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
 	Database: Database,
 	Observability: BarChart3,
 };
-
-export const DEPRECATED_CAPABILITY_LABELS: Record<string, string> = {
-	"custom-entities": "custom Entities",
-	"custom-attributes": "custom Attributes",
-	"custom-search-param-resource": "custom SearchParameter resources",
-	"custom-zen-search-params": "custom search parameters on Zen",
-	"custom-zen-resources": "custom resources on Zen",
-	"zen-profilies": "profiles on Zen",
-};

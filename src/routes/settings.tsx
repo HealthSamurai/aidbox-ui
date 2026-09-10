@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { onError } from "../api/utils";
 import {
 	useBoxInfo,
-	useDeprecatedCapabilities,
 	useResetSetting,
 	useSettingsIntrospect,
 	useUpdateSetting,
@@ -27,7 +26,6 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
 	const { data: allSettings, isLoading } = useSettingsIntrospect();
 	const { data: boxInfo } = useBoxInfo();
-	const { data: deprecatedCapabilities } = useDeprecatedCapabilities();
 	const updateSetting = useUpdateSetting();
 	const resetSetting = useResetSetting();
 
@@ -214,7 +212,6 @@ function SettingsPage() {
 					onClearError={handleClearError}
 					onImmediateSave={handleImmediateSave}
 					boxInfo={boxInfo}
-					deprecatedCapabilities={deprecatedCapabilities}
 					searchFn={searchFn}
 				/>
 			</div>
