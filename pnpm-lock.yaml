@@ -17,6 +17,7 @@ overrides:
   seroval@<1.5.3: '>=1.5.3'
   '@codemirror/view': ^6.42.0
   '@codemirror/autocomplete': 6.20.2
+  '@codemirror/state': ^6.6.0
   '@health-samurai/aidbox-client': file:./aidbox-ts-sdk/packages/aidbox-client
   '@babel/core@<=7.29.0': '>=7.29.6'
   js-yaml@<5.2.2: 5.2.2
@@ -639,7 +640,7 @@ packages:
     resolution: {directory: aidbox-ts-sdk/packages/aidbox-fhirpath-lsp, type: directory}
     peerDependencies:
       '@codemirror/lsp-client': ^6.2.0
-      '@codemirror/state': ^6.5.2
+      '@codemirror/state': ^6.6.0
       react: ^19.1.0
       react-dom: ^19.1.0
 
@@ -1476,7 +1477,7 @@ packages:
       '@codemirror/commands': 6.x.x
       '@codemirror/language': 6.x.x
       '@codemirror/search': 6.x.x
-      '@codemirror/state': 6.x.x
+      '@codemirror/state': ^6.6.0
       '@codemirror/view': ^6.42.0
 
   '@rolldown/pluginutils@1.0.0-beta.27':
