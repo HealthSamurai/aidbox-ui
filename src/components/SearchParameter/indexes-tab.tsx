@@ -10,7 +10,32 @@ import { formatBytes, formatCount, formatRelativeTime } from "./format";
 import { formatStatement, rpcCall } from "./suggest-index";
 import type { SearchParamIndex } from "./types";
 
-const formatSubtype = (s: string | null) => (s == null ? "(default)" : s);
+/**
+ * Subtypes arrive as namespaced keywords — `fhir.modifier/eq`, `fhir/default`,
+ * `filter/pr` — naming *where* the operator comes from:
+ *
+ *   - `fhir/default`   — no modifier at all (`?code=value`)
+ *   - `fhir.modifier/…` — a URL search modifier (`?code:exact=value`)
+ *   - `filter/…`        — an operator of the `_filter` mini-language, which is
+ *                         written `_filter=code pr true`, never as `:filter/pr`
+ *
+ * `parseSubtype` splits that into the namespace and the bare name so the
+ * renderers below can key off both. Unnamespaced values are treated as plain
+ * modifiers; `null` means default.
+ */
+function parseSubtype(s: string | null): { ns: string | null; name: string } {
+	if (s == null) return { ns: "fhir", name: "default" };
+	const i = s.indexOf("/");
+	return i === -1
+		? { ns: null, name: s }
+		: { ns: s.slice(0, i), name: s.slice(i + 1) };
+}
+
+const formatSubtype = (s: string | null) => {
+	const { ns, name } = parseSubtype(s);
+	if (ns === "fhir" && name === "default") return "(default)";
+	return ns === "filter" ? `_filter ${name}` : name;
+};
 
 /**
  * Example value strings per modifier — pasted after `=` in the URL. Concrete
@@ -72,14 +97,25 @@ const PREFIX_SUBTYPES = new Set([
 	"eq",
 ]);
 
-function subtypeExample(base: string, code: string, subtype: string): string {
-	const example = SUBTYPE_VALUE_EXAMPLES[subtype] ?? "value";
-	if (subtype === "(default)") return `GET /fhir/${base}?${code}=${example}`;
-	if (PREFIX_SUBTYPES.has(subtype)) {
+function subtypeExample(
+	base: string,
+	code: string,
+	subtype: string | null,
+): string {
+	const { ns, name } = parseSubtype(subtype);
+	const example = SUBTYPE_VALUE_EXAMPLES[name] ?? "value";
+	// `_filter` operators are a mini-language, not URL modifiers.
+	if (ns === "filter") {
+		return `GET /fhir/${base}?_filter=${code} ${name} ${example}`;
+	}
+	if (ns === "fhir" && name === "default") {
+		return `GET /fhir/${base}?${code}=${example}`;
+	}
+	if (PREFIX_SUBTYPES.has(name)) {
 		// Prefix goes on the value, not the param name.
 		return `GET /fhir/${base}?${code}=${example}`;
 	}
-	return `GET /fhir/${base}?${code}:${subtype}=${example}`;
+	return `GET /fhir/${base}?${code}:${name}=${example}`;
 }
 
 const SqlRow = ({ definition }: { definition: string }) => {
@@ -461,7 +497,7 @@ export const IndexesTab = ({
 																	const example = subtypeExample(
 																		r.base,
 																		code,
-																		label,
+																		st,
 																	);
 																	return (
 																		<React.Fragment key={label}>
