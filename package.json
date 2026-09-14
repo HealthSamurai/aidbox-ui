@@ -61,6 +61,7 @@
 			"seroval@<1.5.3": ">=1.5.3",
 			"@codemirror/view": "^6.42.0",
 			"@codemirror/autocomplete": "6.20.2",
+			"@codemirror/state": "^6.6.0",
 			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client",
 			"@babel/core@<=7.29.0": ">=7.29.6",
 			"js-yaml@<5.2.2": "5.2.2",
