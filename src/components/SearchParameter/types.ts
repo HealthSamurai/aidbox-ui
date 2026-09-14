@@ -7,7 +7,11 @@ export type SearchParamIndex = {
 	base: string;
 	name: string;
 	definition: string;
-	/** `:subtypes` from suggest-index, e.g. ["eq","exact"] or [null]. */
+	/**
+	 * `:subtypes` from suggest-index, as namespaced keywords:
+	 * `["fhir.modifier/eq", "fhir/default", "filter/pr"]`. `fhir/default`
+	 * (or `null`) means "no modifier". See `parseSubtype` in indexes-tab.
+	 */
 	subtypes: (string | null)[];
 	exists: boolean;
 	/**

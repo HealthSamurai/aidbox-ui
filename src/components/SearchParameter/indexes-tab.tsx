@@ -10,76 +10,128 @@ import { formatBytes, formatCount, formatRelativeTime } from "./format";
 import { formatStatement, rpcCall } from "./suggest-index";
 import type { SearchParamIndex } from "./types";
 
-const formatSubtype = (s: string | null) => (s == null ? "(default)" : s);
-
 /**
- * Example value strings per modifier — pasted after `=` in the URL. Concrete
- * payloads make it obvious what the modifier actually does at the wire
- * level. Anything not listed gets a generic `value` placeholder.
+ * How each subtype the index suggester can emit is presented.
+ *
+ * Keyed on the *full* namespaced keyword, because the bare name is ambiguous:
+ * `co`, `eq`, `ew`, `in` and `sw` exist in both `fhir.modifier/` and `filter/`
+ * with different URL syntax.
+ *
+ *   - `label`   — what the Modifiers column and the Covers list show.
+ *   - `example` — a pasteable request. `filter/*` operators belong to the
+ *                 `_filter` mini-language (`_filter=code pr true`) and are
+ *                 never written as `:filter/pr`; date/number comparison
+ *                 prefixes go on the *value*, not the param name.
  *
  * Modifier semantics: https://hl7.org/fhir/R4/search.html#modifiers
+ * `_filter`: https://hl7.org/fhir/R4/search_filter.html
  */
-const SUBTYPE_VALUE_EXAMPLES: Record<string, string> = {
-	"(default)": "value",
-	eq: "value",
-	ne: "value",
-	exact: "Smith",
-	starts: "Sm",
-	sw: "Sm",
-	ends: "ith",
-	ew: "ith",
-	contains: "ith",
-	co: "ith",
-	text: "diabetes",
-	otherwise: "value",
-	not: "value",
-	"not-in": "http://hl7.org/fhir/ValueSet/example",
-	in: "http://hl7.org/fhir/ValueSet/example",
-	above: "http://snomed.info/sct|73211009",
-	below: "http://snomed.info/sct|73211009",
-	"of-type": "http://terminology.hl7.org/CodeSystem/v2-0203|MR|446053",
-	identifier: "http://acme.org/mrn|446053",
-	type: "Patient",
-	missing: "true",
-	lt: "lt100",
-	le: "le100",
-	gt: "gt100",
-	ge: "ge100",
-	ap: "ap100",
-	sa: "sa2020-01-01",
-	eb: "eb2020-01-01",
+type SubtypePresentation = {
+	label: string;
+	example: (base: string, code: string) => string;
 };
 
-/**
- * Build the example request URL for a given (base, code, subtype) tuple.
- * Default subtype renders without the colon segment (`?code=value`); any
- * named modifier appends `:modifier`. Value placeholder comes from
- * `SUBTYPE_VALUE_EXAMPLES`; falls back to `value`.
- *
- * The `lt` / `ge` / `ap` etc. entries above are date/number *prefixes*
- * (typed inline with the value), not modifiers. They land here too so
- * indexes that the suggester reports as covering them get an example.
- */
-const PREFIX_SUBTYPES = new Set([
-	"lt",
-	"le",
-	"gt",
-	"ge",
-	"ap",
-	"sa",
-	"eb",
-	"ne",
-	"eq",
-]);
+/** `?code=value` — no modifier. */
+const plain = (value: string) => (base: string, code: string) =>
+	`GET /fhir/${base}?${code}=${value}`;
+/** `?code:modifier=value` */
+const modifier =
+	(name: string, value: string) => (base: string, code: string) =>
+		`GET /fhir/${base}?${code}:${name}=${value}`;
+/** `?_filter=code op value` */
+const filterOp = (op: string, value: string) => (base: string, code: string) =>
+	`GET /fhir/${base}?_filter=${code} ${op} ${value}`;
 
-function subtypeExample(base: string, code: string, subtype: string): string {
-	const example = SUBTYPE_VALUE_EXAMPLES[subtype] ?? "value";
-	if (subtype === "(default)") return `GET /fhir/${base}?${code}=${example}`;
-	if (PREFIX_SUBTYPES.has(subtype)) {
-		// Prefix goes on the value, not the param name.
-		return `GET /fhir/${base}?${code}=${example}`;
-	}
-	return `GET /fhir/${base}?${code}:${subtype}=${example}`;
+const VALUESET = "http://hl7.org/fhir/ValueSet/example";
+const SNOMED = "http://snomed.info/sct|73211009";
+const V2_IDENTIFIER = "http://terminology.hl7.org/CodeSystem/v2-0203|MR|446053";
+
+const SUBTYPES: Record<string, SubtypePresentation> = {
+	"fhir/default": { label: "(default)", example: plain("value") },
+
+	// URL search modifiers — `?code:exact=Smith`
+	"fhir.modifier/exact": {
+		label: "exact",
+		example: modifier("exact", "Smith"),
+	},
+	"fhir.modifier/contains": {
+		label: "contains",
+		example: modifier("contains", "ith"),
+	},
+	"fhir.modifier/text": {
+		label: "text",
+		example: modifier("text", "diabetes"),
+	},
+	"fhir.modifier/missing": {
+		label: "missing",
+		example: modifier("missing", "true"),
+	},
+	"fhir.modifier/not": { label: "not", example: modifier("not", "value") },
+	"fhir.modifier/in": { label: "in", example: modifier("in", VALUESET) },
+	"fhir.modifier/not-in": {
+		label: "not-in",
+		example: modifier("not-in", VALUESET),
+	},
+	"fhir.modifier/below": { label: "below", example: modifier("below", SNOMED) },
+	"fhir.modifier/of-type": {
+		label: "of-type",
+		example: modifier("of-type", V2_IDENTIFIER),
+	},
+	"fhir.modifier/identifier": {
+		label: "identifier",
+		example: modifier("identifier", "http://acme.org/mrn|446053"),
+	},
+	"fhir.modifier/i": { label: "i", example: modifier("i", "value") },
+	"fhir.modifier/otherwise": {
+		label: "otherwise",
+		example: modifier("otherwise", "value"),
+	},
+	"fhir.modifier/btw": { label: "btw", example: modifier("btw", "10and20") },
+	// Aliases the engine also reports for the same string operations.
+	"fhir.modifier/starts": {
+		label: "starts",
+		example: modifier("starts", "Sm"),
+	},
+	"fhir.modifier/sw": { label: "sw", example: modifier("sw", "Sm") },
+	"fhir.modifier/ends": { label: "ends", example: modifier("ends", "ith") },
+	"fhir.modifier/ew": { label: "ew", example: modifier("ew", "ith") },
+	"fhir.modifier/co": { label: "co", example: modifier("co", "ith") },
+	// `eq` as a modifier is the default comparison — no colon segment.
+	"fhir.modifier/eq": { label: "eq", example: plain("value") },
+
+	// `_filter` operators — `?_filter=code pr true`
+	"filter/eq": { label: "_filter eq", example: filterOp("eq", "value") },
+	"filter/ne": { label: "_filter ne", example: filterOp("ne", "value") },
+	"filter/co": { label: "_filter co", example: filterOp("co", "ith") },
+	"filter/sw": { label: "_filter sw", example: filterOp("sw", "Sm") },
+	"filter/ew": { label: "_filter ew", example: filterOp("ew", "ith") },
+	"filter/pr": { label: "_filter pr", example: filterOp("pr", "true") },
+	"filter/in": { label: "_filter in", example: filterOp("in", VALUESET) },
+	"filter/gt": { label: "_filter gt", example: filterOp("gt", "100") },
+	"filter/ge": { label: "_filter ge", example: filterOp("ge", "100") },
+	"filter/lt": { label: "_filter lt", example: filterOp("lt", "100") },
+	"filter/le": { label: "_filter le", example: filterOp("le", "100") },
+	"filter/sa": { label: "_filter sa", example: filterOp("sa", "2020-01-01") },
+	"filter/eb": { label: "_filter eb", example: filterOp("eb", "2020-01-01") },
+};
+
+/** Unknown subtypes still render — bare name, generic `value` example. */
+function presentation(subtype: string | null): SubtypePresentation {
+	const key = subtype ?? "fhir/default";
+	const known = SUBTYPES[key];
+	if (known) return known;
+	const name = key.slice(key.indexOf("/") + 1);
+	return { label: name, example: modifier(name, "value") };
+}
+
+const formatSubtype = (s: string | null) => presentation(s).label;
+
+function subtypeExample(
+	base: string,
+	code: string,
+	subtype: string | null,
+): string {
+	return presentation(subtype).example(base, code);
 }
 
 const SqlRow = ({ definition }: { definition: string }) => {
@@ -461,7 +513,7 @@ export const IndexesTab = ({
 																	const example = subtypeExample(
 																		r.base,
 																		code,
-																		label,
+																		st,
 																	);
 																	return (
 																		<React.Fragment key={label}>
