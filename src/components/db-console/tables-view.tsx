@@ -19,6 +19,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Eye,
+	Layers,
 	Table2,
 	X,
 } from "lucide-react";
@@ -203,7 +204,7 @@ export async function fetchTableDetails(
 function buildColumnsQuery(schema: string, table: string): string {
 	const s = schema.replace(/'/g, "''");
 	const t = table.replace(/'/g, "''");
-	return `SELECT column_name, data_type, udt_name, is_nullable FROM information_schema.columns WHERE table_schema='${s}' AND table_name='${t}' ORDER BY ordinal_position`;
+	return `SELECT column_name, data_type, udt_name, is_nullable FROM (SELECT column_name, data_type, udt_name, ordinal_position::int AS pos, is_nullable FROM information_schema.columns WHERE table_schema='${s}' AND table_name='${t}' UNION ALL SELECT a.attname, format_type(a.atttypid, a.atttypmod), ty.typname, a.attnum::int, CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid AND c.relkind = 'm' JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_type ty ON ty.oid = a.atttypid WHERE n.nspname='${s}' AND c.relname='${t}' AND a.attnum > 0 AND NOT a.attisdropped) cols ORDER BY pos`;
 }
 
 function buildIndexesQuery(schema: string, table: string): string {
@@ -266,7 +267,7 @@ type StructureItem =
 			kind: "table";
 			schema: string;
 			name: string;
-			type: "table" | "view";
+			type: "table" | "view" | "matview";
 			key: string;
 	  }
 	| {
@@ -460,6 +461,8 @@ function TablesListView({
 									>
 										{item.type === "view" ? (
 											<Eye className="size-3.5 shrink-0 text-text-tertiary" />
+										) : item.type === "matview" ? (
+											<Layers className="size-3.5 shrink-0 text-text-tertiary" />
 										) : (
 											<Table2 className="size-3.5 shrink-0 text-text-tertiary" />
 										)}

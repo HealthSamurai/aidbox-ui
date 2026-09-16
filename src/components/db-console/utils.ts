@@ -1,4 +1,7 @@
-export type TableEntry = { name: string; type: "table" | "view" };
+export type TableEntry = {
+	name: string;
+	type: "table" | "view" | "matview";
+};
 export type SchemaMap = Record<string, TableEntry[]>;
 
 export type FunctionEntry = {

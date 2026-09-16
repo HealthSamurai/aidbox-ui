@@ -160,7 +160,10 @@ async function kickOffAsync(
 	return id;
 }
 
-const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_schema, table_name`;
+// Materialized views are absent from information_schema entirely, so they are read
+// from pg_matviews and merged in; without this a schema holding only matviews looks
+// empty and never appears in the tree.
+const TABLES_QUERY = `SELECT table_schema, table_name, table_type FROM (SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_type IN ('BASE TABLE', 'VIEW') UNION ALL SELECT schemaname, matviewname, 'MATERIALIZED VIEW' FROM pg_catalog.pg_matviews) rels WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY table_schema, table_name`;
 
 const FUNCTIONS_QUERY = `SELECT n.nspname AS function_schema, p.proname AS function_name, pg_get_function_identity_arguments(p.oid) AS arguments, CASE p.prokind WHEN 'f' THEN 'function' WHEN 'p' THEN 'procedure' WHEN 'a' THEN 'aggregate' WHEN 'w' THEN 'window' END AS function_type, t.typname AS return_type FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_type t ON t.oid = p.prorettype WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pgagent') ORDER BY n.nspname, p.proname`;
 
@@ -211,7 +214,12 @@ function useDbConsoleData() {
 					if (!map[s]) map[s] = [];
 					map[s].push({
 						name: row.table_name,
-						type: row.table_type === "VIEW" ? "view" : "table",
+						type:
+							row.table_type === "VIEW"
+								? "view"
+								: row.table_type === "MATERIALIZED VIEW"
+									? "matview"
+									: "table",
 					});
 				}
 				setSchemas(map);
