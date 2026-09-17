@@ -1,0 +1,29 @@
+name: SBOM
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  sbom:
+    runs-on: ubuntu-24.04
+    steps:
+      # No `submodules: recursive` here -- the aidbox-ts-sdk submodule is
+      # scanned by its own repo's SBOM workflow, so it's left as an empty
+      # placeholder directory here to keep this report scoped to aidbox-ui's
+      # own pnpm-lock.yaml.
+      - uses: actions/checkout@v6
+
+      - name: Install trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: v0.74.0
+
+      - name: Generate SBOM (production dependencies only)
+        run: trivy fs --format cyclonedx --output sbom.cdx.json .
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.cdx.json
