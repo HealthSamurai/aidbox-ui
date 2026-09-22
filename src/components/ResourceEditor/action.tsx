@@ -8,7 +8,12 @@ import * as Lucide from "lucide-react";
 import type React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
-import { createResource, deleteResource, updateResource } from "./api";
+import {
+	createResource,
+	deleteResource,
+	materializeResource,
+	updateResource,
+} from "./api";
 import type { EditorMode } from "./types";
 import { defaultTabFor, pageId } from "./types";
 
@@ -173,5 +178,44 @@ export const DeleteButton = ({
 				</HSComp.AlertDialogFooter>
 			</HSComp.AlertDialogContent>
 		</HSComp.AlertDialog>
+	);
+};
+
+export const MaterializeButton = ({
+	resourceType,
+	id,
+	client,
+}: {
+	resourceType: string;
+	id: string;
+	client: AidboxClientR5;
+}) => {
+	const mutation = useMutation({
+		mutationFn: async () => {
+			return await materializeResource(client, resourceType, id);
+		},
+		onError: Utils.onMutationError,
+		onSuccess: () => {
+			HSComp.toast.success(
+				"Materialization started, it runs in the background",
+				defaultToastPlacement,
+			);
+		},
+	});
+
+	return (
+		<HSComp.Button
+			variant="ghost"
+			size="small"
+			className="px-0!"
+			disabled={mutation.isPending}
+			onClick={(event) => {
+				event.preventDefault();
+				mutation.mutate();
+			}}
+		>
+			<Lucide.DatabaseIcon className="w-4 h-4" />
+			Materialize
+		</HSComp.Button>
 	);
 };

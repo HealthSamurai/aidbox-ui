@@ -43,7 +43,12 @@ import { ValueSetProvider } from "../ValueSet/page";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionLineageTab } from "../ViewDefinition/lineage/lineage-tab";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
-import { DeleteButton, SaveButton, type SaveHandle } from "./action";
+import {
+	DeleteButton,
+	MaterializeButton,
+	SaveButton,
+	type SaveHandle,
+} from "./action";
 import { deleteResource, fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
@@ -398,6 +403,7 @@ export const ResourceEditorPage = ({
 	const isValueSet = resourceType === "ValueSet";
 	const isCodeSystem = resourceType === "CodeSystem";
 	const isConceptMap = resourceType === "ConceptMap";
+	const isMaterialization = resourceType === "AidboxMaterialization";
 	const { isSqlLibrary, builderLabel } = detectSqlLibrary(
 		initialResource,
 		isLibrary,
@@ -535,6 +541,13 @@ export const ResourceEditorPage = ({
 				onCreated={onCreated}
 				saveRef={saveRef}
 			/>
+			{id && isMaterialization && (
+				<MaterializeButton
+					client={client}
+					resourceType={resourceType}
+					id={id}
+				/>
+			)}
 			{id && (
 				<DeleteButton
 					client={client}
