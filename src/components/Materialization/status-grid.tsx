@@ -126,13 +126,13 @@ export function MaterializationStatusGrid({
 					<DataTable<MaterializationRow>
 						data={rows}
 						columns={columns}
-						rowKey={(row) => row.id}
+						rowKey={(row) => row.key}
 						loading={loading}
 						resizable
 						tableId="materialization-statuses"
 						emptyState={
 							<div className="flex items-center justify-center h-full text-text-secondary">
-								No materializations
+								No runs recorded
 							</div>
 						}
 					/>

@@ -12,10 +12,12 @@ export type MaterializationStatusResource = {
 	status?: string;
 	targetVersion?: string;
 	sqlHash?: string;
-	meta?: { lastUpdated?: string };
+	meta?: { lastUpdated?: string; versionId?: string };
 };
 
 export type MaterializationRow = {
+	/** Unique per history entry, not per materialization. */
+	key: string;
 	id: string;
 	object: string;
 	objectType: string;
@@ -52,43 +54,54 @@ export function useMaterializationRows(target: string | undefined) {
 			const materializations = (found.value.resource.entry ?? []).map(
 				(e) => e.resource as unknown as MaterializationResource,
 			);
-			if (materializations.length === 0) return [];
 
-			const ids = materializations.flatMap((m) => (m.id ? [m.id] : []));
-			const statuses = new Map<string, MaterializationStatusResource>();
-			if (ids.length > 0) {
-				const result = await client.request<Bundle>({
-					method: "GET",
-					url: "/fhir/AidboxMaterializationStatus",
-					params: [
-						["_id", ids.join(",")],
-						["_count", "100"],
-					],
-				});
-				if (result.isOk()) {
-					for (const entry of result.value.resource.entry ?? []) {
-						const s =
-							entry.resource as unknown as MaterializationStatusResource;
-						if (s.id) statuses.set(s.id, s);
-					}
-				}
-			}
-
-			return materializations.flatMap((m) => {
-				if (!m.id) return [];
-				const s = statuses.get(m.id);
-				return [
-					{
+			const perMaterialization = await Promise.all(
+				materializations.map(async (m) => {
+					if (!m.id) return [];
+					const base = {
 						id: m.id,
 						object: qualifiedObject(m) ?? "",
 						objectType: parameterValue(m, "materializationType") ?? "view",
-						status: s?.status,
-						targetVersion: s?.targetVersion,
-						sqlHash: s?.sqlHash,
-						lastUpdated: s?.meta?.lastUpdated,
-					},
-				];
-			});
+					};
+					// A status is one resource updated in place, so every run but the
+					// last lives in its history.
+					const history = await client.historyInstance({
+						type: "AidboxMaterializationStatus",
+						id: m.id,
+					});
+					if (!history.isOk())
+						return [{ ...base, key: m.id } as MaterializationRow];
+					const versions = (history.value.resource.entry ?? []).flatMap(
+						(entry) => {
+							const s = entry.resource as unknown as
+								| MaterializationStatusResource
+								| undefined;
+							if (!s?.status) return [];
+							return [
+								{
+									...base,
+									key: `${m.id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
+									status: s.status,
+									targetVersion: s.targetVersion,
+									sqlHash: s.sqlHash,
+									lastUpdated: s.meta?.lastUpdated,
+								} as MaterializationRow,
+							];
+						},
+					);
+					return versions.length > 0
+						? versions
+						: [{ ...base, key: m.id } as MaterializationRow];
+				}),
+			);
+
+			return perMaterialization
+				.flat()
+				.sort(
+					(a, b) =>
+						new Date(b.lastUpdated ?? 0).getTime() -
+						new Date(a.lastUpdated ?? 0).getTime(),
+				);
 		},
 	});
 }

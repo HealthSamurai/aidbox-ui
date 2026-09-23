@@ -22,7 +22,7 @@ export const MaterializationBuilderContent = ({
 	saveError?: OperationOutcome | null;
 }) => {
 	const target = (resource as MaterializationResource).target;
-	// Only this materialization's own row: the others aimed at the same target
+	// Only this materialization's own runs: the others aimed at the same target
 	// are listed on the target's Materializations tab.
 	const {
 		data: rows = [],
@@ -58,7 +58,7 @@ export const MaterializationBuilderContent = ({
 					<HSComp.ResizableHandle />
 					<HSComp.ResizablePanel defaultSize={35} minSize={10}>
 						<MaterializationStatusGrid
-							title="Status"
+							title="Runs"
 							rows={own}
 							loading={isLoading}
 							isRefreshing={isFetching}
