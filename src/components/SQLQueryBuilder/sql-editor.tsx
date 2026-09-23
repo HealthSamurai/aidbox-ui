@@ -4,10 +4,13 @@ import type {
 	CompletionResult,
 } from "@codemirror/autocomplete";
 import { EditorState, Prec } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { type EditorView, keymap } from "@codemirror/view";
 import * as HSComp from "@health-samurai/react-components";
+import * as Lucide from "lucide-react";
 import * as React from "react";
+import { format as formatSQL } from "sql-formatter";
 import { useAidboxClient } from "../../AidboxClient";
+import { useVimMode } from "../../shared/vim-mode";
 import { psqlRequest } from "../db-console/tables-view";
 import { useSQLQueryContext } from "./context";
 import { type DependsOnSchema, useDependsOnSchemas } from "./resolve-schemas";
@@ -121,8 +124,12 @@ function completeUnqualifiedColumns(
 	return { from: word.from, options, validFor: /^[\w]*$/ };
 }
 
+const SQL_PLACEHOLDER = "-- SQL for this library\nselect * from pt";
+
 export function SqlEditor() {
 	const client = useAidboxClient();
+	const vimMode = useVimMode();
+	const editorViewRef = React.useRef<EditorView | null>(null);
 	const { library, updateLibrary, triggerRunRef, runError } =
 		useSQLQueryContext();
 	const sql = React.useMemo(() => {
@@ -141,6 +148,29 @@ export function SqlEditor() {
 			return { ...lib, content: [updated] };
 		});
 	};
+
+	const handleChangeRef = React.useRef(handleChange);
+	handleChangeRef.current = handleChange;
+
+	const formatSqlContent = React.useCallback(() => {
+		const view = editorViewRef.current;
+		const current = view?.state.doc.toString() ?? "";
+		if (!current.trim()) return;
+		let formatted: string;
+		try {
+			formatted = formatSQL(current, {
+				language: "postgresql",
+				indentStyle: "tabularRight",
+			});
+		} catch {
+			return;
+		}
+		if (formatted === current) return;
+		view?.dispatch({
+			changes: { from: 0, to: view.state.doc.length, insert: formatted },
+		});
+		handleChangeRef.current(formatted);
+	}, []);
 
 	const sqlConfig = React.useMemo<HSComp.SqlConfig>(
 		() => ({
@@ -193,10 +223,24 @@ export function SqlEditor() {
 							return true;
 						},
 					},
+					{
+						key: "Mod-Shift-f",
+						run: () => {
+							formatSqlContent();
+							return true;
+						},
+					},
 				]),
 			),
 		];
-	}, [dependsOnLabels, paramNames, schemas, schemasByLabel, triggerRunRef]);
+	}, [
+		dependsOnLabels,
+		paramNames,
+		schemas,
+		schemasByLabel,
+		triggerRunRef,
+		formatSqlContent,
+	]);
 
 	const issueLineNumbers = React.useMemo(() => {
 		if (!runError) return undefined;
@@ -215,19 +259,47 @@ export function SqlEditor() {
 		return [{ line, message: msgMatch?.[1] ?? diagnostics }];
 	}, [runError, sql]);
 
-	const lineCount = Math.max(1, sql.split("\n").length);
-	const heightPx = Math.max(240, lineCount * 22 + 40);
-
 	return (
-		<div style={{ height: heightPx }} className="w-full">
-			<HSComp.CodeEditor
-				currentValue={sql}
-				onChange={handleChange}
-				mode="sql"
-				sql={sqlConfig}
-				additionalExtensions={additionalExtensions}
-				issueLineNumbers={issueLineNumbers}
-			/>
+		<div className="flex flex-col h-full min-h-0">
+			<div className="flex w-full items-center gap-1 bg-bg-secondary flex-none h-8 border-b px-2">
+				<span className="typo-label-tiny uppercase tracking-wide text-text-info-primary px-1.5">
+					sql
+				</span>
+				<HSComp.Tooltip>
+					<HSComp.TooltipTrigger asChild>
+						<HSComp.Button
+							variant="ghost"
+							size="small"
+							className="px-1!"
+							onClick={formatSqlContent}
+						>
+							<Lucide.AlignLeftIcon size={14} />
+						</HSComp.Button>
+					</HSComp.TooltipTrigger>
+					<HSComp.TooltipContent side="bottom">
+						Format SQL (Mod-Shift-F)
+					</HSComp.TooltipContent>
+				</HSComp.Tooltip>
+			</div>
+			<div className="flex-1 min-h-0">
+				<HSComp.CodeEditor
+					// Uncontrolled, remounted per library: a controlled value rewrites
+					// the document on every keystroke.
+					key={library.id ?? "new"}
+					defaultValue={sql}
+					placeholder={SQL_PLACEHOLDER}
+					onChange={handleChange}
+					mode="sql"
+					sql={sqlConfig}
+					additionalExtensions={additionalExtensions}
+					issueLineNumbers={issueLineNumbers}
+					viewCallback={(view) => {
+						editorViewRef.current = view;
+					}}
+					foldGutter={false}
+					vimMode={vimMode}
+				/>
+			</div>
 		</div>
 	);
 }

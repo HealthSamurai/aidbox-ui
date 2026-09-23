@@ -12,6 +12,7 @@ import { PropertiesTree } from "./properties-tree";
 import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
 import { buildRunPayload, ensureSqlLibraryShape } from "./run-payload";
+import { SqlEditor } from "./sql-editor";
 import { type SQLLibrary, sqlLibraryKindMeta } from "./types";
 
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
@@ -321,11 +322,23 @@ export function SQLQueryBuilderContent() {
 				isRunDisabled={runMutation.isPending}
 				isSaveDisabled={saveMutation.isPending}
 			/>
-			<div className="flex-1 min-h-0 overflow-auto">
-				<div className="min-h-full bg-bg-primary px-2.5 pt-3 pb-[250px]">
-					<PropertiesTree />
-				</div>
-			</div>
+			<HSComp.ResizablePanelGroup
+				direction="vertical"
+				autoSaveId="sqlquery-builder-editor"
+				className="grow min-h-0"
+			>
+				<HSComp.ResizablePanel defaultSize={45} minSize={10}>
+					<div className="h-full overflow-auto">
+						<div className="min-h-full bg-bg-primary px-2.5 pt-3 pb-6">
+							<PropertiesTree />
+						</div>
+					</div>
+				</HSComp.ResizablePanel>
+				<HSComp.ResizableHandle />
+				<HSComp.ResizablePanel defaultSize={55} minSize={10}>
+					<SqlEditor />
+				</HSComp.ResizablePanel>
+			</HSComp.ResizablePanelGroup>
 		</div>
 	);
 
