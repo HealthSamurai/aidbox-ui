@@ -89,9 +89,18 @@ export function useMaterializationRows(target: string | undefined) {
 							];
 						},
 					);
-					return versions.length > 0
-						? versions
-						: [{ ...base, key: m.id } as MaterializationRow];
+					if (versions.length === 0)
+						return [{ ...base, key: m.id } as MaterializationRow];
+					// Every run opens with in-progress and then overwrites it, so a
+					// finished run leaves one behind. Only the newest can be live.
+					const newestFirst = versions.sort(
+						(a, b) =>
+							new Date(b.lastUpdated ?? 0).getTime() -
+							new Date(a.lastUpdated ?? 0).getTime(),
+					);
+					return newestFirst.filter(
+						(row, i) => i === 0 || row.status !== "in-progress",
+					);
 				}),
 			);
 
