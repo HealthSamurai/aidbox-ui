@@ -1,6 +1,7 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Link } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
+import * as Humanize from "../../humanize";
 import { DataTable } from "../data-table/data-table";
 import type { ColumnDef } from "../data-table/types";
 import type { MaterializationRow } from "./api";
@@ -81,10 +82,12 @@ const stateColumns: ColumnDef<MaterializationRow>[] = [
 	},
 	{
 		id: "lastUpdated",
-		header: "Last updated",
-		maxSize: 220,
+		header: "LastUpdated",
+		defaultSize: 260,
+		maxSize: 600,
+		// Raw instant, as the resource browser and the rest of the UI show it.
 		cell: (row) =>
-			row.lastUpdated ? new Date(row.lastUpdated).toLocaleString() : "—",
+			Humanize.humanizeValue("lastUpdated", row.lastUpdated, {}) ?? "—",
 	},
 ];
 
