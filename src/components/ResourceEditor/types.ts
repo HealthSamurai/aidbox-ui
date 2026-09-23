@@ -41,6 +41,7 @@ export const RESOURCE_TYPES_WITH_BUILDER = new Set([
 	"ValueSet",
 	"CodeSystem",
 	"ConceptMap",
+	"AidboxMaterialization",
 ]);
 
 /**

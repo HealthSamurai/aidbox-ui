@@ -74,3 +74,37 @@ export const withDefaultProfile = (
 	resource: MaterializationResource,
 ): MaterializationResource =>
 	resource.meta?.profile?.length ? resource : withProfile(resource, PG_PROFILE);
+
+/** `schema.name`, or undefined until both parameters are set. */
+export const qualifiedObject = (
+	resource: MaterializationResource,
+): string | undefined => {
+	const schema = parameterValue(resource, "schema");
+	const name = parameterValue(resource, "name");
+	return schema && name ? `${schema}.${name}` : undefined;
+};
+
+/** A blank pg Materialization, prefilled from the resource it was started from. */
+export const newMaterialization = ({
+	target,
+	targetType,
+	objectName,
+}: {
+	target?: string;
+	targetType?: string;
+	objectName?: string;
+}): MaterializationResource => {
+	const parameter: MaterializationParameter[] = [
+		{ name: "schema", valueString: "sof" },
+		{ name: "materializationType", valueCode: "view" },
+	];
+	if (objectName)
+		parameter.splice(1, 0, { name: "name", valueString: objectName });
+	return {
+		resourceType: "AidboxMaterialization",
+		meta: { profile: [PG_PROFILE] },
+		...(targetType ? { type: targetType } : {}),
+		...(target ? { target } : {}),
+		parameter,
+	} as MaterializationResource;
+};

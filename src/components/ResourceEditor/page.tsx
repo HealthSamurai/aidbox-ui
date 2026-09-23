@@ -31,6 +31,7 @@ import { ConceptMapBuilderContent } from "../ConceptMap/builder-content";
 import { ConceptMapProvider } from "../ConceptMap/page";
 import { EmptyState } from "../empty-state";
 import { MaterializationBuilderContent } from "../Materialization/builder-content";
+import { MaterializationsTab } from "../Materialization/target-tab";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
 import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
@@ -79,6 +80,33 @@ const materializationBuilderTab = (
 							className="grow min-h-0 flex flex-col"
 						>
 							<MaterializationBuilderContent {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/** Empty unless the resource can be materialized, so the caller needs no branch. */
+const materializationsTab = (
+	id: string | undefined,
+	props: React.ComponentProps<typeof MaterializationsTab>,
+): EditorTabItem[] =>
+	id &&
+	(props.resourceType === "ViewDefinition" || props.resourceType === "Library")
+		? [
+				{
+					value: "materializations",
+					trigger: (
+						<HSComp.TabsTrigger value="materializations">
+							Materializations
+						</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent
+							value="materializations"
+							className="grow min-h-0 flex flex-col"
+						>
+							<MaterializationsTab {...props} />
 						</HSComp.TabsContent>
 					),
 				},
@@ -603,6 +631,8 @@ export const ResourceEditorPage = ({
 			),
 		});
 	}
+
+	tabs.push(...materializationsTab(id, { resource, resourceType }));
 
 	tabs.push(
 		...materializationBuilderTab(isMaterialization, {
