@@ -3,8 +3,11 @@ import * as HSComp from "@health-samurai/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as Utils from "../../api/utils";
-import { useMaterializationRows } from "./api";
-import { MaterializationStatusGrid } from "./status-grid";
+import { useMaterializations } from "./api";
+import {
+	MaterializationStatusGrid,
+	materializationColumns,
+} from "./status-grid";
 
 type TargetResource = Resource & { url?: string; name?: string };
 
@@ -28,7 +31,7 @@ export const MaterializationsTab = ({
 }) => {
 	const navigate = useNavigate();
 	const target = resource as TargetResource;
-	const { data: rows = [], isLoading } = useMaterializationRows(target.url);
+	const { data: rows = [], isLoading } = useMaterializations(target.url);
 
 	const onCreate = () => {
 		if (!target.url) {
@@ -56,6 +59,8 @@ export const MaterializationsTab = ({
 	return (
 		<MaterializationStatusGrid
 			rows={rows}
+			columns={materializationColumns}
+			emptyLabel="No materializations"
 			loading={isLoading}
 			emptyState={
 				<div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">

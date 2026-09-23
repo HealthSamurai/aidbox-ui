@@ -16,7 +16,7 @@ export type MaterializationStatusResource = {
 };
 
 export type MaterializationRow = {
-	/** Unique per history entry, not per materialization. */
+	/** Materialization id for the list; id plus versionId for a run. */
 	key: string;
 	id: string;
 	object: string;
@@ -32,11 +32,19 @@ export const materializationsKey = (target: string | undefined) => [
 	target ?? "",
 ];
 
-/**
- * Materializations aimed at `target`, each with its status. A status shares the
- * materialization's id, so one search covers them all.
- */
-export function useMaterializationRows(target: string | undefined) {
+export const runsKey = (id: string | undefined) => [
+	"aidbox-materialization-runs",
+	id ?? "",
+];
+
+const describe = (m: MaterializationResource) => ({
+	id: m.id ?? "",
+	object: qualifiedObject(m) ?? "",
+	objectType: parameterValue(m, "materializationType") ?? "view",
+});
+
+/** The Materializations aimed at `target`, one row each, showing where each stands. */
+export function useMaterializations(target: string | undefined) {
 	const client = useAidboxClient();
 	return useQuery<MaterializationRow[]>({
 		queryKey: materializationsKey(target),
@@ -51,66 +59,94 @@ export function useMaterializationRows(target: string | undefined) {
 				],
 			});
 			if (!found.isOk()) return [];
-			const materializations = (found.value.resource.entry ?? []).map(
-				(e) => e.resource as unknown as MaterializationResource,
-			);
+			const materializations = (found.value.resource.entry ?? [])
+				.map((e) => e.resource as unknown as MaterializationResource)
+				.filter((m) => m.id);
+			if (materializations.length === 0) return [];
 
-			const perMaterialization = await Promise.all(
-				materializations.map(async (m) => {
-					if (!m.id) return [];
-					const base = {
-						id: m.id,
-						object: qualifiedObject(m) ?? "",
-						objectType: parameterValue(m, "materializationType") ?? "view",
-					};
-					// A status is one resource updated in place, so every run but the
-					// last lives in its history.
-					const history = await client.historyInstance({
-						type: "AidboxMaterializationStatus",
-						id: m.id,
-					});
-					if (!history.isOk())
-						return [{ ...base, key: m.id } as MaterializationRow];
-					const versions = (history.value.resource.entry ?? []).flatMap(
-						(entry) => {
-							const s = entry.resource as unknown as
-								| MaterializationStatusResource
-								| undefined;
-							if (!s?.status) return [];
-							return [
-								{
-									...base,
-									key: `${m.id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
-									status: s.status,
-									targetVersion: s.targetVersion,
-									sqlHash: s.sqlHash,
-									lastUpdated: s.meta?.lastUpdated,
-								} as MaterializationRow,
-							];
-						},
-					);
-					if (versions.length === 0)
-						return [{ ...base, key: m.id } as MaterializationRow];
-					// Every run opens with in-progress and then overwrites it, so a
-					// finished run leaves one behind. Only the newest can be live.
-					const newestFirst = versions.sort(
-						(a, b) =>
-							new Date(b.lastUpdated ?? 0).getTime() -
-							new Date(a.lastUpdated ?? 0).getTime(),
-					);
-					return newestFirst.filter(
-						(row, i) => i === 0 || row.status !== "in-progress",
-					);
-				}),
-			);
+			// A status shares its materialization's id, so one search covers them all.
+			const statuses = new Map<string, MaterializationStatusResource>();
+			const result = await client.request<Bundle>({
+				method: "GET",
+				url: "/fhir/AidboxMaterializationStatus",
+				params: [
+					["_id", materializations.map((m) => m.id).join(",")],
+					["_count", "100"],
+				],
+			});
+			if (result.isOk()) {
+				for (const entry of result.value.resource.entry ?? []) {
+					const s = entry.resource as unknown as MaterializationStatusResource;
+					if (s.id) statuses.set(s.id, s);
+				}
+			}
 
-			return perMaterialization
-				.flat()
-				.sort(
-					(a, b) =>
-						new Date(b.lastUpdated ?? 0).getTime() -
-						new Date(a.lastUpdated ?? 0).getTime(),
-				);
+			return materializations.map((m) => {
+				const base = describe(m);
+				const s = statuses.get(base.id);
+				return {
+					...base,
+					key: base.id,
+					status: s?.status,
+					targetVersion: s?.targetVersion,
+					sqlHash: s?.sqlHash,
+					lastUpdated: s?.meta?.lastUpdated,
+				};
+			});
+		},
+	});
+}
+
+/**
+ * Every run of one Materialization, newest first. A status is updated in place,
+ * so the trail is its history.
+ */
+export function useMaterializationRuns(id: string | undefined) {
+	const client = useAidboxClient();
+	return useQuery<MaterializationRow[]>({
+		queryKey: runsKey(id),
+		enabled: Boolean(id),
+		queryFn: async () => {
+			if (!id) return [];
+			const found = await client.request<MaterializationResource>({
+				method: "GET",
+				url: `/fhir/AidboxMaterialization/${id}`,
+			});
+			const base = found.isOk()
+				? describe(found.value.resource)
+				: { id, object: "", objectType: "view" };
+
+			const history = await client.historyInstance({
+				type: "AidboxMaterializationStatus",
+				id,
+			});
+			if (!history.isOk()) return [];
+			const versions = (history.value.resource.entry ?? []).flatMap((entry) => {
+				const s = entry.resource as unknown as
+					| MaterializationStatusResource
+					| undefined;
+				if (!s?.status) return [];
+				return [
+					{
+						...base,
+						key: `${id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
+						status: s.status,
+						targetVersion: s.targetVersion,
+						sqlHash: s.sqlHash,
+						lastUpdated: s.meta?.lastUpdated,
+					},
+				];
+			});
+			const newestFirst = versions.sort(
+				(a, b) =>
+					new Date(b.lastUpdated ?? 0).getTime() -
+					new Date(a.lastUpdated ?? 0).getTime(),
+			);
+			// Every run opens with in-progress and then overwrites it, so a finished
+			// run leaves one behind. Only the newest can still be live.
+			return newestFirst.filter(
+				(row, i) => i === 0 || row.status !== "in-progress",
+			);
 		},
 	});
 }

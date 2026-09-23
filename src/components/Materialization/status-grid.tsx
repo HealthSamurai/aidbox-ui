@@ -22,23 +22,24 @@ function StatusBadge({ status }: { status?: string }) {
 	);
 }
 
-const columns: ColumnDef<MaterializationRow>[] = [
-	{
-		id: "materialization",
-		header: "Materialization",
-		maxSize: 260,
-		cell: (row) => (
-			<Link
-				to="/resource/$resourceType/edit/$id"
-				params={{ resourceType: "AidboxMaterialization", id: row.id }}
-				search={{ tab: "builder", mode: "json", builderTab: "form" }}
-				className="text-text-link hover:underline"
-				title={row.id}
-			>
-				{row.id}
-			</Link>
-		),
-	},
+const materializationColumn: ColumnDef<MaterializationRow> = {
+	id: "materialization",
+	header: "Materialization",
+	maxSize: 260,
+	cell: (row) => (
+		<Link
+			to="/resource/$resourceType/edit/$id"
+			params={{ resourceType: "AidboxMaterialization", id: row.id }}
+			search={{ tab: "builder", mode: "json", builderTab: "form" }}
+			className="text-text-link hover:underline"
+			title={row.id}
+		>
+			{row.id}
+		</Link>
+	),
+};
+
+const objectColumns: ColumnDef<MaterializationRow>[] = [
 	{
 		id: "object",
 		header: "Object",
@@ -53,6 +54,9 @@ const columns: ColumnDef<MaterializationRow>[] = [
 		maxSize: 160,
 		cell: (row) => row.objectType,
 	},
+];
+
+const stateColumns: ColumnDef<MaterializationRow>[] = [
 	{
 		id: "status",
 		header: "Status",
@@ -84,21 +88,35 @@ const columns: ColumnDef<MaterializationRow>[] = [
 	},
 ];
 
+/** One row per Materialization: which resources exist and where each stands. */
+export const materializationColumns: ColumnDef<MaterializationRow>[] = [
+	materializationColumn,
+	...objectColumns,
+	...stateColumns,
+];
+
+/** One row per run of a single Materialization; its identity is already known. */
+export const runColumns: ColumnDef<MaterializationRow>[] = stateColumns;
+
 export function MaterializationStatusGrid({
 	rows,
+	columns,
 	loading,
 	onRefresh,
 	isRefreshing,
 	emptyState,
 	title,
+	emptyLabel,
 }: {
 	rows: MaterializationRow[];
+	columns: ColumnDef<MaterializationRow>[];
 	loading?: boolean;
 	onRefresh?: () => void;
 	isRefreshing?: boolean;
 	/** Shown instead of the table when there is nothing to list. */
 	emptyState?: React.ReactNode;
 	title?: string;
+	emptyLabel?: string;
 }) {
 	return (
 		<div className="flex flex-col h-full min-h-0">
@@ -132,7 +150,7 @@ export function MaterializationStatusGrid({
 						tableId="materialization-statuses"
 						emptyState={
 							<div className="flex items-center justify-center h-full text-text-secondary">
-								No runs recorded
+								{emptyLabel ?? "Nothing to show"}
 							</div>
 						}
 					/>

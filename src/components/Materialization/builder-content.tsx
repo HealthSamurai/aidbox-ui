@@ -3,10 +3,9 @@ import type {
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
-import { useMaterializationRows } from "./api";
+import { useMaterializationRuns } from "./api";
 import { PropertiesTree } from "./properties-tree";
-import { MaterializationStatusGrid } from "./status-grid";
-import type { MaterializationResource } from "./types";
+import { MaterializationStatusGrid, runColumns } from "./status-grid";
 
 export const MaterializationBuilderContent = ({
 	resource,
@@ -21,16 +20,12 @@ export const MaterializationBuilderContent = ({
 	/** OperationOutcome from the last failed save. */
 	saveError?: OperationOutcome | null;
 }) => {
-	const target = (resource as MaterializationResource).target;
-	// Only this materialization's own runs: the others aimed at the same target
-	// are listed on the target's Materializations tab.
 	const {
-		data: rows = [],
+		data: runs = [],
 		isLoading,
 		isFetching,
 		refetch,
-	} = useMaterializationRows(target);
-	const own = rows.filter((row) => row.id === resource.id);
+	} = useMaterializationRuns(resource.id);
 
 	return (
 		<HSComp.ResizablePanelGroup
@@ -59,7 +54,9 @@ export const MaterializationBuilderContent = ({
 					<HSComp.ResizablePanel defaultSize={35} minSize={10}>
 						<MaterializationStatusGrid
 							title="Runs"
-							rows={own}
+							rows={runs}
+							columns={runColumns}
+							emptyLabel="No runs recorded"
 							loading={isLoading}
 							isRefreshing={isFetching}
 							onRefresh={() => refetch()}
