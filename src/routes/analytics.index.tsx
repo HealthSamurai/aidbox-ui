@@ -32,6 +32,18 @@ const SQL_VIEW_TYPE_TOKEN =
 
 type AnalyticsKind = "view" | "query" | "sql-view";
 
+/** How the filter is spelled in the URL: ?type=SQLQuery */
+const TYPE_PARAM_TO_KIND: Record<string, AnalyticsKind> = {
+	ViewDefinition: "view",
+	SQLQuery: "query",
+	SQLView: "sql-view",
+};
+const KIND_TO_TYPE_PARAM: Record<AnalyticsKind, string> = {
+	view: "ViewDefinition",
+	query: "SQLQuery",
+	"sql-view": "SQLView",
+};
+
 const KIND_META: Record<
 	AnalyticsKind,
 	{ label: string; accentClass: string; Icon: typeof Table }
@@ -450,18 +462,61 @@ function SearchBar({
 	);
 }
 
+function TypeFilter({
+	kind,
+	setKind,
+}: {
+	kind?: AnalyticsListKind;
+	setKind: (next?: AnalyticsListKind) => void;
+}) {
+	return (
+		<HSComp.Select
+			value={kind ? KIND_TO_TYPE_PARAM[kind] : "all"}
+			onValueChange={(v) => setKind(TYPE_PARAM_TO_KIND[v])}
+		>
+			<HSComp.SelectTrigger className="w-44 h-9 shrink-0">
+				<HSComp.SelectValue placeholder="Type" />
+			</HSComp.SelectTrigger>
+			<HSComp.SelectContent>
+				<HSComp.SelectItem value="all">All types</HSComp.SelectItem>
+				<HSComp.SelectItem
+					value="ViewDefinition"
+					className="text-text-info-primary!"
+				>
+					ViewDefinition
+				</HSComp.SelectItem>
+				<HSComp.SelectItem
+					value="SQLQuery"
+					className="text-text-warning-primary!"
+				>
+					SQLQuery
+				</HSComp.SelectItem>
+				<HSComp.SelectItem
+					value="SQLView"
+					className="text-text-success-primary!"
+				>
+					SQLView
+				</HSComp.SelectItem>
+			</HSComp.SelectContent>
+		</HSComp.Select>
+	);
+}
+
 export function AnalyticsListPage({
 	kind,
 	tags,
 	text,
 	setTags,
 	setText,
+	setKind,
 }: {
 	kind?: AnalyticsListKind;
 	tags: string[];
 	text: string;
 	setTags: (next: string[]) => void;
 	setText: (next: string) => void;
+	/** When given, a type filter is shown beside the search bar. */
+	setKind?: (next?: AnalyticsListKind) => void;
 }) {
 	const views = useRecentViews();
 	const queries = useRecentQueries();
@@ -685,6 +740,7 @@ export function AnalyticsListPage({
 						onClear={onClear}
 						onInputKeyDown={handleKeyDown}
 					/>
+					{setKind && <TypeFilter kind={kind} setKind={setKind} />}
 					{kind === "view" ? (
 						<HSComp.Button variant="secondary" onClick={createView}>
 							<Plus className="size-4 text-text-info-primary" />
@@ -895,8 +951,11 @@ export function AnalyticsListPage({
 export const validateAnalyticsSearch = (search: {
 	q?: unknown;
 	tags?: unknown;
-}): { q?: string; tags?: string[] } => {
-	const out: { q?: string; tags?: string[] } = {};
+	type?: unknown;
+}): { q?: string; tags?: string[]; type?: string } => {
+	const out: { q?: string; tags?: string[]; type?: string } = {};
+	if (typeof search.type === "string" && search.type in TYPE_PARAM_TO_KIND)
+		out.type = search.type;
 	if (typeof search.q === "string" && search.q.length > 0) out.q = search.q;
 	if (Array.isArray(search.tags)) {
 		const tags = search.tags.filter(
@@ -913,6 +972,7 @@ function AnalyticsHomeRoute() {
 	const search = Route.useSearch();
 	const text = search.q ?? "";
 	const tags = search.tags ?? [];
+	const kind = search.type ? TYPE_PARAM_TO_KIND[search.type] : undefined;
 	const navigate = useNavigate({ from: "/analytics/" });
 	const setText = (next: string) =>
 		navigate({
@@ -924,12 +984,22 @@ function AnalyticsHomeRoute() {
 			search: (prev) => ({ ...prev, tags: next.length > 0 ? next : undefined }),
 			replace: true,
 		});
+	const setKind = (next?: AnalyticsListKind) =>
+		navigate({
+			search: (prev) => ({
+				...prev,
+				type: next ? KIND_TO_TYPE_PARAM[next] : undefined,
+			}),
+			replace: true,
+		});
 	return (
 		<AnalyticsListPage
+			kind={kind}
 			text={text}
 			tags={tags}
 			setText={setText}
 			setTags={setTags}
+			setKind={setKind}
 		/>
 	);
 }
