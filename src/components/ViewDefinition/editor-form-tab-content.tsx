@@ -380,16 +380,31 @@ const parseColumn = (id: string, column: ViewDefinitionSelectColumn[]) => {
 	};
 };
 
+/**
+ * A forEach node may carry columns directly instead of wrapping them in a
+ * `select` — the two are the same query. Folding the direct column in as the
+ * first child keeps one shape in the builder, and first keeps column order:
+ * a node's own columns come before those of its selects.
+ */
+const foldDirectColumn = (
+	column: ViewDefinitionSelectColumn[] | undefined,
+	select: ViewDefinitionSelect[] | undefined,
+): ViewDefinitionSelect[] => {
+	if (!column || column.length === 0) return select ?? [];
+	return [{ column }, ...(select ?? [])];
+};
+
 const parseForEach = (
 	id: string,
 	forEach: string,
 	select: ViewDefinitionSelect[] | undefined,
+	column?: ViewDefinitionSelectColumn[],
 ) => {
 	return {
 		nodeId: id,
 		type: "forEach" as const,
 		expression: forEach,
-		children: select ? parseSelectItems(select, `${id}-`) : [],
+		children: parseSelectItems(foldDirectColumn(column, select), `${id}-`),
 	};
 };
 
@@ -397,12 +412,13 @@ const parseForEachOrNull = (
 	id: string,
 	forEachOrNull: string,
 	select: ViewDefinitionSelect[] | undefined,
+	column?: ViewDefinitionSelectColumn[],
 ) => {
 	return {
 		nodeId: id,
 		type: "forEachOrNull" as const,
 		expression: forEachOrNull,
-		children: select ? parseSelectItems(select, `${id}-`) : [],
+		children: parseSelectItems(foldDirectColumn(column, select), `${id}-`),
 	};
 };
 
@@ -423,10 +439,18 @@ const parseSelectItems = (
 ): SelectItemInternal[] => {
 	return items.flatMap((item, index) => {
 		const id = `${parentId}select-${index}-${generateId()}`;
-		if (item.column) return parseColumn(id, item.column);
-		else if (item.forEach) return parseForEach(id, item.forEach, item.select);
+		// forEach before column: a node carrying both is a forEach whose columns
+		// are written directly, and reading it as a column drops the iteration.
+		if (item.forEach)
+			return parseForEach(id, item.forEach, item.select, item.column);
 		else if (item.forEachOrNull)
-			return parseForEachOrNull(id, item.forEachOrNull, item.select);
+			return parseForEachOrNull(
+				id,
+				item.forEachOrNull,
+				item.select,
+				item.column,
+			);
+		else if (item.column) return parseColumn(id, item.column);
 		else if (item.unionAll) return parseUnionAll(id, item.unionAll);
 		else return [];
 	});
