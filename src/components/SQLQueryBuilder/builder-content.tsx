@@ -6,12 +6,14 @@ import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { addUrlToHistory } from "../../utils/url-history";
+import { pageId } from "../ResourceEditor/types";
 import { useSQLQueryContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
 import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
 import { buildRunPayload, ensureSqlLibraryShape } from "./run-payload";
+import { SqlEditor } from "./sql-editor";
 import { type SQLLibrary, sqlLibraryKindMeta } from "./types";
 
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
@@ -123,12 +125,10 @@ export function SQLQueryBuilderContent() {
 	const {
 		library,
 		setIsDirty,
-		runResult,
 		setRunResult,
 		setRunError,
-		runError,
-		isRunning,
 		setIsRunning,
+		setRunDuration,
 		paramValues,
 		persistParamValues,
 		setMissingParams,
@@ -188,6 +188,11 @@ export function SQLQueryBuilderContent() {
 			queryClient.invalidateQueries({
 				queryKey: ["data-lineage-sidebar-queries"],
 			});
+			// The ResourceEditor page and its other tabs read the saved resource
+			// through this key; without it they keep serving what was loaded.
+			queryClient.invalidateQueries({
+				queryKey: [pageId, "Library", (resource as SQLLibrary).id],
+			});
 			if (created && onCreated) {
 				const id = (resource as SQLLibrary).id;
 				if (id) onCreated(id);
@@ -206,7 +211,9 @@ export function SQLQueryBuilderContent() {
 		mutationFn: async () => {
 			setRunError(null);
 			setRunResult(null);
+			setRunDuration(null);
 			setIsRunning(true);
+			const startedAt = performance.now();
 			const body = buildRunPayload(library, inheritedTypes, paramValues);
 			const result = await client.request<FhirParametersResponse>({
 				method: "POST",
@@ -214,6 +221,7 @@ export function SQLQueryBuilderContent() {
 				body: JSON.stringify(body),
 				headers: { "Content-Type": "application/json" },
 			});
+			setRunDuration(performance.now() - startedAt);
 			if (result.isErr()) {
 				throw result.value.resource;
 			}
@@ -321,24 +329,28 @@ export function SQLQueryBuilderContent() {
 				isRunDisabled={runMutation.isPending}
 				isSaveDisabled={saveMutation.isPending}
 			/>
-			<div className="flex-1 min-h-0 overflow-auto">
-				<div className="min-h-full bg-bg-primary px-2.5 pt-3 pb-[250px]">
-					<PropertiesTree />
-				</div>
-			</div>
+			<HSComp.ResizablePanelGroup
+				direction="vertical"
+				autoSaveId="sqlquery-builder-editor"
+				className="grow min-h-0"
+			>
+				<HSComp.ResizablePanel defaultSize={45} minSize={10}>
+					<div className="h-full overflow-auto">
+						<div className="min-h-full bg-bg-primary px-2.5 pt-3 pb-6">
+							<PropertiesTree />
+						</div>
+					</div>
+				</HSComp.ResizablePanel>
+				<HSComp.ResizableHandle />
+				<HSComp.ResizablePanel defaultSize={55} minSize={10}>
+					<SqlEditor />
+				</HSComp.ResizablePanel>
+			</HSComp.ResizablePanelGroup>
 		</div>
 	);
 
-	const hasResult = runResult !== null || isRunning || runError !== null;
-
-	if (!hasResult) {
-		return (
-			<div className="relative h-full grow min-h-0 flex flex-col">
-				{editorContent}
-			</div>
-		);
-	}
-
+	// The panel is rendered before the first run too: Explain inspects a query
+	// without running it, and its tab lives here.
 	if (isResultCollapsed) {
 		return (
 			<div className="relative h-full grow min-h-0 flex flex-col overflow-hidden">

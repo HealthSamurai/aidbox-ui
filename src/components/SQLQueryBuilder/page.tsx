@@ -69,6 +69,7 @@ export function SQLQueryProvider({
 	const [runError, setRunError] =
 		React.useState<HSComp.OperationOutcome | null>(null);
 	const [isRunning, setIsRunning] = React.useState(false);
+	const [runDuration, setRunDuration] = React.useState<number | null>(null);
 	const [missingParams, setMissingParams] = React.useState<Set<string>>(
 		() => new Set(),
 	);
@@ -126,6 +127,8 @@ export function SQLQueryProvider({
 				setRunError,
 				isRunning,
 				setIsRunning,
+				runDuration,
+				setRunDuration,
 				paramValues,
 				setParamValue,
 				persistParamValues,

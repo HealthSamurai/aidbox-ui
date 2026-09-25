@@ -13,7 +13,7 @@ type DebugResponse = {
 	params?: unknown[];
 };
 
-async function fetchDebugSQL(
+export async function fetchDebugSQL(
 	client: AidboxClientR5,
 	library: SQLLibrary,
 	inheritedTypes: Map<string, string>,
@@ -78,7 +78,7 @@ function formatParam(p: unknown): string {
 	return `(${values.map((v) => formatScalar(v, fhirType)).join(", ")})`;
 }
 
-function inlineParams(sql: string, params: unknown[]): string {
+export function inlineParams(sql: string, params: unknown[]): string {
 	let result = "";
 	let paramIdx = 0;
 	let inString = false;

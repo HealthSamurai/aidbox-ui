@@ -1,3 +1,4 @@
+import { newMaterialization } from "@aidbox-ui/components/Materialization/types";
 import { ResourceEditorPage } from "@aidbox-ui/components/ResourceEditor/page";
 import {
 	type BuilderTab,
@@ -19,6 +20,13 @@ export type ResourceEditorSearch = {
 	tab: ResourceEditorTab;
 	mode: EditorMode;
 	builderTab: BuilderTab;
+};
+
+/** Prefill carried from the resource a Materialization is being created for. */
+export type CreateSearch = ResourceEditorSearch & {
+	target?: string;
+	targetType?: string;
+	objectName?: string;
 };
 
 const STORAGE_KEY_TAB = "resourceEditor-selectedTab";
@@ -98,8 +106,29 @@ export function validateSearch(
 	return { tab, mode, builderTab };
 }
 
+/** Only the create route takes prefill; the edit route shares validateSearch. */
+export function validateCreateSearch(
+	rawSearch: Record<string, unknown>,
+): CreateSearch {
+	const base = validateSearch(rawSearch);
+	const prefill: Pick<CreateSearch, "target" | "targetType" | "objectName"> =
+		{};
+	if (typeof rawSearch.target === "string") prefill.target = rawSearch.target;
+	// 3. an unrecognised type would reach the builder as an invalid resource
+	if (
+		rawSearch.targetType === "ViewDefinition" ||
+		rawSearch.targetType === "Library"
+	)
+		prefill.targetType = rawSearch.targetType;
+	if (typeof rawSearch.objectName === "string")
+		prefill.objectName = rawSearch.objectName;
+	return { ...base, ...prefill };
+}
+
 const PageComponent = () => {
-	const { tab, mode } = useSearch({ from: "/resource/$resourceType/create" });
+	const { tab, mode, target, targetType, objectName } = useSearch({
+		from: "/resource/$resourceType/create",
+	});
 	const { resourceType } = useMatch({
 		from: "/resource/$resourceType/create",
 	}).params;
@@ -107,20 +136,23 @@ const PageComponent = () => {
 
 	const isViewDefinition = resourceType === "ViewDefinition";
 	const isAccessPolicy = resourceType === "AccessPolicy";
+	const isMaterialization = resourceType === "AidboxMaterialization";
 
-	const initialResource = isViewDefinition
-		? {
-				resource: "Patient",
-				resourceType: "ViewDefinition",
-				status: "draft",
-				select: [],
-			}
-		: isAccessPolicy
+	const initialResource = isMaterialization
+		? newMaterialization({ target, targetType, objectName })
+		: isViewDefinition
 			? {
-					resourceType: "AccessPolicy",
-					engine: "matcho",
+					resource: "Patient",
+					resourceType: "ViewDefinition",
+					status: "draft",
+					select: [],
 				}
-			: { resourceType: resourceType };
+			: isAccessPolicy
+				? {
+						resourceType: "AccessPolicy",
+						engine: "matcho",
+					}
+				: { resourceType: resourceType };
 
 	return (
 		<ResourceEditorPage
@@ -137,7 +169,7 @@ const TITLE = "Create";
 
 export const Route = createFileRoute("/resource/$resourceType/create")({
 	component: PageComponent,
-	validateSearch,
+	validateSearch: validateCreateSearch,
 	staticData: {
 		title: TITLE,
 	},

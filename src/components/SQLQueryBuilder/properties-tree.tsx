@@ -4,9 +4,8 @@ import {
 	TreeView,
 	type TreeViewItem,
 } from "@health-samurai/react-components";
-import { AlignLeft, Play, Plus, X } from "lucide-react";
+import { Play, Plus, X } from "lucide-react";
 import * as React from "react";
-import { format as formatSQL } from "sql-formatter";
 import { readUrlHistory } from "../../utils/url-history";
 import { useSQLQueryContext } from "./context";
 import {
@@ -14,7 +13,6 @@ import {
 	useResolvedParameterTree,
 } from "./resolve-tree";
 import { ResourcePicker } from "./resource-picker";
-import { SqlEditor } from "./sql-editor";
 import {
 	FHIR_PARAMETER_TYPES,
 	LABEL_REGEX,
@@ -35,9 +33,7 @@ type ItemMeta = {
 		| "parameter"
 		| "parameter-value"
 		| "parameter-inherited"
-		| "parameter-add"
-		| "sql"
-		| "sql-value";
+		| "parameter-add";
 	dependsOnIndex?: number;
 	parameterIndex?: number;
 	inheritedIndex?: number;
@@ -114,28 +110,6 @@ function InputView({
 	);
 }
 
-function SqlValueCell() {
-	const ref = React.useRef<HTMLDivElement>(null);
-	React.useEffect(() => {
-		const el = ref.current;
-		if (!el) return;
-		const stop = (e: Event) => e.stopPropagation();
-		el.addEventListener("keydown", stop);
-		el.addEventListener("click", stop);
-		el.addEventListener("dragstart", stop);
-		return () => {
-			el.removeEventListener("keydown", stop);
-			el.removeEventListener("click", stop);
-			el.removeEventListener("dragstart", stop);
-		};
-	}, []);
-	return (
-		<div ref={ref} className="w-full -ml-2.5">
-			<SqlEditor />
-		</div>
-	);
-}
-
 function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 	const metaType = item.getItemData()?.meta?.type;
 	const isFolder = item.isFolder();
@@ -143,8 +117,7 @@ function labelView(item: ItemInstance<TreeViewItem<ItemMeta>>) {
 	const isSectionFolder =
 		metaType === "properties" ||
 		metaType === "depends-on" ||
-		metaType === "parameter" ||
-		metaType === "sql";
+		metaType === "parameter";
 
 	const additionalClass = isSectionFolder
 		? "text-text-info-primary px-1!"
@@ -439,8 +412,8 @@ export function PropertiesTree() {
 			root: {
 				name: "root",
 				children: kindMeta.supportsParameters
-					? ["_properties", "_depends_on", "_parameter", "_sql"]
-					: ["_properties", "_depends_on", "_sql"],
+					? ["_properties", "_depends_on", "_parameter"]
+					: ["_properties", "_depends_on"],
 			},
 			_properties: {
 				name: "_properties",
@@ -472,12 +445,6 @@ export function PropertiesTree() {
 				name: "_parameter_add",
 				meta: { type: "parameter-add" },
 			},
-			_sql: {
-				name: "_sql",
-				meta: { type: "sql" },
-				children: ["_sql_value"],
-			},
-			_sql_value: { name: "_sql_value", meta: { type: "sql-value" } },
 		};
 		dependsOn.forEach((_, i) => {
 			out[`_depends_on_${i}`] = {
@@ -584,39 +551,6 @@ export function PropertiesTree() {
 		setParameters(parameters.filter((_, idx) => idx !== i));
 	};
 
-	const formatSqlContent = () => {
-		const data = library.content?.[0]?.data;
-		if (!data) return;
-		let current: string;
-		try {
-			current = atob(data);
-		} catch {
-			return;
-		}
-		if (!current.trim()) return;
-		let formatted: string;
-		try {
-			formatted = formatSQL(current, {
-				language: "postgresql",
-				indentStyle: "tabularRight",
-			});
-		} catch {
-			return;
-		}
-		updateLibrary((lib) => {
-			const existing = lib.content?.[0];
-			return {
-				...lib,
-				content: [
-					{
-						contentType: existing?.contentType ?? "application/sql",
-						data: btoa(formatted),
-					},
-				],
-			};
-		});
-	};
-
 	const customItemView = (item: ItemInstance<TreeViewItem<ItemMeta>>) => {
 		const meta = item.getItemData()?.meta;
 		const metaType = meta?.type;
@@ -625,37 +559,6 @@ export function PropertiesTree() {
 			case "depends-on":
 			case "parameter":
 				return <div>{labelView(item)}</div>;
-			case "sql": {
-				const hasSql = !!library.content?.[0]?.data;
-				return (
-					<div className="flex w-full items-center gap-1">
-						{labelView(item)}
-						<HSComp.Tooltip delayDuration={250}>
-							<HSComp.TooltipTrigger asChild>
-								<HSComp.Button
-									variant="link"
-									size="small"
-									className="px-1 text-text-secondary hover:text-text-primary"
-									onClick={(e) => {
-										e.stopPropagation();
-										formatSqlContent();
-									}}
-									onMouseDown={(e) => e.stopPropagation()}
-									disabled={!hasSql}
-									asChild
-								>
-									<span>
-										<AlignLeft size={14} />
-									</span>
-								</HSComp.Button>
-							</HSComp.TooltipTrigger>
-							<HSComp.TooltipContent side="bottom">
-								Format SQL
-							</HSComp.TooltipContent>
-						</HSComp.Tooltip>
-					</div>
-				);
-			}
 			case "url":
 				return (
 					<div className="flex w-full items-center gap-2">
@@ -852,8 +755,6 @@ export function PropertiesTree() {
 						</span>
 					</HSComp.Button>
 				);
-			case "sql-value":
-				return <SqlValueCell />;
 			default:
 				return <div>{labelView(item)}</div>;
 		}
@@ -887,8 +788,7 @@ export function PropertiesTree() {
 					if (
 						metaType === "properties" ||
 						metaType === "depends-on" ||
-						metaType === "parameter" ||
-						metaType === "sql"
+						metaType === "parameter"
 					) {
 						return "relative my-1.5 rounded-md bg-bg-info-primary cursor-pointer before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-bg-primary before:-my-1.5 after:content-[''] after:absolute after:inset-x-0 after:top-0 after:bottom-0 after:-z-10 after:bg-bg-primary after:rounded-md after:-my-1.5";
 					}
