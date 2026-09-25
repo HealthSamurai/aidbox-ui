@@ -86,13 +86,17 @@ const materializationBuilderTab = (
 			]
 		: [];
 
-/** Empty unless the resource can be materialized, so the caller needs no branch. */
+/**
+ * Empty unless the resource can be materialized, so the caller needs no branch.
+ * A Library only qualifies as a SQLView or SQLQuery — a plain one is not a
+ * SQL-on-FHIR artifact and has nothing to materialize.
+ */
 const materializationsTab = (
 	id: string | undefined,
+	isSqlLibrary: boolean,
 	props: React.ComponentProps<typeof MaterializationsTab>,
 ): EditorTabItem[] =>
-	id &&
-	(props.resourceType === "ViewDefinition" || props.resourceType === "Library")
+	id && (props.resourceType === "ViewDefinition" || isSqlLibrary)
 		? [
 				{
 					value: "materializations",
@@ -632,7 +636,9 @@ export const ResourceEditorPage = ({
 		});
 	}
 
-	tabs.push(...materializationsTab(id, { resource, resourceType }));
+	tabs.push(
+		...materializationsTab(id, isSqlLibrary, { resource, resourceType }),
+	);
 
 	tabs.push(
 		...materializationBuilderTab(isMaterialization, {
