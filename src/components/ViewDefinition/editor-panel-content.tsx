@@ -21,6 +21,7 @@ import { copyToClipboard } from "../../utils/clipboard";
 import { addUrlToHistory } from "../../utils/url-history";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
+import { pageId } from "../ResourceEditor/types";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
 import {
@@ -209,6 +210,15 @@ export const useViewDefinitionActions = (
 		queryClient.invalidateQueries({
 			queryKey: ["data-lineage-sidebar-views"],
 		});
+	/**
+	 * The ResourceEditor page and its other tabs read the saved resource through
+	 * this key; without it they keep serving what was loaded.
+	 */
+	const invalidateResource = (id: string | undefined) =>
+		id &&
+		queryClient.invalidateQueries({
+			queryKey: [pageId, "ViewDefinition", id],
+		});
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -233,6 +243,7 @@ export const useViewDefinitionActions = (
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			invalidateSidebar();
+			invalidateResource(viewDefinitionResource?.id);
 			addUrlToHistory(URL_HISTORY_KEY, viewDefinitionResource?.url);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
@@ -260,6 +271,7 @@ export const useViewDefinitionActions = (
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			invalidateSidebar();
+			invalidateResource(result.value.resource.id);
 			addUrlToHistory(URL_HISTORY_KEY, result.value.resource.url);
 			const id = result.value.resource.id;
 			if (!id)

@@ -6,6 +6,7 @@ import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { addUrlToHistory } from "../../utils/url-history";
+import { pageId } from "../ResourceEditor/types";
 import { useSQLQueryContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
@@ -186,6 +187,11 @@ export function SQLQueryBuilderContent() {
 			});
 			queryClient.invalidateQueries({
 				queryKey: ["data-lineage-sidebar-queries"],
+			});
+			// The ResourceEditor page and its other tabs read the saved resource
+			// through this key; without it they keep serving what was loaded.
+			queryClient.invalidateQueries({
+				queryKey: [pageId, "Library", (resource as SQLLibrary).id],
 			});
 			if (created && onCreated) {
 				const id = (resource as SQLLibrary).id;

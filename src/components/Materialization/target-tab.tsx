@@ -1,9 +1,13 @@
 import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
+import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { EmptyState } from "../empty-state";
+import { fetchResource } from "../ResourceEditor/api";
+import { pageId } from "../ResourceEditor/types";
 import { useMaterializations } from "./api";
 import {
 	MaterializationStatusGrid,
@@ -31,7 +35,17 @@ export const MaterializationsTab = ({
 	resourceType: string;
 }) => {
 	const navigate = useNavigate();
-	const target = resource as TargetResource;
+	const client = useAidboxClient();
+	const passed = resource as TargetResource;
+	// The builders keep their own copy of the resource and save from it, so the
+	// one handed down here can predate the last save. Read it from the page's
+	// own cache instead, which those saves invalidate.
+	const { data: fetched } = useQuery({
+		queryKey: [pageId, resourceType, passed.id],
+		queryFn: () => fetchResource(client, resourceType, passed.id as string),
+		enabled: Boolean(passed.id),
+	});
+	const target = (fetched as TargetResource) ?? passed;
 	const { data: rows = [], isLoading, error } = useMaterializations(target.url);
 
 	const onCreate = () => {
