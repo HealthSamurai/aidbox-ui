@@ -474,13 +474,13 @@ export function PropertiesTree() {
 		"_sql",
 	]);
 
-	const _updateTitle = (value: string) => {
+	const updateTitle = (value: string) => {
 		updateLibrary((lib) => ({ ...lib, title: value || undefined }));
 	};
-	const _updateUrl = (value: string) => {
+	const updateUrl = (value: string) => {
 		updateLibrary((lib) => ({ ...lib, url: value || undefined }));
 	};
-	const _updateDescription = (value: string) => {
+	const updateDescription = (value: string) => {
 		updateLibrary((lib) => ({ ...lib, description: value || undefined }));
 	};
 
@@ -559,6 +559,48 @@ export function PropertiesTree() {
 			case "depends-on":
 			case "parameter":
 				return <div>{labelView(item)}</div>;
+			case "url":
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
+						<div className="w-[50%]">
+							<InputView
+								name={`${kindMeta.kind}-library-url`}
+								autoComplete="on"
+								list={kindMeta.urlHistoryKey}
+								placeholder="Canonical identifier for this library, represented as a URI (globally unique)"
+								value={library.url}
+								onChange={updateUrl}
+							/>
+						</div>
+					</div>
+				);
+			case "title":
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
+						<div className="w-[50%]">
+							<InputView
+								placeholder="Name for this library (human friendly)"
+								value={library.title}
+								onChange={updateTitle}
+							/>
+						</div>
+					</div>
+				);
+			case "description":
+				return (
+					<div className="flex w-full items-center gap-2">
+						<div className="w-[226px] shrink-0">{labelView(item)}</div>
+						<div className="flex-1 min-w-0">
+							<InputView
+								placeholder="Natural language description of the library"
+								value={library.description}
+								onChange={updateDescription}
+							/>
+						</div>
+					</div>
+				);
 			case "depends-on-value": {
 				const idx = meta?.dependsOnIndex ?? -1;
 				const entry = dependsOn[idx];
