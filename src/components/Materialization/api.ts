@@ -136,25 +136,34 @@ export function useMaterializationRuns(id: string | undefined) {
 				if (!s?.status) return [];
 				return [
 					{
-						...base,
-						key: `${id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
-						status: s.status,
-						targetVersion: s.targetVersion,
-						sqlHash: s.sqlHash,
-						lastUpdated: s.meta?.lastUpdated,
+						// A delete is recorded as a version, and Aidbox keeps the body on
+						// it, so it would otherwise read as one more run.
+						deleted: entry.request?.method === "DELETE",
+						row: {
+							...base,
+							key: `${id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
+							status: s.status,
+							targetVersion: s.targetVersion,
+							sqlHash: s.sqlHash,
+							lastUpdated: s.meta?.lastUpdated,
+						} as MaterializationRow,
 					},
 				];
 			});
 			const newestFirst = versions.sort(
 				(a, b) =>
-					new Date(b.lastUpdated ?? 0).getTime() -
-					new Date(a.lastUpdated ?? 0).getTime(),
+					new Date(b.row.lastUpdated ?? 0).getTime() -
+					new Date(a.row.lastUpdated ?? 0).getTime(),
 			);
+			// Everything at or before the newest delete belongs to a status that no
+			// longer exists; only what came after it is this resource's trail.
+			const deletedAt = newestFirst.findIndex((v) => v.deleted);
+			const live = (
+				deletedAt === -1 ? newestFirst : newestFirst.slice(0, deletedAt)
+			).map((v) => v.row);
 			// Every run opens with in-progress and then overwrites it, so a finished
 			// run leaves one behind. Only the newest can still be live.
-			return newestFirst.filter(
-				(row, i) => i === 0 || row.status !== "in-progress",
-			);
+			return live.filter((row, i) => i === 0 || row.status !== "in-progress");
 		},
 	});
 }
