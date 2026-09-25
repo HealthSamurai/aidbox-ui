@@ -462,14 +462,46 @@ function SearchBar({
 	);
 }
 
-/** Why the list is empty: a search that matched nothing, or a type you have none of. */
-const emptyListMessage = (
-	searchTerms: string,
-	kind?: AnalyticsListKind,
-): string => {
-	if (searchTerms) return `Nothing matches “${searchTerms}”.`;
-	if (kind) return `No ${KIND_TO_TYPE_PARAM[kind]}s yet.`;
-	return "Nothing to show.";
+/**
+ * Why the list is empty: a search that matched nothing, or a type you have none
+ * of. Grayscale, as elsewhere, to tell it apart from the first-run page — that
+ * one is about the section having no content at all.
+ */
+const EmptyList = ({
+	searchTerms,
+	kind,
+	createFns,
+}: {
+	searchTerms: string;
+	kind?: AnalyticsListKind;
+	createFns: Record<AnalyticsListKind, () => void>;
+}) => {
+	if (searchTerms) {
+		return (
+			<EmptyState
+				grayscale
+				title="Nothing matches"
+				description={`“${searchTerms}”`}
+			/>
+		);
+	}
+	if (kind) {
+		const label = KIND_TO_TYPE_PARAM[kind];
+		return (
+			<EmptyState
+				grayscale
+				title={`No ${label}s yet`}
+				description={`Create your first ${label}.`}
+				action={
+					<HSComp.Button variant="secondary" onClick={createFns[kind]}>
+						<Plus className="size-4 text-text-info-primary" />
+						Create
+					</HSComp.Button>
+				}
+			/>
+		);
+	}
+	return <EmptyState grayscale title="Nothing to show" />;
 };
 
 function TypeFilter({
@@ -853,9 +885,15 @@ export function AnalyticsListPage({
 						}
 					/>
 				) : items.length === 0 ? (
-					<div className="mx-auto max-w-[990px] px-8 py-6 typo-body-xs text-text-tertiary italic">
-						{emptyListMessage(searchTerms, kind)}
-					</div>
+					<EmptyList
+						searchTerms={searchTerms}
+						kind={kind}
+						createFns={{
+							view: createView,
+							query: createQuery,
+							"sql-view": createSqlView,
+						}}
+					/>
 				) : (
 					<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
 						{items.map((it, index) => {

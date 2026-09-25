@@ -110,7 +110,6 @@ export function MaterializationStatusGrid({
 	isRefreshing,
 	emptyState,
 	title,
-	emptyLabel,
 }: {
 	rows: MaterializationRow[];
 	columns: ColumnDef<MaterializationRow>[];
@@ -123,7 +122,6 @@ export function MaterializationStatusGrid({
 	/** Shown instead of the table when there is nothing to list. */
 	emptyState?: React.ReactNode;
 	title?: string;
-	emptyLabel?: string;
 }) {
 	return (
 		<div className="flex flex-col h-full min-h-0">
@@ -168,7 +166,7 @@ export function MaterializationStatusGrid({
 						tableId="materialization-statuses"
 						emptyState={
 							<div className="flex items-center justify-center h-full text-text-secondary">
-								{emptyLabel ?? "Nothing to show"}
+								Nothing to show
 							</div>
 						}
 					/>

@@ -3,6 +3,7 @@ import * as HSComp from "@health-samurai/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as Utils from "../../api/utils";
+import { EmptyState } from "../empty-state";
 import { useMaterializations } from "./api";
 import {
 	MaterializationStatusGrid,
@@ -60,24 +61,20 @@ export const MaterializationsTab = ({
 		<MaterializationStatusGrid
 			rows={rows}
 			columns={materializationColumns}
-			emptyLabel="No materializations"
 			loading={isLoading}
 			error={error}
 			emptyState={
-				<div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
-					<span className="typo-body text-text-primary">
-						No Materialization exists for this {resourceType}.
-					</span>
-					<span className="typo-body-xs text-text-secondary max-w-[520px]">
-						A Materialization persists this {resourceType} as a PostgreSQL view
-						or materialized view, so anything built on it reads the object
-						instead of inlining its SQL.
-					</span>
-					<HSComp.Button variant="primary" size="small" onClick={onCreate}>
-						<Lucide.PlusIcon className="w-4 h-4" />
-						Create Materialization
-					</HSComp.Button>
-				</div>
+				<EmptyState
+					grayscale
+					title="No Materializations"
+					description={`Persist this ${resourceType} as a PostgreSQL view`}
+					action={
+						<HSComp.Button variant="secondary" onClick={onCreate}>
+							<Lucide.PlusIcon className="size-4 text-text-info-primary" />
+							Create Materialization
+						</HSComp.Button>
+					}
+				/>
 			}
 		/>
 	);

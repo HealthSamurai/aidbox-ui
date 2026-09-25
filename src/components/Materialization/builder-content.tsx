@@ -3,6 +3,7 @@ import type {
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import * as HSComp from "@health-samurai/react-components";
+import { EmptyState } from "../empty-state";
 import { useMaterializationRuns } from "./api";
 import { PropertiesTree } from "./properties-tree";
 import { MaterializationStatusGrid, runColumns } from "./status-grid";
@@ -57,7 +58,13 @@ export const MaterializationBuilderContent = ({
 							title="Runs"
 							rows={runs}
 							columns={runColumns}
-							emptyLabel="No runs recorded"
+							emptyState={
+								<EmptyState
+									grayscale
+									title="No runs yet"
+									description="Materialize to record a run"
+								/>
+							}
 							loading={isLoading}
 							error={error}
 							isRefreshing={isFetching}
