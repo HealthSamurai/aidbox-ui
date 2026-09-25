@@ -24,6 +24,7 @@ export const MaterializationBuilderContent = ({
 		data: runs = [],
 		isLoading,
 		isFetching,
+		error,
 		refetch,
 	} = useMaterializationRuns(resource.id);
 
@@ -58,6 +59,7 @@ export const MaterializationBuilderContent = ({
 							columns={runColumns}
 							emptyLabel="No runs recorded"
 							loading={isLoading}
+							error={error}
 							isRefreshing={isFetching}
 							onRefresh={() => refetch()}
 						/>

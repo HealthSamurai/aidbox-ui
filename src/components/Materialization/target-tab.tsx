@@ -31,7 +31,7 @@ export const MaterializationsTab = ({
 }) => {
 	const navigate = useNavigate();
 	const target = resource as TargetResource;
-	const { data: rows = [], isLoading } = useMaterializations(target.url);
+	const { data: rows = [], isLoading, error } = useMaterializations(target.url);
 
 	const onCreate = () => {
 		if (!target.url) {
@@ -62,6 +62,7 @@ export const MaterializationsTab = ({
 			columns={materializationColumns}
 			emptyLabel="No materializations"
 			loading={isLoading}
+			error={error}
 			emptyState={
 				<div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
 					<span className="typo-body text-text-primary">

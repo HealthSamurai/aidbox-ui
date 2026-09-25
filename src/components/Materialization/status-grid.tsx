@@ -105,6 +105,7 @@ export function MaterializationStatusGrid({
 	rows,
 	columns,
 	loading,
+	error,
 	onRefresh,
 	isRefreshing,
 	emptyState,
@@ -113,6 +114,9 @@ export function MaterializationStatusGrid({
 }: {
 	rows: MaterializationRow[];
 	columns: ColumnDef<MaterializationRow>[];
+	/** Shown instead of the table; takes precedence over `emptyState`, which
+	    would otherwise claim nothing exists when the search merely failed. */
+	error?: unknown;
 	loading?: boolean;
 	onRefresh?: () => void;
 	isRefreshing?: boolean;
@@ -141,7 +145,18 @@ export function MaterializationStatusGrid({
 				</div>
 			)}
 			<div className="flex-1 min-h-0 overflow-auto">
-				{!loading && rows.length === 0 && emptyState ? (
+				{error ? (
+					<div className="flex items-center justify-center h-full text-text-secondary">
+						<div className="text-center px-6">
+							<div className="text-lg mb-2">
+								Could not load materializations
+							</div>
+							<div className="text-sm text-text-error-primary">
+								{error instanceof Error ? error.message : String(error)}
+							</div>
+						</div>
+					</div>
+				) : !loading && rows.length === 0 && emptyState ? (
 					emptyState
 				) : (
 					<DataTable<MaterializationRow>

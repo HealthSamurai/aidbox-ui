@@ -1,3 +1,4 @@
+import { parseOperationOutcome } from "@aidbox-ui/api/utils";
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import { useAidboxClient } from "../../AidboxClient";
@@ -58,7 +59,17 @@ export function useMaterializations(target: string | undefined) {
 					["_count", "100"],
 				],
 			});
-			if (!found.isOk()) return [];
+			// Not swallowed: an empty list is what offers to create one, so a failed
+			// search must not look like an empty one.
+			if (!found.isOk())
+				throw new Error(
+					parseOperationOutcome(found.value.resource)
+						.map(
+							({ expression, diagnostics }) => `${expression}: ${diagnostics}`,
+						)
+						.join("; ") || "Could not search AidboxMaterialization",
+					{ cause: found.value.resource },
+				);
 			const materializations = (found.value.resource.entry ?? [])
 				.map((e) => e.resource as unknown as MaterializationResource)
 				.filter((m) => m.id);
@@ -74,6 +85,7 @@ export function useMaterializations(target: string | undefined) {
 					["_count", "100"],
 				],
 			});
+			// Lenient by contrast: without it the rows still list, minus their status.
 			if (result.isOk()) {
 				for (const entry of result.value.resource.entry ?? []) {
 					const s = entry.resource as unknown as MaterializationStatusResource;
@@ -108,18 +120,14 @@ export function useMaterializationRuns(id: string | undefined) {
 		enabled: Boolean(id),
 		queryFn: async () => {
 			if (!id) return [];
-			const found = await client.request<MaterializationResource>({
-				method: "GET",
-				url: `/fhir/AidboxMaterialization/${id}`,
-			});
-			const base = found.isOk()
-				? describe(found.value.resource)
-				: { id, object: "", objectType: "view" };
+			const base = { id, object: "", objectType: "" };
 
 			const history = await client.historyInstance({
 				type: "AidboxMaterializationStatus",
 				id,
 			});
+			// A materialization that has never run has no status at all, which is not
+			// an error — it is the empty run log.
 			if (!history.isOk()) return [];
 			const versions = (history.value.resource.entry ?? []).flatMap((entry) => {
 				const s = entry.resource as unknown as

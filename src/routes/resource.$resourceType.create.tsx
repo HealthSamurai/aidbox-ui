@@ -20,7 +20,10 @@ export type ResourceEditorSearch = {
 	tab: ResourceEditorTab;
 	mode: EditorMode;
 	builderTab: BuilderTab;
-	/** Prefill carried from the resource a Materialization is being created for. */
+};
+
+/** Prefill carried from the resource a Materialization is being created for. */
+export type CreateSearch = ResourceEditorSearch & {
 	target?: string;
 	targetType?: string;
 	objectName?: string;
@@ -100,17 +103,26 @@ export function validateSearch(
 		builderTab = getStoredBuilderTab() ?? "form";
 	}
 
-	const prefill: Pick<
-		ResourceEditorSearch,
-		"target" | "targetType" | "objectName"
-	> = {};
+	return { tab, mode, builderTab };
+}
+
+/** Only the create route takes prefill; the edit route shares validateSearch. */
+export function validateCreateSearch(
+	rawSearch: Record<string, unknown>,
+): CreateSearch {
+	const base = validateSearch(rawSearch);
+	const prefill: Pick<CreateSearch, "target" | "targetType" | "objectName"> =
+		{};
 	if (typeof rawSearch.target === "string") prefill.target = rawSearch.target;
-	if (typeof rawSearch.targetType === "string")
+	// 3. an unrecognised type would reach the builder as an invalid resource
+	if (
+		rawSearch.targetType === "ViewDefinition" ||
+		rawSearch.targetType === "Library"
+	)
 		prefill.targetType = rawSearch.targetType;
 	if (typeof rawSearch.objectName === "string")
 		prefill.objectName = rawSearch.objectName;
-
-	return { tab, mode, builderTab, ...prefill };
+	return { ...base, ...prefill };
 }
 
 const PageComponent = () => {
@@ -157,7 +169,7 @@ const TITLE = "Create";
 
 export const Route = createFileRoute("/resource/$resourceType/create")({
 	component: PageComponent,
-	validateSearch,
+	validateSearch: validateCreateSearch,
 	staticData: {
 		title: TITLE,
 	},
