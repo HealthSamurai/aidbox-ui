@@ -462,6 +462,16 @@ function SearchBar({
 	);
 }
 
+/** Why the list is empty: a search that matched nothing, or a type you have none of. */
+const emptyListMessage = (
+	searchTerms: string,
+	kind?: AnalyticsListKind,
+): string => {
+	if (searchTerms) return `Nothing matches “${searchTerms}”.`;
+	if (kind) return `No ${KIND_TO_TYPE_PARAM[kind]}s yet.`;
+	return "Nothing to show.";
+};
+
 function TypeFilter({
 	kind,
 	setKind,
@@ -632,7 +642,12 @@ export function AnalyticsListPage({
 		: tagFiltered;
 
 	const noun = kind ? KIND_META[kind].label : "view, query or SQL view";
-	const isEmpty = allItems.length === 0 && tags.length === 0 && !text;
+	// The first-run page speaks for the whole section, so it answers to what
+	// exists overall — not to what the type filter left behind.
+	const isEmpty = combined.length === 0 && tags.length === 0 && !text;
+	const searchTerms = [...tags.map((t) => `#${t}`), text]
+		.filter(Boolean)
+		.join(" ");
 
 	const placeholder = "Search by name or description…";
 	const createView = () =>
@@ -839,8 +854,7 @@ export function AnalyticsListPage({
 					/>
 				) : items.length === 0 ? (
 					<div className="mx-auto max-w-[990px] px-8 py-6 typo-body-xs text-text-tertiary italic">
-						Nothing matches “
-						{[...tags.map((t) => `#${t}`), text].filter(Boolean).join(" ")}”.
+						{emptyListMessage(searchTerms, kind)}
 					</div>
 				) : (
 					<ul className="mx-auto max-w-[990px] px-8 bg-bg-primary divide-y divide-border-default">
