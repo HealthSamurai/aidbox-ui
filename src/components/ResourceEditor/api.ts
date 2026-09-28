@@ -108,3 +108,26 @@ export const deleteResource = async (
 
 	return result.value.resource;
 };
+
+export const materializeResource = async (
+	client: AidboxClientR5,
+	resourceType: string,
+	id: string,
+) => {
+	const result = await client.request<Resource>({
+		method: "POST",
+		url: `/fhir/${resourceType}/${id}/$materialize`,
+		headers: { "Content-Type": "application/json", Prefer: "respond-async" },
+		body: JSON.stringify({ resourceType: "Parameters", parameter: [] }),
+	});
+
+	if (result.isErr())
+		throw new Error(
+			parseOperationOutcome(result.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; "),
+			{ cause: result.value.resource },
+		);
+
+	return result.value.resource;
+};

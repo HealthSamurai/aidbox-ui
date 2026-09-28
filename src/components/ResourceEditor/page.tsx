@@ -30,6 +30,8 @@ import { CodeSystemProvider } from "../CodeSystem/page";
 import { ConceptMapBuilderContent } from "../ConceptMap/builder-content";
 import { ConceptMapProvider } from "../ConceptMap/page";
 import { EmptyState } from "../empty-state";
+import { MaterializationBuilderContent } from "../Materialization/builder-content";
+import { MaterializationsTab } from "../Materialization/target-tab";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
 import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
@@ -43,11 +45,77 @@ import { ValueSetProvider } from "../ValueSet/page";
 import { BuilderContent } from "../ViewDefinition/editor-panel-content";
 import { ViewDefinitionLineageTab } from "../ViewDefinition/lineage/lineage-tab";
 import { ViewDefinitionProvider } from "../ViewDefinition/page";
-import { DeleteButton, SaveButton, type SaveHandle } from "./action";
+import {
+	DeleteButton,
+	MaterializeButton,
+	SaveButton,
+	type SaveHandle,
+} from "./action";
 import { deleteResource, fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
+
+type EditorTabItem = {
+	value: string;
+	trigger: React.ReactNode;
+	content: React.ReactNode;
+};
+
+/** Empty unless this is an AidboxMaterialization, so the caller needs no branch. */
+const materializationBuilderTab = (
+	enabled: boolean,
+	props: React.ComponentProps<typeof MaterializationBuilderContent>,
+): EditorTabItem[] =>
+	enabled
+		? [
+				{
+					value: "builder",
+					trigger: (
+						<HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent
+							value="builder"
+							className="grow min-h-0 flex flex-col"
+						>
+							<MaterializationBuilderContent {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/**
+ * Empty unless the resource can be materialized, so the caller needs no branch.
+ * A Library only qualifies as a SQLView or SQLQuery — a plain one is not a
+ * SQL-on-FHIR artifact and has nothing to materialize.
+ */
+const materializationsTab = (
+	id: string | undefined,
+	isSqlLibrary: boolean,
+	props: React.ComponentProps<typeof MaterializationsTab>,
+): EditorTabItem[] =>
+	id && (props.resourceType === "ViewDefinition" || isSqlLibrary)
+		? [
+				{
+					value: "materializations",
+					trigger: (
+						<HSComp.TabsTrigger value="materializations">
+							Materializations
+						</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent
+							value="materializations"
+							className="grow min-h-0 flex flex-col"
+						>
+							<MaterializationsTab {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
 
 interface ResourceEditorPageProps {
 	id?: string;
@@ -234,6 +302,9 @@ export const ResourceEditorPage = ({
 	const [saveError, setSaveError] = React.useState<OperationOutcome | null>(
 		null,
 	);
+	const [materializeError, setMaterializeError] = React.useState<Error | null>(
+		null,
+	);
 
 	const handleSaveError = React.useCallback((error: Error) => {
 		// Toast first — the inline OperationOutcome panel only shows on the
@@ -398,6 +469,7 @@ export const ResourceEditorPage = ({
 	const isValueSet = resourceType === "ValueSet";
 	const isCodeSystem = resourceType === "CodeSystem";
 	const isConceptMap = resourceType === "ConceptMap";
+	const isMaterialization = resourceType === "AidboxMaterialization";
 	const { isSqlLibrary, builderLabel } = detectSqlLibrary(
 		initialResource,
 		isLibrary,
@@ -535,6 +607,15 @@ export const ResourceEditorPage = ({
 				onCreated={onCreated}
 				saveRef={saveRef}
 			/>
+			{id && isMaterialization && (
+				<MaterializeButton
+					client={client}
+					resourceType={resourceType}
+					id={id}
+					onError={setMaterializeError}
+					onSuccess={() => setMaterializeError(null)}
+				/>
+			)}
 			{id && (
 				<DeleteButton
 					client={client}
@@ -559,6 +640,21 @@ export const ResourceEditorPage = ({
 			),
 		});
 	}
+
+	tabs.push(
+		...materializationsTab(id, isSqlLibrary, { resource, resourceType }),
+	);
+
+	tabs.push(
+		...materializationBuilderTab(isMaterialization, {
+			resource,
+			onResourceChange: handleResourceChange,
+			actions: editActions,
+			saveError,
+			materializeError,
+			onDismissMaterializeError: () => setMaterializeError(null),
+		}),
+	);
 
 	if (isSearchParameter) {
 		tabs.push({

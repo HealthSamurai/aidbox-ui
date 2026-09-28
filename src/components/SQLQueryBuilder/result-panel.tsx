@@ -6,6 +6,7 @@ import { DataTableFooter } from "../data-table/footer";
 import { EmptyState } from "../empty-state";
 import { ChartPanel } from "../notebook-chart/chart-panel";
 import { useSQLQueryContext } from "./context";
+import { ExplainTab } from "./explain-tab";
 import { SQLTab } from "./sql-tab";
 
 const DEFAULT_PAGE_SIZE = 30;
@@ -13,6 +14,13 @@ const PAGE_SIZE_STORAGE_KEY = "sqlquery-builder:result-page-size";
 const VIEW_MODE_STORAGE_KEY = "sqlquery-builder:result-view-mode";
 
 type ViewMode = "table" | "list" | "chart";
+type ResultTab = "result" | "sql" | "explain";
+
+/** Sub-millisecond runs read better as fractions than as a bare 0. */
+const formatDuration = (ms: number): string =>
+	ms >= 1000
+		? `${(ms / 1000).toFixed(2)} s`
+		: `${ms.toFixed(ms < 10 ? 1 : 0)} ms`;
 
 const VIEW_MODE_ITEMS: { value: ViewMode; label: string }[] = [
 	{ value: "table", label: "Table" },
@@ -149,14 +157,14 @@ export function ResultPanel({
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
 }) {
-	const { runResult } = useSQLQueryContext();
+	const { runResult, runDuration } = useSQLQueryContext();
 	const [page, setPage] = React.useState(1);
 	const [pageSize, setPageSize] = useLocalStorage<number>({
 		key: PAGE_SIZE_STORAGE_KEY,
 		getInitialValueInEffect: false,
 		defaultValue: DEFAULT_PAGE_SIZE,
 	});
-	const [activeTab, setActiveTab] = React.useState<"result" | "sql">("result");
+	const [activeTab, setActiveTab] = React.useState<ResultTab>("result");
 	const [viewMode, setViewMode] = useLocalStorage<ViewMode>({
 		key: VIEW_MODE_STORAGE_KEY,
 		getInitialValueInEffect: false,
@@ -176,7 +184,7 @@ export function ResultPanel({
 	return (
 		<HSComp.Tabs
 			value={activeTab}
-			onValueChange={(v) => setActiveTab(v as "result" | "sql")}
+			onValueChange={(v) => setActiveTab(v as ResultTab)}
 			className="h-full"
 		>
 			<div className="flex flex-col h-full overflow-hidden">
@@ -184,8 +192,21 @@ export function ResultPanel({
 					<HSComp.TabsList>
 						<HSComp.TabsTrigger value="result">Result</HSComp.TabsTrigger>
 						<HSComp.TabsTrigger value="sql">SQL</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger value="explain">Explain</HSComp.TabsTrigger>
 					</HSComp.TabsList>
 					<div className="flex items-center gap-2">
+						{runDuration !== null && (
+							<HSComp.Tooltip>
+								<HSComp.TooltipTrigger asChild>
+									<span className="typo-body-xs text-text-secondary font-mono">
+										{formatDuration(runDuration)}
+									</span>
+								</HSComp.TooltipTrigger>
+								<HSComp.TooltipContent align="end">
+									Round trip of the last run, network included
+								</HSComp.TooltipContent>
+							</HSComp.Tooltip>
+						)}
 						{activeTab === "result" && (
 							<HSComp.SegmentControl
 								value={viewMode}
@@ -250,6 +271,9 @@ export function ResultPanel({
 				</HSComp.TabsContent>
 				<HSComp.TabsContent value="sql" className="flex-1 min-h-0">
 					<SQLTab />
+				</HSComp.TabsContent>
+				<HSComp.TabsContent value="explain" className="flex-1 min-h-0">
+					<ExplainTab />
 				</HSComp.TabsContent>
 			</div>
 		</HSComp.Tabs>

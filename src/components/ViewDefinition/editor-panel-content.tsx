@@ -1,16 +1,10 @@
-import type {
-	ViewDefinition,
-	ViewDefinitionSelect,
-} from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
+import type { ViewDefinition } from "@aidbox-ui/fhir-types/org-sql-on-fhir-ig";
 import * as HSComp from "@health-samurai/react-components";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuIcon,
 	DropdownMenuItem,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 	Tooltip,
 	TooltipContent,
@@ -27,6 +21,8 @@ import { copyToClipboard } from "../../utils/clipboard";
 import { addUrlToHistory } from "../../utils/url-history";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
+import { useMaterializeAction } from "../Materialization/materialize-action";
+import { pageId } from "../ResourceEditor/types";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
 import {
@@ -106,26 +102,19 @@ export const EditorHeaderMenu = ({
 	onSave,
 	onRun,
 	onMaterialize,
+	isMaterializeDisabled,
 	onTogglePreview,
 	isPreviewOpen,
-	hasDeidentExtensions,
 }: {
 	onSave: () => void;
 	onRun: () => void;
-	onMaterialize: (type: "view" | "materialized-view" | "table") => void;
+	onMaterialize?: () => void;
+	isMaterializeDisabled?: boolean;
 	onTogglePreview: () => void;
 	isPreviewOpen: boolean;
-	hasDeidentExtensions?: boolean;
 }) => {
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const mode = useToolbarMode(containerRef);
-	const viewTitle = hasDeidentExtensions
-		? "Exposes encryption keys in system catalogs. Use Table."
-		: undefined;
-	const matViewTitle = hasDeidentExtensions
-		? "Exposes encryption keys in system catalogs. Use Table."
-		: undefined;
-
 	return (
 		<div
 			ref={containerRef}
@@ -154,30 +143,17 @@ export const EditorHeaderMenu = ({
 									<Lucide.SaveIcon />
 								</DropdownMenuIcon>
 							</DropdownMenuItem>
-							<DropdownMenuSub>
-								<DropdownMenuSubTrigger>Materialize</DropdownMenuSubTrigger>
-								<DropdownMenuSubContent>
-									<span title={viewTitle}>
-										<DropdownMenuItem
-											disabled={hasDeidentExtensions}
-											onSelect={() => onMaterialize("view")}
-										>
-											View
-										</DropdownMenuItem>
-									</span>
-									<span title={matViewTitle}>
-										<DropdownMenuItem
-											disabled={hasDeidentExtensions}
-											onSelect={() => onMaterialize("materialized-view")}
-										>
-											Materialized View
-										</DropdownMenuItem>
-									</span>
-									<DropdownMenuItem onSelect={() => onMaterialize("table")}>
-										Table
-									</DropdownMenuItem>
-								</DropdownMenuSubContent>
-							</DropdownMenuSub>
+							{onMaterialize && (
+								<DropdownMenuItem
+									onSelect={onMaterialize}
+									disabled={isMaterializeDisabled}
+								>
+									Materialize
+									<DropdownMenuIcon>
+										<Lucide.DatabaseIcon />
+									</DropdownMenuIcon>
+								</DropdownMenuItem>
+							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -212,42 +188,23 @@ export const EditorHeaderMenu = ({
 						</TooltipTrigger>
 						{mode !== "full" && <TooltipContent>Save</TooltipContent>}
 					</Tooltip>
-					<HSComp.Separator orientation="vertical" className="h-6!" />
-					<Tooltip disableHoverableContent={mode === "full"}>
-						<DropdownMenu>
+					{onMaterialize && (
+						<Tooltip disableHoverableContent={mode === "full"}>
 							<TooltipTrigger asChild>
-								<DropdownMenuTrigger asChild>
-									<HSComp.Button variant="link" size="small" className="px-0!">
-										<Lucide.DatabaseIcon className="w-4 h-4" />
-										{mode === "full" && "Materialize"}
-										<Lucide.ChevronDownIcon className="w-4 h-4" />
-									</HSComp.Button>
-								</DropdownMenuTrigger>
+								<HSComp.Button
+									variant="ghost"
+									size="small"
+									className="px-0!"
+									onClick={onMaterialize}
+									disabled={isMaterializeDisabled}
+								>
+									<Lucide.DatabaseIcon className="w-4 h-4" />
+									{mode === "full" && "Materialize"}
+								</HSComp.Button>
 							</TooltipTrigger>
 							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
-							<DropdownMenuContent align="start">
-								<span title={viewTitle}>
-									<DropdownMenuItem
-										disabled={hasDeidentExtensions}
-										onSelect={() => onMaterialize("view")}
-									>
-										View
-									</DropdownMenuItem>
-								</span>
-								<span title={matViewTitle}>
-									<DropdownMenuItem
-										disabled={hasDeidentExtensions}
-										onSelect={() => onMaterialize("materialized-view")}
-									>
-										Materialized View
-									</DropdownMenuItem>
-								</span>
-								<DropdownMenuItem onSelect={() => onMaterialize("table")}>
-									Table
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					</Tooltip>
+						</Tooltip>
+					)}
 				</div>
 			)}
 			{!isPreviewOpen && (
@@ -286,6 +243,15 @@ export const useViewDefinitionActions = (
 		queryClient.invalidateQueries({
 			queryKey: ["data-lineage-sidebar-views"],
 		});
+	/**
+	 * The ResourceEditor page and its other tabs read the saved resource through
+	 * this key; without it they keep serving what was loaded.
+	 */
+	const invalidateResource = (id: string | undefined) =>
+		id &&
+		queryClient.invalidateQueries({
+			queryKey: [pageId, "ViewDefinition", id],
+		});
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 	const viewDefinitionResource = viewDefinitionContext.viewDefinition;
 
@@ -310,6 +276,7 @@ export const useViewDefinitionActions = (
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			invalidateSidebar();
+			invalidateResource(viewDefinitionResource?.id);
 			addUrlToHistory(URL_HISTORY_KEY, viewDefinitionResource?.url);
 			HSComp.toast.success("ViewDefinition saved successfully", {
 				position: "bottom-right",
@@ -337,6 +304,7 @@ export const useViewDefinitionActions = (
 			viewDefinitionContext.setRunError(undefined);
 			viewDefinitionContext.setIsDirty(false);
 			invalidateSidebar();
+			invalidateResource(result.value.resource.id);
 			addUrlToHistory(URL_HISTORY_KEY, result.value.resource.url);
 			const id = result.value.resource.id;
 			if (!id)
@@ -559,17 +527,6 @@ export const useViewDefinitionActions = (
 		}
 	};
 
-	const handleMaterialize = (
-		materializeType: "view" | "materialized-view" | "table",
-	) => {
-		if (viewDefinitionResource) {
-			viewDefinitionMaterializeMutation.mutate({
-				viewDefinition: viewDefinitionResource,
-				materializeType,
-			});
-		}
-	};
-
 	const handleDelete = () => {
 		viewDefinitionDeleteMutation.mutate();
 	};
@@ -624,7 +581,6 @@ export const useViewDefinitionActions = (
 	return {
 		handleSave,
 		handleRun,
-		handleMaterialize,
 		handleDelete,
 		handleRunAsync,
 		handleSaveAsync,
@@ -649,30 +605,33 @@ export const EditorPanelContent = ({
 	const aidboxClient: AidboxClientR5 = useAidboxClient();
 	const viewDefinitionContext = React.useContext(ViewDefinitionContext);
 
-	const hasDeidentExtensions = React.useMemo(() => {
-		const DEIDENT_URL =
-			"http://health-samurai.io/fhir/core/StructureDefinition/de-identification";
-		const checkSelect = (sel: ViewDefinitionSelect): boolean =>
-			(sel.column ?? []).some((col) =>
-				col.extension?.some((ext) => ext.url === DEIDENT_URL),
-			) || (sel.select ?? []).some(checkSelect);
-		return (viewDefinitionContext.viewDefinition?.select ?? []).some(
-			checkSelect,
-		);
-	}, [viewDefinitionContext.viewDefinition]);
 	const viewDefinitionResourceTypeContext = React.useContext(
 		ViewDefinitionResourceTypeContext,
 	);
 	const {
 		handleSave,
 		handleRun,
-		handleMaterialize,
 		handleRunAsync,
 		handleSaveAsync,
 		handleMaterializeAsync,
 		handleDeleteAsync,
 	} = useViewDefinitionActions(aidboxClient, {
 		onRunSuccess: onExpandResult,
+	});
+
+	const {
+		onMaterialize,
+		dialogs: materializeDialogs,
+		isMaterializing,
+	} = useMaterializeAction({
+		resourceType: "ViewDefinition",
+		resource: viewDefinitionContext.viewDefinition
+			? {
+					id: viewDefinitionContext.originalId,
+					url: viewDefinitionContext.viewDefinition.url,
+					name: viewDefinitionContext.viewDefinition.name,
+				}
+			: undefined,
 	});
 
 	actionsRef.current = {
@@ -756,11 +715,12 @@ export const EditorPanelContent = ({
 					<EditorHeaderMenu
 						onSave={handleSave}
 						onRun={handleRun}
-						onMaterialize={handleMaterialize}
+						onMaterialize={onMaterialize}
+						isMaterializeDisabled={isMaterializing}
 						onTogglePreview={onTogglePreview}
 						isPreviewOpen={isPreviewOpen}
-						hasDeidentExtensions={hasDeidentExtensions}
 					/>
+					{materializeDialogs}
 					<div
 						className={`flex-1 min-h-0 overflow-auto ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
 					>

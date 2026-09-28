@@ -8,7 +8,13 @@ import * as Lucide from "lucide-react";
 import type React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
-import { createResource, deleteResource, updateResource } from "./api";
+import { runsKey } from "../Materialization/api";
+import {
+	createResource,
+	deleteResource,
+	materializeResource,
+	updateResource,
+} from "./api";
 import type { EditorMode } from "./types";
 import { defaultTabFor, pageId } from "./types";
 
@@ -173,5 +179,55 @@ export const DeleteButton = ({
 				</HSComp.AlertDialogFooter>
 			</HSComp.AlertDialogContent>
 		</HSComp.AlertDialog>
+	);
+};
+
+export const MaterializeButton = ({
+	resourceType,
+	id,
+	client,
+	onError,
+	onSuccess,
+}: {
+	resourceType: string;
+	id: string;
+	client: AidboxClientR5;
+	/** Replaces the error toast — the Materialization builder shows a panel. */
+	onError?: (error: Error) => void;
+	onSuccess?: () => void;
+}) => {
+	const queryClient = useQueryClient();
+	const mutation = useMutation({
+		mutationFn: async () => {
+			return await materializeResource(client, resourceType, id);
+		},
+		onError: onError
+			? (error, _vars, _onMutateResult, _context) => onError(error)
+			: Utils.onMutationError,
+		onSuccess: () => {
+			HSComp.toast.success(
+				"Materialization started, it runs in the background",
+				defaultToastPlacement,
+			);
+			// The run just wrote an in-progress status; the Runs panel should show it.
+			queryClient.invalidateQueries({ queryKey: runsKey(id) });
+			onSuccess?.();
+		},
+	});
+
+	return (
+		<HSComp.Button
+			variant="ghost"
+			size="small"
+			className="px-0!"
+			disabled={mutation.isPending}
+			onClick={(event) => {
+				event.preventDefault();
+				mutation.mutate();
+			}}
+		>
+			<Lucide.DatabaseIcon className="w-4 h-4" />
+			Materialize
+		</HSComp.Button>
 	);
 };

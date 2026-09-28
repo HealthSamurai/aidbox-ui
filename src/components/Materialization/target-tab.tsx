@@ -1,0 +1,81 @@
+import type { Resource } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
+import * as HSComp from "@health-samurai/react-components";
+import { useNavigate } from "@tanstack/react-router";
+import * as Lucide from "lucide-react";
+import * as Utils from "../../api/utils";
+import { EmptyState } from "../empty-state";
+import { useMaterializationHistory } from "./api";
+import {
+	MaterializationStatusGrid,
+	materializationColumns,
+} from "./status-grid";
+import { suggestObjectName } from "./types";
+
+type TargetResource = Resource & { url?: string; name?: string };
+
+/**
+ * Materializations of this ViewDefinition or Library, with a way to create the
+ * first one. Materializations point at a canonical, so the target needs a url.
+ */
+export const MaterializationsTab = ({
+	resource,
+	resourceType,
+}: {
+	resource: Resource;
+	resourceType: string;
+}) => {
+	const navigate = useNavigate();
+	// Fresh by construction: a builder save invalidates the page's resource
+	// query, and the page remounts on every successful fetch.
+	const target = resource as TargetResource;
+	const {
+		data: rows = [],
+		isLoading,
+		error,
+	} = useMaterializationHistory(target.url);
+
+	const onCreate = () => {
+		if (!target.url) {
+			Utils.toastError(
+				"Cannot materialize without a url",
+				`A Materialization points at a canonical url, and this ${resourceType} has none. Set url first, save, then create the Materialization.`,
+			);
+			return;
+		}
+		navigate({
+			to: "/resource/$resourceType/create",
+			params: { resourceType: "AidboxMaterialization" },
+			search: {
+				tab: "builder" as const,
+				mode: "json" as const,
+				builderTab: "form" as const,
+				target: target.url,
+				targetType:
+					resourceType === "ViewDefinition" ? "ViewDefinition" : "Library",
+				objectName: suggestObjectName(target),
+			},
+		});
+	};
+
+	return (
+		<MaterializationStatusGrid
+			rows={rows}
+			columns={materializationColumns}
+			loading={isLoading}
+			error={error}
+			emptyState={
+				<EmptyState
+					grayscale
+					title="No Materializations"
+					description={`Persist this ${resourceType} as a PostgreSQL view`}
+					action={
+						<HSComp.Button variant="secondary" onClick={onCreate}>
+							<Lucide.PlusIcon className="size-4 text-text-info-primary" />
+							Create Materialization
+						</HSComp.Button>
+					}
+				/>
+			}
+		/>
+	);
+};

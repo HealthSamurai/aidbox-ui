@@ -10,7 +10,7 @@ import {
 	SQL_VIEW_TYPE_CODE,
 } from "./types";
 
-type CandidateKind = "ViewDefinition" | "SQLQuery" | "SQLView";
+export type CandidateKind = "ViewDefinition" | "SQLQuery" | "SQLView";
 
 type RelatedArtifactRef = { url: string; label?: string };
 
@@ -174,7 +174,8 @@ export function ResourcePicker({
 	placeholder,
 }: {
 	value: string | undefined;
-	onChange: (reference: string) => void;
+	/** `kind` lets a caller derive a field that has to agree with the target. */
+	onChange: (reference: string, kind: CandidateKind) => void;
 	className?: string;
 	kinds?: CandidateKind[];
 	placeholder?: string;
@@ -320,7 +321,7 @@ export function ResourcePicker({
 										key={c.url}
 										value={c.url}
 										onSelect={() => {
-											onChange(c.url);
+											onChange(c.url, c.kind);
 											setOpen(false);
 										}}
 									>

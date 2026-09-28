@@ -18,6 +18,9 @@ export type SQLQueryContextValue = {
 	setRunError: (error: HSComp.OperationOutcome | null) => void;
 	isRunning: boolean;
 	setIsRunning: (running: boolean) => void;
+	/** Round trip of the last run, in ms. Null until one completes. */
+	runDuration: number | null;
+	setRunDuration: (ms: number | null) => void;
 	paramValues: Record<string, string>;
 	setParamValue: (name: string, value: string) => void;
 	persistParamValues: () => void;

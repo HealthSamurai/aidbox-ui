@@ -7,6 +7,7 @@ export const RESOURCE_EDITOR_TABS = [
 	"sqlquery",
 	"lineage",
 	"graph",
+	"materializations",
 ] as const;
 export type ResourceEditorTab = (typeof RESOURCE_EDITOR_TABS)[number];
 const resourceEditorTabSet = new Set(RESOURCE_EDITOR_TABS);
@@ -41,6 +42,7 @@ export const RESOURCE_TYPES_WITH_BUILDER = new Set([
 	"ValueSet",
 	"CodeSystem",
 	"ConceptMap",
+	"AidboxMaterialization",
 ]);
 
 /**

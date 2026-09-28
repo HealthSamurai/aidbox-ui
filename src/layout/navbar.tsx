@@ -131,11 +131,15 @@ function CurrentCrumb({
 	);
 }
 
-const NON_NAVIGABLE_CRUMB_PATHS = new Set([
-	"/analytics/queries",
-	"/analytics/views",
-	"/analytics/sqlview",
-]);
+/**
+ * The per-type analytics routes redirect to /analytics, so their crumbs used to
+ * be dead text. They now point at the list filtered to that type.
+ */
+const ANALYTICS_TYPE_CRUMBS: Record<string, string> = {
+	"/analytics/views": "ViewDefinition",
+	"/analytics/sqlview": "SQLView",
+	"/analytics/queries": "SQLQuery",
+};
 
 function MiddleCrumb({ crumb }: { crumb: { title: string; path: string } }) {
 	const isNotebookView = /^\/notebooks\/[0-9a-f-]{36}\/?$/i.test(crumb.path);
@@ -145,8 +149,15 @@ function MiddleCrumb({ crumb }: { crumb: { title: string; path: string } }) {
 		null,
 	);
 	const label = display ?? crumb.title;
-	if (NON_NAVIGABLE_CRUMB_PATHS.has(crumb.path)) {
-		return <span className="px-3 py-1 text-text-tertiary">{label}</span>;
+	const analyticsType = ANALYTICS_TYPE_CRUMBS[crumb.path.replace(/\/$/, "")];
+	if (analyticsType) {
+		return (
+			<BreadcrumbLink className="px-3" asChild>
+				<Link to="/analytics" search={{ type: analyticsType }}>
+					{label}
+				</Link>
+			</BreadcrumbLink>
+		);
 	}
 	return (
 		<BreadcrumbLink className="px-3" asChild>
