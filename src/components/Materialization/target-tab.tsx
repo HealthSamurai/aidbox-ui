@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import * as Lucide from "lucide-react";
 import * as Utils from "../../api/utils";
 import { EmptyState } from "../empty-state";
-import { useMaterializations } from "./api";
+import { useMaterializationHistory } from "./api";
 import {
 	MaterializationStatusGrid,
 	materializationColumns,
@@ -28,7 +28,11 @@ export const MaterializationsTab = ({
 	// Fresh by construction: a builder save invalidates the page's resource
 	// query, and the page remounts on every successful fetch.
 	const target = resource as TargetResource;
-	const { data: rows = [], isLoading, error } = useMaterializations(target.url);
+	const {
+		data: rows = [],
+		isLoading,
+		error,
+	} = useMaterializationHistory(target.url);
 
 	const onCreate = () => {
 		if (!target.url) {

@@ -28,8 +28,8 @@ export type MaterializationRow = {
 	lastUpdated?: string;
 };
 
-export const materializationsKey = (target: string | undefined) => [
-	"aidbox-materializations",
+export const materializationHistoryKey = (target: string | undefined) => [
+	"aidbox-materialization-history",
 	target ?? "",
 ];
 
@@ -71,49 +71,86 @@ const describe = (m: MaterializationResource) => ({
 	objectType: parameterValue(m, "materializationType") ?? "view",
 });
 
-/** The Materializations aimed at `target`, one row each, showing where each stands. */
-export function useMaterializations(target: string | undefined) {
+type HistoryEntry = NonNullable<Bundle["entry"]>[number];
+
+/** The live runs recorded in one status resource's history, newest first. */
+function runRowsFromHistory(
+	base: { id: string; object: string; objectType: string },
+	entries: HistoryEntry[],
+): MaterializationRow[] {
+	const versions = entries.flatMap((entry) => {
+		const s = entry.resource as unknown as
+			| MaterializationStatusResource
+			| undefined;
+		if (!s?.status) return [];
+		return [
+			{
+				// A delete is recorded as a version, and Aidbox keeps the body on
+				// it, so it would otherwise read as one more run.
+				deleted: entry.request?.method === "DELETE",
+				row: {
+					...base,
+					key: `${base.id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
+					status: s.status,
+					targetVersion: s.targetVersion,
+					sqlHash: s.sqlHash,
+					lastUpdated: s.meta?.lastUpdated,
+				} as MaterializationRow,
+			},
+		];
+	});
+	const newestFirst = versions.sort(
+		(a, b) =>
+			new Date(b.row.lastUpdated ?? 0).getTime() -
+			new Date(a.row.lastUpdated ?? 0).getTime(),
+	);
+	// Everything at or before the newest delete belongs to a status that no
+	// longer exists; only what came after it is this resource's trail.
+	const deletedAt = newestFirst.findIndex((v) => v.deleted);
+	const live = (
+		deletedAt === -1 ? newestFirst : newestFirst.slice(0, deletedAt)
+	).map((v) => v.row);
+	// Every run opens with in-progress and then overwrites it, so a finished
+	// run leaves one behind. Only the newest can still be live.
+	return live.filter((row, i) => i === 0 || row.status !== "in-progress");
+}
+
+/**
+ * Every run of every Materialization aimed at `target`, newest first. A
+ * Materialization that has never run keeps one row, so it still lists.
+ */
+export function useMaterializationHistory(target: string | undefined) {
 	const client = useAidboxClient();
 	return useQuery<MaterializationRow[]>({
-		queryKey: materializationsKey(target),
+		queryKey: materializationHistoryKey(target),
 		enabled: Boolean(target),
 		queryFn: async () => {
 			const materializations = await searchMaterializations(
 				client,
 				target ?? "",
 			);
-			if (materializations.length === 0) return [];
-
-			// A status shares its materialization's id, so one search covers them all.
-			const statuses = new Map<string, MaterializationStatusResource>();
-			const result = await client.request<Bundle>({
-				method: "GET",
-				url: "/fhir/AidboxMaterializationStatus",
-				params: [
-					["_id", materializations.map((m) => m.id).join(",")],
-					["_count", "100"],
-				],
-			});
-			// Lenient by contrast: without it the rows still list, minus their status.
-			if (result.isOk()) {
-				for (const entry of result.value.resource.entry ?? []) {
-					const s = entry.resource as unknown as MaterializationStatusResource;
-					if (s.id) statuses.set(s.id, s);
-				}
-			}
-
-			return materializations.map((m) => {
-				const base = describe(m);
-				const s = statuses.get(base.id);
-				return {
-					...base,
-					key: base.id,
-					status: s?.status,
-					targetVersion: s?.targetVersion,
-					sqlHash: s?.sqlHash,
-					lastUpdated: s?.meta?.lastUpdated,
-				};
-			});
+			const rows = await Promise.all(
+				materializations.map(async (m) => {
+					const base = describe(m);
+					const history = await client.historyInstance({
+						type: "AidboxMaterializationStatus",
+						id: base.id,
+					});
+					const runs = history.isOk()
+						? runRowsFromHistory(base, history.value.resource.entry ?? [])
+						: [];
+					return runs.length > 0
+						? runs
+						: [{ ...base, key: base.id } as MaterializationRow];
+				}),
+			);
+			return rows
+				.flat()
+				.sort(
+					(a, b) =>
+						new Date(b.lastUpdated ?? 0).getTime() -
+						new Date(a.lastUpdated ?? 0).getTime(),
+				);
 		},
 	});
 }
@@ -129,8 +166,6 @@ export function useMaterializationRuns(id: string | undefined) {
 		enabled: Boolean(id),
 		queryFn: async () => {
 			if (!id) return [];
-			const base = { id, object: "", objectType: "" };
-
 			const history = await client.historyInstance({
 				type: "AidboxMaterializationStatus",
 				id,
@@ -138,41 +173,10 @@ export function useMaterializationRuns(id: string | undefined) {
 			// A materialization that has never run has no status at all, which is not
 			// an error — it is the empty run log.
 			if (!history.isOk()) return [];
-			const versions = (history.value.resource.entry ?? []).flatMap((entry) => {
-				const s = entry.resource as unknown as
-					| MaterializationStatusResource
-					| undefined;
-				if (!s?.status) return [];
-				return [
-					{
-						// A delete is recorded as a version, and Aidbox keeps the body on
-						// it, so it would otherwise read as one more run.
-						deleted: entry.request?.method === "DELETE",
-						row: {
-							...base,
-							key: `${id}:${s.meta?.versionId ?? s.meta?.lastUpdated ?? ""}`,
-							status: s.status,
-							targetVersion: s.targetVersion,
-							sqlHash: s.sqlHash,
-							lastUpdated: s.meta?.lastUpdated,
-						} as MaterializationRow,
-					},
-				];
-			});
-			const newestFirst = versions.sort(
-				(a, b) =>
-					new Date(b.row.lastUpdated ?? 0).getTime() -
-					new Date(a.row.lastUpdated ?? 0).getTime(),
+			return runRowsFromHistory(
+				{ id, object: "", objectType: "" },
+				history.value.resource.entry ?? [],
 			);
-			// Everything at or before the newest delete belongs to a status that no
-			// longer exists; only what came after it is this resource's trail.
-			const deletedAt = newestFirst.findIndex((v) => v.deleted);
-			const live = (
-				deletedAt === -1 ? newestFirst : newestFirst.slice(0, deletedAt)
-			).map((v) => v.row);
-			// Every run opens with in-progress and then overwrites it, so a finished
-			// run leaves one behind. Only the newest can still be live.
-			return live.filter((row, i) => i === 0 || row.status !== "in-progress");
 		},
 	});
 }

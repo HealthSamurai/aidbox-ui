@@ -7,7 +7,11 @@ import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { ConfirmDialog } from "../confirm-dialog";
 import { materializeResource } from "../ResourceEditor/api";
-import { materializationsKey, runsKey, searchMaterializations } from "./api";
+import {
+	materializationHistoryKey,
+	runsKey,
+	searchMaterializations,
+} from "./api";
 import { suggestObjectName } from "./types";
 
 /**
@@ -41,7 +45,7 @@ export function useMaterializeAction({
 			queryClient.invalidateQueries({ queryKey: runsKey(id) });
 			if (resource?.url)
 				queryClient.invalidateQueries({
-					queryKey: materializationsKey(resource.url),
+					queryKey: materializationHistoryKey(resource.url),
 				});
 		},
 	});
