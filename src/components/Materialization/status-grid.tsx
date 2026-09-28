@@ -57,6 +57,10 @@ const objectColumns: ColumnDef<MaterializationRow>[] = [
 	},
 ];
 
+// The look of the SQL builders' run timer: "340 ms", "1.23 s".
+const formatDuration = (ms: number): string =>
+	ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms} ms`;
+
 const stateColumns: ColumnDef<MaterializationRow>[] = [
 	{
 		id: "status",
@@ -79,6 +83,13 @@ const stateColumns: ColumnDef<MaterializationRow>[] = [
 				{row.sqlHash ? row.sqlHash.slice(0, 12) : "—"}
 			</span>
 		),
+	},
+	{
+		id: "duration",
+		header: "Duration",
+		maxSize: 140,
+		cell: (row) =>
+			row.duration === undefined ? "—" : formatDuration(row.duration),
 	},
 	{
 		id: "lastUpdated",
