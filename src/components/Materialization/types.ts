@@ -76,6 +76,16 @@ export const withDefaultProfile = (
 	resource.meta?.profile?.length ? resource : withProfile(resource, PG_PROFILE);
 
 /** `schema.name`, or undefined until both parameters are set. */
+/** A plain SQL identifier derived from the target, as a starting object name. */
+export const suggestObjectName = (resource: {
+	name?: string;
+	id?: string;
+}): string => {
+	const base = resource.name || resource.id || "materialized";
+	const cleaned = base.replace(/[^A-Za-z0-9_]/g, "_");
+	return /^[A-Za-z_]/.test(cleaned) ? cleaned : `m_${cleaned}`;
+};
+
 export const qualifiedObject = (
 	resource: MaterializationResource,
 ): string | undefined => {

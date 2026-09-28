@@ -21,6 +21,7 @@ import { copyToClipboard } from "../../utils/clipboard";
 import { addUrlToHistory } from "../../utils/url-history";
 import { useWebMCPViewDefinition } from "../../webmcp/view-definition";
 import type { ViewDefinitionBuilderActions } from "../../webmcp/view-definition-context";
+import { useMaterializeAction } from "../Materialization/materialize-action";
 import { pageId } from "../ResourceEditor/types";
 import { FormTabContent } from "./editor-form-tab-content";
 import { InfoPanel } from "./info-panel";
@@ -100,11 +101,15 @@ const useToolbarMode = (
 export const EditorHeaderMenu = ({
 	onSave,
 	onRun,
+	onMaterialize,
+	isMaterializeDisabled,
 	onTogglePreview,
 	isPreviewOpen,
 }: {
 	onSave: () => void;
 	onRun: () => void;
+	onMaterialize?: () => void;
+	isMaterializeDisabled?: boolean;
 	onTogglePreview: () => void;
 	isPreviewOpen: boolean;
 }) => {
@@ -138,6 +143,17 @@ export const EditorHeaderMenu = ({
 									<Lucide.SaveIcon />
 								</DropdownMenuIcon>
 							</DropdownMenuItem>
+							{onMaterialize && (
+								<DropdownMenuItem
+									onSelect={onMaterialize}
+									disabled={isMaterializeDisabled}
+								>
+									Materialize
+									<DropdownMenuIcon>
+										<Lucide.DatabaseIcon />
+									</DropdownMenuIcon>
+								</DropdownMenuItem>
+							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -172,6 +188,23 @@ export const EditorHeaderMenu = ({
 						</TooltipTrigger>
 						{mode !== "full" && <TooltipContent>Save</TooltipContent>}
 					</Tooltip>
+					{onMaterialize && (
+						<Tooltip disableHoverableContent={mode === "full"}>
+							<TooltipTrigger asChild>
+								<HSComp.Button
+									variant="ghost"
+									size="small"
+									className="px-0!"
+									onClick={onMaterialize}
+									disabled={isMaterializeDisabled}
+								>
+									<Lucide.DatabaseIcon className="w-4 h-4" />
+									{mode === "full" && "Materialize"}
+								</HSComp.Button>
+							</TooltipTrigger>
+							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
+						</Tooltip>
+					)}
 				</div>
 			)}
 			{!isPreviewOpen && (
@@ -586,6 +619,21 @@ export const EditorPanelContent = ({
 		onRunSuccess: onExpandResult,
 	});
 
+	const {
+		onMaterialize,
+		dialogs: materializeDialogs,
+		isMaterializing,
+	} = useMaterializeAction({
+		resourceType: "ViewDefinition",
+		resource: viewDefinitionContext.viewDefinition
+			? {
+					id: viewDefinitionContext.originalId,
+					url: viewDefinitionContext.viewDefinition.url,
+					name: viewDefinitionContext.viewDefinition.name,
+				}
+			: undefined,
+	});
+
 	actionsRef.current = {
 		getViewDefinition: () => viewDefinitionContext.viewDefinition,
 		setViewDefinition: (vd) => {
@@ -667,9 +715,12 @@ export const EditorPanelContent = ({
 					<EditorHeaderMenu
 						onSave={handleSave}
 						onRun={handleRun}
+						onMaterialize={onMaterialize}
+						isMaterializeDisabled={isMaterializing}
 						onTogglePreview={onTogglePreview}
 						isPreviewOpen={isPreviewOpen}
 					/>
+					{materializeDialogs}
 					<div
 						className={`flex-1 min-h-0 overflow-auto ${isPreviewOpen ? "" : "bg-bg-tertiary"}`}
 					>

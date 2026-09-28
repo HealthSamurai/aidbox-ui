@@ -6,6 +6,7 @@ import { useAidboxClient } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
 import { useLocalStorage } from "../../hooks";
 import { addUrlToHistory } from "../../utils/url-history";
+import { useMaterializeAction } from "../Materialization/materialize-action";
 import { pageId } from "../ResourceEditor/types";
 import { useSQLQueryContext } from "./context";
 import { EditorHeaderMenu } from "./header-menu";
@@ -239,6 +240,12 @@ export function SQLQueryBuilderContent() {
 		},
 	});
 
+	const {
+		onMaterialize,
+		dialogs: materializeDialogs,
+		isMaterializing,
+	} = useMaterializeAction({ resourceType: "Library", resource: library });
+
 	const [isResultCollapsed, setIsResultCollapsed] = useLocalStorage<boolean>({
 		key: "sqlquery-builder:result-collapsed",
 		defaultValue: true,
@@ -326,9 +333,12 @@ export function SQLQueryBuilderContent() {
 			<EditorHeaderMenu
 				onRun={triggerRun}
 				onSave={() => saveMutation.mutate()}
+				onMaterialize={onMaterialize}
 				isRunDisabled={runMutation.isPending}
 				isSaveDisabled={saveMutation.isPending}
+				isMaterializeDisabled={isMaterializing}
 			/>
+			{materializeDialogs}
 			<HSComp.ResizablePanelGroup
 				direction="vertical"
 				autoSaveId="sqlquery-builder-editor"

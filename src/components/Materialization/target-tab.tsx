@@ -9,15 +9,9 @@ import {
 	MaterializationStatusGrid,
 	materializationColumns,
 } from "./status-grid";
+import { suggestObjectName } from "./types";
 
 type TargetResource = Resource & { url?: string; name?: string };
-
-/** A plain SQL identifier derived from the target, as a starting object name. */
-const suggestObjectName = (resource: TargetResource): string => {
-	const base = resource.name || resource.id || "materialized";
-	const cleaned = base.replace(/[^A-Za-z0-9_]/g, "_");
-	return /^[A-Za-z_]/.test(cleaned) ? cleaned : `m_${cleaned}`;
-};
 
 /**
  * Materializations of this ViewDefinition or Library, with a way to create the

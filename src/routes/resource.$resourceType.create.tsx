@@ -27,7 +27,11 @@ export type CreateSearch = ResourceEditorSearch & {
 	target?: string;
 	targetType?: string;
 	objectName?: string;
+	/** "<ResourceType>/<id>" of the builder to reopen after the first save. */
+	returnTo?: string;
 };
+
+const RETURN_TO_PATTERN = /^(ViewDefinition|Library)\/[^/?#\s]+$/;
 
 const STORAGE_KEY_TAB = "resourceEditor-selectedTab";
 const STORAGE_KEY_BUILDER_TAB = "resourceEditor-selectedBuilderTab";
@@ -111,8 +115,10 @@ export function validateCreateSearch(
 	rawSearch: Record<string, unknown>,
 ): CreateSearch {
 	const base = validateSearch(rawSearch);
-	const prefill: Pick<CreateSearch, "target" | "targetType" | "objectName"> =
-		{};
+	const prefill: Pick<
+		CreateSearch,
+		"target" | "targetType" | "objectName" | "returnTo"
+	> = {};
 	if (typeof rawSearch.target === "string") prefill.target = rawSearch.target;
 	// 3. an unrecognised type would reach the builder as an invalid resource
 	if (
@@ -122,11 +128,16 @@ export function validateCreateSearch(
 		prefill.targetType = rawSearch.targetType;
 	if (typeof rawSearch.objectName === "string")
 		prefill.objectName = rawSearch.objectName;
+	if (
+		typeof rawSearch.returnTo === "string" &&
+		RETURN_TO_PATTERN.test(rawSearch.returnTo)
+	)
+		prefill.returnTo = rawSearch.returnTo;
 	return { ...base, ...prefill };
 }
 
 const PageComponent = () => {
-	const { tab, mode, target, targetType, objectName } = useSearch({
+	const { tab, mode, target, targetType, objectName, returnTo } = useSearch({
 		from: "/resource/$resourceType/create",
 	});
 	const { resourceType } = useMatch({
@@ -154,6 +165,26 @@ const PageComponent = () => {
 					}
 				: { resourceType: resourceType };
 
+	// A create page opened from another builder goes back to it after the
+	// first save instead of staying on the resource it just created.
+	const onCreated = returnTo
+		? () => {
+				const [returnType = "", returnId = ""] = returnTo.split("/");
+				navigate({
+					to: "/resource/$resourceType/edit/$id",
+					params: { resourceType: returnType, id: returnId },
+					search: {
+						tab:
+							returnType === "ViewDefinition"
+								? ("builder" as const)
+								: ("sqlquery" as const),
+						mode: "json" as const,
+						builderTab: "form" as const,
+					},
+				});
+			}
+		: undefined;
+
 	return (
 		<ResourceEditorPage
 			initialResource={initialResource}
@@ -161,6 +192,7 @@ const PageComponent = () => {
 			tab={tab}
 			mode={mode}
 			navigate={navigate}
+			onCreated={onCreated}
 		/>
 	);
 };

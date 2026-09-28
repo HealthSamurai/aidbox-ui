@@ -1,7 +1,7 @@
 import { parseOperationOutcome } from "@aidbox-ui/api/utils";
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
-import { useAidboxClient } from "../../AidboxClient";
+import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import {
 	type MaterializationResource,
 	parameterValue,
@@ -38,6 +38,33 @@ export const runsKey = (id: string | undefined) => [
 	id ?? "",
 ];
 
+/** The AidboxMaterialization resources aimed at `target`; a failed search throws. */
+export async function searchMaterializations(
+	client: AidboxClientR5,
+	target: string,
+): Promise<MaterializationResource[]> {
+	const found = await client.request<Bundle>({
+		method: "GET",
+		url: "/fhir/AidboxMaterialization",
+		params: [
+			["target", target],
+			["_count", "100"],
+		],
+	});
+	// Not swallowed: an empty list is what offers to create one, so a failed
+	// search must not look like an empty one.
+	if (!found.isOk())
+		throw new Error(
+			parseOperationOutcome(found.value.resource)
+				.map(({ expression, diagnostics }) => `${expression}: ${diagnostics}`)
+				.join("; ") || "Could not search AidboxMaterialization",
+			{ cause: found.value.resource },
+		);
+	return (found.value.resource.entry ?? [])
+		.map((e) => e.resource as unknown as MaterializationResource)
+		.filter((m) => m.id);
+}
+
 const describe = (m: MaterializationResource) => ({
 	id: m.id ?? "",
 	object: qualifiedObject(m) ?? "",
@@ -51,28 +78,10 @@ export function useMaterializations(target: string | undefined) {
 		queryKey: materializationsKey(target),
 		enabled: Boolean(target),
 		queryFn: async () => {
-			const found = await client.request<Bundle>({
-				method: "GET",
-				url: "/fhir/AidboxMaterialization",
-				params: [
-					["target", target ?? ""],
-					["_count", "100"],
-				],
-			});
-			// Not swallowed: an empty list is what offers to create one, so a failed
-			// search must not look like an empty one.
-			if (!found.isOk())
-				throw new Error(
-					parseOperationOutcome(found.value.resource)
-						.map(
-							({ expression, diagnostics }) => `${expression}: ${diagnostics}`,
-						)
-						.join("; ") || "Could not search AidboxMaterialization",
-					{ cause: found.value.resource },
-				);
-			const materializations = (found.value.resource.entry ?? [])
-				.map((e) => e.resource as unknown as MaterializationResource)
-				.filter((m) => m.id);
+			const materializations = await searchMaterializations(
+				client,
+				target ?? "",
+			);
 			if (materializations.length === 0) return [];
 
 			// A status shares its materialization's id, so one search covers them all.

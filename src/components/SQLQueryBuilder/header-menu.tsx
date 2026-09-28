@@ -9,7 +9,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@health-samurai/react-components";
-import { EllipsisIcon, PlayIcon, SaveIcon } from "lucide-react";
+import { DatabaseIcon, EllipsisIcon, PlayIcon, SaveIcon } from "lucide-react";
 import * as React from "react";
 
 type ToolbarMode = "full" | "icons" | "collapsed";
@@ -39,13 +39,17 @@ function useToolbarMode(
 export function EditorHeaderMenu({
 	onSave,
 	onRun,
+	onMaterialize,
 	isSaveDisabled,
 	isRunDisabled,
+	isMaterializeDisabled,
 }: {
 	onSave: () => void;
 	onRun: () => void;
+	onMaterialize?: () => void;
 	isSaveDisabled?: boolean;
 	isRunDisabled?: boolean;
+	isMaterializeDisabled?: boolean;
 }) {
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const mode = useToolbarMode(containerRef);
@@ -82,6 +86,17 @@ export function EditorHeaderMenu({
 									<SaveIcon />
 								</DropdownMenuIcon>
 							</DropdownMenuItem>
+							{onMaterialize && (
+								<DropdownMenuItem
+									onSelect={onMaterialize}
+									disabled={isMaterializeDisabled}
+								>
+									Materialize
+									<DropdownMenuIcon>
+										<DatabaseIcon />
+									</DropdownMenuIcon>
+								</DropdownMenuItem>
+							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -118,6 +133,23 @@ export function EditorHeaderMenu({
 						</TooltipTrigger>
 						{mode !== "full" && <TooltipContent>Save</TooltipContent>}
 					</Tooltip>
+					{onMaterialize && (
+						<Tooltip disableHoverableContent={mode === "full"}>
+							<TooltipTrigger asChild>
+								<HSComp.Button
+									variant="ghost"
+									size="small"
+									className="px-0!"
+									onClick={onMaterialize}
+									disabled={isMaterializeDisabled}
+								>
+									<DatabaseIcon className="w-4 h-4" />
+									{mode === "full" && "Materialize"}
+								</HSComp.Button>
+							</TooltipTrigger>
+							{mode !== "full" && <TooltipContent>Materialize</TooltipContent>}
+						</Tooltip>
+					)}
 				</div>
 			)}
 		</div>
