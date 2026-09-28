@@ -5,6 +5,7 @@ import type {
 import * as HSComp from "@health-samurai/react-components";
 import { EmptyState } from "../empty-state";
 import { useMaterializationRuns } from "./api";
+import { MaterializeErrorPanel } from "./materialize-error-panel";
 import { PropertiesTree } from "./properties-tree";
 import { MaterializationStatusGrid, runColumns } from "./status-grid";
 
@@ -13,6 +14,8 @@ export const MaterializationBuilderContent = ({
 	onResourceChange,
 	actions,
 	saveError,
+	materializeError,
+	onDismissMaterializeError,
 }: {
 	resource: Resource;
 	onResourceChange?: (next: Resource) => void;
@@ -20,6 +23,9 @@ export const MaterializationBuilderContent = ({
 	actions?: React.ReactNode;
 	/** OperationOutcome from the last failed save. */
 	saveError?: OperationOutcome | null;
+	/** Error from the last refused $materialize; shown until dismissed. */
+	materializeError?: Error | null;
+	onDismissMaterializeError?: () => void;
 }) => {
 	const {
 		data: runs = [],
@@ -69,6 +75,17 @@ export const MaterializationBuilderContent = ({
 							error={error}
 							isRefreshing={isFetching}
 							onRefresh={() => refetch()}
+						/>
+					</HSComp.ResizablePanel>
+				</>
+			)}
+			{materializeError && (
+				<>
+					<HSComp.ResizableHandle />
+					<HSComp.ResizablePanel defaultSize={30} minSize={10}>
+						<MaterializeErrorPanel
+							error={materializeError}
+							onDismiss={() => onDismissMaterializeError?.()}
 						/>
 					</HSComp.ResizablePanel>
 				</>

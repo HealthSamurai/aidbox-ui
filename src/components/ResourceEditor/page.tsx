@@ -302,6 +302,9 @@ export const ResourceEditorPage = ({
 	const [saveError, setSaveError] = React.useState<OperationOutcome | null>(
 		null,
 	);
+	const [materializeError, setMaterializeError] = React.useState<Error | null>(
+		null,
+	);
 
 	const handleSaveError = React.useCallback((error: Error) => {
 		// Toast first — the inline OperationOutcome panel only shows on the
@@ -609,6 +612,8 @@ export const ResourceEditorPage = ({
 					client={client}
 					resourceType={resourceType}
 					id={id}
+					onError={setMaterializeError}
+					onSuccess={() => setMaterializeError(null)}
 				/>
 			)}
 			{id && (
@@ -646,6 +651,8 @@ export const ResourceEditorPage = ({
 			onResourceChange: handleResourceChange,
 			actions: editActions,
 			saveError,
+			materializeError,
+			onDismissMaterializeError: () => setMaterializeError(null),
 		}),
 	);
 

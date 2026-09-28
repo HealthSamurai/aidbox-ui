@@ -8,6 +8,7 @@ import * as Lucide from "lucide-react";
 import type React from "react";
 import type { AidboxClientR5 } from "../../AidboxClient";
 import * as Utils from "../../api/utils";
+import { runsKey } from "../Materialization/api";
 import {
 	createResource,
 	deleteResource,
@@ -185,21 +186,32 @@ export const MaterializeButton = ({
 	resourceType,
 	id,
 	client,
+	onError,
+	onSuccess,
 }: {
 	resourceType: string;
 	id: string;
 	client: AidboxClientR5;
+	/** Replaces the error toast — the Materialization builder shows a panel. */
+	onError?: (error: Error) => void;
+	onSuccess?: () => void;
 }) => {
+	const queryClient = useQueryClient();
 	const mutation = useMutation({
 		mutationFn: async () => {
 			return await materializeResource(client, resourceType, id);
 		},
-		onError: Utils.onMutationError,
+		onError: onError
+			? (error, _vars, _onMutateResult, _context) => onError(error)
+			: Utils.onMutationError,
 		onSuccess: () => {
 			HSComp.toast.success(
 				"Materialization started, it runs in the background",
 				defaultToastPlacement,
 			);
+			// The run just wrote an in-progress status; the Runs panel should show it.
+			queryClient.invalidateQueries({ queryKey: runsKey(id) });
+			onSuccess?.();
 		},
 	});
 
