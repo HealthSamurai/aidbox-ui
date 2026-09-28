@@ -23,6 +23,23 @@ function StatusBadge({ status }: { status?: string }) {
 	);
 }
 
+/** Truncated in the row; the full, multi-line message on hover. */
+function ErrorCell({ error }: { error?: string }) {
+	if (!error) return <>{"—"}</>;
+	return (
+		<HSComp.Tooltip>
+			<HSComp.TooltipTrigger asChild>
+				<span className="block truncate text-text-error-primary">
+					{error.split("\n")[0]}
+				</span>
+			</HSComp.TooltipTrigger>
+			<HSComp.TooltipContent className="max-w-md whitespace-pre-wrap font-mono text-xs">
+				{error}
+			</HSComp.TooltipContent>
+		</HSComp.Tooltip>
+	);
+}
+
 const materializationColumn: ColumnDef<MaterializationRow> = {
 	id: "materialization",
 	header: "Materialization",
@@ -67,6 +84,13 @@ const stateColumns: ColumnDef<MaterializationRow>[] = [
 		header: "Status",
 		maxSize: 180,
 		cell: (row) => <StatusBadge status={row.status} />,
+	},
+	{
+		id: "error",
+		header: "Error",
+		defaultSize: 240,
+		maxSize: 600,
+		cell: (row) => <ErrorCell error={row.error} />,
 	},
 	{
 		id: "targetVersion",

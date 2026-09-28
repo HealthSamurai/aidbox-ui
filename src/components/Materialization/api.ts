@@ -15,6 +15,8 @@ export type MaterializationStatusResource = {
 	sqlHash?: string;
 	/** Milliseconds the run took; absent while in progress. */
 	duration?: number;
+	/** Why the run failed; present only on error statuses. */
+	error?: string;
 	meta?: { lastUpdated?: string; versionId?: string };
 };
 
@@ -28,6 +30,7 @@ export type MaterializationRow = {
 	targetVersion?: string;
 	sqlHash?: string;
 	duration?: number;
+	error?: string;
 	lastUpdated?: string;
 };
 
@@ -98,6 +101,7 @@ function runRowsFromHistory(
 					targetVersion: s.targetVersion,
 					sqlHash: s.sqlHash,
 					duration: s.duration,
+					error: s.error,
 					lastUpdated: s.meta?.lastUpdated,
 				} as MaterializationRow,
 			},
