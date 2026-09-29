@@ -77,6 +77,28 @@ export function buildAllParamEntries(
 	return entries;
 }
 
+/** Declared and inherited parameters still without a value; booleans default. */
+export function missingParamNames(
+	library: SQLLibrary,
+	inheritedTypes: Map<string, string>,
+	paramValues: Record<string, string>,
+): string[] {
+	const types = new Map<string, string>();
+	for (const p of library.parameter ?? []) {
+		if (p.name) types.set(p.name, p.type ?? "string");
+	}
+	for (const [name, type] of inheritedTypes) {
+		if (!types.has(name)) types.set(name, type);
+	}
+	const missing: string[] = [];
+	for (const [name, type] of types) {
+		if (type === "boolean") continue;
+		const value = paramValues[name];
+		if (value === undefined || value === "") missing.push(name);
+	}
+	return missing;
+}
+
 export function buildRunPayload(
 	library: SQLLibrary,
 	inheritedTypes: Map<string, string>,

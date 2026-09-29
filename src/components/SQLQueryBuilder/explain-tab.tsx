@@ -4,7 +4,8 @@ import { useAidboxClient } from "../../AidboxClient";
 import { psqlRequest } from "../db-console/tables-view";
 import { useSQLQueryContext } from "./context";
 import { useResolvedParameterTree } from "./resolve-tree";
-import { fetchDebugSQL, inlineParams } from "./sql-tab";
+import { missingParamNames } from "./run-payload";
+import { fetchDebugSQL, inlineParams, MissingParamsPrompt } from "./sql-tab";
 
 /** EXPLAIN prints one row per plan line, under a single column. */
 function planText(rows: Record<string, unknown>[]): string {
@@ -36,7 +37,16 @@ export function ExplainTab() {
 		inheritedTypes,
 	}));
 
+	// A placeholder without a value cannot compile, so there is no plan to
+	// show yet; the run inputs are where values come from.
+	const missing = missingParamNames(
+		snapshot.library,
+		snapshot.inheritedTypes,
+		snapshot.paramValues,
+	);
+
 	const { isLoading, data, status, error } = useQuery({
+		enabled: missing.length === 0,
 		queryKey: ["sqlquery-builder-explain", snapshot.library],
 		queryFn: async () => {
 			const { sql, params } = await fetchDebugSQL(
@@ -57,6 +67,8 @@ export function ExplainTab() {
 		retry: false,
 		refetchOnWindowFocus: false,
 	});
+
+	if (missing.length > 0) return <MissingParamsPrompt missing={missing} />;
 
 	if (isLoading) {
 		return (
