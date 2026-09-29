@@ -5,7 +5,7 @@ import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useSQLQueryContext } from "./context";
 import { useResolvedParameterTree } from "./resolve-tree";
-import { buildRunPayload } from "./run-payload";
+import { buildRunPayload, missingParamNames } from "./run-payload";
 import type { SQLLibrary } from "./types";
 
 type DebugResponse = {
@@ -127,6 +127,19 @@ function formatDebugOutput(sql: string, params: unknown[]): string {
 	}
 }
 
+export function MissingParamsPrompt({ missing }: { missing: string[] }) {
+	return (
+		<div className="flex items-center justify-center h-full text-text-secondary">
+			<div className="text-center px-6">
+				<div className="text-lg mb-2">Waiting for parameter values</div>
+				<div className="text-sm">
+					Set {missing.join(", ")} in the run inputs, then reopen this tab.
+				</div>
+			</div>
+		</div>
+	);
+}
+
 export function SQLTab() {
 	const client = useAidboxClient();
 	const { library, paramValues } = useSQLQueryContext();
@@ -145,7 +158,14 @@ export function SQLTab() {
 		inheritedTypes,
 	}));
 
+	const missing = missingParamNames(
+		snapshot.library,
+		snapshot.inheritedTypes,
+		snapshot.paramValues,
+	);
+
 	const { isLoading, data, status, error } = useQuery({
+		enabled: missing.length === 0,
 		queryKey: ["sqlquery-debug-sql", snapshot.library],
 		queryFn: () =>
 			fetchDebugSQL(
@@ -157,6 +177,8 @@ export function SQLTab() {
 		retry: false,
 		refetchOnWindowFocus: false,
 	});
+
+	if (missing.length > 0) return <MissingParamsPrompt missing={missing} />;
 
 	if (isLoading) {
 		return (

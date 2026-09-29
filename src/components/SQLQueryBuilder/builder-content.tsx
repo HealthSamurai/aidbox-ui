@@ -13,7 +13,11 @@ import { EditorHeaderMenu } from "./header-menu";
 import { PropertiesTree } from "./properties-tree";
 import { useResolvedParameterTree } from "./resolve-tree";
 import { ResultPanel } from "./result-panel";
-import { buildRunPayload, ensureSqlLibraryShape } from "./run-payload";
+import {
+	buildRunPayload,
+	ensureSqlLibraryShape,
+	missingParamNames,
+} from "./run-payload";
 import { SqlEditor } from "./sql-editor";
 import { type SQLLibrary, sqlLibraryKindMeta } from "./types";
 
@@ -281,24 +285,12 @@ export function SQLQueryBuilderContent() {
 	const triggerRun = React.useCallback(() => {
 		const m = runMutationRef.current;
 		if (m.isPending) return;
-		const types = new Map<string, string>();
-		for (const p of library.parameter ?? []) {
-			if (p.name) types.set(p.name, p.type ?? "string");
-		}
-		for (const [n, t] of inheritedTypes) {
-			if (!types.has(n)) types.set(n, t);
-		}
-		const missing = new Set<string>();
-		for (const [name, type] of types) {
-			if (type === "boolean") continue;
-			const v = paramValues[name];
-			if (v === undefined || v === "") missing.add(name);
-		}
-		if (missing.size > 0) {
-			setMissingParams(missing);
+		const missing = missingParamNames(library, inheritedTypes, paramValues);
+		if (missing.length > 0) {
+			setMissingParams(new Set(missing));
 			Utils.toastError(
 				"Missing parameters",
-				`Please provide values for: ${Array.from(missing).join(", ")}`,
+				`Please provide values for: ${missing.join(", ")}`,
 			);
 			return;
 		}
@@ -306,7 +298,7 @@ export function SQLQueryBuilderContent() {
 		handleExpandResult();
 		m.mutate();
 	}, [
-		library.parameter,
+		library,
 		inheritedTypes,
 		paramValues,
 		setMissingParams,
