@@ -12,7 +12,7 @@ jobs:
       # scanned by its own repo's SBOM workflow, so it's left as an empty
       # placeholder directory here to keep this report scoped to aidbox-ui's
       # own pnpm-lock.yaml.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install trivy
         uses: aquasecurity/setup-trivy@v0.3.1
