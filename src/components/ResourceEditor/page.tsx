@@ -88,15 +88,15 @@ const materializationBuilderTab = (
 
 /**
  * Empty unless the resource can be materialized, so the caller needs no branch.
- * A Library only qualifies as a SQLView or SQLQuery — a plain one is not a
- * SQL-on-FHIR artifact and has nothing to materialize.
+ * A Library only qualifies as a SQLView — a SQLQuery typically takes
+ * parameters, and a stored view is one fixed query.
  */
 const materializationsTab = (
 	id: string | undefined,
-	isSqlLibrary: boolean,
+	isSqlView: boolean,
 	props: React.ComponentProps<typeof MaterializationsTab>,
 ): EditorTabItem[] =>
-	id && (props.resourceType === "ViewDefinition" || isSqlLibrary)
+	id && (props.resourceType === "ViewDefinition" || isSqlView)
 		? [
 				{
 					value: "materializations",
@@ -470,7 +470,7 @@ export const ResourceEditorPage = ({
 	const isCodeSystem = resourceType === "CodeSystem";
 	const isConceptMap = resourceType === "ConceptMap";
 	const isMaterialization = resourceType === "AidboxMaterialization";
-	const { isSqlLibrary, builderLabel } = detectSqlLibrary(
+	const { isSqlLibrary, isSQLView, builderLabel } = detectSqlLibrary(
 		initialResource,
 		isLibrary,
 	);
@@ -641,9 +641,7 @@ export const ResourceEditorPage = ({
 		});
 	}
 
-	tabs.push(
-		...materializationsTab(id, isSqlLibrary, { resource, resourceType }),
-	);
+	tabs.push(...materializationsTab(id, isSQLView, { resource, resourceType }));
 
 	tabs.push(
 		...materializationBuilderTab(isMaterialization, {
