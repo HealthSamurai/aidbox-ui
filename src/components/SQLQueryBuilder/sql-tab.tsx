@@ -78,28 +78,53 @@ function formatParam(p: unknown): string {
 	return `(${values.map((v) => formatScalar(v, fhirType)).join(", ")})`;
 }
 
+/**
+ * Replaces the `?` placeholders in compiled SQL with literal values. Mirrors
+ * the backend placeholder scanner: a `?` inside a quoted literal, a quoted
+ * identifier, or a comment is not a placeholder, so an apostrophe in a
+ * comment must not start a string.
+ */
 export function inlineParams(sql: string, params: unknown[]): string {
 	let result = "";
 	let paramIdx = 0;
-	let inString = false;
 	let i = 0;
-	while (i < sql.length) {
-		const ch = sql[i];
-		if (inString) {
-			result += ch;
-			if (ch === "'" && sql[i + 1] === "'") {
-				result += "'";
-				i += 2;
-				continue;
-			}
-			if (ch === "'") inString = false;
+	const n = sql.length;
+	// Copies a '...' or "..." region, handling the SQL doubled-quote escape.
+	const copyQuoted = (qc: string) => {
+		result += qc;
+		i++;
+		while (i < n) {
+			const c = sql[i];
+			result += c;
 			i++;
+			if (c === qc) {
+				if (sql[i] === qc) {
+					result += qc;
+					i++;
+					continue;
+				}
+				return;
+			}
+		}
+	};
+	while (i < n) {
+		const ch = sql[i];
+		if (ch === "'" || ch === '"') {
+			copyQuoted(ch);
 			continue;
 		}
-		if (ch === "'") {
-			inString = true;
-			result += ch;
-			i++;
+		if (ch === "-" && sql[i + 1] === "-") {
+			const lineEnd = sql.indexOf("\n", i);
+			const end = lineEnd === -1 ? n : lineEnd + 1;
+			result += sql.slice(i, end);
+			i = end;
+			continue;
+		}
+		if (ch === "/" && sql[i + 1] === "*") {
+			const blockEnd = sql.indexOf("*/", i + 2);
+			const end = blockEnd === -1 ? n : blockEnd + 2;
+			result += sql.slice(i, end);
+			i = end;
 			continue;
 		}
 		if (ch === "?" && paramIdx < params.length) {

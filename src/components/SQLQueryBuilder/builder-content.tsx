@@ -19,7 +19,7 @@ import {
 	missingParamNames,
 } from "./run-payload";
 import { SqlEditor } from "./sql-editor";
-import { type SQLLibrary, sqlLibraryKindMeta } from "./types";
+import { type SQLLibrary, sqlLibraryKind, sqlLibraryKindMeta } from "./types";
 
 function toOperationOutcome(err: unknown): HSComp.OperationOutcome {
 	if (
@@ -142,6 +142,9 @@ export function SQLQueryBuilderContent() {
 	} = useSQLQueryContext();
 
 	const kindMeta = sqlLibraryKindMeta(library);
+	// A SQLQuery is not materializable: it typically takes parameters, and a
+	// stored view is one fixed query.
+	const isSqlView = sqlLibraryKind(library) === "sql-view";
 
 	const { tree: resolvedTree } = useResolvedParameterTree(library);
 	const inheritedTypes = React.useMemo(() => {
@@ -325,12 +328,12 @@ export function SQLQueryBuilderContent() {
 			<EditorHeaderMenu
 				onRun={triggerRun}
 				onSave={() => saveMutation.mutate()}
-				onMaterialize={onMaterialize}
+				onMaterialize={isSqlView ? onMaterialize : undefined}
 				isRunDisabled={runMutation.isPending}
 				isSaveDisabled={saveMutation.isPending}
 				isMaterializeDisabled={isMaterializing}
 			/>
-			{materializeDialogs}
+			{isSqlView && materializeDialogs}
 			<HSComp.ResizablePanelGroup
 				direction="vertical"
 				autoSaveId="sqlquery-builder-editor"
