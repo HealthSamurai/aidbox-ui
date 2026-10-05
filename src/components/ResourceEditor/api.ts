@@ -10,6 +10,7 @@ export const fetchResource = async (
 	const result = await client.read<Resource>({
 		type: resourceType,
 		id: id,
+		mimeType: "application/fhir+json",
 	});
 
 	if (result.isErr())
