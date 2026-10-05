@@ -10,11 +10,6 @@ export const fetchResource = async (
 	const result = await client.read<Resource>({
 		type: resourceType,
 		id: id,
-		// Aidbox serves Binary as its raw content unless the FHIR media type is
-		// requested explicitly, so a plain `application/json` read fails with 406
-		// for any Binary whose contentType is something else. The editor always
-		// needs the resource itself.
-		mimeType: "application/fhir+json",
 	});
 
 	if (result.isErr())
