@@ -259,7 +259,7 @@ function detectBodyModeFromHeaders(
 	if (value === "text/yaml" || value === "application/x-yaml") {
 		return currentBodyMode !== "yaml" ? "yaml" : null;
 	}
-	if (value === "application/json") {
+	if (value === "application/json" || value === "application/fhir+json") {
 		return currentBodyMode !== "json" ? "json" : null;
 	}
 	return null;
@@ -306,6 +306,10 @@ function buildHeadersForBodyMode(
 	bodyMode: "json" | "yaml",
 ): Header[] | null {
 	const contentType = bodyMode === "yaml" ? "text/yaml" : "application/json";
+	// Binary negotiates on Accept: a non-FHIR media type asks for the stored
+	// file rather than the resource, so a plain application/json read of a
+	// Binary whose contentType differs comes back 406.
+	const accept = bodyMode === "yaml" ? "text/yaml" : "application/fhir+json";
 	const headers = Array.isArray(selectedHeaders) ? [...selectedHeaders] : [];
 
 	const contentTypeIndex = headers.findIndex(
@@ -318,13 +322,13 @@ function buildHeadersForBodyMode(
 	const needsContentTypeUpdate =
 		contentTypeIndex < 0 || headers[contentTypeIndex]?.value !== contentType;
 	const needsAcceptUpdate =
-		acceptIndex < 0 || headers[acceptIndex]?.value !== contentType;
+		acceptIndex < 0 || headers[acceptIndex]?.value !== accept;
 
 	if (!needsContentTypeUpdate && !needsAcceptUpdate) return null;
 
 	if (needsContentTypeUpdate)
 		upsertHeader(headers, "Content-Type", contentType);
-	if (needsAcceptUpdate) upsertHeader(headers, "Accept", contentType);
+	if (needsAcceptUpdate) upsertHeader(headers, "Accept", accept);
 
 	return headers;
 }

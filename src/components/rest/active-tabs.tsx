@@ -73,7 +73,12 @@ export const DEFAULT_TAB: Tab = {
 	activeSubTab: "raw",
 	headers: [
 		{ id: "1", name: "Content-Type", value: "application/json", enabled: true },
-		{ id: "2", name: "Accept", value: "application/json", enabled: true },
+		{
+			id: "2",
+			name: "Accept",
+			value: "application/fhir+json",
+			enabled: true,
+		},
 		{ id: "3", name: "", value: "", enabled: true },
 	],
 	params: [{ id: "1", name: "", value: "", enabled: true }],
