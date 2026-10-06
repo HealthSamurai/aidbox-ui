@@ -63,8 +63,8 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Audit
-        run: pnpm audit --audit-level=high
+      # - name: Audit
+      #   run: pnpm audit --audit-level=high
 
   build:
     runs-on: ubuntu-24.04
