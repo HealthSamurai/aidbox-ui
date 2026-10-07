@@ -2,7 +2,11 @@ name: SBOM
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - 'v[0-9][0-9][0-9][0-9]'      # release branches, mirrored from sansara
+    tags:
+      - 'v[0-9][0-9][0-9][0-9].[0-9]*' # release tags
 
 jobs:
   sbom:
