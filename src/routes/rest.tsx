@@ -73,6 +73,7 @@ import {
 import ParamsEditor from "../components/rest/params-editor";
 import {
 	computePathSuggestions,
+	detectResourceType,
 	UrlAutocomplete,
 	useRoutes,
 } from "../components/rest/url-autocomplete";
@@ -381,11 +382,14 @@ function RequestView({
 	const vimMode = useVimMode();
 	const currentActiveSubTab = selectedTab.activeSubTab || "body";
 
-	const resourceTypeHint = useMemo(() => {
-		const pathWithoutQuery = (selectedTab.path || "").split("?")[0] ?? "";
-		const segments = pathWithoutQuery.split("/").filter(Boolean);
-		return segments.find((s) => /^[A-Z]/.test(s)) ?? undefined;
-	}, [selectedTab.path]);
+	const { data: routesTree } = useRoutes();
+	const resourceTypeHint = useMemo(
+		() =>
+			routesTree
+				? (detectResourceType(routesTree, selectedTab.path || "") ?? undefined)
+				: undefined,
+		[routesTree, selectedTab.path],
+	);
 
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
 		key: `rest-console-body-mode-${selectedTab.id}`,
@@ -1599,9 +1603,7 @@ function RouteComponent() {
 			if (!tree) return [];
 
 			if (path.includes("?")) {
-				const pathPart = path.split("?")[0] ?? "";
-				const segments = pathPart.split("/").filter(Boolean);
-				const resourceType = segments.find((s) => /^[A-Z]/.test(s)) ?? null;
+				const resourceType = detectResourceType(tree, path);
 
 				let searchParams = searchParamsCache.current[resourceType ?? ""] ?? [];
 				if (resourceType && !searchParamsCache.current[resourceType]) {

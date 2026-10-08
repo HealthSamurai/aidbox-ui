@@ -32,6 +32,8 @@ interface Suggestion {
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const INTERNAL_KEYS = new Set([...HTTP_METHODS, "route-map/enum"]);
 const HIDDEN_RESOURCE_TYPES = new Set(["FHIRSchema"]);
+const RESOURCE_TYPE_PARAM = "[:resource/type]";
+const ORGANIZATION_ID_PARAM = "[:organization/id]";
 
 const COMMON_SEARCH_PARAMS = [
 	"_id",
@@ -71,6 +73,22 @@ function getNode(parent: RoutesTree, key: string): RoutesTree | null {
 function getEnum(node: RoutesTree): string[] {
 	const val = node["route-map/enum"];
 	return Array.isArray(val) ? (val as string[]) : [];
+}
+
+/**
+ * Values the param `key` accepts. OrgBAC mounts FHIR again under
+ * /Organization/<id>/fhir, where the tree leaves `[:resource/type]` without
+ * an enum; the resource types there are the root ones.
+ */
+function paramValues(
+	tree: RoutesTree,
+	key: string,
+	child: RoutesTree,
+): string[] {
+	const own = getEnum(child);
+	if (own.length > 0 || key !== RESOURCE_TYPE_PARAM) return own;
+	const root = getNode(tree, RESOURCE_TYPE_PARAM);
+	return root ? getEnum(root) : [];
 }
 
 function matchSegment(
@@ -123,6 +141,7 @@ function walkToLastSegment(
 
 function collectParamKeySuggestions(
 	child: RoutesTree,
+	values: string[],
 	method: string,
 	partial: string,
 	prefix: string,
@@ -131,7 +150,7 @@ function collectParamKeySuggestions(
 	if (!nodeSupportsMethod(child, method)) return [];
 
 	const results: Suggestion[] = [];
-	for (const val of getEnum(child)) {
+	for (const val of values) {
 		if (HIDDEN_RESOURCE_TYPES.has(val)) continue;
 		if (!val.toLowerCase().startsWith(partial)) continue;
 		if (seen.has(val)) continue;
@@ -212,7 +231,14 @@ export function computePathSuggestions(
 			const child = getNode(currentNode, key);
 			if (!child) continue;
 			suggestions.push(
-				...collectParamKeySuggestions(child, method, partial, prefix, seen),
+				...collectParamKeySuggestions(
+					child,
+					paramValues(tree, key, child),
+					method,
+					partial,
+					prefix,
+					seen,
+				),
 			);
 		} else {
 			const suggestion = collectLiteralKeySuggestion(
@@ -232,18 +258,27 @@ export function computePathSuggestions(
 	return suggestions;
 }
 
-function detectResourceType(tree: RoutesTree, path: string): string | null {
+/**
+ * The resource type a request path targets, from its last segment that sits
+ * in a resource-type position of the routes tree — so `Patient` for
+ * `/Organization/org-a/fhir/Patient`, not `Organization`.
+ */
+export function detectResourceType(
+	tree: RoutesTree,
+	path: string,
+): string | null {
 	const normalized = path.startsWith("/") ? path : `/${path}`;
 	const pathPart = normalized.split("?")[0] ?? "";
 	const segments = pathPart.split("/").filter(Boolean);
 	let node = tree;
 	let lastResourceType: string | null = null;
+	let prevParamKey: string | undefined;
 
 	for (const segment of segments) {
 		for (const key of getChildKeys(node)) {
 			if (!isParamKey(key)) continue;
 			const child = getNode(node, key);
-			if (child && getEnum(child).includes(segment)) {
+			if (child && paramValues(tree, key, child).includes(segment)) {
 				lastResourceType = segment;
 				break;
 			}
@@ -251,6 +286,10 @@ function detectResourceType(tree: RoutesTree, path: string): string | null {
 
 		const match = matchSegment(node, segment);
 		if (!match) break;
+		// Going on below `Organization/<id>` makes that pair an OrgBAC prefix
+		// rather than the resource the request targets.
+		if (prevParamKey === ORGANIZATION_ID_PARAM) lastResourceType = null;
+		prevParamKey = match.paramKey;
 		node = match.next;
 	}
 
