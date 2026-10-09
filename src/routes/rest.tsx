@@ -1,16 +1,18 @@
 import { Prec } from "@codemirror/state";
-import { type EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import type * as AidboxTypes from "@health-samurai/aidbox-client";
 import {
 	Button,
 	CodeEditor,
 	CopyIcon,
+	type ExpandValueSet,
 	type GetStructureDefinitions,
 	PlayIcon,
 	RequestLineEditor,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
+	type ResourceFormat,
 	Tabs,
 	TabsContent,
 	TabsList,
@@ -98,6 +100,25 @@ const TITLE = "REST console";
 const preventNewlineOnModEnter = Prec.highest(
 	keymap.of([{ key: "Mod-Enter", run: () => true }]),
 );
+
+// Request editors can scroll the last line up to the middle of the editor
+// instead of stopping at the bottom edge (cqh: the scroller's height)
+const scrollPastEndHalf = EditorView.theme({
+	".cm-scroller": { containerType: "size" },
+	".cm-scroller > .cm-content": { paddingBottom: "50cqh" },
+});
+
+const requestEditorExtensions = [preventNewlineOnModEnter, scrollPastEndHalf];
+
+// The FHIR API under /fhir (also behind an OrgBAC prefix,
+// /Organization/<id>/fhir) takes FHIR JSON; the rest of the Aidbox API takes
+// the Aidbox format ({"deceased": {"boolean": true}}, references by id)
+function resourceFormatOf(path: string): ResourceFormat {
+	if (!path) return "fhir";
+	return /^\/?(Organization\/[^/?]+\/)?fhir(\/|\?|$)/.test(path)
+		? "fhir"
+		: "aidbox";
+}
 
 export const Route = createFileRoute("/rest")({
 	staticData: {
@@ -200,6 +221,7 @@ function RawEditor({
 	getStructureDefinitions,
 	expandValueSet,
 	resourceTypeHint,
+	resourceFormat,
 	getUrlSuggestions,
 	onChange,
 	viewCallback,
@@ -209,11 +231,9 @@ function RawEditor({
 	initialValue: string;
 	issueLineNumbers?: { line: number; message?: string }[];
 	getStructureDefinitions?: GetStructureDefinitions;
-	expandValueSet?: (
-		url: string,
-		filter: string,
-	) => Promise<{ code: string; display?: string; system?: string }[]>;
+	expandValueSet?: ExpandValueSet;
 	resourceTypeHint?: string;
+	resourceFormat?: ResourceFormat;
 	getUrlSuggestions?: (
 		path: string,
 		method: string,
@@ -230,10 +250,11 @@ function RawEditor({
 			key={`raw-editor-${selectedTabId}-${requestLineVersion}`}
 			defaultValue={initialValue}
 			mode="http"
-			additionalExtensions={[preventNewlineOnModEnter]}
+			additionalExtensions={requestEditorExtensions}
 			getStructureDefinitions={getStructureDefinitions}
 			expandValueSet={expandValueSet}
 			resourceTypeHint={resourceTypeHint}
+			resourceFormat={resourceFormat}
 			getUrlSuggestions={getUrlSuggestions}
 			issueLineNumbers={issueLineNumbers}
 			vimMode={vimMode}
@@ -368,10 +389,7 @@ function RequestView({
 	onHeadersUpdate: (headers: Header[]) => void;
 	webmcpActionsRef: React.RefObject<RestConsoleActions>;
 	getStructureDefinitions?: GetStructureDefinitions;
-	expandValueSet?: (
-		url: string,
-		filter: string,
-	) => Promise<{ code: string; display?: string; system?: string }[]>;
+	expandValueSet?: ExpandValueSet;
 	getUrlSuggestions?: (
 		path: string,
 		method: string,
@@ -390,6 +408,7 @@ function RequestView({
 				: undefined,
 		[routesTree, selectedTab.path],
 	);
+	const resourceFormat = resourceFormatOf(selectedTab.path || "");
 
 	const [bodyMode, setBodyMode] = useLocalStorage<"json" | "yaml">({
 		key: `rest-console-body-mode-${selectedTab.id}`,
@@ -667,6 +686,7 @@ function RequestView({
 							getStructureDefinitions={getStructureDefinitions}
 							expandValueSet={expandValueSet}
 							resourceTypeHint={resourceTypeHint}
+							resourceFormat={resourceFormat}
 							getUrlSuggestions={getUrlSuggestions}
 							onChange={handleRawChange}
 							viewCallback={(view) => {
@@ -697,10 +717,11 @@ function RequestView({
 							currentValue={getEditorValue()}
 							mode={bodyMode}
 							onChange={handleBodyEditorChange}
-							additionalExtensions={[preventNewlineOnModEnter]}
+							additionalExtensions={requestEditorExtensions}
 							getStructureDefinitions={getStructureDefinitions}
 							expandValueSet={expandValueSet}
 							resourceTypeHint={resourceTypeHint}
+							resourceFormat={resourceFormat}
 							issueLineNumbers={responseIssueLines}
 							vimMode={vimMode}
 						/>
