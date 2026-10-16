@@ -1,14 +1,10 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Maximize2, Minimize2, PanelBottomClose } from "lucide-react";
-import * as React from "react";
-import { useLocalStorage } from "../../../hooks";
-import { DataTableFooter } from "../../data-table/footer";
 import { EmptyState } from "../../empty-state";
+import { formatRowCount, ResultTable } from "../result-table";
 import { useLineageRunContext } from "./run-context";
 
-const DEFAULT_PAGE_SIZE = 30;
-
-function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
+function ResultBody() {
 	const { runResult, runError, runningNodeId } = useLineageRunContext();
 
 	if (runningNodeId) {
@@ -47,41 +43,7 @@ function ResultBody({ page, pageSize }: { page: number; pageSize: number }) {
 		);
 	}
 
-	const start = (page - 1) * pageSize;
-	const visibleRows = runResult.rows.slice(start, start + pageSize);
-
-	return (
-		<HSComp.Table zebra stickyHeader className="typo-code">
-			<HSComp.TableHeader>
-				<HSComp.TableRow>
-					{runResult.columns.map((col) => (
-						<HSComp.TableHead key={col}>{col}</HSComp.TableHead>
-					))}
-					<HSComp.TableHead className="w-full p-0" />
-				</HSComp.TableRow>
-			</HSComp.TableHeader>
-			<HSComp.TableBody>
-				{visibleRows.map((row, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
-					<HSComp.TableRow key={start + i} zebra index={start + i}>
-						{runResult.columns.map((col, j) => {
-							const v = row[j];
-							return (
-								<HSComp.TableCell key={col}>
-									{v === null || v === undefined
-										? "—"
-										: typeof v === "object"
-											? JSON.stringify(v)
-											: String(v)}
-								</HSComp.TableCell>
-							);
-						})}
-						<HSComp.TableCell className="p-0" />
-					</HSComp.TableRow>
-				))}
-			</HSComp.TableBody>
-		</HSComp.Table>
-	);
+	return <ResultTable columns={runResult.columns} rows={runResult.rows} />;
 }
 
 export function LineageResultPanel({
@@ -94,28 +56,17 @@ export function LineageResultPanel({
 	onToggleCollapse: () => void;
 }) {
 	const { runResult } = useLineageRunContext();
-	const [page, setPage] = React.useState(1);
-	const [pageSize, setPageSize] = useLocalStorage<number>({
-		key: "lineage-result-panel:page-size",
-		defaultValue: DEFAULT_PAGE_SIZE,
-		getInitialValueInEffect: false,
-	});
-	const total = runResult?.rows.length ?? 0;
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-	React.useEffect(() => {
-		setPage(1);
-	}, []);
-
-	React.useEffect(() => {
-		if (page > totalPages) setPage(totalPages);
-	}, [page, totalPages]);
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
 			<div className="flex gap-1 items-center justify-between bg-bg-secondary px-4 pr-2 border-b h-10 shrink-0">
 				<span className="typo-label text-text-secondary">Result</span>
 				<div className="flex items-center gap-1">
+					{runResult && (
+						<span className="typo-body-xs text-text-secondary mr-1">
+							{formatRowCount(runResult.rows.length)}
+						</span>
+					)}
 					<HSComp.Tooltip>
 						<HSComp.TooltipTrigger asChild>
 							<HSComp.Button
@@ -149,21 +100,8 @@ export function LineageResultPanel({
 				</div>
 			</div>
 			<div className="flex-1 min-h-0">
-				<ResultBody page={page} pageSize={pageSize} />
+				<ResultBody />
 			</div>
-			{total > 0 && (
-				<DataTableFooter
-					total={total}
-					currentPage={page}
-					pageSize={pageSize}
-					selectedCount={0}
-					onPageChange={setPage}
-					onPageSizeChange={(size) => {
-						setPageSize(size);
-						setPage(1);
-					}}
-				/>
-			)}
 		</div>
 	);
 }

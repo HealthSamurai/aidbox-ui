@@ -65,28 +65,64 @@ export function InfiniteScrollSentinel({
 
 	useEffect(() => {
 		if (!hasMore || isLoading) return;
+		// The subtree that holds the items; with `root` it is also their viewport.
+		const content = root?.current ?? sentinelRef.current?.parentElement;
+		if (!content) return;
 
-		let scrollEl: HTMLElement | null = null;
-		if (root?.current) {
-			scrollEl = findScrollableDescendant(root.current);
-		} else if (sentinelRef.current) {
-			scrollEl = findScrollParent(sentinelRef.current);
-		}
-
-		if (!scrollEl) return;
-		const el = scrollEl;
-
-		const handleScroll = () => {
-			const { scrollTop, scrollHeight, clientHeight } = el;
-			if (scrollHeight - scrollTop - clientHeight < threshold) {
-				onLoadMoreRef.current();
-			}
+		const findScrollElement = () => {
+			if (root?.current) return findScrollableDescendant(root.current);
+			if (sentinelRef.current) return findScrollParent(sentinelRef.current);
+			return null;
 		};
 
-		handleScroll();
+		// One load per observed change: a scroll or resize that lands before
+		// React has committed the previous load must not request it again.
+		let armed = true;
+		const check = () => {
+			if (!armed) return;
+			const scrollElement = findScrollElement();
+			if (scrollElement) {
+				const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+				if (scrollHeight - scrollTop - clientHeight >= threshold) return;
+			} else if (content.clientHeight === 0) {
+				return;
+			}
+			// Near the bottom — or nothing scrolls yet because the items are
+			// shorter than their viewport, so no scroll event would ever come.
+			armed = false;
+			onLoadMoreRef.current();
+		};
 
-		el.addEventListener("scroll", handleScroll, { passive: true });
-		return () => el.removeEventListener("scroll", handleScroll);
+		let frame = 0;
+		const schedule = () => {
+			if (frame !== 0) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				check();
+			});
+		};
+		const onContentChange = () => {
+			armed = true;
+			schedule();
+		};
+
+		const resizeObserver = new ResizeObserver(onContentChange);
+		resizeObserver.observe(content);
+		const mutationObserver = new MutationObserver(onContentChange);
+		mutationObserver.observe(content, { childList: true, subtree: true });
+		// Scroll events do not bubble, but they do pass through the capture phase.
+		document.addEventListener("scroll", schedule, {
+			capture: true,
+			passive: true,
+		});
+		schedule();
+
+		return () => {
+			cancelAnimationFrame(frame);
+			resizeObserver.disconnect();
+			mutationObserver.disconnect();
+			document.removeEventListener("scroll", schedule, { capture: true });
+		};
 	}, [hasMore, isLoading, root, threshold]);
 
 	if (!hasMore) return null;
