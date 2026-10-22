@@ -1570,7 +1570,7 @@ async function saveToUIHistory(
 
 		await aidboxClient.rawRequest({
 			method: "PUT",
-			url: `/ui_history/${historyId}`,
+			url: `/fhir/ui_history/${historyId}`,
 			headers: {
 				"Content-Type": "application/json",
 			},

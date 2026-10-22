@@ -228,7 +228,7 @@ function useDatasetImport(lbacEnabled: boolean) {
 		queryFn: async (): Promise<ImportState> => {
 			// Step 1: check workflow exists
 			const workflow = await aidboxFetch(
-				"/AidboxWorkflow/onboarding-synthetic-dataset",
+				"/fhir/AidboxWorkflow/onboarding-synthetic-dataset",
 			);
 			if (!workflow.ok) {
 				if (workflow.data?.id === "not-found") {

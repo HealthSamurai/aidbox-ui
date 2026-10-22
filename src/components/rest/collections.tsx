@@ -27,7 +27,7 @@ export async function getCollectionsEntries(
 ): Promise<CollectionEntry[]> {
 	const response = await client.rawRequest({
 		method: "GET",
-		url: `/ui_snippet?_sort=_createdAt`,
+		url: `/fhir/ui_snippet?_sort=_createdAt`,
 	});
 	const bundle: Bundle = await response.response.json();
 	return (
@@ -366,7 +366,7 @@ export async function handleDeleteCollection(
 	// FIXME: client doesn't accept additional headers
 	const result = await client.request({
 		method: "DELETE",
-		url: `/ui_snippet`,
+		url: `/fhir/ui_snippet`,
 		headers: {
 			"x-conditional-delete": "remove-all",
 		},
@@ -773,7 +773,7 @@ async function handleRenameSnippet(
 		// FIXME: client.patch expects a JSON-patch object
 		const result = await client.request({
 			method: "PATCH",
-			url: `/ui_snippet/${item.getItemData().meta?.id}`,
+			url: `/fhir/ui_snippet/${item.getItemData().meta?.id}`,
 			body: JSON.stringify({
 				title: newTitle,
 			}),
@@ -799,7 +799,7 @@ export async function deleteCollectionByName(
 		throw new Error(`Collection "${collectionName}" not found`);
 	const result = await client.request({
 		method: "DELETE",
-		url: "/ui_snippet",
+		url: "/fhir/ui_snippet",
 		headers: { "x-conditional-delete": "remove-all" },
 		params: [["id", snippetIds.join(",")]],
 	});
@@ -856,7 +856,7 @@ export async function renameSnippetById(
 ) {
 	const result = await client.request({
 		method: "PATCH",
-		url: `/ui_snippet/${id}`,
+		url: `/fhir/ui_snippet/${id}`,
 		body: JSON.stringify({ title: newTitle }),
 	});
 	if (result.isErr())
