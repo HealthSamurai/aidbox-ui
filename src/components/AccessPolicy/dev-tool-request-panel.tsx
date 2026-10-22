@@ -78,7 +78,7 @@ function ensureEmptyRow(rows: Header[]): void {
 }
 
 function createTab(): RequestTab {
-	const path = "/Patient";
+	const path = "/fhir/Patient";
 	return {
 		id: generateId(),
 		method: "GET",
