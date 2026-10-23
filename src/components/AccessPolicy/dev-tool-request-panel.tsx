@@ -78,7 +78,7 @@ function ensureEmptyRow(rows: Header[]): void {
 }
 
 function createTab(): RequestTab {
-	const path = "/Patient";
+	const path = "/fhir/Patient";
 	return {
 		id: generateId(),
 		method: "GET",
@@ -649,17 +649,19 @@ function useUserSearch(client: AidboxClientR5, search: string) {
 			setIsLoading(true);
 			try {
 				const params = new URLSearchParams({ _count: "50" });
-				if (search) params.set("_id:contains", search);
+				// FHIR search has no `_id:contains`: narrow with `_ilike`, then match on id
+				if (search) params.set("_ilike", search);
 				const resp = await client.rawRequest({
 					method: "GET",
-					url: `/User?${params}`,
+					url: `/fhir/User?${params}`,
 					headers: { Accept: "application/json" },
 				});
 				const json = await resp.response.json();
 				if (!cancelled) {
-					const entries = (json.entry || []).map(
-						(e: { resource: UserEntry }) => e.resource,
-					);
+					const needle = search.toLowerCase();
+					const entries = (json.entry || [])
+						.map((e: { resource: UserEntry }) => e.resource)
+						.filter((u: UserEntry) => u.id.toLowerCase().includes(needle));
 					setUsers(entries);
 				}
 			} catch {

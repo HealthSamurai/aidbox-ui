@@ -45,7 +45,7 @@ export async function saveSqlHistory(
 
 		await aidboxClient.rawRequest({
 			method: "PUT",
-			url: `/ui_history/${id}`,
+			url: `/fhir/ui_history/${id}`,
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ type: "sql", command: trimmed }),
 		});
