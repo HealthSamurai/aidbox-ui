@@ -22,6 +22,7 @@ overrides:
   '@babel/core@<=7.29.0': '>=7.29.6'
   js-yaml@<5.2.2: 5.2.2
   nanoid@<3.3.17: '>=3.3.17'
+  zod@<4.6.6: ^4.6.6
 
 importers:
 
@@ -44,7 +45,7 @@ importers:
         version: file:aidbox-ts-sdk/packages/react-components(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
       '@mcp-b/global':
         specifier: ^2.1.0
-        version: 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
+        version: 2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))(zod@4.6.7)
       '@replit/codemirror-vim':
         specifier: ^6.3.0
         version: 6.3.0(@codemirror/commands@6.10.3)(@codemirror/language@6.12.2)(@codemirror/search@6.6.0)(@codemirror/state@6.6.0)(@codemirror/view@6.42.1)
@@ -98,11 +99,11 @@ importers:
         version: 6.4.3(vega@6.2.0)
       zod-to-json-schema:
         specifier: ^3.25.1
-        version: 3.25.1(zod@4.3.6)
+        version: 3.25.1(zod@4.6.7)
     devDependencies:
       '@agentclientprotocol/sdk':
         specifier: ^0.14.1
-        version: 0.14.1(zod@4.3.6)
+        version: 0.14.1(zod@4.6.7)
       '@atomic-ehr/codegen':
         specifier: latest
         version: 0.0.14(typescript@5.9.3)
@@ -158,21 +159,21 @@ importers:
         specifier: ^8.21.0
         version: 8.21.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.7
 
 packages:
 
   '@agentclientprotocol/sdk@0.14.1':
     resolution: {integrity: sha512-b6r3PS3Nly+Wyw9U+0nOr47bV8tfS476EgyEMhoKvJCZLbgqoDFN7DJwkxL88RR0aiOqOYV1ZnESHqb+RmdH8w==}
     peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
+      zod: ^4.6.6
 
   '@anthropic-ai/claude-agent-sdk@0.2.68':
     resolution: {integrity: sha512-y4n6hTTgAqmiV/pqy1G4OgIdg6gDiAKPJaEgO1NOh7/rdsrXyc/HQoUmUy0ty4HkBq1hasm7hB92wtX3W1UMEw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      zod: ^4.0.0
+      zod: ^4.6.6
 
   '@atomic-ehr/codegen@0.0.14':
     resolution: {integrity: sha512-VBamrvDXN3FBA5IMyjA0rn6hs2lP7kTiXS834+yGb7vHDv0Q8nA6EIclyK7HQORyxIOHufF22YprRpDDckb+jw==}
@@ -847,7 +848,7 @@ packages:
     resolution: {integrity: sha512-IzjwqrpbbASbAJxpr5k5m1ryiELGdnohDXzpLuB7UK2VI1rsAwQ04j59uRkMvaqZ4iwvxHTzKk+AajRB57OcPw==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25 || ^4.0
+      zod: ^4.6.6
       zod-to-json-schema: ^3.25.0
     peerDependenciesMeta:
       zod:
@@ -3403,16 +3404,10 @@ packages:
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
-      zod: ^3.25 || ^4
+      zod: ^4.6.6
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
-
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
@@ -3434,13 +3429,13 @@ packages:
 
 snapshots:
 
-  '@agentclientprotocol/sdk@0.14.1(zod@4.3.6)':
+  '@agentclientprotocol/sdk@0.14.1(zod@4.6.7)':
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
 
-  '@anthropic-ai/claude-agent-sdk@0.2.68(zod@4.3.6)':
+  '@anthropic-ai/claude-agent-sdk@0.2.68(zod@4.6.7)':
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -4070,7 +4065,7 @@ snapshots:
       sonner: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tailwind-merge: 3.5.0
       vaul: 1.1.2(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      zod: 4.3.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@types/react'
       - '@types/react-dom'
@@ -4195,20 +4190,20 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
-  '@mcp-b/global@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)':
+  '@mcp-b/global@2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))(zod@4.6.7)':
     dependencies:
-      '@mcp-b/transports': 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))
+      '@mcp-b/transports': 2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))
       '@mcp-b/webmcp-polyfill': 2.2.0
-      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))(zod@4.6.7)
       '@mcp-b/webmcp-types': 2.2.0
     transitivePeerDependencies:
       - zod
       - zod-to-json-schema
 
-  '@mcp-b/transports@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))':
+  '@mcp-b/transports@2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))':
     dependencies:
-      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@3.25.76)
-      zod: 3.25.76
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))(zod@4.6.7)
+      zod: 4.6.7
     transitivePeerDependencies:
       - zod-to-json-schema
 
@@ -4218,21 +4213,13 @@ snapshots:
       '@mcp-b/webmcp-types': 2.2.0
       '@standard-schema/spec': 1.1.0
 
-  '@mcp-b/webmcp-ts-sdk@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@3.25.76)':
+  '@mcp-b/webmcp-ts-sdk@2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@mcp-b/webmcp-polyfill': 2.2.0
       '@mcp-b/webmcp-types': 2.2.0
     optionalDependencies:
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@4.3.6)
-
-  '@mcp-b/webmcp-ts-sdk@2.2.0(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)':
-    dependencies:
-      '@mcp-b/webmcp-polyfill': 2.2.0
-      '@mcp-b/webmcp-types': 2.2.0
-    optionalDependencies:
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.1(zod@4.3.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.1(zod@4.6.7)
 
   '@mcp-b/webmcp-types@2.2.0': {}
 
@@ -5137,7 +5124,7 @@ snapshots:
       jiti: 2.7.0
       magic-string: 0.30.21
       prettier: 3.9.9
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - supports-color
 
@@ -5151,7 +5138,7 @@ snapshots:
       '@tanstack/router-utils': 1.162.3
       chokidar: 5.0.0
       unplugin: 3.4.0(esbuild@0.28.1)(rollup@4.59.0)(vite@7.3.5(@types/node@25.5.0)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.3))
-      zod: 4.6.5
+      zod: 4.6.7
     optionalDependencies:
       '@tanstack/react-router': 1.170.41(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       vite: 7.3.5(@types/node@25.5.0)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -5347,9 +5334,9 @@ snapshots:
 
   '@zed-industries/claude-agent-acp@0.20.2':
     dependencies:
-      '@agentclientprotocol/sdk': 0.14.1(zod@4.3.6)
-      '@anthropic-ai/claude-agent-sdk': 0.2.68(zod@4.3.6)
-      zod: 4.3.6
+      '@agentclientprotocol/sdk': 0.14.1(zod@4.6.7)
+      '@anthropic-ai/claude-agent-sdk': 0.2.68(zod@4.6.7)
+      zod: 4.6.7
 
   ansi-regex@6.2.2: {}
 
@@ -6887,14 +6874,14 @@ snapshots:
       d3-array: 3.2.4
       vega-dataflow: 6.1.3
       vega-statistics: 2.0.0
-      vega-time: 3.1.0
+      vega-time: 3.3.0
       vega-util: 2.1.3
 
   vega-typings@2.1.0:
     dependencies:
       '@types/geojson': 7946.0.16
       vega-event-selector: 4.0.0
-      vega-expression: 6.1.0
+      vega-expression: 6.2.2
       vega-util: 2.1.3
 
   vega-util@2.1.1: {}
@@ -6904,7 +6891,7 @@ snapshots:
   vega-view-transforms@5.1.0:
     dependencies:
       vega-dataflow: 6.1.3
-      vega-scenegraph: 5.1.0
+      vega-scenegraph: 5.3.0
       vega-util: 2.1.3
 
   vega-view@6.1.2:
@@ -6913,7 +6900,7 @@ snapshots:
       d3-timer: 3.0.1
       vega-dataflow: 6.1.3
       vega-format: 2.1.3
-      vega-functions: 6.1.3
+      vega-functions: 6.2.0
       vega-runtime: 7.1.3
       vega-scenegraph: 5.3.0
       vega-util: 2.1.3
@@ -7060,15 +7047,11 @@ snapshots:
       y18n: 5.0.8
       yargs-parser: 22.0.0
 
-  zod-to-json-schema@3.25.1(zod@4.3.6):
+  zod-to-json-schema@3.25.1(zod@4.6.7):
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
 
-  zod@3.25.76: {}
-
-  zod@4.3.6: {}
-
-  zod@4.6.5: {}
+  zod@4.6.7: {}
 
   zustand@4.5.7(@types/react@19.2.0)(immer@11.1.4)(react@19.2.4):
     dependencies:
