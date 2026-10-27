@@ -7,6 +7,15 @@ on:
       - 'v[0-9][0-9][0-9][0-9]'      # release branches, mirrored from sansara
     tags:
       - 'v[0-9][0-9][0-9][0-9].[0-9]*' # release tags
+  # Rebuilds the SBOM of any branch or tag before its artifact expires (see
+  # sbom-refresh.yaml). Started from the default branch, so tags -- whose own
+  # copy of this file can't change -- are covered too. The artifact is named
+  # sbom-<ref>, since its run's head_branch is the default branch, not <ref>.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or tag to build the SBOM for
+        required: true
 
 jobs:
   sbom:
@@ -17,6 +26,8 @@ jobs:
       # placeholder directory here to keep this report scoped to aidbox-ui's
       # own pnpm-lock.yaml.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Install trivy
         uses: aquasecurity/setup-trivy@v0.3.1
@@ -26,8 +37,17 @@ jobs:
       - name: Generate SBOM (production dependencies only)
         run: trivy fs --format cyclonedx --output sbom.cdx.json .
 
+      - name: Record the source ref
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REF: ${{ inputs.ref }}
+        run: jq -n --arg ref "$REF" --arg sha "$(git rev-parse HEAD)" '{$ref, $sha}' > sbom-source.json
+
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v7
         with:
-          name: sbom
-          path: sbom.cdx.json
+          name: ${{ inputs.ref && format('sbom-{0}', inputs.ref) || 'sbom' }}
+          path: |
+            sbom.cdx.json
+            sbom-source.json
+          if-no-files-found: error

@@ -1,0 +1,52 @@
+name: SBOM refresh
+# SBOM artifacts expire after 90 days, and a run can only be re-run within 30
+# days of its start, so a release branch or tag that hasn't been pushed in a
+# while ends up with nothing for the vulnerability scans to download. This
+# checks the default branch, every release branch and the newest tag of each
+# release line, and starts a new SBOM run (sbom.yaml) for any of them whose
+# newest artifact is missing or expires within REFRESH_DAYS.
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      REFRESH_DAYS: 14
+    steps:
+      - name: Start SBOM runs for expiring refs
+        run: |
+          cutoff=$(date -u -d "+$REFRESH_DAYS days" +%FT%TZ)
+
+          # Push runs upload "sbom" (their head_branch is the ref); refresh
+          # runs upload "sbom-<ref>" from the default branch.
+          artifacts=$(gh api --paginate "repos/$GH_REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | {name, branch: .workflow_run.head_branch, expires_at}' \
+            | jq -s .)
+
+          branches=$(gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name' \
+            | grep -E "^($DEFAULT_BRANCH|v[0-9]{4})$")
+          tags=$(gh api --paginate "repos/$GH_REPO/tags?per_page=100" --jq '.[].name' \
+            | grep -E '^v[0-9]{4}\.[0-9]+$' | sort -V \
+            | awk -F. '{ latest[$1] = $0 } END { for (line in latest) print latest[line] }' | sort)
+
+          for ref in $branches $tags; do
+            expires=$(jq -r --arg ref "$ref" \
+              '[.[] | select((.name == "sbom" and .branch == $ref) or .name == "sbom-\($ref)") | .expires_at] | max // empty' \
+              <<<"$artifacts")
+            if [ -z "$expires" ] || [[ "$expires" < "$cutoff" ]]; then
+              echo "::notice::$ref: artifact ${expires:+expires }${expires:-missing} -- starting a new SBOM run"
+              gh workflow run sbom.yaml --ref "$DEFAULT_BRANCH" -f ref="$ref"
+            else
+              echo "$ref: artifact expires $expires"
+            fi
+          done
