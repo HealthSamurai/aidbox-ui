@@ -23,6 +23,7 @@ import {
 	TableProperties,
 	Zap,
 } from "lucide-react";
+import { UI_BASE_PATH } from "../../shared/const";
 import { DataImport } from "./DataImport";
 import { restConsoleImage } from "./rest-image";
 import { sqlConsoleImage } from "./sql-image";
@@ -335,7 +336,7 @@ const aidboxModulesData: CardData[] = [
 			{
 				text: "Builder",
 				icon: <ArrowUpRight className="size-3.5" />,
-				href: "/u/resource/ViewDefinition",
+				href: `${UI_BASE_PATH}/resource/ViewDefinition`,
 			},
 			{
 				text: "Docs",
@@ -354,7 +355,7 @@ const aidboxModulesData: CardData[] = [
 			{
 				text: "Load IG",
 				icon: <ArrowUpRight className="size-3.5" />,
-				href: "/u/ig",
+				href: `${UI_BASE_PATH}/ig`,
 			},
 			{
 				text: "Docs",
@@ -373,7 +374,7 @@ const aidboxModulesData: CardData[] = [
 			{
 				text: "Try",
 				icon: <ArrowUpRight className="size-3.5" />,
-				href: "/u/sdc",
+				href: `${UI_BASE_PATH}/sdc`,
 			},
 			{
 				text: "Docs",
@@ -411,7 +412,7 @@ const aidboxModulesData: CardData[] = [
 			{
 				text: "Try Engine",
 				icon: <ArrowUpRight className="size-3.5" />,
-				href: "/u/rest",
+				href: `${UI_BASE_PATH}/rest`,
 			},
 			{
 				text: "Docs",
@@ -430,7 +431,7 @@ const aidboxModulesData: CardData[] = [
 			{
 				text: "HL7 v2",
 				icon: <ArrowUpRight className="size-3.5" />,
-				href: "/u/resource/Hl7v2Message",
+				href: `${UI_BASE_PATH}/resource/Hl7v2Message`,
 			},
 			{
 				text: "CCDA",

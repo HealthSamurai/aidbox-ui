@@ -22,8 +22,18 @@ export default defineConfig({
 			transformIndexHtml: {
 				order: "pre",
 				handler(html, ctx) {
-					const href = ctx.server ? "/" : "/static/aidbox-ui/";
-					return html.replace("<head>", `<head>\n\t<base href="${href}">`);
+					if (ctx.server) {
+						return html.replace("<head>", `<head>\n\t<base href="/">`);
+					}
+					// The backend rewrites this exact <base> tag with the BOX_WEB_BASE_URL path.
+					// The script then derives the prefix from the browser URL instead, since a
+					// gateway may add one Aidbox doesn't know about. Keep in sync with getPathPrefix.
+					return html.replace(
+						"<head>",
+						`<head>
+	<base href="/static/aidbox-ui/">
+	<script>(function(){var p=location.pathname+"/",i=p.indexOf("/u/");if(i!==-1)document.querySelector("base").href=p.slice(0,i)+"/static/aidbox-ui/"})()</script>`,
+					);
 				},
 			},
 		},
