@@ -9,6 +9,7 @@ import { format as formatSQL } from "sql-formatter";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import { useUserInfo } from "../../api/auth";
 import { useLocalStorage } from "../../hooks";
+import { UI_BASE_PATH } from "../../shared/const";
 import {
 	generateId,
 	parseHttpRequest,
@@ -741,7 +742,7 @@ function AuthTab({
 						<HSComp.TooltipContent>
 							Requires{" "}
 							<a
-								href="/u/settings#setting-security.debug-su-enable"
+								href={`${UI_BASE_PATH}/settings#setting-security.debug-su-enable`}
 								className="typo-code text-xs text-text-link underline"
 							>
 								security.debug-su-enable
@@ -768,7 +769,7 @@ function AuthTab({
 				<p className="typo-body-xs text-text-error-primary">
 					Enable{" "}
 					<a
-						href="/u/settings#setting-security.debug-su-enable"
+						href={`${UI_BASE_PATH}/settings#setting-security.debug-su-enable`}
 						className="underline"
 					>
 						security.debug-su-enable

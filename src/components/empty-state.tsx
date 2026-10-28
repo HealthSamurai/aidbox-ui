@@ -15,7 +15,7 @@ export const EmptyState = ({
 		<div className="flex items-center justify-center h-full overflow-auto min-h-0">
 			<div className="flex flex-col items-center gap-6 shrink-0 py-6">
 				<img
-					src="/no-resources.svg"
+					src="no-resources.svg"
 					alt=""
 					className={`max-h-40 ${grayscale ? "grayscale" : ""}`}
 				/>

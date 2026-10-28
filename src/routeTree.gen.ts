@@ -9,91 +9,51 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as RestRouteImport } from './routes/rest'
-import { Route as ResourceRouteImport } from './routes/resource'
-import { Route as NotebooksRouteImport } from './routes/notebooks'
-import { Route as IgRouteImport } from './routes/ig'
-import { Route as DbConsoleRouteImport } from './routes/db-console'
-import { Route as DatabaseRouteImport } from './routes/database'
-import { Route as AuditEventsRouteImport } from './routes/audit-events'
-import { Route as AsyncOperationsRouteImport } from './routes/async-operations'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ResourceIndexRouteImport } from './routes/resource.index'
-import { Route as NotebooksIndexRouteImport } from './routes/notebooks.index'
-import { Route as IgIndexRouteImport } from './routes/ig.index'
-import { Route as DatabaseIndexRouteImport } from './routes/database.index'
-import { Route as AsyncOperationsIndexRouteImport } from './routes/async-operations.index'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AsyncOperationsRouteImport } from './routes/async-operations'
+import { Route as AuditEventsRouteImport } from './routes/audit-events'
+import { Route as DatabaseRouteImport } from './routes/database'
+import { Route as DbConsoleRouteImport } from './routes/db-console'
+import { Route as IgRouteImport } from './routes/ig'
+import { Route as NotebooksRouteImport } from './routes/notebooks'
+import { Route as ResourceRouteImport } from './routes/resource'
+import { Route as RestRouteImport } from './routes/rest'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnalyticsIndexRouteImport } from './routes/analytics.index'
-import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
-import { Route as NotebooksNewRouteImport } from './routes/notebooks.new'
-import { Route as NotebooksIdRouteImport } from './routes/notebooks.$id'
-import { Route as IgAddRouteImport } from './routes/ig.add'
-import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
-import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
-import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
-import { Route as AnalyticsSqlviewRouteImport } from './routes/analytics.sqlview'
 import { Route as AnalyticsQueriesRouteImport } from './routes/analytics.queries'
-import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
-import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.index'
-import { Route as AnalyticsViewsIndexRouteImport } from './routes/analytics.views.index'
+import { Route as AnalyticsSqlviewRouteImport } from './routes/analytics.sqlview'
+import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
+import { Route as AsyncOperationsIndexRouteImport } from './routes/async-operations.index'
+import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
+import { Route as DatabaseIndexRouteImport } from './routes/database.index'
+import { Route as IgIndexRouteImport } from './routes/ig.index'
+import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
+import { Route as IgAddRouteImport } from './routes/ig.add'
+import { Route as NotebooksIndexRouteImport } from './routes/notebooks.index'
+import { Route as NotebooksIdRouteImport } from './routes/notebooks.$id'
+import { Route as NotebooksNewRouteImport } from './routes/notebooks.new'
+import { Route as ResourceIndexRouteImport } from './routes/resource.index'
+import { Route as ResourceResourceTypeRouteImport } from './routes/resource.$resourceType'
 import { Route as AnalyticsQueriesIndexRouteImport } from './routes/analytics.queries.index'
-import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
-import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id_.edit'
-import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.views.create'
-import { Route as AnalyticsSqlviewCreateRouteImport } from './routes/analytics.sqlview.create'
 import { Route as AnalyticsQueriesCreateRouteImport } from './routes/analytics.queries.create'
-import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
-import { Route as DatabaseSchemaSchemaTableRouteImport } from './routes/database.schema.$schema.$table'
-import { Route as AnalyticsViewsEditIdRouteImport } from './routes/analytics.views.edit.$id'
-import { Route as AnalyticsSqlviewEditIdRouteImport } from './routes/analytics.sqlview.edit.$id'
+import { Route as AnalyticsSqlviewCreateRouteImport } from './routes/analytics.sqlview.create'
+import { Route as AnalyticsViewsIndexRouteImport } from './routes/analytics.views.index'
+import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.views.create'
+import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.index'
+import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id_.edit'
+import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
+import { Route as ResourceResourceTypeCreateRouteImport } from './routes/resource.$resourceType.create'
 import { Route as AnalyticsQueriesEditIdRouteImport } from './routes/analytics.queries.edit.$id'
+import { Route as AnalyticsSqlviewEditIdRouteImport } from './routes/analytics.sqlview.edit.$id'
+import { Route as AnalyticsViewsEditIdRouteImport } from './routes/analytics.views.edit.$id'
+import { Route as DatabaseSchemaSchemaTableRouteImport } from './routes/database.schema.$schema.$table'
+import { Route as ResourceResourceTypeEditIdRouteImport } from './routes/resource.$resourceType.edit.$id'
 import { Route as IgPackageIdResourceResourceTypeResourceIdRouteImport } from './routes/ig.$packageId.resource.$resourceType.$resourceId'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RestRoute = RestRouteImport.update({
-  id: '/rest',
-  path: '/rest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResourceRoute = ResourceRouteImport.update({
-  id: '/resource',
-  path: '/resource',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotebooksRoute = NotebooksRouteImport.update({
-  id: '/notebooks',
-  path: '/notebooks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IgRoute = IgRouteImport.update({
-  id: '/ig',
-  path: '/ig',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DbConsoleRoute = DbConsoleRouteImport.update({
-  id: '/db-console',
-  path: '/db-console',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DatabaseRoute = DatabaseRouteImport.update({
-  id: '/database',
-  path: '/database',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditEventsRoute = AuditEventsRouteImport.update({
-  id: '/audit-events',
-  path: '/audit-events',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AsyncOperationsRoute = AsyncOperationsRouteImport.update({
-  id: '/async-operations',
-  path: '/async-operations',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -101,80 +61,54 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AsyncOperationsRoute = AsyncOperationsRouteImport.update({
+  id: '/async-operations',
+  path: '/async-operations',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResourceIndexRoute = ResourceIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ResourceRoute,
+const AuditEventsRoute = AuditEventsRouteImport.update({
+  id: '/audit-events',
+  path: '/audit-events',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const NotebooksIndexRoute = NotebooksIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => NotebooksRoute,
+const DatabaseRoute = DatabaseRouteImport.update({
+  id: '/database',
+  path: '/database',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const IgIndexRoute = IgIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => IgRoute,
+const DbConsoleRoute = DbConsoleRouteImport.update({
+  id: '/db-console',
+  path: '/db-console',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const DatabaseIndexRoute = DatabaseIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DatabaseRoute,
+const IgRoute = IgRouteImport.update({
+  id: '/ig',
+  path: '/ig',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AsyncOperationsIndexRoute = AsyncOperationsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AsyncOperationsRoute,
+const NotebooksRoute = NotebooksRouteImport.update({
+  id: '/notebooks',
+  path: '/notebooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResourceRoute = ResourceRouteImport.update({
+  id: '/resource',
+  path: '/resource',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RestRoute = RestRouteImport.update({
+  id: '/rest',
+  path: '/rest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsIndexRoute = AnalyticsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AnalyticsRoute,
-} as any)
-const ResourceResourceTypeRoute = ResourceResourceTypeRouteImport.update({
-  id: '/$resourceType',
-  path: '/$resourceType',
-  getParentRoute: () => ResourceRoute,
-} as any)
-const NotebooksNewRoute = NotebooksNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => NotebooksRoute,
-} as any)
-const NotebooksIdRoute = NotebooksIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => NotebooksRoute,
-} as any)
-const IgAddRoute = IgAddRouteImport.update({
-  id: '/add',
-  path: '/add',
-  getParentRoute: () => IgRoute,
-} as any)
-const IgPackageIdRoute = IgPackageIdRouteImport.update({
-  id: '/$packageId',
-  path: '/$packageId',
-  getParentRoute: () => IgRoute,
-} as any)
-const AsyncOperationsOperationIdRoute =
-  AsyncOperationsOperationIdRouteImport.update({
-    id: '/$operationId',
-    path: '/$operationId',
-    getParentRoute: () => AsyncOperationsRoute,
-  } as any)
-const AnalyticsViewsRoute = AnalyticsViewsRouteImport.update({
-  id: '/views',
-  path: '/views',
-  getParentRoute: () => AnalyticsRoute,
-} as any)
-const AnalyticsSqlviewRoute = AnalyticsSqlviewRouteImport.update({
-  id: '/sqlview',
-  path: '/sqlview',
   getParentRoute: () => AnalyticsRoute,
 } as any)
 const AnalyticsQueriesRoute = AnalyticsQueriesRouteImport.update({
@@ -182,80 +116,146 @@ const AnalyticsQueriesRoute = AnalyticsQueriesRouteImport.update({
   path: '/queries',
   getParentRoute: () => AnalyticsRoute,
 } as any)
-const ResourceResourceTypeIndexRoute =
-  ResourceResourceTypeIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => ResourceResourceTypeRoute,
-  } as any)
-const IgPackageIdIndexRoute = IgPackageIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => IgPackageIdRoute,
+const AnalyticsSqlviewRoute = AnalyticsSqlviewRouteImport.update({
+  id: '/sqlview',
+  path: '/sqlview',
+  getParentRoute: () => AnalyticsRoute,
 } as any)
-const AnalyticsViewsIndexRoute = AnalyticsViewsIndexRouteImport.update({
+const AnalyticsViewsRoute = AnalyticsViewsRouteImport.update({
+  id: '/views',
+  path: '/views',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
+const AsyncOperationsIndexRoute = AsyncOperationsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AnalyticsViewsRoute,
+  getParentRoute: () => AsyncOperationsRoute,
+} as any)
+const AsyncOperationsOperationIdRoute =
+  AsyncOperationsOperationIdRouteImport.update({
+    id: '/$operationId',
+    path: '/$operationId',
+    getParentRoute: () => AsyncOperationsRoute,
+  } as any)
+const DatabaseIndexRoute = DatabaseIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DatabaseRoute,
+} as any)
+const IgIndexRoute = IgIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => IgRoute,
+} as any)
+const IgPackageIdRoute = IgPackageIdRouteImport.update({
+  id: '/$packageId',
+  path: '/$packageId',
+  getParentRoute: () => IgRoute,
+} as any)
+const IgAddRoute = IgAddRouteImport.update({
+  id: '/add',
+  path: '/add',
+  getParentRoute: () => IgRoute,
+} as any)
+const NotebooksIndexRoute = NotebooksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotebooksRoute,
+} as any)
+const NotebooksIdRoute = NotebooksIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => NotebooksRoute,
+} as any)
+const NotebooksNewRoute = NotebooksNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => NotebooksRoute,
+} as any)
+const ResourceIndexRoute = ResourceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ResourceRoute,
+} as any)
+const ResourceResourceTypeRoute = ResourceResourceTypeRouteImport.update({
+  id: '/$resourceType',
+  path: '/$resourceType',
+  getParentRoute: () => ResourceRoute,
 } as any)
 const AnalyticsQueriesIndexRoute = AnalyticsQueriesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AnalyticsQueriesRoute,
 } as any)
-const ResourceResourceTypeCreateRoute =
-  ResourceResourceTypeCreateRouteImport.update({
-    id: '/create',
-    path: '/create',
-    getParentRoute: () => ResourceResourceTypeRoute,
-  } as any)
-const NotebooksIdEditRoute = NotebooksIdEditRouteImport.update({
-  id: '/$id_/edit',
-  path: '/$id/edit',
-  getParentRoute: () => NotebooksRoute,
-} as any)
-const AnalyticsViewsCreateRoute = AnalyticsViewsCreateRouteImport.update({
+const AnalyticsQueriesCreateRoute = AnalyticsQueriesCreateRouteImport.update({
   id: '/create',
   path: '/create',
-  getParentRoute: () => AnalyticsViewsRoute,
+  getParentRoute: () => AnalyticsQueriesRoute,
 } as any)
 const AnalyticsSqlviewCreateRoute = AnalyticsSqlviewCreateRouteImport.update({
   id: '/create',
   path: '/create',
   getParentRoute: () => AnalyticsSqlviewRoute,
 } as any)
-const AnalyticsQueriesCreateRoute = AnalyticsQueriesCreateRouteImport.update({
+const AnalyticsViewsIndexRoute = AnalyticsViewsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AnalyticsViewsRoute,
+} as any)
+const AnalyticsViewsCreateRoute = AnalyticsViewsCreateRouteImport.update({
   id: '/create',
   path: '/create',
-  getParentRoute: () => AnalyticsQueriesRoute,
+  getParentRoute: () => AnalyticsViewsRoute,
 } as any)
-const ResourceResourceTypeEditIdRoute =
-  ResourceResourceTypeEditIdRouteImport.update({
-    id: '/edit/$id',
-    path: '/edit/$id',
+const IgPackageIdIndexRoute = IgPackageIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => IgPackageIdRoute,
+} as any)
+const NotebooksIdEditRoute = NotebooksIdEditRouteImport.update({
+  id: '/$id_/edit',
+  path: '/$id/edit',
+  getParentRoute: () => NotebooksRoute,
+} as any)
+const ResourceResourceTypeIndexRoute =
+  ResourceResourceTypeIndexRouteImport.update({
+    id: '/',
+    path: '/',
     getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
-const DatabaseSchemaSchemaTableRoute =
-  DatabaseSchemaSchemaTableRouteImport.update({
-    id: '/schema/$schema/$table',
-    path: '/schema/$schema/$table',
-    getParentRoute: () => DatabaseRoute,
+const ResourceResourceTypeCreateRoute =
+  ResourceResourceTypeCreateRouteImport.update({
+    id: '/create',
+    path: '/create',
+    getParentRoute: () => ResourceResourceTypeRoute,
   } as any)
-const AnalyticsViewsEditIdRoute = AnalyticsViewsEditIdRouteImport.update({
+const AnalyticsQueriesEditIdRoute = AnalyticsQueriesEditIdRouteImport.update({
   id: '/edit/$id',
   path: '/edit/$id',
-  getParentRoute: () => AnalyticsViewsRoute,
+  getParentRoute: () => AnalyticsQueriesRoute,
 } as any)
 const AnalyticsSqlviewEditIdRoute = AnalyticsSqlviewEditIdRouteImport.update({
   id: '/edit/$id',
   path: '/edit/$id',
   getParentRoute: () => AnalyticsSqlviewRoute,
 } as any)
-const AnalyticsQueriesEditIdRoute = AnalyticsQueriesEditIdRouteImport.update({
+const AnalyticsViewsEditIdRoute = AnalyticsViewsEditIdRouteImport.update({
   id: '/edit/$id',
   path: '/edit/$id',
-  getParentRoute: () => AnalyticsQueriesRoute,
+  getParentRoute: () => AnalyticsViewsRoute,
 } as any)
+const DatabaseSchemaSchemaTableRoute =
+  DatabaseSchemaSchemaTableRouteImport.update({
+    id: '/schema/$schema/$table',
+    path: '/schema/$schema/$table',
+    getParentRoute: () => DatabaseRoute,
+  } as any)
+const ResourceResourceTypeEditIdRoute =
+  ResourceResourceTypeEditIdRouteImport.update({
+    id: '/edit/$id',
+    path: '/edit/$id',
+    getParentRoute: () => ResourceResourceTypeRoute,
+  } as any)
 const IgPackageIdResourceResourceTypeResourceIdRoute =
   IgPackageIdResourceResourceTypeResourceIdRouteImport.update({
     id: '/resource/$resourceType/$resourceId',
@@ -521,67 +521,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rest': {
-      id: '/rest'
-      path: '/rest'
-      fullPath: '/rest'
-      preLoaderRoute: typeof RestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resource': {
-      id: '/resource'
-      path: '/resource'
-      fullPath: '/resource'
-      preLoaderRoute: typeof ResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notebooks': {
-      id: '/notebooks'
-      path: '/notebooks'
-      fullPath: '/notebooks'
-      preLoaderRoute: typeof NotebooksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ig': {
-      id: '/ig'
-      path: '/ig'
-      fullPath: '/ig'
-      preLoaderRoute: typeof IgRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/db-console': {
-      id: '/db-console'
-      path: '/db-console'
-      fullPath: '/db-console'
-      preLoaderRoute: typeof DbConsoleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/database': {
-      id: '/database'
-      path: '/database'
-      fullPath: '/database'
-      preLoaderRoute: typeof DatabaseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/audit-events': {
-      id: '/audit-events'
-      path: '/audit-events'
-      fullPath: '/audit-events'
-      preLoaderRoute: typeof AuditEventsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/async-operations': {
-      id: '/async-operations'
-      path: '/async-operations'
-      fullPath: '/async-operations'
-      preLoaderRoute: typeof AsyncOperationsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -591,109 +535,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/async-operations': {
+      id: '/async-operations'
+      path: '/async-operations'
+      fullPath: '/async-operations'
+      preLoaderRoute: typeof AsyncOperationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resource/': {
-      id: '/resource/'
-      path: '/'
-      fullPath: '/resource/'
-      preLoaderRoute: typeof ResourceIndexRouteImport
-      parentRoute: typeof ResourceRoute
+    '/audit-events': {
+      id: '/audit-events'
+      path: '/audit-events'
+      fullPath: '/audit-events'
+      preLoaderRoute: typeof AuditEventsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/notebooks/': {
-      id: '/notebooks/'
-      path: '/'
-      fullPath: '/notebooks/'
-      preLoaderRoute: typeof NotebooksIndexRouteImport
-      parentRoute: typeof NotebooksRoute
+    '/database': {
+      id: '/database'
+      path: '/database'
+      fullPath: '/database'
+      preLoaderRoute: typeof DatabaseRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/ig/': {
-      id: '/ig/'
-      path: '/'
-      fullPath: '/ig/'
-      preLoaderRoute: typeof IgIndexRouteImport
-      parentRoute: typeof IgRoute
+    '/db-console': {
+      id: '/db-console'
+      path: '/db-console'
+      fullPath: '/db-console'
+      preLoaderRoute: typeof DbConsoleRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/database/': {
-      id: '/database/'
-      path: '/'
-      fullPath: '/database/'
-      preLoaderRoute: typeof DatabaseIndexRouteImport
-      parentRoute: typeof DatabaseRoute
+    '/ig': {
+      id: '/ig'
+      path: '/ig'
+      fullPath: '/ig'
+      preLoaderRoute: typeof IgRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/async-operations/': {
-      id: '/async-operations/'
-      path: '/'
-      fullPath: '/async-operations/'
-      preLoaderRoute: typeof AsyncOperationsIndexRouteImport
-      parentRoute: typeof AsyncOperationsRoute
+    '/notebooks': {
+      id: '/notebooks'
+      path: '/notebooks'
+      fullPath: '/notebooks'
+      preLoaderRoute: typeof NotebooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resource': {
+      id: '/resource'
+      path: '/resource'
+      fullPath: '/resource'
+      preLoaderRoute: typeof ResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rest': {
+      id: '/rest'
+      path: '/rest'
+      fullPath: '/rest'
+      preLoaderRoute: typeof RestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/analytics/': {
       id: '/analytics/'
       path: '/'
       fullPath: '/analytics/'
       preLoaderRoute: typeof AnalyticsIndexRouteImport
-      parentRoute: typeof AnalyticsRoute
-    }
-    '/resource/$resourceType': {
-      id: '/resource/$resourceType'
-      path: '/$resourceType'
-      fullPath: '/resource/$resourceType'
-      preLoaderRoute: typeof ResourceResourceTypeRouteImport
-      parentRoute: typeof ResourceRoute
-    }
-    '/notebooks/new': {
-      id: '/notebooks/new'
-      path: '/new'
-      fullPath: '/notebooks/new'
-      preLoaderRoute: typeof NotebooksNewRouteImport
-      parentRoute: typeof NotebooksRoute
-    }
-    '/notebooks/$id': {
-      id: '/notebooks/$id'
-      path: '/$id'
-      fullPath: '/notebooks/$id'
-      preLoaderRoute: typeof NotebooksIdRouteImport
-      parentRoute: typeof NotebooksRoute
-    }
-    '/ig/add': {
-      id: '/ig/add'
-      path: '/add'
-      fullPath: '/ig/add'
-      preLoaderRoute: typeof IgAddRouteImport
-      parentRoute: typeof IgRoute
-    }
-    '/ig/$packageId': {
-      id: '/ig/$packageId'
-      path: '/$packageId'
-      fullPath: '/ig/$packageId'
-      preLoaderRoute: typeof IgPackageIdRouteImport
-      parentRoute: typeof IgRoute
-    }
-    '/async-operations/$operationId': {
-      id: '/async-operations/$operationId'
-      path: '/$operationId'
-      fullPath: '/async-operations/$operationId'
-      preLoaderRoute: typeof AsyncOperationsOperationIdRouteImport
-      parentRoute: typeof AsyncOperationsRoute
-    }
-    '/analytics/views': {
-      id: '/analytics/views'
-      path: '/views'
-      fullPath: '/analytics/views'
-      preLoaderRoute: typeof AnalyticsViewsRouteImport
-      parentRoute: typeof AnalyticsRoute
-    }
-    '/analytics/sqlview': {
-      id: '/analytics/sqlview'
-      path: '/sqlview'
-      fullPath: '/analytics/sqlview'
-      preLoaderRoute: typeof AnalyticsSqlviewRouteImport
       parentRoute: typeof AnalyticsRoute
     }
     '/analytics/queries': {
@@ -703,26 +612,96 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsQueriesRouteImport
       parentRoute: typeof AnalyticsRoute
     }
-    '/resource/$resourceType/': {
-      id: '/resource/$resourceType/'
-      path: '/'
-      fullPath: '/resource/$resourceType/'
-      preLoaderRoute: typeof ResourceResourceTypeIndexRouteImport
-      parentRoute: typeof ResourceResourceTypeRoute
+    '/analytics/sqlview': {
+      id: '/analytics/sqlview'
+      path: '/sqlview'
+      fullPath: '/analytics/sqlview'
+      preLoaderRoute: typeof AnalyticsSqlviewRouteImport
+      parentRoute: typeof AnalyticsRoute
     }
-    '/ig/$packageId/': {
-      id: '/ig/$packageId/'
-      path: '/'
-      fullPath: '/ig/$packageId/'
-      preLoaderRoute: typeof IgPackageIdIndexRouteImport
-      parentRoute: typeof IgPackageIdRoute
+    '/analytics/views': {
+      id: '/analytics/views'
+      path: '/views'
+      fullPath: '/analytics/views'
+      preLoaderRoute: typeof AnalyticsViewsRouteImport
+      parentRoute: typeof AnalyticsRoute
     }
-    '/analytics/views/': {
-      id: '/analytics/views/'
+    '/async-operations/': {
+      id: '/async-operations/'
       path: '/'
-      fullPath: '/analytics/views/'
-      preLoaderRoute: typeof AnalyticsViewsIndexRouteImport
-      parentRoute: typeof AnalyticsViewsRoute
+      fullPath: '/async-operations/'
+      preLoaderRoute: typeof AsyncOperationsIndexRouteImport
+      parentRoute: typeof AsyncOperationsRoute
+    }
+    '/async-operations/$operationId': {
+      id: '/async-operations/$operationId'
+      path: '/$operationId'
+      fullPath: '/async-operations/$operationId'
+      preLoaderRoute: typeof AsyncOperationsOperationIdRouteImport
+      parentRoute: typeof AsyncOperationsRoute
+    }
+    '/database/': {
+      id: '/database/'
+      path: '/'
+      fullPath: '/database/'
+      preLoaderRoute: typeof DatabaseIndexRouteImport
+      parentRoute: typeof DatabaseRoute
+    }
+    '/ig/': {
+      id: '/ig/'
+      path: '/'
+      fullPath: '/ig/'
+      preLoaderRoute: typeof IgIndexRouteImport
+      parentRoute: typeof IgRoute
+    }
+    '/ig/$packageId': {
+      id: '/ig/$packageId'
+      path: '/$packageId'
+      fullPath: '/ig/$packageId'
+      preLoaderRoute: typeof IgPackageIdRouteImport
+      parentRoute: typeof IgRoute
+    }
+    '/ig/add': {
+      id: '/ig/add'
+      path: '/add'
+      fullPath: '/ig/add'
+      preLoaderRoute: typeof IgAddRouteImport
+      parentRoute: typeof IgRoute
+    }
+    '/notebooks/': {
+      id: '/notebooks/'
+      path: '/'
+      fullPath: '/notebooks/'
+      preLoaderRoute: typeof NotebooksIndexRouteImport
+      parentRoute: typeof NotebooksRoute
+    }
+    '/notebooks/$id': {
+      id: '/notebooks/$id'
+      path: '/$id'
+      fullPath: '/notebooks/$id'
+      preLoaderRoute: typeof NotebooksIdRouteImport
+      parentRoute: typeof NotebooksRoute
+    }
+    '/notebooks/new': {
+      id: '/notebooks/new'
+      path: '/new'
+      fullPath: '/notebooks/new'
+      preLoaderRoute: typeof NotebooksNewRouteImport
+      parentRoute: typeof NotebooksRoute
+    }
+    '/resource/': {
+      id: '/resource/'
+      path: '/'
+      fullPath: '/resource/'
+      preLoaderRoute: typeof ResourceIndexRouteImport
+      parentRoute: typeof ResourceRoute
+    }
+    '/resource/$resourceType': {
+      id: '/resource/$resourceType'
+      path: '/$resourceType'
+      fullPath: '/resource/$resourceType'
+      preLoaderRoute: typeof ResourceResourceTypeRouteImport
+      parentRoute: typeof ResourceRoute
     }
     '/analytics/queries/': {
       id: '/analytics/queries/'
@@ -731,26 +710,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsQueriesIndexRouteImport
       parentRoute: typeof AnalyticsQueriesRoute
     }
-    '/resource/$resourceType/create': {
-      id: '/resource/$resourceType/create'
+    '/analytics/queries/create': {
+      id: '/analytics/queries/create'
       path: '/create'
-      fullPath: '/resource/$resourceType/create'
-      preLoaderRoute: typeof ResourceResourceTypeCreateRouteImport
-      parentRoute: typeof ResourceResourceTypeRoute
-    }
-    '/notebooks/$id_/edit': {
-      id: '/notebooks/$id_/edit'
-      path: '/$id/edit'
-      fullPath: '/notebooks/$id/edit'
-      preLoaderRoute: typeof NotebooksIdEditRouteImport
-      parentRoute: typeof NotebooksRoute
-    }
-    '/analytics/views/create': {
-      id: '/analytics/views/create'
-      path: '/create'
-      fullPath: '/analytics/views/create'
-      preLoaderRoute: typeof AnalyticsViewsCreateRouteImport
-      parentRoute: typeof AnalyticsViewsRoute
+      fullPath: '/analytics/queries/create'
+      preLoaderRoute: typeof AnalyticsQueriesCreateRouteImport
+      parentRoute: typeof AnalyticsQueriesRoute
     }
     '/analytics/sqlview/create': {
       id: '/analytics/sqlview/create'
@@ -759,33 +724,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsSqlviewCreateRouteImport
       parentRoute: typeof AnalyticsSqlviewRoute
     }
-    '/analytics/queries/create': {
-      id: '/analytics/queries/create'
-      path: '/create'
-      fullPath: '/analytics/queries/create'
-      preLoaderRoute: typeof AnalyticsQueriesCreateRouteImport
-      parentRoute: typeof AnalyticsQueriesRoute
+    '/analytics/views/': {
+      id: '/analytics/views/'
+      path: '/'
+      fullPath: '/analytics/views/'
+      preLoaderRoute: typeof AnalyticsViewsIndexRouteImport
+      parentRoute: typeof AnalyticsViewsRoute
     }
-    '/resource/$resourceType/edit/$id': {
-      id: '/resource/$resourceType/edit/$id'
-      path: '/edit/$id'
-      fullPath: '/resource/$resourceType/edit/$id'
-      preLoaderRoute: typeof ResourceResourceTypeEditIdRouteImport
+    '/analytics/views/create': {
+      id: '/analytics/views/create'
+      path: '/create'
+      fullPath: '/analytics/views/create'
+      preLoaderRoute: typeof AnalyticsViewsCreateRouteImport
+      parentRoute: typeof AnalyticsViewsRoute
+    }
+    '/ig/$packageId/': {
+      id: '/ig/$packageId/'
+      path: '/'
+      fullPath: '/ig/$packageId/'
+      preLoaderRoute: typeof IgPackageIdIndexRouteImport
+      parentRoute: typeof IgPackageIdRoute
+    }
+    '/notebooks/$id_/edit': {
+      id: '/notebooks/$id_/edit'
+      path: '/$id/edit'
+      fullPath: '/notebooks/$id/edit'
+      preLoaderRoute: typeof NotebooksIdEditRouteImport
+      parentRoute: typeof NotebooksRoute
+    }
+    '/resource/$resourceType/': {
+      id: '/resource/$resourceType/'
+      path: '/'
+      fullPath: '/resource/$resourceType/'
+      preLoaderRoute: typeof ResourceResourceTypeIndexRouteImport
       parentRoute: typeof ResourceResourceTypeRoute
     }
-    '/database/schema/$schema/$table': {
-      id: '/database/schema/$schema/$table'
-      path: '/schema/$schema/$table'
-      fullPath: '/database/schema/$schema/$table'
-      preLoaderRoute: typeof DatabaseSchemaSchemaTableRouteImport
-      parentRoute: typeof DatabaseRoute
+    '/resource/$resourceType/create': {
+      id: '/resource/$resourceType/create'
+      path: '/create'
+      fullPath: '/resource/$resourceType/create'
+      preLoaderRoute: typeof ResourceResourceTypeCreateRouteImport
+      parentRoute: typeof ResourceResourceTypeRoute
     }
-    '/analytics/views/edit/$id': {
-      id: '/analytics/views/edit/$id'
+    '/analytics/queries/edit/$id': {
+      id: '/analytics/queries/edit/$id'
       path: '/edit/$id'
-      fullPath: '/analytics/views/edit/$id'
-      preLoaderRoute: typeof AnalyticsViewsEditIdRouteImport
-      parentRoute: typeof AnalyticsViewsRoute
+      fullPath: '/analytics/queries/edit/$id'
+      preLoaderRoute: typeof AnalyticsQueriesEditIdRouteImport
+      parentRoute: typeof AnalyticsQueriesRoute
     }
     '/analytics/sqlview/edit/$id': {
       id: '/analytics/sqlview/edit/$id'
@@ -794,12 +780,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsSqlviewEditIdRouteImport
       parentRoute: typeof AnalyticsSqlviewRoute
     }
-    '/analytics/queries/edit/$id': {
-      id: '/analytics/queries/edit/$id'
+    '/analytics/views/edit/$id': {
+      id: '/analytics/views/edit/$id'
       path: '/edit/$id'
-      fullPath: '/analytics/queries/edit/$id'
-      preLoaderRoute: typeof AnalyticsQueriesEditIdRouteImport
-      parentRoute: typeof AnalyticsQueriesRoute
+      fullPath: '/analytics/views/edit/$id'
+      preLoaderRoute: typeof AnalyticsViewsEditIdRouteImport
+      parentRoute: typeof AnalyticsViewsRoute
+    }
+    '/database/schema/$schema/$table': {
+      id: '/database/schema/$schema/$table'
+      path: '/schema/$schema/$table'
+      fullPath: '/database/schema/$schema/$table'
+      preLoaderRoute: typeof DatabaseSchemaSchemaTableRouteImport
+      parentRoute: typeof DatabaseRoute
+    }
+    '/resource/$resourceType/edit/$id': {
+      id: '/resource/$resourceType/edit/$id'
+      path: '/edit/$id'
+      fullPath: '/resource/$resourceType/edit/$id'
+      preLoaderRoute: typeof ResourceResourceTypeEditIdRouteImport
+      parentRoute: typeof ResourceResourceTypeRoute
     }
     '/ig/$packageId/resource/$resourceType/$resourceId': {
       id: '/ig/$packageId/resource/$resourceType/$resourceId'

@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Check, Database, Loader2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useAidboxClient } from "../../AidboxClient";
+import { UI_BASE_PATH } from "../../shared/const";
 import { getAidboxBaseURL } from "../../utils";
 
 interface ImportInput {
@@ -418,7 +419,7 @@ export function DataImport() {
 											<span>Test dataset is not compatible with LBAC.</span>
 											<div>
 												<a
-													href="/u/settings#setting-security.lbac.enabled"
+													href={`${UI_BASE_PATH}/settings#setting-security.lbac.enabled`}
 													target="_blank"
 													rel="noopener noreferrer"
 													className="underline"
