@@ -1773,7 +1773,7 @@ function DeleteNotebookButton({ notebook }: { notebook: Notebook }) {
 				}
 			}
 			const resp = await fetch(
-				`${client.getBaseUrl()}/Notebook/${notebook.id}`,
+				`${client.getBaseUrl()}/fhir/Notebook/${notebook.id}`,
 				{
 					method: "DELETE",
 					credentials: "include",

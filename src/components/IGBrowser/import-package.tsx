@@ -502,7 +502,7 @@ function UrlForm({
 				formData.append(`url-${i}`, url);
 			}
 			const res = await fetch(
-				`${client.getBaseUrl()}/$upload-fhir-npm-packages`,
+				`${client.getBaseUrl()}/fhir/$upload-fhir-npm-packages`,
 				{ method: "POST", body: formData, credentials: "include" },
 			);
 			if (!res.ok) {
@@ -631,7 +631,7 @@ function FileForm({
 				formData.append(file.name, file);
 			}
 			const res = await fetch(
-				`${client.getBaseUrl()}/$upload-fhir-npm-packages`,
+				`${client.getBaseUrl()}/fhir/$upload-fhir-npm-packages`,
 				{ method: "POST", body: formData, credentials: "include" },
 			);
 			if (!res.ok) {
