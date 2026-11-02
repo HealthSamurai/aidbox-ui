@@ -2,11 +2,17 @@ import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import type { Edge, Node } from "@xyflow/react";
 import { type AidboxClientR5, useAidboxClient } from "../../../AidboxClient";
+import {
+	fetchTerminologyByCanonical,
+	TERMINOLOGY_COLUMNS,
+	type TerminologyResource,
+} from "../terminology";
 import { type SQLLibrary, sqlLibraryKind } from "../types";
 import type {
 	LineageNodeData,
 	ResourceTypeNodeData,
 	SQLQueryNodeData,
+	TerminologyNodeData,
 	ViewConstant,
 	ViewDefinitionNodeData,
 	ViewSelect,
@@ -48,7 +54,13 @@ type RawViewDefinition = {
 type ResolvedNode =
 	| { kind: "resource-type"; id: string; data: ResourceTypeNodeData }
 	| { kind: "view-definition"; id: string; data: ViewDefinitionNodeData }
-	| { kind: "sql-query"; id: string; data: SQLQueryNodeData };
+	| { kind: "sql-query"; id: string; data: SQLQueryNodeData }
+	| { kind: "terminology"; id: string; data: TerminologyNodeData };
+
+type ResolvedDependency =
+	| { type: "library"; resource: RawLibrary }
+	| { type: "view-definition"; resource: RawViewDefinition }
+	| { type: "terminology"; resource: TerminologyResource };
 
 export type LineageGraph = {
 	nodes: Node<LineageNodeData>[];
@@ -96,11 +108,7 @@ async function fetchByCanonical<T>(
 async function resolveAny(
 	client: AidboxClientR5,
 	canonical: string,
-): Promise<
-	| { type: "library"; resource: RawLibrary }
-	| { type: "view-definition"; resource: RawViewDefinition }
-	| null
-> {
+): Promise<ResolvedDependency | null> {
 	const [lib, vd] = await Promise.all([
 		fetchByCanonical<RawLibrary>(client, "Library", canonical),
 		fetchByCanonical<RawViewDefinition>(client, "ViewDefinition", canonical),
@@ -109,7 +117,8 @@ async function resolveAny(
 		return { type: "library", resource: lib };
 	if (vd?.resourceType === "ViewDefinition")
 		return { type: "view-definition", resource: vd };
-	return null;
+	const terminology = await fetchTerminologyByCanonical(client, canonical);
+	return terminology ? { type: "terminology", resource: terminology } : null;
 }
 
 function dependsOnCanonicals(lib: RawLibrary): string[] {
@@ -255,6 +264,28 @@ function viewDefinitionNode(
 	};
 }
 
+function terminologyNode(
+	r: TerminologyResource,
+	canonical: string,
+): ResolvedNode {
+	const id = `terminology:${r.resourceType}/${r.id}`;
+	return {
+		kind: "terminology",
+		id,
+		data: {
+			kind: "terminology",
+			resourceType: r.resourceType,
+			id: r.id,
+			canonical,
+			name: r.name ?? "",
+			title: r.title,
+			description: r.description,
+			version: r.version,
+			columns: TERMINOLOGY_COLUMNS[r.resourceType],
+		},
+	};
+}
+
 function resourceTypeNode(resourceType: string): ResolvedNode {
 	return {
 		kind: "resource-type",
@@ -298,18 +329,15 @@ function attachResourceType(
 function processResolvedItem(
 	state: BuildState,
 	item: QItem,
-	resolved:
-		| { type: "library"; resource: RawLibrary }
-		| {
-				type: "view-definition";
-				resource: RawViewDefinition;
-		  },
+	resolved: ResolvedDependency,
 	next: QItem[],
 ) {
 	const node =
 		resolved.type === "library"
 			? libraryNode(resolved.resource, item.canonical)
-			: viewDefinitionNode(resolved.resource, item.canonical);
+			: resolved.type === "view-definition"
+				? viewDefinitionNode(resolved.resource, item.canonical)
+				: terminologyNode(resolved.resource, item.canonical);
 
 	pushEdge(state, node.id, item.parentId);
 	if (state.visited.has(node.id)) return;
@@ -325,7 +353,7 @@ function processResolvedItem(
 				depth: item.depth + 1,
 			});
 		}
-	} else {
+	} else if (resolved.type === "view-definition") {
 		attachResourceType(state, node, resolved.resource, item.depth + 1);
 	}
 }
@@ -422,8 +450,9 @@ const SUBTREE_GAP = 56;
 // Vertical gap between nodes stacked in the fixed resource / view columns.
 const COLUMN_V_GAP = 40;
 
-// Fixed left-hand columns: resource tables, then view definitions. Everything
-// to the right of them is the SQL dependency tree.
+// Fixed left-hand columns: resource tables, then view definitions alongside
+// ValueSets and ConceptMaps. Everything to the right of them is the SQL
+// dependency tree.
 const RESOURCE_COL_X = 0;
 const VIEW_COL_X = COL_WIDTH;
 const SQL_COL_START = COL_WIDTH * 2;
@@ -450,6 +479,9 @@ function countViewColumns(selects: ViewSelect[]): number {
 
 function estimateNodeHeight(node: ResolvedNode): number {
 	if (node.kind === "resource-type") return HEADER_H;
+	if (node.kind === "terminology") {
+		return HEADER_H + node.data.columns.length * ROW_H;
+	}
 	if (node.kind === "view-definition") {
 		const cols = countViewColumns(node.data.select);
 		return HEADER_H + (cols > 0 ? cols * ROW_H : EMPTY_BODY_H) + FOOTER_H;
@@ -662,7 +694,7 @@ function nodePlacement(
 	if (kind === "resource-type") {
 		return { x: RESOURCE_COL_X, centerY: columnYById.resource.get(id) ?? 0 };
 	}
-	if (kind === "view-definition") {
+	if (kind === "view-definition" || kind === "terminology") {
 		return { x: VIEW_COL_X, centerY: columnYById.view.get(id) ?? 0 };
 	}
 	// SQL nodes: rank increases towards the root, so the root sits furthest right.
@@ -687,8 +719,8 @@ function layoutGraph(
 		heightById.set(id, estimateNodeHeight(resolved));
 		kindById.set(id, resolved.kind);
 		if (resolved.kind === "sql-query") sqlIds.push(id);
-		else if (resolved.kind === "view-definition") viewIds.push(id);
-		else resourceIds.push(id);
+		else if (resolved.kind === "resource-type") resourceIds.push(id);
+		else viewIds.push(id);
 	}
 
 	// SQL nodes form a tidy tree growing rightwards, root furthest right.

@@ -628,8 +628,14 @@ export function PropertiesTree() {
 								onChange={(ref) => updateDependsOnResource(idx, ref)}
 								kinds={
 									kindMeta.kind === "sql-view"
-										? ["ViewDefinition", "SQLView"]
-										: ["ViewDefinition", "SQLQuery", "SQLView"]
+										? ["ViewDefinition", "SQLView", "ValueSet", "ConceptMap"]
+										: [
+												"ViewDefinition",
+												"SQLQuery",
+												"SQLView",
+												"ValueSet",
+												"ConceptMap",
+											]
 								}
 							/>
 						</div>

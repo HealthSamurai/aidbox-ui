@@ -1,3 +1,5 @@
+import type { TerminologyKind } from "../terminology";
+
 export type ColumnInfo = {
 	name: string;
 	path?: string;
@@ -56,7 +58,20 @@ export type SQLQueryNodeData = {
 	isRoot: boolean;
 };
 
+export type TerminologyNodeData = {
+	kind: "terminology";
+	resourceType: TerminologyKind;
+	id: string;
+	canonical: string;
+	name: string;
+	title?: string;
+	description?: string;
+	version?: string;
+	columns: ColumnInfo[];
+};
+
 export type LineageNodeData =
 	| ResourceTypeNodeData
 	| ViewDefinitionNodeData
-	| SQLQueryNodeData;
+	| SQLQueryNodeData
+	| TerminologyNodeData;

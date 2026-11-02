@@ -2,10 +2,12 @@ import * as HSComp from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
+	ArrowLeftRight,
 	Database,
 	ExternalLink,
 	FileCode2,
 	Layers,
+	ListChecks,
 	Table,
 	X,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import {
 import type {
 	LineageNodeData,
 	ResourceTypeNodeData,
+	TerminologyNodeData,
 	ViewSelect,
 } from "./types";
 
@@ -372,6 +375,60 @@ function SelectTree({ node }: { node: ViewSelect }) {
 	);
 }
 
+function TerminologyDetailContent({
+	data,
+	onClose,
+}: {
+	data: TerminologyNodeData;
+	onClose: () => void;
+}) {
+	const Icon = data.resourceType === "ValueSet" ? ListChecks : ArrowLeftRight;
+	return (
+		<div className="h-full overflow-auto p-4 pb-20 flex flex-col gap-4 bg-bg-primary">
+			<PanelHeader
+				icon={<Icon size={14} />}
+				label={data.resourceType}
+				color="text-text-secondary"
+				onClose={onClose}
+			/>
+			<div className="flex flex-col gap-1">
+				<span className="text-xs typo-label-tiny text-text-tertiary uppercase">
+					ID
+				</span>
+				<Link
+					to="/resource/$resourceType/edit/$id"
+					params={{ resourceType: data.resourceType, id: data.id }}
+					search={{ tab: "edit", mode: "json", builderTab: "form" }}
+					className="text-sm font-mono text-text-link hover:underline break-all"
+				>
+					{data.id}
+				</Link>
+			</div>
+			<Field label="Title" value={data.title || data.name || data.id} />
+			{data.name && <Field label="Name" value={data.name} mono copyable />}
+			<Field label="Canonical URL" value={data.canonical} mono copyable />
+			{data.version && <Field label="Version" value={data.version} mono />}
+			{data.description && (
+				<Section title="Description">
+					<p className="text-sm text-text-primary whitespace-pre-wrap">
+						{data.description}
+					</p>
+				</Section>
+			)}
+			<Section title="Columns">
+				<ul className="list-disc pl-4 flex flex-col gap-0.5">
+					{data.columns.map((c) => (
+						<li key={c.name} className="text-xs font-mono">
+							<span className="text-text-primary">{c.name}</span>
+							<span className="text-text-tertiary"> ({c.type})</span>
+						</li>
+					))}
+				</ul>
+			</Section>
+		</div>
+	);
+}
+
 export function LineageDetailPanel({
 	data,
 	onClose,
@@ -381,6 +438,10 @@ export function LineageDetailPanel({
 }) {
 	if (data.kind === "resource-type") {
 		return <ResourceDetailContent data={data} onClose={onClose} />;
+	}
+
+	if (data.kind === "terminology") {
+		return <TerminologyDetailContent data={data} onClose={onClose} />;
 	}
 
 	if (data.kind === "view-definition") {

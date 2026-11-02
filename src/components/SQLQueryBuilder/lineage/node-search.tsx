@@ -12,6 +12,7 @@ function nodeLabel(data: LineageNodeData): string {
 function nodeKind(data: LineageNodeData): string {
 	if (data.kind === "resource-type") return "Resource";
 	if (data.kind === "view-definition") return "VIEW";
+	if (data.kind === "terminology") return data.resourceType;
 	return data.libraryKind === "sql-view" ? "SQLView" : "SQLQuery";
 }
 

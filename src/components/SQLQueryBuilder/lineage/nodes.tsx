@@ -1,6 +1,14 @@
 import * as HSComp from "@health-samurai/react-components";
 import { Handle, Position } from "@xyflow/react";
-import { Database, FileCode2, Layers, PlayIcon, Table } from "lucide-react";
+import {
+	ArrowLeftRight,
+	Database,
+	FileCode2,
+	Layers,
+	ListChecks,
+	PlayIcon,
+	Table,
+} from "lucide-react";
 import * as React from "react";
 import {
 	BaseNode,
@@ -16,6 +24,7 @@ import type {
 	ParamSpec,
 	ResourceTypeNodeData,
 	SQLQueryNodeData,
+	TerminologyNodeData,
 	ViewDefinitionNodeData,
 	ViewSelect,
 } from "./types";
@@ -355,8 +364,46 @@ export function SQLQueryNode({ id, data, selected }: AnyNodeProps) {
 	);
 }
 
+export function TerminologyNode({ data, selected }: Omit<AnyNodeProps, "id">) {
+	const d = data as unknown as TerminologyNodeData;
+	const Icon = d.resourceType === "ValueSet" ? ListChecks : ArrowLeftRight;
+	return (
+		<BaseNode selected={selected}>
+			<BaseNodeHeader>
+				<div className="flex items-center gap-2">
+					<Icon size={14} className="text-text-secondary shrink-0" />
+					<span className="font-mono text-xs text-text-secondary uppercase">
+						{d.resourceType}
+					</span>
+				</div>
+				<div className="font-mono text-sm font-medium text-text-primary truncate">
+					{d.title || d.name || d.id}
+				</div>
+			</BaseNodeHeader>
+			<BaseNodeBody>
+				{d.columns.map((c) => (
+					<BaseNodeRow key={c.name}>
+						<span className="font-mono text-xs text-text-primary truncate">
+							{c.name}
+						</span>
+						<span className="font-mono text-xs text-text-tertiary text-right truncate">
+							{c.type ?? ""}
+						</span>
+					</BaseNodeRow>
+				))}
+			</BaseNodeBody>
+			<Handle
+				type="source"
+				position={Position.Right}
+				className="w-2 h-2 right-0!"
+			/>
+		</BaseNode>
+	);
+}
+
 export const nodeTypes = {
 	"resource-type": ResourceTypeNode,
 	"view-definition": ViewDefinitionNode,
 	"sql-query": SQLQueryNode,
+	terminology: TerminologyNode,
 };

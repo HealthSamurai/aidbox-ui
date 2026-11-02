@@ -1,6 +1,10 @@
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import {
+	fetchTerminologyByCanonical,
+	TERMINOLOGY_COLUMNS,
+} from "./terminology";
 import type { SQLLibrary } from "./types";
 
 export type SchemaColumn = {
@@ -112,6 +116,16 @@ function collectDependsOn(library: SQLLibrary): DependsOnEntry[] {
 	return out;
 }
 
+async function resolveColumns(
+	client: AidboxClientR5,
+	canonical: string,
+): Promise<SchemaColumn[] | null> {
+	const vd = await fetchViewDefinition(client, canonical);
+	if (vd) return flattenColumns(vd.select);
+	const terminology = await fetchTerminologyByCanonical(client, canonical);
+	return terminology ? TERMINOLOGY_COLUMNS[terminology.resourceType] : null;
+}
+
 async function resolveSchemasImpl(
 	client: AidboxClientR5,
 	library: SQLLibrary,
@@ -119,12 +133,12 @@ async function resolveSchemasImpl(
 	const deps = collectDependsOn(library);
 	const resolved = await Promise.all(
 		deps.map(async (d) => {
-			const vd = await fetchViewDefinition(client, d.canonical);
-			if (!vd) return null;
+			const columns = await resolveColumns(client, d.canonical);
+			if (!columns) return null;
 			return {
 				label: d.label,
 				canonical: d.canonical,
-				columns: flattenColumns(vd.select),
+				columns,
 			} satisfies DependsOnSchema;
 		}),
 	);
