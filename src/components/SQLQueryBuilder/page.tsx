@@ -74,6 +74,9 @@ export function SQLQueryProvider({
 		() => new Set(),
 	);
 	const triggerRunRef = React.useRef<() => void>(() => {});
+	const runPageRef = React.useRef<(page: number, pageSize: number) => void>(
+		() => {},
+	);
 	const paramStorageKeyRef = React.useRef(paramStorageKey(library));
 	paramStorageKeyRef.current = paramStorageKey(library);
 	const [paramValues, setParamValues] = React.useState<Record<string, string>>(
@@ -135,6 +138,7 @@ export function SQLQueryProvider({
 				missingParams,
 				setMissingParams,
 				triggerRunRef,
+				runPageRef,
 				onCreated,
 				onDeleted,
 			}}

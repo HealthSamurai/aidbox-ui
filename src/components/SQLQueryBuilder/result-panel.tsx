@@ -34,15 +34,7 @@ function formatCellValue(value: unknown): string {
 	return String(value);
 }
 
-function ResultBody({
-	page,
-	pageSize,
-	viewMode,
-}: {
-	page: number;
-	pageSize: number;
-	viewMode: ViewMode;
-}) {
+function ResultBody({ viewMode }: { viewMode: ViewMode }) {
 	const { runResult, runError, isRunning } = useSQLQueryContext();
 
 	if (isRunning) {
@@ -92,16 +84,15 @@ function ResultBody({
 		);
 	}
 
-	const start = (page - 1) * pageSize;
-	const visibleRows = runResult.rows.slice(start, start + pageSize);
+	const rows = runResult.rows;
 
 	if (viewMode === "list") {
 		return (
 			<div className="h-full overflow-auto divide-y divide-border-secondary">
-				{visibleRows.map((row, i) => (
+				{rows.map((row, i) => (
 					<div
 						// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
-						key={start + i}
+						key={i}
 						className="grid gap-x-4 px-6 py-3"
 						style={{ gridTemplateColumns: "max-content 1fr" }}
 					>
@@ -132,9 +123,9 @@ function ResultBody({
 				</HSComp.TableRow>
 			</HSComp.TableHeader>
 			<HSComp.TableBody>
-				{visibleRows.map((row, i) => (
+				{rows.map((row, i) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: row order is stable
-					<HSComp.TableRow key={start + i} zebra index={start + i}>
+					<HSComp.TableRow key={i} zebra index={i}>
 						{runResult.columns.map((col, j) => (
 							<HSComp.TableCell key={col}>
 								{formatCellValue(row[j])}
@@ -157,7 +148,7 @@ export function ResultPanel({
 	onToggleMaximize: () => void;
 	onToggleCollapse: () => void;
 }) {
-	const { runResult, runDuration } = useSQLQueryContext();
+	const { runResult, runDuration, runPageRef } = useSQLQueryContext();
 	const [page, setPage] = React.useState(1);
 	const [pageSize, setPageSize] = useLocalStorage<number>({
 		key: PAGE_SIZE_STORAGE_KEY,
@@ -170,16 +161,44 @@ export function ResultPanel({
 		getInitialValueInEffect: false,
 		defaultValue: "table",
 	});
-	const total = runResult?.rows.length ?? 0;
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+	// Reset to page 1 when a completely new result arrives (RUN button).
+	const prevResultRef = React.useRef(runResult);
 	React.useEffect(() => {
-		setPage(1);
-	}, []);
+		if (runResult !== prevResultRef.current) {
+			prevResultRef.current = runResult;
+		}
+	}, [runResult]);
 
-	React.useEffect(() => {
-		if (page > totalPages) setPage(totalPages);
-	}, [page, totalPages]);
+	// Server-side pagination without a server-reported total: if the current
+	// page is full (rows === pageSize), assume there is at least one more page.
+	const rowCount = runResult?.rows.length ?? 0;
+	const hasMore = rowCount === pageSize;
+	// Synthesise a total that lets DataTableFooter show the right page count.
+	// When the page is full we pretend there's one more page worth of rows.
+	const total =
+		rowCount === 0 && page === 1
+			? 0
+			: hasMore
+				? page * pageSize + 1
+				: (page - 1) * pageSize + rowCount;
+
+	const handlePageChange = React.useCallback(
+		(newPage: number) => {
+			setPage(newPage);
+			runPageRef.current(newPage, pageSize);
+		},
+		[pageSize, runPageRef],
+	);
+
+	const handlePageSizeChange = React.useCallback(
+		(size: number) => {
+			setPageSize(size);
+			setPage(1);
+			runPageRef.current(1, size);
+		},
+		[setPageSize, runPageRef],
+	);
 
 	return (
 		<HSComp.Tabs
@@ -253,7 +272,7 @@ export function ResultPanel({
 					className="flex-1 min-h-0 flex flex-col"
 				>
 					<div className="flex-1 min-h-0">
-						<ResultBody page={page} pageSize={pageSize} viewMode={viewMode} />
+						<ResultBody viewMode={viewMode} />
 					</div>
 					{total > 0 && viewMode !== "chart" && (
 						<DataTableFooter
@@ -261,11 +280,8 @@ export function ResultPanel({
 							currentPage={page}
 							pageSize={pageSize}
 							selectedCount={0}
-							onPageChange={setPage}
-							onPageSizeChange={(size) => {
-								setPageSize(size);
-								setPage(1);
-							}}
+							onPageChange={handlePageChange}
+							onPageSizeChange={handlePageSizeChange}
 						/>
 					)}
 				</HSComp.TabsContent>
