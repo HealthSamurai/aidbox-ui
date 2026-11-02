@@ -1,10 +1,10 @@
-import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
 import {
-	fetchTerminologyByCanonical,
-	TERMINOLOGY_COLUMNS,
-} from "./terminology";
+	type CanonicalResource,
+	resolveCanonicals,
+} from "./canonical-resolver";
+import { isTerminologyKind, TERMINOLOGY_COLUMNS } from "./terminology";
 import type { SQLLibrary } from "./types";
 
 export type SchemaColumn = {
@@ -33,15 +33,6 @@ type RawSelect = {
 	unionAll?: RawSelect[];
 };
 
-type RawViewDefinition = {
-	resourceType: "ViewDefinition";
-	id?: string;
-	url?: string;
-	name?: string;
-	title?: string;
-	select?: RawSelect[];
-};
-
 function flattenColumns(selects: RawSelect[] | undefined): SchemaColumn[] {
 	const out: SchemaColumn[] = [];
 	const seen = new Set<string>();
@@ -64,46 +55,6 @@ function flattenColumns(selects: RawSelect[] | undefined): SchemaColumn[] {
 	return out;
 }
 
-function splitCanonical(canonical: string): {
-	url: string;
-	version: string | undefined;
-} {
-	const idx = canonical.indexOf("|");
-	if (idx < 0) return { url: canonical, version: undefined };
-	return { url: canonical.slice(0, idx), version: canonical.slice(idx + 1) };
-}
-
-async function fetchViewDefinition(
-	client: AidboxClientR5,
-	canonical: string,
-): Promise<RawViewDefinition | null> {
-	const relative = canonical.match(/^ViewDefinition\/([^/?#]+)$/);
-	if (relative) {
-		const result = await client.request<RawViewDefinition>({
-			method: "GET",
-			url: `/fhir/ViewDefinition/${relative[1]}`,
-		});
-		if (result.isErr()) return null;
-		return result.value.resource;
-	}
-	const { url, version } = splitCanonical(canonical);
-	const params: Array<[string, string]> = [
-		["url", url],
-		["_count", "1"],
-	];
-	if (version) params.push(["version", version]);
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: "/fhir/ViewDefinition",
-		params,
-	});
-	if (result.isErr()) return null;
-	const entry = result.value.resource.entry?.[0];
-	const resource = entry?.resource as RawViewDefinition | undefined;
-	if (!resource || resource.resourceType !== "ViewDefinition") return null;
-	return resource;
-}
-
 type DependsOnEntry = { label: string; canonical: string };
 
 function collectDependsOn(library: SQLLibrary): DependsOnEntry[] {
@@ -116,14 +67,14 @@ function collectDependsOn(library: SQLLibrary): DependsOnEntry[] {
 	return out;
 }
 
-async function resolveColumns(
-	client: AidboxClientR5,
-	canonical: string,
-): Promise<SchemaColumn[] | null> {
-	const vd = await fetchViewDefinition(client, canonical);
-	if (vd) return flattenColumns(vd.select);
-	const terminology = await fetchTerminologyByCanonical(client, canonical);
-	return terminology ? TERMINOLOGY_COLUMNS[terminology.resourceType] : null;
+function columnsOf(r: CanonicalResource): SchemaColumn[] | null {
+	if (r.resourceType === "ViewDefinition") {
+		return flattenColumns(r.select as RawSelect[] | undefined);
+	}
+	if (isTerminologyKind(r.resourceType)) {
+		return TERMINOLOGY_COLUMNS[r.resourceType];
+	}
+	return null;
 }
 
 async function resolveSchemasImpl(
@@ -131,18 +82,16 @@ async function resolveSchemasImpl(
 	library: SQLLibrary,
 ): Promise<DependsOnSchema[]> {
 	const deps = collectDependsOn(library);
-	const resolved = await Promise.all(
-		deps.map(async (d) => {
-			const columns = await resolveColumns(client, d.canonical);
-			if (!columns) return null;
-			return {
-				label: d.label,
-				canonical: d.canonical,
-				columns,
-			} satisfies DependsOnSchema;
-		}),
+	const resolved = await resolveCanonicals(
+		client,
+		deps.map((d) => d.canonical),
 	);
-	return resolved.filter((s): s is DependsOnSchema => s !== null);
+	return deps.flatMap((d) => {
+		const r = resolved.get(d.canonical);
+		const columns = r ? columnsOf(r) : null;
+		if (!columns) return [];
+		return [{ label: d.label, canonical: d.canonical, columns }];
+	});
 }
 
 const EMPTY_SCHEMAS: DependsOnSchema[] = [];

@@ -13,15 +13,13 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { useAidboxClient } from "../../AidboxClient";
-import {
-	fetchTerminologyByCanonical,
-	isTerminologyKind,
-	type TerminologyKind,
-} from "./terminology";
+import { type CanonicalResource, resolveCanonical } from "./canonical-resolver";
+import { isTerminologyKind, type TerminologyKind } from "./terminology";
 import {
 	SQL_QUERY_TYPE_CODE,
 	SQL_QUERY_TYPE_SYSTEM,
 	SQL_VIEW_TYPE_CODE,
+	sqlLibraryKind,
 } from "./types";
 
 export type CandidateKind =
@@ -250,26 +248,41 @@ function useCandidates(
 	});
 }
 
-// ValueSets and ConceptMaps are listed a page at a time, so a selected one is
-// looked up on its own once the other kinds, listed in full, do not have it.
-function useSelectedKind(
+function candidateKindOf(r: CanonicalResource): CandidateKind {
+	if (r.resourceType !== "Library") return r.resourceType;
+	const lib = r as Parameters<typeof sqlLibraryKind>[0];
+	return sqlLibraryKind(lib) === "sql-view" ? "SQLView" : "SQLQuery";
+}
+
+// ValueSets and ConceptMaps are listed a page at a time, so a selected one may
+// be missing from the listings and is resolved by its canonical instead. The
+// lookups of all pickers on the page are batched into a single request.
+function useSelectedCanonical(
 	value: string | undefined,
-	listedKind: CandidateKind | undefined,
-	listed: boolean,
+	listedCandidate: CandidateOption | undefined,
 	kinds: CandidateKind[],
-): CandidateKind | undefined {
+): { kind?: CandidateKind; label?: string } {
 	const client = useAidboxClient();
-	const lookup =
-		!!value && listed && !listedKind && kinds.some(isTerminologyKind);
+	const lookup = !!value && !listedCandidate && kinds.some(isTerminologyKind);
 	const { data } = useQuery({
-		queryKey: ["sqlquery-depends-on-terminology-kind", value],
+		queryKey: ["sqlquery-depends-on-canonical-resolve", value],
 		enabled: lookup,
-		queryFn: async () =>
-			(await fetchTerminologyByCanonical(client, value ?? ""))?.resourceType ??
-			null,
+		queryFn: async () => {
+			const r = await resolveCanonical(client, value ?? "");
+			if (!r) return null;
+			return {
+				kind: candidateKindOf(r),
+				label: r.title || r.name || undefined,
+			};
+		},
 	});
-	if (listedKind) return listedKind;
-	return lookup ? (data ?? undefined) : undefined;
+	if (listedCandidate) {
+		return {
+			kind: listedCandidate.kind,
+			label: listedCandidate.title || listedCandidate.name,
+		};
+	}
+	return lookup ? { kind: data?.kind, label: data?.label } : {};
 }
 
 function CandidateItem({
@@ -352,11 +365,7 @@ export function ResourcePicker({
 	const [search, setSearch] = React.useState("");
 	const { data: candidates = [] } = useCandidates(search, open, kinds);
 	const listedKinds = kinds.filter((k) => !isTerminologyKind(k));
-	const { data: allCandidates = [], isFetched: listed } = useCandidates(
-		"",
-		true,
-		listedKinds,
-	);
+	const { data: allCandidates = [] } = useCandidates("", true, listedKinds);
 	const commandRef = React.useRef<HTMLDivElement>(null);
 	const lookupByUrl = React.useMemo(() => {
 		const map = new Map<string, CandidateOption>();
@@ -365,10 +374,10 @@ export function ResourcePicker({
 		return (url: string) => map.get(url);
 	}, [allCandidates, candidates]);
 
-	const selectedKind = useSelectedKind(
+	const listedCandidate = value ? lookupByUrl(value) : undefined;
+	const { kind: selectedKind, label: selectedLabel } = useSelectedCanonical(
 		value,
-		value ? lookupByUrl(value)?.kind : undefined,
-		listed || listedKinds.length === 0,
+		listedCandidate,
 		kinds,
 	);
 	const selectedMeta = selectedKind ? KIND_META[selectedKind] : undefined;
@@ -403,8 +412,13 @@ export function ResourcePicker({
 							</span>
 						</span>
 					)}
+					{selectedLabel && (
+						<span className="shrink-0 pl-2 text-left font-sans text-xs font-medium text-text-primary">
+							{selectedLabel}
+						</span>
+					)}
 					<span
-						className={`flex-1 min-w-0 pl-2 text-left truncate ${value ? "" : "text-text-tertiary"}`}
+						className={`flex-1 min-w-0 pl-2 text-left truncate ${value ? "text-text-tertiary" : "text-text-tertiary"}`}
 					>
 						{value || placeholder || "Select view, query or terminology…"}
 					</span>

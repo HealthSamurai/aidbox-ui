@@ -622,7 +622,7 @@ export function PropertiesTree() {
 								className="font-mono text-xs"
 							/>
 						</div>
-						<div className="flex-1 min-w-0 max-w-[500px]">
+						<div className="flex-1 min-w-0 max-w-[640px]">
 							<ResourcePicker
 								value={entry.resource}
 								onChange={(ref) => updateDependsOnResource(idx, ref)}

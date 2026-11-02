@@ -1,11 +1,15 @@
-import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import type { Edge, Node } from "@xyflow/react";
 import { type AidboxClientR5, useAidboxClient } from "../../../AidboxClient";
 import {
-	fetchTerminologyByCanonical,
+	type CanonicalKind,
+	type CanonicalResource,
+	resolveCanonicals,
+} from "../canonical-resolver";
+import {
+	isTerminologyKind,
 	TERMINOLOGY_COLUMNS,
-	type TerminologyResource,
+	type TerminologyKind,
 } from "../terminology";
 import { type SQLLibrary, sqlLibraryKind } from "../types";
 import type {
@@ -60,65 +64,44 @@ type ResolvedNode =
 type ResolvedDependency =
 	| { type: "library"; resource: RawLibrary }
 	| { type: "view-definition"; resource: RawViewDefinition }
-	| { type: "terminology"; resource: TerminologyResource };
+	| { type: "terminology"; kind: TerminologyKind; resource: CanonicalResource };
 
 export type LineageGraph = {
 	nodes: Node<LineageNodeData>[];
 	edges: Edge[];
 };
 
-function splitCanonical(canonical: string): { url: string; version?: string } {
-	const idx = canonical.indexOf("|");
-	if (idx < 0) return { url: canonical };
-	return { url: canonical.slice(0, idx), version: canonical.slice(idx + 1) };
-}
+// ValueSets and ConceptMaps are hidden from the lineage for now: they are
+// neither looked up nor drawn. Add them here to bring them back.
+const LINEAGE_KINDS: CanonicalKind[] = ["Library", "ViewDefinition"];
 
-async function fetchByCanonical<T>(
+/** Resolve one level of the dependency graph in a single request. */
+async function resolveAll(
 	client: AidboxClientR5,
-	resourceType: "Library" | "ViewDefinition",
-	canonical: string,
-): Promise<T | null> {
-	const relative = canonical.match(/^(Library|ViewDefinition)\/([^/?#]+)$/);
-	if (relative && relative[1] === resourceType) {
-		const result = await client.request<T>({
-			method: "GET",
-			url: `/fhir/${resourceType}/${relative[2]}`,
-		});
-		if (result.isErr()) return null;
-		return result.value.resource;
+	canonicals: string[],
+): Promise<Map<string, ResolvedDependency>> {
+	const resolved = await resolveCanonicals(client, canonicals, LINEAGE_KINDS);
+	const result = new Map<string, ResolvedDependency>();
+	for (const [canonical, r] of resolved) {
+		if (r.resourceType === "Library") {
+			result.set(canonical, {
+				type: "library",
+				resource: r as unknown as RawLibrary,
+			});
+		} else if (r.resourceType === "ViewDefinition") {
+			result.set(canonical, {
+				type: "view-definition",
+				resource: r as unknown as RawViewDefinition,
+			});
+		} else if (isTerminologyKind(r.resourceType)) {
+			result.set(canonical, {
+				type: "terminology",
+				kind: r.resourceType,
+				resource: r,
+			});
+		}
 	}
-	const { url, version } = splitCanonical(canonical);
-	const params: Array<[string, string]> = [
-		["url", url],
-		["_count", "1"],
-	];
-	if (version) params.push(["version", version]);
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: `/fhir/${resourceType}`,
-		params,
-	});
-	if (result.isErr()) return null;
-	const entry = result.value.resource.entry?.[0];
-	const r = entry?.resource as T | undefined;
-	if (!r) return null;
-	return r;
-}
-
-async function resolveAny(
-	client: AidboxClientR5,
-	canonical: string,
-): Promise<ResolvedDependency | null> {
-	const [lib, vd] = await Promise.all([
-		fetchByCanonical<RawLibrary>(client, "Library", canonical),
-		fetchByCanonical<RawViewDefinition>(client, "ViewDefinition", canonical),
-	]);
-	if (lib?.resourceType === "Library")
-		return { type: "library", resource: lib };
-	if (vd?.resourceType === "ViewDefinition")
-		return { type: "view-definition", resource: vd };
-	const terminology = await fetchTerminologyByCanonical(client, canonical);
-	return terminology ? { type: "terminology", resource: terminology } : null;
+	return result;
 }
 
 function dependsOnCanonicals(lib: RawLibrary): string[] {
@@ -265,23 +248,23 @@ function viewDefinitionNode(
 }
 
 function terminologyNode(
-	r: TerminologyResource,
+	kind: TerminologyKind,
+	r: CanonicalResource,
 	canonical: string,
 ): ResolvedNode {
-	const id = `terminology:${r.resourceType}/${r.id}`;
 	return {
 		kind: "terminology",
-		id,
+		id: `terminology:${kind}/${r.id}`,
 		data: {
 			kind: "terminology",
-			resourceType: r.resourceType,
+			resourceType: kind,
 			id: r.id,
 			canonical,
 			name: r.name ?? "",
 			title: r.title,
 			description: r.description,
 			version: r.version,
-			columns: TERMINOLOGY_COLUMNS[r.resourceType],
+			columns: TERMINOLOGY_COLUMNS[kind],
 		},
 	};
 }
@@ -337,7 +320,7 @@ function processResolvedItem(
 			? libraryNode(resolved.resource, item.canonical)
 			: resolved.type === "view-definition"
 				? viewDefinitionNode(resolved.resource, item.canonical)
-				: terminologyNode(resolved.resource, item.canonical);
+				: terminologyNode(resolved.kind, resolved.resource, item.canonical);
 
 	pushEdge(state, node.id, item.parentId);
 	if (state.visited.has(node.id)) return;
@@ -377,16 +360,15 @@ async function buildGraph(
 	}));
 
 	while (frontier.length > 0) {
-		const fetched = await Promise.all(
-			frontier.map(async (item) => ({
-				item,
-				resolved: await resolveAny(client, item.canonical),
-			})),
-		);
+		const uniqueCanonicals = [
+			...new Set(frontier.map((item) => item.canonical)),
+		];
+		const resolved = await resolveAll(client, uniqueCanonicals);
 		const next: QItem[] = [];
-		for (const { item, resolved } of fetched) {
-			if (!resolved) continue;
-			processResolvedItem(state, item, resolved, next);
+		for (const item of frontier) {
+			const dep = resolved.get(item.canonical);
+			if (!dep) continue;
+			processResolvedItem(state, item, dep, next);
 		}
 		frontier = next;
 	}
@@ -495,6 +477,34 @@ function estimateNodeHeight(node: ResolvedNode): number {
 	return (
 		HEADER_H + (paramCount > 0 ? paramCount * ROW_H : EMPTY_BODY_H) + FOOTER_H
 	);
+}
+
+// Classify SQL nodes: "simple" ones depend only on view-definitions (no SQL
+// dependencies), while "complex" ones depend on at least one other SQL node.
+function classifySimpleSql(
+	sqlIds: string[],
+	edges: Edge[],
+	kindById: Map<string, LineageNodeData["kind"]>,
+): { simple: string[]; complex: string[] } {
+	// Edge direction: source (dependency) → target (consumer).
+	// If a SQL node is a target and the source is also sql-query, the target
+	// depends on another SQL node → complex.
+	const hasSqlDep = new Set<string>();
+	for (const e of edges) {
+		if (
+			kindById.get(e.target) === "sql-query" &&
+			kindById.get(e.source) === "sql-query"
+		) {
+			hasSqlDep.add(e.target);
+		}
+	}
+	const simple: string[] = [];
+	const complex: string[] = [];
+	for (const id of sqlIds) {
+		if (hasSqlDep.has(id)) complex.push(id);
+		else simple.push(id);
+	}
+	return { simple, complex };
 }
 
 // Reduce the SQL sub-graph to a spanning tree: every SQL node keeps a single
@@ -684,9 +694,11 @@ function nodePlacement(
 	id: string,
 	kind: LineageNodeData["kind"],
 	depthById: Map<string, number>,
-	maxSqlDepth: number,
+	maxComplexDepth: number,
+	simpleSqlSet: Set<string>,
 	columnYById: {
-		sql: Map<string, number>;
+		complexSql: Map<string, number>;
+		simpleSql: Map<string, number>;
 		view: Map<string, number>;
 		resource: Map<string, number>;
 	},
@@ -697,11 +709,18 @@ function nodePlacement(
 	if (kind === "view-definition" || kind === "terminology") {
 		return { x: VIEW_COL_X, centerY: columnYById.view.get(id) ?? 0 };
 	}
-	// SQL nodes: rank increases towards the root, so the root sits furthest right.
-	const rank = maxSqlDepth - (depthById.get(id) ?? 0);
+	// Simple SQL views sit in a fixed column right next to ViewDefinitions.
+	if (simpleSqlSet.has(id)) {
+		return {
+			x: SQL_COL_START,
+			centerY: columnYById.simpleSql.get(id) ?? 0,
+		};
+	}
+	// Complex SQL nodes: rank increases towards the root, root sits furthest right.
+	const rank = maxComplexDepth - (depthById.get(id) ?? 0);
 	return {
-		x: SQL_COL_START + rank * COL_WIDTH,
-		centerY: columnYById.sql.get(id) ?? 0,
+		x: SQL_COL_START + COL_WIDTH + rank * COL_WIDTH,
+		centerY: columnYById.complexSql.get(id) ?? 0,
 	};
 }
 
@@ -723,33 +742,67 @@ function layoutGraph(
 		else viewIds.push(id);
 	}
 
-	// SQL nodes form a tidy tree growing rightwards, root furthest right.
+	// Split SQL nodes: "simple" depend only on ViewDefinitions, "complex" depend
+	// on at least one other SQL node.
+	const { simple: simpleSqlIds, complex: complexSqlIds } = classifySimpleSql(
+		sqlIds,
+		edges,
+		kindById,
+	);
+	const simpleSqlSet = new Set(simpleSqlIds);
+
+	// Complex SQL nodes form a tidy tree growing rightwards, root furthest right.
 	const sqlParentOf = buildSqlParentOf(edges, depthById, kindById);
 	const sqlChildren = childrenFromParents(sqlParentOf);
 	const cache = new Map<string, number>();
-	const sqlCenterY = new Map<string, number>();
+	const complexSqlCenterY = new Map<string, number>();
 	let sqlTop = 0;
-	for (const id of sqlIds) {
+	for (const id of complexSqlIds) {
 		if (sqlParentOf.has(id)) continue;
-		placeSubtree(id, sqlTop, sqlChildren, heightById, cache, sqlCenterY);
+		placeSubtree(id, sqlTop, sqlChildren, heightById, cache, complexSqlCenterY);
 		sqlTop += subtreeHeight(id, sqlChildren, heightById, cache) + SUBTREE_GAP;
 	}
-	centerAroundZero(sqlCenterY, sqlIds);
+	centerAroundZero(complexSqlCenterY, complexSqlIds);
 
-	let maxSqlDepth = 0;
-	for (const id of sqlIds) {
-		maxSqlDepth = Math.max(maxSqlDepth, depthById.get(id) ?? 0);
+	let maxComplexDepth = 0;
+	for (const id of complexSqlIds) {
+		maxComplexDepth = Math.max(maxComplexDepth, depthById.get(id) ?? 0);
 	}
+
+	// Merge complex SQL Y positions for consumer-based ordering of VDs.
+	const allSqlCenterY = new Map(complexSqlCenterY);
 
 	// Views and resources: single vertical columns, ordered to follow the nodes
 	// that consume them so the connecting edges stay readable.
 	const outgoing = buildOutgoing(edges);
+
+	// Build incoming map (dependency → consumer is the edge direction, so
+	// incoming[target] = sources that feed into target).
+	const incoming = new Map<string, string[]>();
+	for (const e of edges) {
+		const list = incoming.get(e.target) ?? [];
+		list.push(e.source);
+		incoming.set(e.target, list);
+	}
+
 	const orderedViews = [...viewIds].sort(
 		(a, b) =>
-			averageConsumerY(a, outgoing, sqlCenterY) -
-			averageConsumerY(b, outgoing, sqlCenterY),
+			averageConsumerY(a, outgoing, allSqlCenterY) -
+			averageConsumerY(b, outgoing, allSqlCenterY),
 	);
 	const viewCenterY = stackColumn(orderedViews, heightById, COLUMN_V_GAP);
+
+	// Simple SQL views sit right next to their ViewDefinition dependencies.
+	// Use the incoming edges (VD → simpleSql) to position each simple SQL
+	// opposite the VDs it depends on.
+	const simpleSqlCenterY = placeAgainstConsumers(
+		simpleSqlIds,
+		incoming,
+		viewCenterY,
+		heightById,
+		COLUMN_V_GAP,
+	);
+
 	// Draw each resource table opposite the view definition(s) that reference it.
 	const resourceCenterY = placeAgainstConsumers(
 		resourceIds,
@@ -760,7 +813,8 @@ function layoutGraph(
 	);
 
 	const columnYById = {
-		sql: sqlCenterY,
+		complexSql: complexSqlCenterY,
+		simpleSql: simpleSqlCenterY,
 		view: viewCenterY,
 		resource: resourceCenterY,
 	};
@@ -771,7 +825,8 @@ function layoutGraph(
 			id,
 			resolved.kind,
 			depthById,
-			maxSqlDepth,
+			maxComplexDepth,
+			simpleSqlSet,
 			columnYById,
 		);
 		nodes.push({
@@ -784,6 +839,10 @@ function layoutGraph(
 
 	return { nodes, edges };
 }
+
+// Stable while loading: a fresh object per render would re-trigger the
+// LineageTab effect that copies the graph into React Flow state.
+const EMPTY_GRAPH: LineageGraph = { nodes: [], edges: [] };
 
 export function useLineageGraph(library: SQLLibrary): {
 	graph: LineageGraph;
@@ -802,7 +861,7 @@ export function useLineageGraph(library: SQLLibrary): {
 		placeholderData: (prev) => prev,
 	});
 	return {
-		graph: data ?? { nodes: [], edges: [] },
+		graph: data ?? EMPTY_GRAPH,
 		isLoading,
 	};
 }

@@ -1,5 +1,3 @@
-import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
-import type { AidboxClientR5 } from "../../AidboxClient";
 import type { SchemaColumn } from "./resolve-schemas";
 
 export type TerminologyKind = "ValueSet" | "ConceptMap";
@@ -60,52 +58,3 @@ export const TERMINOLOGY_COLUMNS: Record<TerminologyKind, SchemaColumn[]> = {
 		},
 	],
 };
-
-export type TerminologyResource = {
-	resourceType: TerminologyKind;
-	id: string;
-	url?: string;
-	version?: string;
-	name?: string;
-	title?: string;
-	description?: string;
-	status?: string;
-};
-
-const ELEMENTS = "id,url,version,name,title,description,status";
-
-async function fetchOne(
-	client: AidboxClientR5,
-	kind: TerminologyKind,
-	canonical: string,
-): Promise<TerminologyResource | null> {
-	const idx = canonical.indexOf("|");
-	const url = idx < 0 ? canonical : canonical.slice(0, idx);
-	const params: Array<[string, string]> = [
-		["url", url],
-		["_count", "1"],
-		["_elements", ELEMENTS],
-	];
-	if (idx >= 0) params.push(["version", canonical.slice(idx + 1)]);
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: `/fhir/${kind}`,
-		params,
-	});
-	if (result.isErr()) return null;
-	const r = result.value.resource.entry?.[0]?.resource as
-		| TerminologyResource
-		| undefined;
-	return r?.resourceType === kind ? r : null;
-}
-
-/** The ValueSet or ConceptMap `canonical` (`url` or `url|version`) resolves to. */
-export async function fetchTerminologyByCanonical(
-	client: AidboxClientR5,
-	canonical: string,
-): Promise<TerminologyResource | null> {
-	const [vs, cm] = await Promise.all(
-		TERMINOLOGY_KINDS.map((k) => fetchOne(client, k, canonical)),
-	);
-	return vs ?? cm ?? null;
-}
