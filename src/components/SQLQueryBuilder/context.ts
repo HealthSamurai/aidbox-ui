@@ -27,6 +27,8 @@ export type SQLQueryContextValue = {
 	missingParams: Set<string>;
 	setMissingParams: (names: Set<string>) => void;
 	triggerRunRef: React.MutableRefObject<() => void>;
+	/** Re-run the last query with server-side pagination. */
+	runPageRef: React.MutableRefObject<(page: number, pageSize: number) => void>;
 	onCreated?: (id: string) => void;
 	onDeleted?: () => void;
 };

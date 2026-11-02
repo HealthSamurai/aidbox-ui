@@ -138,6 +138,7 @@ export function SQLQueryBuilderContent() {
 		persistParamValues,
 		setMissingParams,
 		triggerRunRef,
+		runPageRef,
 		onCreated,
 	} = useSQLQueryContext();
 
@@ -216,13 +217,18 @@ export function SQLQueryBuilderContent() {
 	});
 
 	const runMutation = useMutation({
-		mutationFn: async () => {
+		mutationFn: async (pagination?: { limit: number; page: number }) => {
 			setRunError(null);
 			setRunResult(null);
 			setRunDuration(null);
 			setIsRunning(true);
 			const startedAt = performance.now();
-			const body = buildRunPayload(library, inheritedTypes, paramValues);
+			const body = buildRunPayload(
+				library,
+				inheritedTypes,
+				paramValues,
+				pagination,
+			);
 			const result = await client.request<FhirParametersResponse>({
 				method: "POST",
 				url: "/fhir/$sqlquery-run",
@@ -285,9 +291,20 @@ export function SQLQueryBuilderContent() {
 	const runMutationRef = React.useRef(runMutation);
 	runMutationRef.current = runMutation;
 
-	const triggerRun = React.useCallback(() => {
-		const m = runMutationRef.current;
-		if (m.isPending) return;
+	const readPageSize = React.useCallback((): number => {
+		try {
+			const raw = localStorage.getItem("sqlquery-builder:result-page-size");
+			if (raw) {
+				const n = JSON.parse(raw);
+				if (typeof n === "number" && n > 0) return n;
+			}
+		} catch {
+			// ignore
+		}
+		return 30;
+	}, []);
+
+	const validateParams = React.useCallback((): boolean => {
 		const missing = missingParamNames(library, inheritedTypes, paramValues);
 		if (missing.length > 0) {
 			setMissingParams(new Set(missing));
@@ -295,22 +312,34 @@ export function SQLQueryBuilderContent() {
 				"Missing parameters",
 				`Please provide values for: ${missing.join(", ")}`,
 			);
-			return;
+			return false;
 		}
 		setMissingParams(new Set());
+		return true;
+	}, [library, inheritedTypes, paramValues, setMissingParams]);
+
+	const triggerRun = React.useCallback(() => {
+		const m = runMutationRef.current;
+		if (m.isPending) return;
+		if (!validateParams()) return;
 		handleExpandResult();
-		m.mutate();
-	}, [
-		library,
-		inheritedTypes,
-		paramValues,
-		setMissingParams,
-		handleExpandResult,
-	]);
+		const pageSize = readPageSize();
+		m.mutate({ limit: pageSize, page: 1 });
+	}, [validateParams, handleExpandResult, readPageSize]);
+
+	const runPage = React.useCallback((page: number, pageSize: number) => {
+		const m = runMutationRef.current;
+		if (m.isPending) return;
+		m.mutate({ limit: pageSize, page });
+	}, []);
 
 	React.useEffect(() => {
 		triggerRunRef.current = triggerRun;
 	}, [triggerRun, triggerRunRef]);
+
+	React.useEffect(() => {
+		runPageRef.current = runPage;
+	}, [runPage, runPageRef]);
 
 	React.useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {

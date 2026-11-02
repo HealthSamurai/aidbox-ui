@@ -103,6 +103,7 @@ export function buildRunPayload(
 	library: SQLLibrary,
 	inheritedTypes: Map<string, string>,
 	paramValues: Record<string, string>,
+	pagination?: { limit: number; page: number },
 ): { resourceType: "Parameters"; parameter: Record<string, unknown>[] } {
 	const payload = ensureSqlLibraryShape(library);
 	const valueEntries = buildAllParamEntries(
@@ -114,6 +115,12 @@ export function buildRunPayload(
 		{ name: "_format", valueCode: "fhir" },
 		{ name: "queryResource", resource: payload },
 	];
+	if (pagination) {
+		topLevelParameters.push(
+			{ name: "_limit", valueInteger: pagination.limit },
+			{ name: "_page", valueInteger: pagination.page },
+		);
+	}
 	if (valueEntries.length > 0) {
 		topLevelParameters.push({
 			name: "parameters",

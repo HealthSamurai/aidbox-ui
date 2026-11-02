@@ -622,14 +622,20 @@ export function PropertiesTree() {
 								className="font-mono text-xs"
 							/>
 						</div>
-						<div className="flex-1 min-w-0 max-w-[500px]">
+						<div className="flex-1 min-w-0 max-w-[640px]">
 							<ResourcePicker
 								value={entry.resource}
 								onChange={(ref) => updateDependsOnResource(idx, ref)}
 								kinds={
 									kindMeta.kind === "sql-view"
-										? ["ViewDefinition", "SQLView"]
-										: ["ViewDefinition", "SQLQuery", "SQLView"]
+										? ["ViewDefinition", "SQLView", "ValueSet", "ConceptMap"]
+										: [
+												"ViewDefinition",
+												"SQLQuery",
+												"SQLView",
+												"ValueSet",
+												"ConceptMap",
+											]
 								}
 							/>
 						</div>

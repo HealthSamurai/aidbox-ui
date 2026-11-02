@@ -1,6 +1,6 @@
-import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { useQuery } from "@tanstack/react-query";
 import { type AidboxClientR5, useAidboxClient } from "../../AidboxClient";
+import { resolveCanonicals } from "./canonical-resolver";
 import type { SQLLibrary, SQLParameter } from "./types";
 
 export type ResolvedSource = {
@@ -42,45 +42,19 @@ function libraryKey(lib: { id?: string; url?: string }): string | null {
 	return null;
 }
 
-function splitCanonicalVersion(canonical: string): {
-	url: string;
-	version: string | undefined;
-} {
-	const idx = canonical.indexOf("|");
-	if (idx < 0) return { url: canonical, version: undefined };
-	return { url: canonical.slice(0, idx), version: canonical.slice(idx + 1) };
-}
-
-async function fetchLibraryByCanonical(
+/** Libraries among `canonicals`, one request for the whole level. */
+async function fetchLibraries(
 	client: AidboxClientR5,
-	canonical: string,
-): Promise<SQLLibrary | null> {
-	const relativeMatch = canonical.match(/^Library\/([^/?#]+)$/);
-	if (relativeMatch) {
-		const result = await client.request<SQLLibrary>({
-			method: "GET",
-			url: `/fhir/Library/${relativeMatch[1]}`,
-		});
-		if (result.isErr()) return null;
-		return result.value.resource;
+	canonicals: string[],
+): Promise<Map<string, SQLLibrary>> {
+	const resolved = await resolveCanonicals(client, canonicals);
+	const libraries = new Map<string, SQLLibrary>();
+	for (const [canonical, r] of resolved) {
+		if (r.resourceType === "Library") {
+			libraries.set(canonical, r as unknown as SQLLibrary);
+		}
 	}
-
-	const { url, version } = splitCanonicalVersion(canonical);
-	const params: Array<[string, string]> = [
-		["url", url],
-		["_count", "1"],
-	];
-	if (version) params.push(["version", version]);
-	const result = await client.request<Bundle>({
-		method: "GET",
-		url: "/fhir/Library",
-		params,
-	});
-	if (result.isErr()) return null;
-	const entry = result.value.resource.entry?.[0];
-	const resource = entry?.resource as SQLLibrary | undefined;
-	if (!resource || resource.resourceType !== "Library") return null;
-	return resource;
+	return libraries;
 }
 
 function pushParameter(
@@ -130,15 +104,14 @@ async function resolveParameterTreeImpl(
 		}));
 
 	while (frontier.length > 0) {
-		const fetched = await Promise.all(
-			frontier.map(async (node) => {
-				const lib = await fetchLibraryByCanonical(client, node.canonical);
-				return { node, lib };
-			}),
+		const libraries = await fetchLibraries(
+			client,
+			frontier.map((node) => node.canonical),
 		);
 
 		const nextFrontier: typeof frontier = [];
-		for (const { node, lib } of fetched) {
+		for (const node of frontier) {
+			const lib = libraries.get(node.canonical);
 			if (!lib) {
 				unresolved.push(node.canonical);
 				continue;
