@@ -58,7 +58,8 @@
 			"postcss@<8.5.10": ">=8.5.10",
 			"@codemirror/view": "^6.42.0",
 			"@codemirror/autocomplete": "6.20.2",
-			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client"
+			"@health-samurai/aidbox-client": "file:./aidbox-ts-sdk/packages/aidbox-client",
+			"zod@<4.6.6": "^4.6.6"
 		}
 	},
 	"dependencies": {
