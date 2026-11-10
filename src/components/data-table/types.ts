@@ -37,7 +37,10 @@ export type ColumnDef<T> = {
 	 * cell holds the content directly, without the truncating sizing wrapper.
 	 */
 	fixedSize?: number;
-	/** Set false to leave a column out of resizing. @default true */
+	/**
+	 * Set false to leave a column out of resizing; a width saved for it earlier
+	 * is then ignored. @default true
+	 */
 	resizable?: boolean;
 };
 
@@ -81,10 +84,12 @@ export type DataTableProps<T> = {
 	rowProps?: (row: T, index: number) => RowProps;
 	/**
 	 * Draws a row as a single cell spanning every column instead of the columns:
-	 * a spacer, a loading or error line, "this group is empty". Return
-	 * `undefined` for an ordinary row.
+	 * a spacer, a loading or error line, "this group is empty". Return nothing
+	 * (`undefined`, `null`, `false`) for an ordinary row. A full-width row is not
+	 * a record: no row click, expansion, selection, select-all or hover, and the
+	 * zebra stripes of the rows around it run on as if it were not there.
 	 */
-	fullWidthRow?: (row: T) => React.ReactNode | undefined;
+	fullWidthRow?: (row: T) => React.ReactNode;
 };
 
 export type DataTableFooterProps = {
