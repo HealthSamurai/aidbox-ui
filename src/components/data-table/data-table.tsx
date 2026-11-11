@@ -187,6 +187,7 @@ function useSelectionHelpers<T>(
 	onSelectionChange:
 		| React.Dispatch<React.SetStateAction<Set<string>>>
 		| undefined,
+	keepOtherPages: boolean,
 ) {
 	const allIds = rows.filter((r) => r.fullWidth === undefined).map((r) => r.id);
 	const allSelected =
@@ -201,11 +202,16 @@ function useSelectionHelpers<T>(
 		allIds.some((id) => selectedIds.has(id));
 
 	/**
-	 * Select-all works on the rows in front of the user: it adds or removes the
-	 * ids of this page and leaves any selection made on another page alone.
+	 * Select-all replaces the selection with the rows of this page, or clears
+	 * it. With `keepOtherPages` it only adds or removes the ids of this page and
+	 * leaves a selection made on another page alone.
 	 */
 	const toggleAll = () => {
 		if (!onSelectionChange) return;
+		if (!keepOtherPages) {
+			onSelectionChange(allSelected ? new Set() : new Set(allIds));
+			return;
+		}
 		onSelectionChange((prev) => {
 			const next = new Set(prev);
 			for (const id of allIds) {
@@ -265,10 +271,17 @@ function SimpleDataTable<T>({
 	onRowClick,
 	rowProps,
 	fullWidthRow,
+	keepSelectionAcrossPages = false,
 }: DataTableProps<T>) {
 	const bodyRows = toBodyRows(data, rowKey, fullWidthRow);
 	const { allSelected, someSelected, toggleAll, toggleOne } =
-		useSelectionHelpers(bodyRows, selectable, selectedIds, onSelectionChange);
+		useSelectionHelpers(
+			bodyRows,
+			selectable,
+			selectedIds,
+			onSelectionChange,
+			keepSelectionAcrossPages,
+		);
 	const fullWidthColSpan = columns.length + (selectable ? 1 : 0);
 
 	return (
@@ -396,10 +409,17 @@ function ResizableDataTable<T>({
 	onRowClick,
 	rowProps,
 	fullWidthRow,
+	keepSelectionAcrossPages = false,
 }: DataTableProps<T>) {
 	const bodyRows = toBodyRows(data, rowKey, fullWidthRow);
 	const { allSelected, someSelected, toggleAll, toggleOne } =
-		useSelectionHelpers(bodyRows, selectable, selectedIds, onSelectionChange);
+		useSelectionHelpers(
+			bodyRows,
+			selectable,
+			selectedIds,
+			onSelectionChange,
+			keepSelectionAcrossPages,
+		);
 
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const colWidthsRef = React.useRef<Record<string, number>>({});

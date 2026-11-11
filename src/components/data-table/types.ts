@@ -90,6 +90,11 @@ export type DataTableProps<T> = {
 	 * zebra stripes of the rows around it run on as if it were not there.
 	 */
 	fullWidthRow?: (row: T) => React.ReactNode;
+	/**
+	 * Select-all adds or removes only the rows of this page instead of
+	 * replacing the whole selection. @default false
+	 */
+	keepSelectionAcrossPages?: boolean;
 };
 
 export type DataTableFooterProps = {
@@ -99,6 +104,8 @@ export type DataTableFooterProps = {
 	pageSizeOptions?: number[];
 	selectedCount: number;
 	bulkActions?: BulkAction[];
+	/** Left-hand text shown when no bulk actions are on screen, e.g. a total. */
+	summary?: React.ReactNode;
 	onPageChange: (page: number) => void;
 	onPageSizeChange: (size: number) => void;
 };
