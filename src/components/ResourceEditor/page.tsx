@@ -8,7 +8,7 @@ import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
@@ -32,6 +32,13 @@ import { ConceptMapProvider } from "../ConceptMap/page";
 import { EmptyState } from "../empty-state";
 import { MaterializationBuilderContent } from "../Materialization/builder-content";
 import { MaterializationsTab } from "../Materialization/target-tab";
+import { SDCConfigBuilderContent } from "../SDC/config/builder-content";
+import {
+	ClassicUiTab,
+	classicUiLink,
+	isLiquidTemplateLibrary,
+} from "../SDC/shared/classic-ui-tab";
+import { VoiceAgentBuilderContent } from "../SDC/voice-agent/agent-editor-page";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
 import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";
@@ -80,6 +87,98 @@ const materializationBuilderTab = (
 							className="grow min-h-0 flex flex-col"
 						>
 							<MaterializationBuilderContent {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/**
+ * The row of editor tabs, plus a tab-looking link into the classic SDC UI for
+ * the resources edited there. Hidden when there is nothing to switch to.
+ */
+const EditorTabBar = ({
+	tabs,
+	resourceType,
+	id,
+	isLiquidTemplate,
+}: {
+	tabs: EditorTabItem[];
+	resourceType: string;
+	id: string | undefined;
+	isLiquidTemplate: boolean;
+}) => {
+	const classicUi = classicUiLink(resourceType, id, isLiquidTemplate);
+	if (tabs.length < 2 && !classicUi) return null;
+	return (
+		<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
+			<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
+			{classicUi && <ClassicUiTab {...classicUi} />}
+		</div>
+	);
+};
+
+/** Empty unless this is an SDCConfig, so the caller needs no branch. */
+const sdcConfigBuilderTab = (
+	enabled: boolean,
+	props: React.ComponentProps<typeof SDCConfigBuilderContent>,
+): EditorTabItem[] =>
+	enabled
+		? [
+				{
+					value: "builder",
+					trigger: (
+						<HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent
+							value="builder"
+							className="grow min-h-0 flex flex-col"
+						>
+							<SDCConfigBuilderContent {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/** The voice agent saves itself; the editor refetches the resource afterwards. */
+const VoiceAgentBuilderTab = ({
+	id,
+	onDeleted,
+}: {
+	id: string | undefined;
+	onDeleted: (() => void) | undefined;
+}) => {
+	const queryClient = useQueryClient();
+	return (
+		<VoiceAgentBuilderContent
+			agentId={id}
+			onDeleted={onDeleted}
+			onSaved={() =>
+				void queryClient.invalidateQueries({
+					queryKey: [pageId, "SDCVoiceAgent", id],
+				})
+			}
+		/>
+	);
+};
+
+/** Empty unless this is an SDCVoiceAgent, so the caller needs no branch. */
+const voiceAgentBuilderTab = (
+	enabled: boolean,
+	props: React.ComponentProps<typeof VoiceAgentBuilderTab>,
+): EditorTabItem[] =>
+	enabled
+		? [
+				{
+					value: "builder",
+					trigger: (
+						<HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent value="builder" className="grow min-h-0">
+							<VoiceAgentBuilderTab {...props} />
 						</HSComp.TabsContent>
 					),
 				},
@@ -470,10 +569,14 @@ export const ResourceEditorPage = ({
 	const isCodeSystem = resourceType === "CodeSystem";
 	const isConceptMap = resourceType === "ConceptMap";
 	const isMaterialization = resourceType === "AidboxMaterialization";
+	const isSDCConfig = resourceType === "SDCConfig";
+	const isSDCVoiceAgent = resourceType === "SDCVoiceAgent";
 	const { isSqlLibrary, isSQLView, builderLabel } = detectSqlLibrary(
 		initialResource,
 		isLibrary,
 	);
+	// Edited in the classic template editor, so the SQL builder has no business here.
+	const isLiquidTemplate = isLiquidTemplateLibrary(initialResource);
 
 	const tabs: {
 		value: string;
@@ -566,7 +669,7 @@ export const ResourceEditorPage = ({
 		});
 	}
 
-	if (isLibrary) {
+	if (isLibrary && !isLiquidTemplate) {
 		tabs.push({
 			value: "sqlquery",
 			trigger: (
@@ -653,6 +756,16 @@ export const ResourceEditorPage = ({
 			onDismissMaterializeError: () => setMaterializeError(null),
 		}),
 	);
+
+	tabs.push(
+		...sdcConfigBuilderTab(isSDCConfig, {
+			resource,
+			onResourceChange: handleResourceChange,
+			actions: editActions,
+			saveError,
+		}),
+	);
+	tabs.push(...voiceAgentBuilderTab(isSDCVoiceAgent, { id, onDeleted }));
 
 	if (isSearchParameter) {
 		tabs.push({
@@ -791,11 +904,12 @@ export const ResourceEditorPage = ({
 				onValueChange={handleOnTabSelect}
 				className="grow min-h-0"
 			>
-				{tabs.length > 1 && (
-					<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
-						<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-					</div>
-				)}
+				<EditorTabBar
+					tabs={tabs}
+					resourceType={resourceType}
+					id={id}
+					isLiquidTemplate={isLiquidTemplate}
+				/>
 				{tabs.map((t) => t.content)}
 			</HSComp.Tabs>
 

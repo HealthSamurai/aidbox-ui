@@ -66,3 +66,18 @@ body > div:not(.cm-editor)[class*="ͼ"] {
 	padding-bottom: 0 !important;
 	height: auto !important;
 }
+
+/* Selects of the SDCConfig builder (`components/SDCConfig/app-select.tsx`):
+   an ordinary scrolling list instead of Radix's hover-to-scroll buttons. */
+.use-form-select-content > [data-slot="select-scroll-up-button"],
+.use-form-select-content > [data-slot="select-scroll-down-button"] {
+	display: none;
+}
+
+.use-form-select-content > div:not([data-slot]) {
+	height: auto;
+	max-height: 16rem;
+	overflow-y: scroll;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+}
