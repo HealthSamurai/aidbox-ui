@@ -19,7 +19,7 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"all": "pnpm format && pnpm typecheck && biome check --write --diagnostic-level=error",
 		"hooks": "cp .hooks/* .git/hooks/",
-		"generate-types": "pnpm exec tsx scripts/generate-types.ts"
+		"generate-types": "NODE_OPTIONS=--max-old-space-size=8192 pnpm exec tsx scripts/generate-types.ts"
 	},
 	"keywords": [],
 	"author": "Health Samurai",
@@ -27,7 +27,7 @@
 	"packageManager": "pnpm@10.29.2",
 	"devDependencies": {
 		"@agentclientprotocol/sdk": "^0.14.1",
-		"@atomic-ehr/codegen": "latest",
+		"@atomic-ehr/codegen": "0.0.24",
 		"@biomejs/biome": "2.1.3",
 		"@tailwindcss/vite": "^4.2.1",
 		"@tanstack/router-plugin": "^1.168.42",

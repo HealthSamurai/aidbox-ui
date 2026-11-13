@@ -4,7 +4,6 @@
 
 import type { Coding } from "../hl7-fhir-r5-core/Coding";
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
-
 import type { Element } from "../hl7-fhir-r5-core/Element";
 
 export type { Coding } from "../hl7-fhir-r5-core/Coding";
