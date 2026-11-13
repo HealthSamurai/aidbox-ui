@@ -12,6 +12,7 @@ import {
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	ChartNoAxesCombined,
+	ClipboardCheck,
 	ClipboardList,
 	Columns3Cog,
 	Database,
@@ -106,6 +107,16 @@ const mainMenuItems: {
 			<Link to="/ig" search={{ q: undefined, tags: undefined }}>
 				<Package />
 				FHIR packages
+			</Link>
+		),
+	},
+	{
+		url: "/forms",
+		title: "Forms",
+		link: (
+			<Link to="/forms">
+				<ClipboardCheck />
+				Forms
 			</Link>
 		),
 	},

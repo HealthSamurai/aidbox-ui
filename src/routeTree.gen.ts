@@ -28,6 +28,7 @@ import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
 import { Route as AsyncOperationsIndexRouteImport } from './routes/async-operations.index'
 import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
 import { Route as DatabaseIndexRouteImport } from './routes/database.index'
+import { Route as FormsIndexRouteImport } from './routes/forms.index'
 import { Route as FormsPackagesRouteImport } from './routes/forms.packages'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
@@ -150,6 +151,11 @@ const DatabaseIndexRoute = DatabaseIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DatabaseRoute,
+} as any)
+const FormsIndexRoute = FormsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FormsRoute,
 } as any)
 const FormsPackagesRoute = FormsPackagesRouteImport.update({
   id: '/packages',
@@ -313,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/analytics/': typeof AnalyticsIndexRoute
   '/async-operations/': typeof AsyncOperationsIndexRoute
   '/database/': typeof DatabaseIndexRoute
+  '/forms/': typeof FormsIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
@@ -338,7 +345,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/audit-events': typeof AuditEventsRoute
   '/db-console': typeof DbConsoleRoute
-  '/forms': typeof FormsRouteWithChildren
   '/rest': typeof RestRoute
   '/settings': typeof SettingsRoute
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
@@ -350,6 +356,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsIndexRoute
   '/async-operations': typeof AsyncOperationsIndexRoute
   '/database': typeof DatabaseIndexRoute
+  '/forms': typeof FormsIndexRoute
   '/ig': typeof IgIndexRoute
   '/notebooks': typeof NotebooksIndexRoute
   '/resource': typeof ResourceIndexRoute
@@ -398,6 +405,7 @@ export interface FileRoutesById {
   '/analytics/': typeof AnalyticsIndexRoute
   '/async-operations/': typeof AsyncOperationsIndexRoute
   '/database/': typeof DatabaseIndexRoute
+  '/forms/': typeof FormsIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
@@ -447,6 +455,7 @@ export interface FileRouteTypes {
     | '/analytics/'
     | '/async-operations/'
     | '/database/'
+    | '/forms/'
     | '/ig/'
     | '/notebooks/'
     | '/resource/'
@@ -472,7 +481,6 @@ export interface FileRouteTypes {
     | '/'
     | '/audit-events'
     | '/db-console'
-    | '/forms'
     | '/rest'
     | '/settings'
     | '/analytics/sqlview'
@@ -484,6 +492,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/async-operations'
     | '/database'
+    | '/forms'
     | '/ig'
     | '/notebooks'
     | '/resource'
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/analytics/'
     | '/async-operations/'
     | '/database/'
+    | '/forms/'
     | '/ig/'
     | '/notebooks/'
     | '/resource/'
@@ -702,6 +712,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/database/'
       preLoaderRoute: typeof DatabaseIndexRouteImport
       parentRoute: typeof DatabaseRoute
+    }
+    '/forms/': {
+      id: '/forms/'
+      path: '/'
+      fullPath: '/forms/'
+      preLoaderRoute: typeof FormsIndexRouteImport
+      parentRoute: typeof FormsRoute
     }
     '/forms/packages': {
       id: '/forms/packages'
@@ -994,10 +1011,12 @@ const FormsPackagesRouteWithChildren = FormsPackagesRoute._addFileChildren(
 
 interface FormsRouteChildren {
   FormsPackagesRoute: typeof FormsPackagesRouteWithChildren
+  FormsIndexRoute: typeof FormsIndexRoute
 }
 
 const FormsRouteChildren: FormsRouteChildren = {
   FormsPackagesRoute: FormsPackagesRouteWithChildren,
+  FormsIndexRoute: FormsIndexRoute,
 }
 
 const FormsRouteWithChildren = FormsRoute._addFileChildren(FormsRouteChildren)

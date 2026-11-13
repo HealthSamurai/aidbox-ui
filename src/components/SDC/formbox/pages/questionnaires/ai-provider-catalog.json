@@ -1,0 +1,148 @@
+[
+	{
+		"name": "OpenAI",
+		"fields": [
+			{
+				"name": "api-key",
+				"type": "password",
+				"label": "API Key",
+				"placeholder": "Your OpenAI API key",
+				"required": true
+			},
+			{
+				"name": "organization",
+				"type": "text",
+				"label": "Organization ID",
+				"placeholder": "Your organization ID"
+			},
+			{
+				"name": "base-url",
+				"type": "text",
+				"label": "Base URL",
+				"placeholder": "Custom base URL"
+			}
+		],
+		"icon": "/static/assets/img/ai/openai.svg",
+		"models": [
+			"gpt-6-astra",
+			"gpt-5.6",
+			"gpt-5.6-luna",
+			"gpt-5.6-sol",
+			"gpt-5.6-terra",
+			"gpt-realtime-2.1",
+			"gpt-5.5",
+			"gpt-5.5-pro",
+			"gpt-5.4-mini",
+			"gpt-5.4-nano",
+			"gpt-5.4",
+			"gpt-5.4-pro",
+			"gpt-5.3-codex",
+			"gpt-5.3-codex-spark",
+			"gpt-5.2",
+			"gpt-5.2-pro",
+			"gpt-5.1",
+			"gpt-5-pro",
+			"gpt-5",
+			"gpt-5-mini",
+			"gpt-5-nano",
+			"o3-pro",
+			"o3",
+			"gpt-4.1",
+			"gpt-4.1-mini",
+			"gpt-4o-2024-11-20",
+			"gpt-4o-2024-08-06",
+			"gpt-4o-mini",
+			"gpt-4o"
+		],
+		"id": "openai"
+	},
+	{
+		"name": "Anthropic",
+		"fields": [
+			{
+				"name": "api-key",
+				"type": "password",
+				"label": "API Key",
+				"placeholder": "Your Anthropic API key",
+				"required": true
+			}
+		],
+		"icon": "/static/assets/img/ai/anthropic.svg",
+		"models": [
+			"claude-fable-5-1",
+			"claude-opus-5",
+			"claude-sonnet-5",
+			"claude-fable-5",
+			"claude-opus-4-8",
+			"claude-opus-4-7",
+			"claude-sonnet-4-6",
+			"claude-opus-4-6",
+			"claude-opus-4-5",
+			"claude-opus-4-5-20251101",
+			"claude-haiku-4-5",
+			"claude-haiku-4-5-20251001",
+			"claude-sonnet-4-5",
+			"claude-sonnet-4-5-20250929"
+		],
+		"id": "anthropic"
+	},
+	{
+		"name": "Google",
+		"fields": [
+			{
+				"name": "api-key",
+				"type": "password",
+				"label": "API Key",
+				"placeholder": "Your Google API key",
+				"required": true
+			}
+		],
+		"icon": "/static/assets/img/ai/google.svg",
+		"models": [
+			"gemini-3.8-flash",
+			"gemini-3.7-flash",
+			"gemini-flash-latest",
+			"gemini-3.5-flash-lite",
+			"gemini-3.6-flash",
+			"gemini-flash-lite-latest",
+			"gemini-3.1-flash-lite-image",
+			"gemini-3.5-flash",
+			"gemini-3.1-flash-lite",
+			"deep-research-max-preview-04-2026",
+			"deep-research-preview-04-2026",
+			"gemma-4-26b-a4b-it",
+			"gemma-4-31b-it",
+			"gemini-3.1-flash-live-preview",
+			"gemini-3.1-pro-preview",
+			"gemini-3.1-pro-preview-customtools",
+			"gemini-3-flash-preview",
+			"gemini-2.5-computer-use-preview-10-2025",
+			"gemini-2.5-flash",
+			"gemini-2.5-flash-lite",
+			"gemini-2.5-pro"
+		],
+		"id": "google"
+	},
+	{
+		"name": "OpenAI Compatible",
+		"fields": [
+			{
+				"name": "base-url",
+				"type": "text",
+				"label": "Base URL",
+				"placeholder": "e.g., https://api.example.com/v1",
+				"required": true
+			},
+			{
+				"name": "api-key",
+				"type": "password",
+				"label": "API Key",
+				"placeholder": "Your API key"
+			}
+		],
+		"icon": "/static/assets/img/ai/openai.svg",
+		"models": [],
+		"id": "openai-compatible",
+		"customModel": true
+	}
+]
