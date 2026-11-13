@@ -31,6 +31,7 @@ import { Route as DatabaseIndexRouteImport } from './routes/database.index'
 import { Route as FormsIndexRouteImport } from './routes/forms.index'
 import { Route as FormsPackagesRouteImport } from './routes/forms.packages'
 import { Route as FormsResponsesRouteImport } from './routes/forms.responses'
+import { Route as FormsTemplatesRouteImport } from './routes/forms.templates'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
 import { Route as IgAddRouteImport } from './routes/ig.add'
@@ -166,6 +167,11 @@ const FormsPackagesRoute = FormsPackagesRouteImport.update({
 const FormsResponsesRoute = FormsResponsesRouteImport.update({
   id: '/responses',
   path: '/responses',
+  getParentRoute: () => FormsRoute,
+} as any)
+const FormsTemplatesRoute = FormsTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => FormsRoute,
 } as any)
 const IgIndexRoute = IgIndexRouteImport.update({
@@ -318,6 +324,7 @@ export interface FileRoutesByFullPath {
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/forms/packages': typeof FormsPackagesRouteWithChildren
   '/forms/responses': typeof FormsResponsesRoute
+  '/forms/templates': typeof FormsTemplatesRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
@@ -358,6 +365,7 @@ export interface FileRoutesByTo {
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/forms/packages': typeof FormsPackagesRouteWithChildren
   '/forms/responses': typeof FormsResponsesRoute
+  '/forms/templates': typeof FormsTemplatesRoute
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
   '/forms/packages': typeof FormsPackagesRouteWithChildren
   '/forms/responses': typeof FormsResponsesRoute
+  '/forms/templates': typeof FormsTemplatesRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
@@ -457,6 +466,7 @@ export interface FileRouteTypes {
     | '/async-operations/$operationId'
     | '/forms/packages'
     | '/forms/responses'
+    | '/forms/templates'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/async-operations/$operationId'
     | '/forms/packages'
     | '/forms/responses'
+    | '/forms/templates'
     | '/ig/add'
     | '/notebooks/$id'
     | '/notebooks/new'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/async-operations/$operationId'
     | '/forms/packages'
     | '/forms/responses'
+    | '/forms/templates'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
@@ -744,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/responses'
       fullPath: '/forms/responses'
       preLoaderRoute: typeof FormsResponsesRouteImport
+      parentRoute: typeof FormsRoute
+    }
+    '/forms/templates': {
+      id: '/forms/templates'
+      path: '/templates'
+      fullPath: '/forms/templates'
+      preLoaderRoute: typeof FormsTemplatesRouteImport
       parentRoute: typeof FormsRoute
     }
     '/ig/': {
@@ -1031,12 +1050,14 @@ const FormsPackagesRouteWithChildren = FormsPackagesRoute._addFileChildren(
 interface FormsRouteChildren {
   FormsPackagesRoute: typeof FormsPackagesRouteWithChildren
   FormsResponsesRoute: typeof FormsResponsesRoute
+  FormsTemplatesRoute: typeof FormsTemplatesRoute
   FormsIndexRoute: typeof FormsIndexRoute
 }
 
 const FormsRouteChildren: FormsRouteChildren = {
   FormsPackagesRoute: FormsPackagesRouteWithChildren,
   FormsResponsesRoute: FormsResponsesRoute,
+  FormsTemplatesRoute: FormsTemplatesRoute,
   FormsIndexRoute: FormsIndexRoute,
 }
 

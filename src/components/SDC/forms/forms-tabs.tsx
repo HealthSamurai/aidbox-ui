@@ -2,9 +2,15 @@ import * as HSComp from "@health-samurai/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 
-type FormsTab = "forms" | "responses";
+type FormsTab = "forms" | "responses" | "templates";
 
-/** Forms and Responses are two routes; the tabs switch between them. */
+const TAB_ROUTES = {
+	forms: "/forms",
+	responses: "/forms/responses",
+	templates: "/forms/templates",
+} as const;
+
+/** Forms, Responses and Templates are routes; the tabs switch between them. */
 export function FormsTabs({
 	value,
 	children,
@@ -19,7 +25,7 @@ export function FormsTabs({
 			<HSComp.Tabs
 				value={value}
 				onValueChange={(next) =>
-					navigate({ to: next === "responses" ? "/forms/responses" : "/forms" })
+					navigate({ to: TAB_ROUTES[next as FormsTab] ?? "/forms" })
 				}
 				className="h-auto flex-none"
 			>
@@ -33,6 +39,12 @@ export function FormsTabs({
 							data-test-id="forms-tabs__responses"
 						>
 							Responses
+						</HSComp.TabsTrigger>
+						<HSComp.TabsTrigger
+							value="templates"
+							data-test-id="forms-tabs__templates"
+						>
+							Templates
 						</HSComp.TabsTrigger>
 					</HSComp.TabsList>
 				</div>
