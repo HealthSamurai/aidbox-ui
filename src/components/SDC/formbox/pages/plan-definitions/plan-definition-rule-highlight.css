@@ -1,0 +1,28 @@
+.plan-definition-rule-highlight-row {
+	position: relative;
+	isolation: isolate;
+	width: fit-content;
+	max-width: 100%;
+}
+
+.plan-definition-rule-highlight-row::after {
+	content: "";
+	position: absolute;
+	inset: -4px;
+	z-index: 1;
+	border-radius: 4px;
+	background: var(--hs-bg-link);
+	opacity: 0;
+	pointer-events: none;
+}
+
+.plan-definition-rule-expression-overlay {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.plan-definition-rule-highlight-box {
+	border-radius: 4px;
+	background: var(--hs-bg-link);
+	box-shadow: 0 0 0 2px var(--hs-bg-link);
+}
