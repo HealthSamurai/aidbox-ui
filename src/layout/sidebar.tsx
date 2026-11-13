@@ -13,7 +13,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	ChartNoAxesCombined,
 	ClipboardCheck,
-	ClipboardList,
 	Columns3Cog,
 	Database,
 	ListChecks,
@@ -23,7 +22,6 @@ import {
 	PanelLeftOpen,
 	Settings,
 	ShieldUser,
-	SquareArrowOutUpRight,
 	SquareTerminal,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -31,7 +29,6 @@ import { useAuditLogEnabled } from "../components/AuditEvents/api";
 import { useBoxInfo } from "../components/settings/api";
 import { UI_BASE_PATH } from "../shared/const";
 import type { SidebarMode } from "../shared/types";
-import { getAidboxBaseURL } from "../utils";
 import { DatabaseIcon } from "./database-icon";
 
 const mainMenuItems: {
@@ -118,21 +115,6 @@ const mainMenuItems: {
 				<ClipboardCheck />
 				Forms
 			</Link>
-		),
-	},
-	{
-		url: `${getAidboxBaseURL()}/u/sdc`,
-		title: "FormBox",
-		link: (
-			<a
-				href={`${getAidboxBaseURL()}/u/sdc`}
-				target="_blank"
-				rel="noopener noreferrer"
-			>
-				<ClipboardList />
-				FormBox
-				<SquareArrowOutUpRight className="ml-auto size-3.5 opacity-50" />
-			</a>
 		),
 	},
 	{
