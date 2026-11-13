@@ -5,7 +5,7 @@ import { validateFormsSearch } from "../components/SDC/forms/search";
 
 function FormsIndex() {
 	return (
-		<FormsTabs>
+		<FormsTabs value="forms">
 			<FormsPage />
 		</FormsTabs>
 	);

@@ -107,6 +107,7 @@
 		"lezer-fhirpath": "1.2.0",
 		"lucide-react": "^0.577.0",
 		"nanoid": "^3.3.20",
+		"pdf-lib": "1.17.1",
 		"pdfjs-dist": "4.6.82",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
