@@ -3,6 +3,7 @@ import * as HSComp from "@health-samurai/react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Braces, CircleStop, FileText, Trash2 } from "lucide-react";
 import * as React from "react";
+import { ConfirmDialog } from "../../confirm-dialog";
 import { type BulkAction, DataTableFooter } from "../../data-table";
 import { EmptyState } from "../../empty-state";
 import {
@@ -19,8 +20,6 @@ import {
 	usePlanDefinitions,
 } from "../formbox/api/plan-definitions";
 import { notifyResponseActionUnavailable } from "../formbox/pages/responses/actions";
-import { resolveDateFilter } from "../formbox/pages/responses/date-range";
-import { DeleteResponsesDialog } from "../formbox/pages/responses/delete-responses-dialog";
 import { canCancelResponseSending } from "../formbox/pages/responses/delivery";
 import { pageAfterDeleting } from "../formbox/pages/responses/pagination";
 import { ResponseDeliveryDetailsDialog } from "../formbox/pages/responses/response-delivery-details-dialog";
@@ -39,7 +38,11 @@ import {
 	type ResponsesTableActions,
 	type RowView,
 } from "./responses-table";
-import { DEFAULT_PAGE_SIZE, type ResponsesSearch } from "./search";
+import {
+	DEFAULT_PAGE_SIZE,
+	type ResponsesSearch,
+	resolveCompletionRange,
+} from "./search";
 
 function useResponsesSearch() {
 	const search = useSearch({ from: "/forms/responses" });
@@ -84,12 +87,11 @@ export function ResponsesPage() {
 	const { data: filterOptions } = useQuestionnaireResponseFilterOptions();
 	const { data: questionnaireCatalog = {} } = useQuestionnaireCatalog();
 
-	// Resolved here so that the query key holds the instants actually searched.
-	const completionRange = resolveDateFilter(search.completionDate);
+	const completionRange = resolveCompletionRange(search);
 	const filters: QuestionnaireResponseFilters = {
 		planDefinition: search.planDefinition,
-		completedFrom: completionRange?.from,
-		completedTo: completionRange?.to,
+		completedFrom: completionRange.from,
+		completedTo: completionRange.to,
 		q: search.q,
 		status: search.status,
 		subject: search.subject,
@@ -285,7 +287,8 @@ export function ResponsesPage() {
 		q: search.q,
 		planDefinition: search.planDefinition,
 		status: search.status,
-		completionDate: search.completionDate,
+		completedFrom: search.completedFrom,
+		completedTo: search.completedTo,
 		subject: search.subject,
 	};
 	const hasFilters = Object.values(filterValues).some(Boolean);
@@ -371,15 +374,23 @@ export function ResponsesPage() {
 					}
 				/>
 			) : null}
-			<DeleteResponsesDialog
-				count={idsPendingDelete.length}
-				isDeleting={deleteResponses.isPending}
-				sendingCount={idsPendingDelete.filter(isStillSending).length}
+			<ConfirmDialog
 				open={idsPendingDelete.length > 0}
-				onConfirm={() => void confirmDelete()}
 				onOpenChange={(open) => {
-					if (!open && !deleteResponses.isPending) setIdsPendingDelete([]);
+					if (!open) setIdsPendingDelete([]);
 				}}
+				title={
+					idsPendingDelete.length === 1
+						? "Delete Response"
+						: `Delete ${idsPendingDelete.length} Responses`
+				}
+				description={deleteResponsesDescription(
+					idsPendingDelete.length,
+					idsPendingDelete.filter(isStillSending).length,
+				)}
+				confirmLabel="Delete"
+				danger
+				onConfirm={() => void confirmDelete()}
 			/>
 			{deliveryDetails ? (
 				<ResponseDeliveryDetailsDialog
@@ -395,5 +406,25 @@ export function ResponsesPage() {
 				/>
 			) : null}
 		</div>
+	);
+}
+
+function deleteResponsesDescription(count: number, sendingCount: number) {
+	const single = count === 1;
+	return (
+		<span className="flex flex-col gap-4">
+			<span>
+				{single
+					? "Are you sure you want to delete this response? The answers it holds will be lost."
+					: `Are you sure you want to delete ${count} responses? The answers they hold will be lost.`}
+			</span>
+			{sendingCount > 0 ? (
+				<span>
+					{sendingCount === count && single
+						? "This form is still being sent. Stop sending first, or the patient may still receive a link to a form that no longer exists."
+						: `${sendingCount} of them ${sendingCount === 1 ? "is" : "are"} still being sent. Stop sending first, or the patients may still receive links to forms that no longer exist.`}
+				</span>
+			) : null}
+		</span>
 	);
 }

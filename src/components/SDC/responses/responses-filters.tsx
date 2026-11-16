@@ -1,6 +1,5 @@
+import { DatePickerInput } from "@health-samurai/react-components";
 import type { ResponseFilterOption } from "../formbox/api/forms";
-import { FILTER_ALL } from "../formbox/pages/responses/constants";
-import { DateRangeFilter } from "../formbox/pages/responses/date-range-filter";
 import {
 	FilterField,
 	FilterSelect,
@@ -20,7 +19,8 @@ export type ResponsesFilterValues = {
 	q?: string;
 	planDefinition?: string;
 	status?: string;
-	completionDate?: string;
+	completedFrom?: string;
+	completedTo?: string;
 	subject?: string;
 };
 
@@ -74,22 +74,29 @@ export function ResponsesFilters({
 		{
 			key: "completion-date",
 			label: "Completion Date",
-			// A custom range spells out both ends, so the field grows to fit it.
-			className: "w-auto min-w-[12rem]",
-			isSet: Boolean(values.completionDate),
-			reset: () => onChange({ completionDate: undefined }),
+			className: "w-auto",
+			isSet: Boolean(values.completedFrom || values.completedTo),
+			reset: () =>
+				onChange({ completedFrom: undefined, completedTo: undefined }),
 			control: (
-				<DateRangeFilter
-					label="Completion Date"
-					testId="responses-filters__completion-date"
-					value={values.completionDate ?? FILTER_ALL}
-					onChange={(completionDate) =>
-						onChange({
-							completionDate:
-								completionDate === FILTER_ALL ? undefined : completionDate,
-						})
-					}
-				/>
+				<div
+					className="flex items-center"
+					data-test-id="responses-filters__completion-date"
+				>
+					<DatePickerInput
+						value={values.completedFrom ?? ""}
+						onChange={(value) =>
+							onChange({ completedFrom: value || undefined })
+						}
+						className="w-36"
+					/>
+					<span className="px-1 text-text-secondary text-xs">—</span>
+					<DatePickerInput
+						value={values.completedTo ?? ""}
+						onChange={(value) => onChange({ completedTo: value || undefined })}
+						className="w-36"
+					/>
+				</div>
 			),
 		},
 		{
