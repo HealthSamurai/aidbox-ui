@@ -4,12 +4,12 @@ import type {
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
 import type { SyntaxNode } from "@lezer/common";
 import { parser } from "lezer-fhirpath";
+import { generateId } from "../../../../../utils";
 import {
 	compactFhirpath,
 	fhirpathString,
 	unquoteFhirpath,
 } from "../../shared/fhirpath";
-import { generateId } from "../../shared/id";
 import { planDefinitionAnswerExpression } from "./plan-definition-expressions";
 import type { PlanDefinitionQuestion } from "./plan-definition-model";
 

@@ -3,7 +3,7 @@ import type {
 	Questionnaire,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
 import { useState } from "react";
-import { generateId } from "../../shared/id";
+import { generateId } from "../../../../../utils";
 import type { PlanDefinitionGraphEdge } from "./plan-definition-graph-model";
 import {
 	generateActionId,

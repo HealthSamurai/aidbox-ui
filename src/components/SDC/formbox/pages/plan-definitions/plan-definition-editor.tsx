@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Columns3Cog } from "lucide-react";
 import { useMemo, useState } from "react";
+import { generateId } from "../../../../../utils";
 import { FhirPathLspProvider } from "../../../../ViewDefinition/fhirpath-lsp-context";
 import { SaveDiagnostics } from "../../../shared/save-diagnostics";
 import {
@@ -39,7 +40,6 @@ import {
 	NavbarRightSlot,
 } from "../../layout/navbar-slot";
 import { editorShortcutHandler } from "../../shared/editor-shortcuts";
-import { generateId } from "../../shared/id";
 import {
 	isOperationOutcomeError,
 	OperationOutcomeProvider,
@@ -630,7 +630,6 @@ export function PlanDefinitionEditor({
 									language={code.language}
 									onLanguageChange={code.changeLanguage}
 									focusIssue={code.focusIssue}
-									readOnly={save.isPending}
 								>
 									<ResizablePanelGroup
 										direction="vertical"

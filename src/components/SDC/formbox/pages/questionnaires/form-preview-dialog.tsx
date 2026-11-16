@@ -2,6 +2,7 @@ import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
 import * as HSComp from "@health-samurai/react-components";
 import { AlertCircle, ChevronDown, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
+import { generateId } from "../../../../../utils";
 import type { Form } from "../../api/forms";
 import { getFormLabel, useQuestionnaire } from "../../api/forms";
 import { usePlanDefinition } from "../../api/plan-definitions";
@@ -11,7 +12,6 @@ import {
 	useTemplateNames,
 } from "../../api/templates";
 import { Renderer } from "../../components/renderer";
-import { generateId } from "../../shared/id";
 import { PreviewDialog } from "../../shared/preview-dialog";
 import { PlanDefinitionPreviewFrame } from "../plan-definitions/plan-definition-preview";
 

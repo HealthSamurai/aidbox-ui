@@ -20,8 +20,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { generateId } from "../../shared/id";
-import { getAidboxBaseURL } from "../../utils";
+import { generateId, getAidboxBaseURL } from "../../../../../utils";
 
 /** Run the real RequestGroup renderer against an unsaved, isolated preview session. */
 export function PlanDefinitionPreview({

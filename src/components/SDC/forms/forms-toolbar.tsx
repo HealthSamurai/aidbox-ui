@@ -1,9 +1,8 @@
 import * as HSComp from "@health-samurai/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FileInput, Library, Plus } from "lucide-react";
-import { getFormBuilderUrl } from "../formbox/utils";
+import { getFormBuilderUrl, getFormLibraryUrl } from "../formbox/utils";
 import type { Form } from "./api";
-import { formLibraryUrl } from "./formbox-links";
 
 /**
  * Create or import forms. A package is made of Questionnaires, so the
@@ -100,7 +99,7 @@ export function FormsToolbar({
 						<HSComp.DropdownMenuItem
 							className="justify-start"
 							data-test-id="forms-toolbar__menu-select-from-library-button"
-							onClick={() => window.location.assign(formLibraryUrl())}
+							onClick={() => window.location.assign(getFormLibraryUrl())}
 						>
 							<Library className="size-4" />
 							Select from Library

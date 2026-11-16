@@ -11,9 +11,9 @@ import type {
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
 import type { RequestParams } from "@health-samurai/aidbox-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { generateId } from "../../../../utils";
 import { boxJson, boxRequest } from "../../shared/http";
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "../shared/const";
-import { generateId } from "../shared/id";
 import {
 	buildQuestionnaireQuery,
 	buildQuestionnaireResponseQuery,

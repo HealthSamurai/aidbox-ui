@@ -21,10 +21,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
+import { generateId } from "../../../../../utils";
 import { AppSelectContent, AppSelectItem } from "../../../shared/app-select";
 import { sdcRequest } from "../../api/plan-definitions";
 import type { FhirpathVariable } from "../../shared/fhirpath-editor";
-import { generateId } from "../../shared/id";
 import { useOperationOutcomeError } from "../../shared/operation-outcome-context";
 import { ResourceSearchSelect } from "../questionnaires/resource-search-select";
 import { ConditionExpressionEditor } from "./plan-definition-condition-expression-editor";

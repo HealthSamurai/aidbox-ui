@@ -4,11 +4,11 @@ import type {
 	Questionnaire,
 	QuestionnaireItem,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
+import { generateId } from "../../../../../utils";
 import { getFormLabel } from "../../api/forms";
 import { canonical } from "../../api/plan-definitions";
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "../../shared/const";
 import { fhirpathVariables } from "../../shared/fhirpath";
-import { generateId } from "../../shared/id";
 import type { ConditionEditorDraft } from "./plan-definition-conditions";
 import {
 	buildPlanDefinitionAction,

@@ -1,8 +1,8 @@
 import type { QuestionnaireItem } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
 import { Button } from "@health-samurai/react-components";
 import { Plus } from "lucide-react";
+import { generateId } from "../../../../../utils";
 import type { FhirpathVariable } from "../../shared/fhirpath-editor";
-import { generateId } from "../../shared/id";
 import type {
 	PlanDefinitionActionDraft,
 	PlanDefinitionQuestion,

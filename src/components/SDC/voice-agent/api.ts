@@ -152,46 +152,6 @@ async function saveResource<T extends BoxResource>(
 	);
 }
 
-async function fetchAgents(client: AidboxClientR5) {
-	return bundleResources<VoiceAgent>(
-		await fetchBundle(client, AGENT_RESOURCE_TYPE),
-		AGENT_RESOURCE_TYPE,
-	);
-}
-
-export type VoiceAgentFilters = {
-	q?: string;
-	status?: VoiceAgent["status"];
-};
-
-/** One page of the agents table, with the total the footer needs. */
-async function fetchAgentsPage(
-	client: AidboxClientR5,
-	filters: VoiceAgentFilters,
-	page: number,
-	pageSize: number,
-) {
-	const params: Array<[string, string]> = [
-		["_count", String(pageSize)],
-		["_page", String(page)],
-		["_sort", "-_lastUpdated"],
-		["_total", "accurate"],
-	];
-	if (filters.q) params.push(["_ilike", filters.q]);
-	if (filters.status) params.push(["status", filters.status]);
-
-	const bundle = await boxJson<Bundle>(
-		client,
-		{ method: "GET", url: `/fhir/${AGENT_RESOURCE_TYPE}`, params },
-		"Failed to fetch agents",
-	);
-
-	return {
-		agents: bundleResources<VoiceAgent>(bundle, AGENT_RESOURCE_TYPE),
-		total: bundle.total ?? 0,
-	};
-}
-
 async function fetchAgent(client: AidboxClientR5, id: string) {
 	// through the box rather than plain FHIR: models are stored as Device
 	// references and the editor works in names
@@ -268,26 +228,6 @@ async function fetchQuestionnaires(client: AidboxClientR5) {
 	return bundleResources<QuestionnaireOption>(bundle, "Questionnaire").filter(
 		(questionnaire) => Boolean(questionnaire.url),
 	);
-}
-
-export function useVoiceAgents() {
-	const client = useAidboxClient();
-	return useQuery({
-		queryFn: () => fetchAgents(client),
-		queryKey: VOICE_AGENTS_QUERY_KEY,
-	});
-}
-
-export function useVoiceAgentsPage(
-	filters: VoiceAgentFilters,
-	page: number,
-	pageSize: number,
-) {
-	const client = useAidboxClient();
-	return useQuery({
-		queryFn: () => fetchAgentsPage(client, filters, page, pageSize),
-		queryKey: [...VOICE_AGENTS_QUERY_KEY, "page", filters, page, pageSize],
-	});
 }
 
 export function useVoiceAgent(id?: string) {

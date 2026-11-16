@@ -1,25 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Msg } from "./use-conversation";
 
-export function parseTranscript(text: string): Msg[] {
-	const lines = text.split(/\r?\n/);
-	const messages: Msg[] = [];
-	for (const line of lines) {
-		const match = line.match(/^(Agent|Person(?:\s+\[P\d+\])?):\s*(.*)$/);
-		if (match?.[1] != null) {
-			messages.push({
-				id: String(messages.length),
-				role: match[1].startsWith("Person") ? "user" : "assistant",
-				content: match[2] ?? "",
-			});
-			continue;
-		}
-		const last = messages.at(-1);
-		if (last && line.trim()) last.content += `\n${line}`;
-	}
-	return messages;
-}
-
 /**
  * What the agent and the person actually said. Announced to assistive tech as
  * it arrives, and pinned to the newest line: a transcript that scrolls out of

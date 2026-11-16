@@ -2,7 +2,7 @@ import type {
 	QuestionnaireResponse,
 	Reference,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
-import { getPathPrefix } from "@aidbox-ui/utils/path-prefix";
+import { getAidboxBaseURL } from "../../../utils";
 
 export function humanize(value?: string | null) {
 	if (!value) {
@@ -16,25 +16,6 @@ export function humanize(value?: string | null) {
 		.trim();
 }
 
-export function getAidboxBaseURL() {
-	return (
-		import.meta.env.VITE_AIDBOX_BASE_URL?.replace(/\/$/, "") ||
-		`${window.location.protocol}//${window.location.host}${getPathPrefix()}`
-	);
-}
-
-/** An Aidbox URL for an absolute path, kept under the base URL's path prefix. */
-export function getAidboxURL(path: string) {
-	return new URL(`${getAidboxBaseURL()}${path}`);
-}
-
-export function getPublicLibraryBaseURL() {
-	return (
-		import.meta.env.VITE_FORMBOX_LIBRARY_BASE_URL?.replace(/\/$/, "") ||
-		"https://form-builder.aidbox.app/fhir"
-	);
-}
-
 export function getFormBuilderUrl(questionnaireId?: string) {
 	const url = new URL("ui/sdc", `${getAidboxBaseURL()}/`);
 	const params = questionnaireId
@@ -42,6 +23,14 @@ export function getFormBuilderUrl(questionnaireId?: string) {
 		: "";
 
 	url.hash = `/forms/builder${params}`;
+
+	return url.toString();
+}
+
+/** The public form library of the classic SDC UI, to pick forms from. */
+export function getFormLibraryUrl() {
+	const url = new URL("ui/sdc", `${getAidboxBaseURL()}/`);
+	url.hash = "/library";
 
 	return url.toString();
 }
@@ -128,57 +117,6 @@ export function formatInstant(value?: string | null) {
 	return new Intl.DateTimeFormat(undefined, {
 		dateStyle: "medium",
 		timeStyle: "short",
-	}).format(date);
-}
-
-export function formatHumanizedDate(value?: string | null) {
-	if (!value) {
-		return "";
-	}
-
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) {
-		return value;
-	}
-
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const minuteMs = 60 * 1000;
-	const hourMs = 60 * minuteMs;
-	const dayMs = 24 * hourMs;
-
-	if (diffMs < minuteMs) {
-		return "Just now";
-	}
-
-	if (diffMs < hourMs) {
-		return `${Math.floor(diffMs / minuteMs)} mins ago`;
-	}
-
-	if (diffMs < dayMs) {
-		const hours = Math.floor(diffMs / hourMs);
-		return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-	}
-
-	if (diffMs < 2 * dayMs) {
-		return "Yesterday";
-	}
-
-	if (diffMs < 7 * dayMs) {
-		return `${Math.floor(diffMs / dayMs)} days ago`;
-	}
-
-	if (date.getFullYear() === now.getFullYear()) {
-		return new Intl.DateTimeFormat(undefined, {
-			month: "short",
-			day: "numeric",
-		}).format(date);
-	}
-
-	return new Intl.DateTimeFormat(undefined, {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
 	}).format(date);
 }
 

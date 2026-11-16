@@ -3,7 +3,7 @@
  * `CommandList` inside a combobox, for instance.
  *
  * Select menus do not need this. They go through `AppSelectContent`
- * (`src/shared/select.tsx`), which carries their scrolling with them.
+ * (`SDC/shared/app-select.tsx`), which carries their scrolling with them.
  */
 export const SCROLL_LIST_CLASS_NAME =
 	"max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]";
