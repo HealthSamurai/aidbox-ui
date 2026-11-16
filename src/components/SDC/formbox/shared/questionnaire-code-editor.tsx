@@ -5,25 +5,25 @@ import { useVimMode } from "@aidbox-ui/shared/vim-mode";
 import {
 	CodeEditor,
 	type CodeEditorView,
-	IconButton,
 	OperationOutcomeView,
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 	toast,
 } from "@health-samurai/react-components";
-import { Check, Copy, TextQuote } from "lucide-react";
-import { type ComponentProps, useEffect, useRef, useState } from "react";
-import { NO_ARGUMENTS, useWebMCPTools } from "../webmcp/use-webmcp-tools";
+import { type ComponentProps, useRef } from "react";
+import {
+	CodeEditorCopyButton,
+	CodeEditorFormatButton,
+	CodeEditorFormatSelect,
+} from "../../../ViewDefinition/code-editor-menubar";
 import { SDC_VALUE_SET_EXPAND } from "./const";
 import { editorShortcutHandler } from "./editor-shortcuts";
 import {
-	convertResourceText,
 	parseResourceText,
 	type ResourceFormat,
 	serializeResource,
 } from "./resource-format";
-import { ResourceFormatSelect } from "./resource-format-select";
 
 /** Aidbox's editor toolbar and split diagnostics, adapted to Questionnaire imports and R4. */
 export function QuestionnaireCodeEditor({
@@ -49,7 +49,6 @@ export function QuestionnaireCodeEditor({
 	const expandValueSet = useExpandValueSet(SDC_VALUE_SET_EXPAND);
 	const vimMode = useVimMode();
 	const view = useRef<CodeEditorView | null>(null);
-	const [copied, setCopied] = useState(false);
 	const formatLabel = language.toUpperCase();
 	const replaceValue = (text: string) => {
 		if (editorProps.readOnly)
@@ -62,73 +61,6 @@ export function QuestionnaireCodeEditor({
 			onChange(text);
 		}
 	};
-	useWebMCPTools([
-		{
-			name: "formbox_questionnaire_get_json",
-			description: "Read the Questionnaire JSON currently being imported.",
-			inputSchema: NO_ARGUMENTS,
-			annotations: { readOnlyHint: true },
-			execute: () => ({
-				value:
-					language === "json"
-						? value
-						: convertResourceText(value, language, "json"),
-				readOnly: Boolean(editorProps.readOnly),
-			}),
-		},
-		{
-			name: "formbox_questionnaire_get_validation",
-			description:
-				"Read the latest validation issues displayed by the import dialog.",
-			inputSchema: NO_ARGUMENTS,
-			annotations: { readOnlyHint: true },
-			execute: () => diagnostics,
-		},
-		...(!editorProps.readOnly
-			? [
-					{
-						name: "formbox_questionnaire_set_json",
-						description:
-							"Edit the import JSON. This triggers the ordinary validation flow and does not import or save a resource.",
-						inputSchema: {
-							type: "object" as const,
-							properties: { value: { type: "string" as const } },
-							required: ["value"],
-							additionalProperties: false,
-						},
-						annotations: { destructiveHint: false },
-						execute: ({ value: next }: Record<string, unknown>) => {
-							if (typeof next !== "string")
-								throw new Error("JSON content must be a string");
-							replaceValue(
-								language === "json"
-									? next
-									: convertResourceText(next, "json", language),
-							);
-							return { status: "updated" };
-						},
-					},
-					{
-						name: "formbox_questionnaire_format_json",
-						description:
-							"Format the import resource using the selected JSON or YAML format.",
-						inputSchema: NO_ARGUMENTS,
-						annotations: { destructiveHint: false },
-						execute: () => {
-							replaceValue(
-								serializeResource(parseResourceText(value, language), language),
-							);
-							return { status: "formatted" };
-						},
-					},
-				]
-			: []),
-	]);
-	useEffect(() => {
-		if (!copied) return;
-		const timeout = setTimeout(() => setCopied(false), 2000);
-		return () => clearTimeout(timeout);
-	}, [copied]);
 	const format = () => {
 		try {
 			replaceValue(
@@ -162,37 +94,12 @@ export function QuestionnaireCodeEditor({
 								Questionnaire
 							</span>
 							<div className="flex items-center gap-2">
-								<ResourceFormatSelect
-									value={language}
-									onChange={onLanguageChange}
-									disabled={editorProps.readOnly}
+								<CodeEditorFormatSelect
+									mode={language}
+									onModeChange={onLanguageChange}
 								/>
-								<IconButton
-									icon={<TextQuote />}
-									aria-label={`Format ${formatLabel}`}
-									title={`Format ${formatLabel} (⌘/Ctrl+Shift+F)`}
-									aria-keyshortcuts="Meta+Shift+F Control+Shift+F"
-									disabled={editorProps.readOnly || !value.trim()}
-									onClick={format}
-								/>
-								<IconButton
-									icon={copied ? <Check /> : <Copy />}
-									aria-label={
-										copied ? `${formatLabel} copied` : `Copy ${formatLabel}`
-									}
-									title={
-										copied ? `${formatLabel} copied` : `Copy ${formatLabel}`
-									}
-									disabled={!value.trim()}
-									onClick={async () => {
-										try {
-											await navigator.clipboard.writeText(value);
-											setCopied(true);
-										} catch {
-											toast.error(`Could not copy ${formatLabel}`);
-										}
-									}}
-								/>
+								<CodeEditorFormatButton onFormat={format} />
+								<CodeEditorCopyButton textToCopy={value} />
 							</div>
 						</div>
 						<div
