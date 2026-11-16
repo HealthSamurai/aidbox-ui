@@ -1,3 +1,4 @@
+import { useUnsavedChangesBlocker } from "@aidbox-ui/hooks/useUnsavedChangesBlocker";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -8,30 +9,27 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@health-samurai/react-components";
-import { useBlocker } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
-/** Local adaptation of Aidbox's editor guard; successful writes may navigate immediately. */
+/**
+ * Aidbox's editor blocker driven by a dirty flag the editor derives from its
+ * draft. `allowNavigation` lets a successful save or delete navigate away
+ * without asking.
+ */
 export function useUnsavedChangesGuard(isDirty: boolean) {
-	const savedNavigation = useRef(false);
+	const blocker = useUnsavedChangesBlocker();
+	const { setIsDirty } = blocker;
 	useEffect(() => {
-		if (!isDirty) savedNavigation.current = false;
-	}, [isDirty]);
-	const blocker = useBlocker({
-		shouldBlockFn: ({ current, next }) =>
-			isDirty && !savedNavigation.current && current.pathname !== next.pathname,
-		enableBeforeUnload: () => isDirty && !savedNavigation.current,
-		withResolver: true,
-	});
+		setIsDirty(isDirty);
+	}, [isDirty, setIsDirty]);
 
 	return {
 		...blocker,
-		allowNavigation: () => {
-			savedNavigation.current = true;
-		},
+		allowNavigation: () => setIsDirty(false),
 	};
 }
 
+/** The same dialog the Aidbox editors show. */
 export function UnsavedChangesDialog({
 	guard,
 }: {
@@ -49,14 +47,22 @@ export function UnsavedChangesDialog({
 					<AlertDialogTitle>Unsaved changes</AlertDialogTitle>
 				</AlertDialogHeader>
 				<AlertDialogDescription>
-					You have unsaved changes. Leave this page and discard them?
+					You have unsaved changes. Are you sure you want to leave this page?
+					Your changes will be lost.
 				</AlertDialogDescription>
 				<AlertDialogFooter>
 					<AlertDialogCancel onClick={() => guard.reset?.()}>
-						Keep editing
+						Cancel
 					</AlertDialogCancel>
-					<AlertDialogAction danger onClick={() => guard.proceed?.()}>
-						Discard changes
+					<AlertDialogAction
+						variant="primary"
+						danger
+						onClick={() => {
+							guard.setIsDirty(false);
+							guard.proceed?.();
+						}}
+					>
+						Leave
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
