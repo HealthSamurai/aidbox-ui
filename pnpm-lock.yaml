@@ -18,7 +18,6 @@ overrides:
   '@codemirror/view': ^6.42.0
   '@codemirror/autocomplete': 6.20.2
   '@codemirror/state': ^6.6.0
-  '@health-samurai/aidbox-client': file:./aidbox-ts-sdk/packages/aidbox-client
   '@babel/core@<=7.29.0': '>=7.29.6'
   js-yaml@<5.2.2: 5.2.2
   nanoid@<3.3.17: '>=3.3.17'
@@ -35,14 +34,14 @@ importers:
         specifier: ^0.0.30
         version: 0.0.30(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@health-samurai/aidbox-client':
-        specifier: file:aidbox-ts-sdk/packages/aidbox-client
-        version: file:aidbox-ts-sdk/packages/aidbox-client
+        specifier: 1.0.0
+        version: 1.0.0
       '@health-samurai/aidbox-fhirpath-lsp':
-        specifier: file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp
-        version: file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+        specifier: 1.0.0
+        version: 1.0.0(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       '@health-samurai/react-components':
-        specifier: file:aidbox-ts-sdk/packages/react-components
-        version: file:aidbox-ts-sdk/packages/react-components(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
+        specifier: 1.0.0
+        version: 1.0.0(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
       '@mcp-b/global':
         specifier: ^2.1.0
         version: 2.2.0(zod-to-json-schema@3.25.1(zod@4.6.7))(zod@4.6.7)
@@ -449,12 +448,6 @@ packages:
   '@codemirror/language@6.12.2':
     resolution: {integrity: sha512-jEPmz2nGGDxhRTg3lTpzmIyGKxz3Gp3SJES4b0nAuE5SWQoKdT5GoQ69cwMmFd+wvFUhYirtDTr0/DRHpQAyWg==}
 
-  '@codemirror/lint@6.9.5':
-    resolution: {integrity: sha512-GElsbU9G7QT9xXhpUg1zWGmftA/7jamh+7+ydKRuT0ORpWS3wOSP0yT1FOlIZa7mIJjpVPipErsyvVqB9cfTFA==}
-
-  '@codemirror/lint@6.9.6':
-    resolution: {integrity: sha512-6Kp7r6XfCi/D/5sdXieMfg9pJU1bUEx96WITuLU6ESaKizCz0QHFMjY/TaFSbigDdEAIgi93itLBIUETP4oK+A==}
-
   '@codemirror/lint@6.9.7':
     resolution: {integrity: sha512-28/+iWLYxKxsvGYhSYL7zaCZqLz5+FFFDq9tVsvGv9kv8RY4fFAchJ5WX9M3YrrRlTIsECjsXPqeNgnSmNP2dg==}
 
@@ -672,19 +665,19 @@ packages:
       react: '*'
       react-dom: '*'
 
-  '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
-    resolution: {directory: aidbox-ts-sdk/packages/aidbox-client, type: directory}
+  '@health-samurai/aidbox-client@1.0.0':
+    resolution: {integrity: sha512-THur05LZcYcu3VRlkFKZ4cWR3axIVlxCiNgEOGZns3EikYpaKDpZS9HM6CC2wID3k+4GngQ7gRmjCaJ5LSUR1Q==}
 
-  '@health-samurai/aidbox-fhirpath-lsp@file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp':
-    resolution: {directory: aidbox-ts-sdk/packages/aidbox-fhirpath-lsp, type: directory}
+  '@health-samurai/aidbox-fhirpath-lsp@1.0.0':
+    resolution: {integrity: sha512-jNojURniCdXUNHPe1edOsgz7H29VhP6VGPToofwZ0gXOAI0ZqBXQAiF2RuymYr0jDm5C1rqU3udmBS6V6fOBSw==}
     peerDependencies:
       '@codemirror/lsp-client': ^6.2.0
       '@codemirror/state': ^6.6.0
       react: ^19.1.0
       react-dom: ^19.1.0
 
-  '@health-samurai/react-components@file:aidbox-ts-sdk/packages/react-components':
-    resolution: {directory: aidbox-ts-sdk/packages/react-components, type: directory}
+  '@health-samurai/react-components@1.0.0':
+    resolution: {integrity: sha512-XaxeDzp8yc+wqmpysHHHkxcc13ot4lzSmQQAzSlwyqP1/wBWClWDwpLw8JuAstu0P0DTK+CP+VfneH2rFqA2Gg==}
 
   '@hookform/resolvers@5.2.2':
     resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
@@ -806,17 +799,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lezer/common@1.5.1':
-    resolution: {integrity: sha512-6YRVG9vBkaY7p1IVxL4s44n5nUnaNnGM2/AckNgYOnxTG2kWh1vR8BMxPseWPjRNpb5VtXnMpeYAEAADoRV1Iw==}
-
-  '@lezer/common@1.5.2':
-    resolution: {integrity: sha512-sxQE460fPZyU3sdc8lafxiPwJHBzZRy/udNFynGQky1SePYBdhkBl1kOagA9uT3pxR8K09bOrmTUqA9wb/PjSQ==}
-
   '@lezer/common@1.5.3':
     resolution: {integrity: sha512-H0iErY4e43LpXbYDyBci5W4v/RwTgGV3YzYOlJPiGZ8RY8w51kVE+xLn1tg3Z6UmSfyETvtsUK3r7YsgDQEI7Q==}
-
-  '@lezer/highlight@1.2.3':
-    resolution: {integrity: sha512-qXdH7UqTvGfdVBINrgKhDsVTJTxactNNxLk7+UMwZhU13lMHaOBlJe9Vqp907ya56Y3+ed2tlqzys7jDkTmW0g==}
 
   '@lezer/highlight@1.2.5':
     resolution: {integrity: sha512-O1GMVKgtf5YspFaRzpmqkVgMtIk2HG9uMAbH6wdAIdNh3TVzCsch/+cRi+6l2//UGDKe6NB9BW3cvuR5ezMQ0w==}
@@ -2110,9 +2094,6 @@ packages:
 
   cookie-es@3.1.1:
     resolution: {integrity: sha512-UaXxwISYJPTr9hwQxMFYZ7kNhSXboMXP+Z3TRX6f1/NyaGPfuNUZOWP1pUEb75B2HjfklIYLVRfWiFZJyC6Npg==}
-
-  crelt@1.0.6:
-    resolution: {integrity: sha512-VQ2MBenTq1fWZUH9DJNGti7kKv6EeAuYr3cLwxUWhIu1baTaXh4Ib5W2CqHVqib4/MqbYGJqiL3Zb8GJZr3l4g==}
 
   crelt@1.0.7:
     resolution: {integrity: sha512-aK6BbWfhf4U/wCcLHKPJl/xa6VkVstRaPywWtMKGwuOLc/wZTyQYuoxgvZnNsBvv7Kg3YTBQYYBCggcviQczuA==}
@@ -3472,7 +3453,7 @@ snapshots:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/commands': 6.10.3
       '@codemirror/language': 6.12.2
-      '@codemirror/lint': 6.9.6
+      '@codemirror/lint': 6.9.7
       '@codemirror/search': 6.6.0
       '@codemirror/state': 6.6.0
       '@codemirror/theme-one-dark': 6.1.3
@@ -3751,14 +3732,14 @@ snapshots:
       '@codemirror/language': 6.12.2
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
-      '@lezer/common': 1.5.2
+      '@lezer/common': 1.5.3
 
   '@codemirror/commands@6.10.3':
     dependencies:
       '@codemirror/language': 6.12.2
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
-      '@lezer/common': 1.5.1
+      '@lezer/common': 1.5.3
 
   '@codemirror/lang-json@6.0.2':
     dependencies:
@@ -3770,8 +3751,8 @@ snapshots:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/language': 6.12.2
       '@codemirror/state': 6.6.0
-      '@lezer/common': 1.5.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.8
 
   '@codemirror/lang-yaml@6.1.2':
@@ -3779,8 +3760,8 @@ snapshots:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/language': 6.12.2
       '@codemirror/state': 6.6.0
-      '@lezer/common': 1.5.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.8
       '@lezer/yaml': 1.0.4
 
@@ -3788,22 +3769,10 @@ snapshots:
     dependencies:
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
-      '@lezer/common': 1.5.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.8
       style-mod: 4.1.3
-
-  '@codemirror/lint@6.9.5':
-    dependencies:
-      '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.42.1
-      crelt: 1.0.6
-
-  '@codemirror/lint@6.9.6':
-    dependencies:
-      '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.42.1
-      crelt: 1.0.6
 
   '@codemirror/lint@6.9.7':
     dependencies:
@@ -3826,7 +3795,7 @@ snapshots:
     dependencies:
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
-      crelt: 1.0.6
+      crelt: 1.0.7
 
   '@codemirror/state@6.6.0':
     dependencies:
@@ -3837,12 +3806,12 @@ snapshots:
       '@codemirror/language': 6.12.2
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/highlight': 1.2.5
 
   '@codemirror/view@6.42.1':
     dependencies:
       '@codemirror/state': 6.6.0
-      crelt: 1.0.6
+      crelt: 1.0.7
       style-mod: 4.1.3
       w3c-keyname: 2.2.8
 
@@ -3984,25 +3953,25 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@health-samurai/aidbox-client@file:aidbox-ts-sdk/packages/aidbox-client':
+  '@health-samurai/aidbox-client@1.0.0':
     dependencies:
       '@types/json-patch': 0.0.33
       oauth4webapi: 3.8.5
       yaml: 2.8.3
 
-  '@health-samurai/aidbox-fhirpath-lsp@file:aidbox-ts-sdk/packages/aidbox-fhirpath-lsp(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
+  '@health-samurai/aidbox-fhirpath-lsp@1.0.0(@codemirror/lsp-client@6.2.2)(@codemirror/state@6.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
       '@atomic-ehr/fhirpath': 0.1.4(typescript@5.9.3)
       '@atomic-ehr/fhirpath-lsp': 0.0.7(typescript@5.9.3)
       '@codemirror/lsp-client': 6.2.2
       '@codemirror/state': 6.6.0
-      '@health-samurai/aidbox-client': file:aidbox-ts-sdk/packages/aidbox-client
+      '@health-samurai/aidbox-client': 1.0.0
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
     transitivePeerDependencies:
       - typescript
 
-  '@health-samurai/react-components@file:aidbox-ts-sdk/packages/react-components(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)':
+  '@health-samurai/react-components@1.0.0(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)':
     dependencies:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/commands': 6.10.3
@@ -4010,15 +3979,15 @@ snapshots:
       '@codemirror/lang-sql': 6.10.0
       '@codemirror/lang-yaml': 6.1.2
       '@codemirror/language': 6.12.2
-      '@codemirror/lint': 6.9.5
+      '@codemirror/lint': 6.9.7
       '@codemirror/search': 6.6.0
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
       '@headless-tree/core': 1.6.3
       '@headless-tree/react': 1.6.3(@headless-tree/core@1.6.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@hookform/resolvers': 5.2.2(react-hook-form@7.71.2(react@19.2.4))
-      '@lezer/common': 1.5.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.8
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@radix-ui/react-alert-dialog': 1.1.15(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4158,15 +4127,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@lezer/common@1.5.1': {}
-
-  '@lezer/common@1.5.2': {}
-
   '@lezer/common@1.5.3': {}
-
-  '@lezer/highlight@1.2.3':
-    dependencies:
-      '@lezer/common': 1.5.1
 
   '@lezer/highlight@1.2.5':
     dependencies:
@@ -4174,18 +4135,18 @@ snapshots:
 
   '@lezer/json@1.0.3':
     dependencies:
-      '@lezer/common': 1.5.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.8
 
   '@lezer/lr@1.4.8':
     dependencies:
-      '@lezer/common': 1.5.1
+      '@lezer/common': 1.5.3
 
   '@lezer/yaml@1.0.4':
     dependencies:
-      '@lezer/common': 1.5.1
-      '@lezer/highlight': 1.2.3
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.8
 
   '@marijn/find-cluster-break@1.0.2': {}
@@ -4859,7 +4820,7 @@ snapshots:
   '@radix-ui/react-use-is-hydrated@0.1.0(@types/react@19.2.0)(react@19.2.4)':
     dependencies:
       react: 19.2.4
-      use-sync-external-store: 1.6.0(react@19.2.4)
+      use-sync-external-store: 1.7.0(react@19.2.4)
     optionalDependencies:
       '@types/react': 19.2.0
 
@@ -5434,7 +5395,7 @@ snapshots:
       '@codemirror/autocomplete': 6.20.2
       '@codemirror/commands': 6.10.3
       '@codemirror/language': 6.12.2
-      '@codemirror/lint': 6.9.6
+      '@codemirror/lint': 6.9.7
       '@codemirror/search': 6.6.0
       '@codemirror/state': 6.6.0
       '@codemirror/view': 6.42.1
@@ -5448,8 +5409,6 @@ snapshots:
   convert-source-map@2.0.0: {}
 
   cookie-es@3.1.1: {}
-
-  crelt@1.0.6: {}
 
   crelt@1.0.7: {}
 
@@ -6305,7 +6264,7 @@ snapshots:
     dependencies:
       '@types/use-sync-external-store': 0.0.6
       react: 19.2.4
-      use-sync-external-store: 1.6.0(react@19.2.4)
+      use-sync-external-store: 1.7.0(react@19.2.4)
     optionalDependencies:
       '@types/react': 19.2.0
       redux: 5.0.1
@@ -6376,7 +6335,7 @@ snapshots:
       react-redux: 9.2.0(@types/react@19.2.0)(react@19.2.4)(redux@5.0.1)
       reselect: 5.1.1
       tiny-invariant: 1.3.3
-      use-sync-external-store: 1.6.0(react@19.2.4)
+      use-sync-external-store: 1.7.0(react@19.2.4)
       victory-vendor: 37.3.6
     transitivePeerDependencies:
       - '@types/react'

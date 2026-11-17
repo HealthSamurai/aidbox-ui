@@ -21,34 +21,14 @@ Icons: use `lucide-react` for standard icons. Use icons from `@health-samurai/re
 
 When a Figma link is provided, invoke the `/figma-use` skill to inspect the design before implementing UI.
 
-## React Components (submodule)
-
-The `@health-samurai/react-components` package lives in `aidbox-ts-sdk/packages/react-components` (git submodule) and is linked via `file:` protocol in `package.json`. Source code is at `aidbox-ts-sdk/packages/react-components/src/` — always read from there, not from `node_modules`.
-
 ### Setup (fresh clone)
 
 ```bash
-git clone --recursive git@github.com:HealthSamurai/aidbox-ui.git
+git clone git@github.com:HealthSamurai/aidbox-ui.git
 cd aidbox-ui
-pnpm install  # preinstall auto-builds react-components
+pnpm install
 pnpm dev
 ```
-
-### Editing react-components
-
-After making changes in `aidbox-ts-sdk/packages/react-components/src/`:
-
-```bash
-pnpm rc:build   # builds react-components + reinstalls + clears Vite cache
-# then restart dev server (Ctrl+C, pnpm dev)
-```
-
-Restart is required because Vite caches pre-bundled deps in memory.
-
-### Committing submodule changes
-
-1. Commit and push inside `aidbox-ts-sdk/`
-2. Then commit the updated submodule ref in `aidbox-ui`
 
 ## Linting & Type Checking
 

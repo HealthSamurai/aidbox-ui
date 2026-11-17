@@ -11,14 +11,12 @@ This guide covers the development setup, workflow, and conventions for contribut
 ## Setup
 
 ```bash
-git clone --recursive git@github.com:HealthSamurai/aidbox-ui.git
+git clone git@github.com:HealthSamurai/aidbox-ui.git
 cd aidbox-ui
-pnpm install   # preinstall auto-builds the react-components submodule
+pnpm install
 pnpm hooks     # install pre-commit hooks
 pnpm dev       # start dev server
 ```
-
-If you make changes to `@health-samurai/react-components`, run `pnpm rc:build` and restart the dev server for the changes to take effect (Vite caches pre-bundled deps in memory).
 
 Configure `VITE_AIDBOX_BASE_URL` if your Aidbox runs on a different address.
 
@@ -36,7 +34,6 @@ Configure `VITE_AIDBOX_BASE_URL` if your Aidbox runs on a different address.
    pnpm typecheck    # type-check the project
    pnpm lint:fix     # auto-fix linting and formatting
    pnpm all          # format + typecheck + lint (one shot)
-   pnpm rc:build     # rebuild react-components submodule + clear Vite cache
    ```
 
 3. **Commit.**
@@ -44,24 +41,6 @@ Configure `VITE_AIDBOX_BASE_URL` if your Aidbox runs on a different address.
    Fix any issues before pushing.
 
 4. **Open a pull request** against `master`.
-
-## Working with react-components (submodule)
-
-The `@health-samurai/react-components` package lives in the `aidbox-ts-sdk` git submodule (linked via `file:` protocol in `package.json`). Source code is at `aidbox-ts-sdk/packages/react-components/src/`.
-
-After making changes in the submodule:
-
-```bash
-pnpm rc:build   # builds react-components + reinstalls + clears Vite cache
-# then restart dev server (Ctrl+C, pnpm dev)
-```
-
-Restart is required because Vite caches pre-bundled deps in memory.
-
-**Committing submodule changes:**
-
-1. Commit and push inside `aidbox-ts-sdk/` (target the `development` branch)
-2. Then commit the updated submodule ref in `aidbox-ui`
 
 ## Code style
 
@@ -88,7 +67,6 @@ src/
   utils/           # Pure utility functions
   fhir-types/      # Generated FHIR type definitions
 scripts/           # Code generation scripts
-aidbox-ts-sdk/     # Git submodule (react-components, aidbox-client, fhirpath-lsp)
 ```
 
 ## Tech stack

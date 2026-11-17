@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
       - name: Install pnpm
         uses: pnpm/action-setup@v6
       - name: Install node
@@ -19,9 +17,6 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-      - name: Build react-components submodule
-        working-directory: aidbox-ts-sdk
-        run: pnpm install && pnpm -r run build
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Lint
@@ -31,8 +26,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
       - name: Install pnpm
         uses: pnpm/action-setup@v6
       - name: Install node
@@ -40,9 +33,6 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-      - name: Build react-components submodule
-        working-directory: aidbox-ts-sdk
-        run: pnpm install && pnpm -r run build
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Type check
@@ -52,8 +42,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
       - name: Install pnpm
         uses: pnpm/action-setup@v6
       - name: Install node
@@ -70,8 +58,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
       - name: Install pnpm
         uses: pnpm/action-setup@v6
       - name: Install node
@@ -79,9 +65,6 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-      - name: Build react-components submodule
-        working-directory: aidbox-ts-sdk
-        run: pnpm install && pnpm -r run build
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build
