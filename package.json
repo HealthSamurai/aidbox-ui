@@ -31,7 +31,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"packageManager": "pnpm@10.29.2",
+	"packageManager": "pnpm@12.21.0",
 	"devDependencies": {
 		"@agentclientprotocol/sdk": "^0.14.1",
 		"@atomic-ehr/codegen": "latest",
@@ -77,26 +77,5 @@
 		"ws": "^8.21.0",
 		"zod": "^4.3.6",
 		"zod-to-json-schema": "^3.25.1"
-	},
-	"pnpm": {
-		"overrides": {
-			"browserslist@<4.28.7": "^4.28.7",
-			"fast-xml-parser": "^5.7.3",
-			"fast-xml-builder": "^1.1.7",
-			"picomatch@<3": "^2.3.2",
-			"picomatch@>=4": "^4.0.4",
-			"yaml": "^2.8.3",
-			"diff": "^8.0.3",
-			"postcss@<8.5.18": ">=8.5.18",
-			"esbuild@<0.28.1": ">=0.28.1",
-			"seroval@<1.5.3": ">=1.5.3",
-			"@codemirror/view": "^6.42.0",
-			"@codemirror/autocomplete": "6.20.2",
-			"@codemirror/state": "^6.6.0",
-			"@babel/core@<=7.29.0": ">=7.29.6",
-			"js-yaml@<5.2.2": "5.2.2",
-			"nanoid@<3.3.17": ">=3.3.17",
-			"zod@<4.6.6": "^4.6.6"
-		}
 	}
 }
