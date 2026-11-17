@@ -3,13 +3,16 @@
 	"version": "1.2611.1",
 	"description": "Aidbox UI",
 	"files": [
-		"dist"
+		"dist",
+		"sbom.cdx.json"
 	],
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
 		"typecheck": "pnpm tsc --noEmit --project tsconfig.app.json",
 		"build": "pnpm exec vite build",
+		"generate-sbom": "pnpm sbom --sbom-format cyclonedx --out sbom.cdx.json",
+		"prepack": "pnpm run generate-sbom",
 		"format": "biome format --write",
 		"format:check": "biome format",
 		"lint": "biome check",

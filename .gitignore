@@ -9,3 +9,5 @@
 .env
 .env.*
 !.env.development
+
+/sbom.cdx.json
