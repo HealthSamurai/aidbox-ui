@@ -4,9 +4,10 @@
 /.tanstack
 /tmp
 /.codegen-cache/
-/pnpm-workspace.yaml
 
 # Secrets
 .env
 .env.*
 !.env.development
+
+/sbom.cdx.json
