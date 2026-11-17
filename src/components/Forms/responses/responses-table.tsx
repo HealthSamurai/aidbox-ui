@@ -20,7 +20,8 @@ import {
 	Trash2,
 } from "lucide-react";
 import type * as React from "react";
-import { getFormLabel, type SdcWorkflow } from "../api/forms";
+import type { SdcWorkflow } from "../api/forms";
+import { getFormLabel } from "../api/forms-list";
 import type { ResponseGroup } from "../api/plan-definitions";
 import { formatHumanizedDate } from "../format";
 import {

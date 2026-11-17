@@ -5,7 +5,8 @@ import * as HSComp from "@health-samurai/react-components";
 import { AlertCircle, ChevronDown, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Form } from "./api/forms";
-import { getFormLabel, useQuestionnaire } from "./api/forms";
+import { useQuestionnaire } from "./api/forms";
+import { getFormLabel } from "./api/forms-list";
 import { usePlanDefinition } from "./api/plan-definitions";
 import {
 	questionnaireTemplates,

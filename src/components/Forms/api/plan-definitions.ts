@@ -15,14 +15,11 @@ import type { RequestParams } from "@health-samurai/aidbox-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "./const";
 import {
-	buildQuestionnaireQuery,
 	buildQuestionnaireResponseQuery,
 	type Form,
-	type FormFilters,
-	getFormLabel,
-	getFormPinId,
 	type QuestionnaireResponseFilters,
 } from "./forms";
+import { getFormLabel } from "./forms-list";
 import { ResourceRequestError } from "./resource-error";
 
 export const ACTION_QUESTIONNAIRE_ANSWER_MAPPING_URL =
@@ -133,119 +130,6 @@ export function useQuestionnaireMetadata(enabled = true) {
 			),
 		staleTime: 60_000,
 	});
-}
-
-/** Merge sorted prefixes before slicing, so PlanDefinitions do not distort paging. */
-export function mergeForms(
-	questionnaires: Questionnaire[],
-	planDefinitions: PlanDefinition[],
-	filters: FormFilters,
-	page: number,
-	pageSize: number,
-) {
-	const direction = filters.updatedSort === "asc" ? 1 : -1;
-	return [...questionnaires, ...planDefinitions]
-		.sort(
-			(left, right) =>
-				direction *
-					(left.meta?.lastUpdated ?? "").localeCompare(
-						right.meta?.lastUpdated ?? "",
-					) ||
-				`${left.resourceType}/${left.id}`.localeCompare(
-					`${right.resourceType}/${right.id}`,
-				),
-		)
-		.slice((page - 1) * pageSize, page * pageSize);
-}
-
-export function useForms(
-	filters: FormFilters,
-	page: number,
-	pageSize: number,
-	excludedIds: string[],
-) {
-	const aidboxClient = useAidboxClient();
-	const planDefinitions = usePlanDefinitions();
-	const planDefinitionScope = (planDefinitions.data ?? [])
-		.map((planDefinition) => planDefinition.id)
-		.sort()
-		.join(",");
-	const query = useQuery({
-		queryKey: [
-			"questionnaires",
-			"forms",
-			filters,
-			page,
-			pageSize,
-			excludedIds,
-			planDefinitionScope,
-		],
-		enabled: planDefinitions.isSuccess,
-		queryFn: async ({ signal }) => {
-			const planDefinitionCandidates =
-				!filters.kind || filters.kind === "plan-definition"
-					? (planDefinitions.data ?? []).filter(
-							(planDefinition) =>
-								!excludedIds.includes(getFormPinId(planDefinition)),
-						)
-					: [];
-			// Let the server apply the same text, author and status search semantics to both resource types.
-			const [questionnaires, matchingDefinitions] = await Promise.all([
-				filters.kind === "plan-definition"
-					? Promise.resolve({ resources: [] as Questionnaire[], total: 0 })
-					: searchResources<Questionnaire>(
-							aidboxClient,
-							"Questionnaire",
-							buildQuestionnaireQuery(
-								filters,
-								1,
-								Math.min(page * pageSize, 100),
-								excludedIds.filter((id) => !id.startsWith("PlanDefinition/")),
-							),
-							signal,
-							page * pageSize,
-						),
-				planDefinitionCandidates.length
-					? searchResources<PlanDefinition>(
-							aidboxClient,
-							"PlanDefinition",
-							[
-								["type", `${PLAN_DEFINITION_TYPE_SYSTEM}|plan-definition`],
-								...buildQuestionnaireQuery(
-									{ ...filters, kind: undefined },
-									1,
-									100,
-								),
-							],
-							signal,
-						)
-					: Promise.resolve({ resources: [] as PlanDefinition[], total: 0 }),
-			]);
-			const planDefinitionIds = new Set(
-				planDefinitionCandidates.map((planDefinition) => planDefinition.id),
-			);
-			const matchingPlanDefinitions = matchingDefinitions.resources.filter(
-				(planDefinition) => planDefinitionIds.has(planDefinition.id),
-			);
-			return {
-				forms: mergeForms(
-					questionnaires.resources,
-					matchingPlanDefinitions,
-					filters,
-					page,
-					pageSize,
-				),
-				total: questionnaires.total + matchingPlanDefinitions.length,
-			};
-		},
-		placeholderData: (previous) => previous,
-	});
-	return {
-		...query,
-		planDefinitionScope,
-		isLoading: planDefinitions.isLoading || query.isLoading,
-		isError: planDefinitions.isError || query.isError,
-	};
 }
 
 export function usePlanDefinition(planDefinitionId?: string) {

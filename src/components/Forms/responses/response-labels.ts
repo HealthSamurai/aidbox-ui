@@ -4,7 +4,7 @@ import type {
 	QuestionnaireResponse,
 	RequestGroup,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { getFormLabel } from "../api/forms";
+import { getFormLabel } from "../api/forms-list";
 import type { ResponseGroup } from "../api/plan-definitions";
 import { questionnaireTemplates } from "../api/templates";
 import {

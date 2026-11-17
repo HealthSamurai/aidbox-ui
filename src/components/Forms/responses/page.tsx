@@ -10,14 +10,14 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Braces, CircleStop, FileText, Trash2 } from "lucide-react";
 import * as React from "react";
 import {
-	getFormLabel,
 	type QuestionnaireResponseFilters,
 	useCancelResponseSending,
 	useDeleteQuestionnaireResponses,
-	useQuestionnaireCatalog,
 	useQuestionnaireResponseFilterOptions,
+	useQuestionnairesByReference,
 	useResponseWorkflows,
 } from "../api/forms";
+import { getFormLabel } from "../api/forms-list";
 import {
 	useGroupedResponses,
 	usePlanDefinitions,
@@ -85,7 +85,7 @@ export function ResponsesPage() {
 		).values(),
 	];
 	const { data: filterOptions } = useQuestionnaireResponseFilterOptions();
-	const { data: questionnaireCatalog = {} } = useQuestionnaireCatalog();
+	const { data: questionnaireCatalog = {} } = useQuestionnairesByReference();
 
 	const completionRange = resolveCompletionRange(search);
 	const filters: QuestionnaireResponseFilters = {

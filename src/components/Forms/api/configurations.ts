@@ -9,7 +9,6 @@ import type {
 } from "@aidbox-ui/fhir-types/io-health-samurai-sdc-r4/index";
 import { boxJson } from "@aidbox-ui/utils/http";
 import { useQuery } from "@tanstack/react-query";
-import { humanize } from "../utils";
 
 const CONFIGURATIONS_QUERY_KEY = ["sdc-configurations"] as const;
 const QUESTIONNAIRE_THEMES_QUERY_KEY = ["questionnaire-themes"] as const;
@@ -17,22 +16,9 @@ const CONFIGURATION_REFERENCES_QUERY_KEY = [
 	...CONFIGURATIONS_QUERY_KEY,
 	"references",
 ] as const;
-const STORAGE_ACCOUNT_REFERENCES_QUERY_KEY = [
-	"storage-account-references",
-] as const;
 const CONFIGURATION_RESOURCE_TYPE = "SDCConfig";
 const QUESTIONNAIRE_THEME_RESOURCE_TYPE = "QuestionnaireTheme";
 const CONFIGURATION_FILTER_PAGE_SIZE = 200;
-const STORAGE_ACCOUNT_RESOURCE_TYPES = [
-	"AwsAccount",
-	"GcpServiceAccount",
-	"AzureContainer",
-] as const;
-
-type StorageAccountReferenceOption = {
-	label: string;
-	value: string;
-};
 
 function bundleResources<T extends Resource>(
 	bundle: Bundle,
@@ -86,49 +72,6 @@ async function fetchConfigurationReferences(client: AidboxClientR5) {
 	);
 }
 
-async function fetchStorageAccountReferences(client: AidboxClientR5) {
-	const bundles = await Promise.all(
-		STORAGE_ACCOUNT_RESOURCE_TYPES.map((resourceType) =>
-			fetchFhirBundle(client, resourceType),
-		),
-	);
-
-	return bundles
-		.flatMap((bundle, index) => {
-			const resourceType = STORAGE_ACCOUNT_RESOURCE_TYPES[index];
-
-			return (
-				bundle.entry?.flatMap((entry) => {
-					const resource = entry.resource as
-						| {
-								id?: string;
-								name?: unknown;
-								resourceType?: string;
-						  }
-						| undefined;
-
-					if (!resource?.id) {
-						return [];
-					}
-
-					const name =
-						typeof resource.name === "string" ? resource.name.trim() : "";
-					const typeLabel = humanize(resource.resourceType ?? resourceType);
-
-					return [
-						{
-							label: name
-								? `${name} (${typeLabel})`
-								: `${resource.id} (${typeLabel})`,
-							value: `${resourceType}/${resource.id}`,
-						} satisfies StorageAccountReferenceOption,
-					];
-				}) ?? []
-			);
-		})
-		.sort((left, right) => left.label.localeCompare(right.label));
-}
-
 export function getConfigurationLabel(
 	configuration: Pick<SDCConfig, "id"> & Partial<Pick<SDCConfig, "name">>,
 ) {
@@ -156,13 +99,5 @@ export function useConfigurationReferences(enabled = true) {
 		queryKey: CONFIGURATION_REFERENCES_QUERY_KEY,
 		queryFn: () => fetchConfigurationReferences(client),
 		enabled,
-	});
-}
-
-export function useStorageAccountReferences() {
-	const client = useAidboxClient();
-	return useQuery({
-		queryKey: STORAGE_ACCOUNT_REFERENCES_QUERY_KEY,
-		queryFn: () => fetchStorageAccountReferences(client),
 	});
 }

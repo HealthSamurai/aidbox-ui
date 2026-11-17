@@ -1,7 +1,8 @@
 import { DropdownMenuItem, toast } from "@health-samurai/react-components";
 import { Globe } from "lucide-react";
 import type { Form } from "../api/forms";
-import { getFormLabel, useShareForm } from "../api/forms";
+import { useShareForm } from "../api/forms";
+import { getFormLabel } from "../api/forms-list";
 import {
 	getResourceOrganizationId,
 	getResourceShareMode,

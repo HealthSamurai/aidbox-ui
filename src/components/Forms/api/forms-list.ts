@@ -1,7 +1,8 @@
-import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import { useAidboxClient } from "@aidbox-ui/AidboxClient";
 import { useLocalStorage } from "@aidbox-ui/hooks/index";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { searchResources, usePlanDefinitions } from "./plan-definitions";
 
 /** `PlanDefinition.type` of an SDC package of forms. */
 const PLAN_DEFINITION_TYPE =
@@ -164,50 +165,6 @@ export function findActionQuestionnaire(
 	);
 }
 
-type SearchBundle = {
-	total?: number;
-	entry?: Array<{ resource?: { resourceType?: string } }>;
-	link?: Array<{ relation?: string }>;
-};
-
-/**
- * Search the SDC API, following pages until `limit` resources are read: the
- * box caps a page at 100, whatever `_count` asks for.
- */
-async function searchResources<T extends Form>(
-	client: AidboxClientR5,
-	resourceType: T["resourceType"],
-	params: Array<[string, string]>,
-	limit = Number.POSITIVE_INFINITY,
-): Promise<{ resources: T[]; total: number }> {
-	const resources: T[] = [];
-	let total = 0;
-	for (let page = 1; resources.length < limit; page++) {
-		const query = params.filter(([name]) => name !== "_page");
-		if (!query.some(([name]) => name === "_count")) {
-			query.push(["_count", String(MAX_PAGE_SIZE)]);
-		}
-		query.push(["_page", String(page)]);
-		const result = await client.request<SearchBundle>({
-			method: "GET",
-			url: `/sdc/${resourceType}`,
-			params: query,
-		});
-		if (result.isErr()) throw new Error(`Could not load ${resourceType}`);
-		const bundle = result.value.resource;
-		const matches = (bundle.entry ?? []).flatMap((entry) =>
-			entry.resource?.resourceType === resourceType
-				? [entry.resource as T]
-				: [],
-		);
-		resources.push(...matches);
-		total = bundle.total ?? resources.length;
-		const hasNext = bundle.link?.some((link) => link.relation === "next");
-		if (matches.length === 0 || (!hasNext && resources.length >= total)) break;
-	}
-	return { resources, total };
-}
-
 function buildFormsQuery(
 	filters: FormFilters,
 	pageSize: number,
@@ -235,20 +192,6 @@ function compareByUpdated(direction: UpdatedSort) {
 			(left.meta?.lastUpdated ?? "").localeCompare(
 				right.meta?.lastUpdated ?? "",
 			) || getFormKey(left).localeCompare(getFormKey(right));
-}
-
-export function usePlanDefinitions() {
-	const client = useAidboxClient();
-	return useQuery({
-		queryKey: ["questionnaires", "sdc-forms", "plan-definitions"],
-		queryFn: async () =>
-			(
-				await searchResources<FormPlanDefinition>(client, "PlanDefinition", [
-					["type", PLAN_DEFINITION_TYPE],
-				])
-			).resources,
-		staleTime: 60_000,
-	});
 }
 
 /**
@@ -295,6 +238,7 @@ export function useForms(
 								Math.min(end, MAX_PAGE_SIZE),
 								pinnedIds.filter((id) => !id.startsWith("PlanDefinition/")),
 							),
+							undefined,
 							end,
 						),
 				packageIds.size > 0
@@ -361,6 +305,7 @@ export function useFormFilterOptions() {
 						["_count", "1000"],
 						["_elements", "publisher,status"],
 					],
+					undefined,
 					1000,
 				)
 			).resources,

@@ -1,4 +1,4 @@
-import { getFormLabel } from "@aidbox-ui/components/Forms/api/forms";
+import { getFormLabel } from "@aidbox-ui/components/Forms/api/forms-list";
 import { canonical } from "@aidbox-ui/components/Forms/api/plan-definitions";
 import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import {

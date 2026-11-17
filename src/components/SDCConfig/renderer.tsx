@@ -2,6 +2,7 @@ import {
 	AppSelectContent,
 	AppSelectItem,
 } from "@aidbox-ui/components/app-select";
+import { getQuestionnaireThemeLabel } from "@aidbox-ui/components/Forms/api/configurations";
 import type { QuestionnaireTheme } from "@aidbox-ui/fhir-types/io-health-samurai-sdc-r4/index";
 import {
 	Button,
@@ -29,7 +30,7 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { type UseFormReturn, useFieldArray } from "react-hook-form";
-import { getQuestionnaireThemeLabel, useStorageAccountReferences } from "./api";
+import { useStorageAccountReferences } from "./api";
 import type { ConfigurationFormValues } from "./form-values";
 import { NullableBooleanField } from "./nullable-boolean-field";
 import type {

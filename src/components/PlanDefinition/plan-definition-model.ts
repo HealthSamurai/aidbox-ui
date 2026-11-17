@@ -1,5 +1,5 @@
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "@aidbox-ui/components/Forms/api/const";
-import { getFormLabel } from "@aidbox-ui/components/Forms/api/forms";
+import { getFormLabel } from "@aidbox-ui/components/Forms/api/forms-list";
 import { canonical } from "@aidbox-ui/components/Forms/api/plan-definitions";
 import { fhirpathVariables } from "@aidbox-ui/components/Forms/editor/fhirpath";
 import type {

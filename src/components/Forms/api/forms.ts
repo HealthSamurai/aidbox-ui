@@ -9,13 +9,10 @@ import type {
 	QuestionnaireResponse,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { useLocalStorage } from "@aidbox-ui/hooks/useLocalStorage";
 import { boxJson, boxRequest, withFallback } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 import type { QuestionnaireCatalog } from "../responses/response-labels";
 import { COMPLETED_RESPONSE_STATUSES } from "../utils";
-import { PLAN_DEFINITION_TYPE_SYSTEM } from "./const";
 import { buildShareModePatch, type ShareMode } from "./sharing";
 
 /** `client.searchType` through `client.request`, returning the raw bundle. */
@@ -43,8 +40,6 @@ function readFhirResource<T>(
 
 export type Form = Questionnaire | PlanDefinition;
 
-const PINNED_QUESTIONNAIRES_STORAGE_KEY = "formbox:pinned-questionnaires";
-
 function bundleResources<T extends Resource>(
 	bundle: Bundle,
 	resourceType: T["resourceType"] | string,
@@ -56,51 +51,6 @@ function bundleResources<T extends Resource>(
 		}) ?? []
 	);
 }
-
-export function countQuestionnaireItems(items?: Questionnaire["item"]): number {
-	if (!items?.length) {
-		return 0;
-	}
-
-	return items.reduce(
-		(total: number, item) => total + 1 + countQuestionnaireItems(item.item),
-		0,
-	);
-}
-
-export function countQuestionnaireResponseItems(
-	items?: QuestionnaireResponse["item"],
-): number {
-	if (!items?.length) {
-		return 0;
-	}
-
-	return items.reduce(
-		(total: number, item) =>
-			total +
-			1 +
-			countQuestionnaireResponseItems(item.item) +
-			countQuestionnaireResponseItems(
-				item.answer?.flatMap((answer) => answer.item ?? []),
-			),
-		0,
-	);
-}
-
-export function getFormLabel(form: Pick<Form, "id" | "name" | "title">) {
-	return form.title ?? form.name ?? form.id ?? "Untitled questionnaire";
-}
-
-/** Direction of the list's sort by `Questionnaire.meta.lastUpdated`. */
-export type UpdatedSort = "asc" | "desc";
-
-export type FormFilters = {
-	author?: string;
-	kind?: FormKind;
-	q?: string;
-	status?: string;
-	updatedSort?: UpdatedSort;
-};
 
 export type QuestionnaireResponseFilters = {
 	planDefinition?: string;
@@ -251,28 +201,6 @@ type GenerateFormLinkParams = SharedLinkParams & {
 const OPENEHR_TEMPLATE_SOURCE_URL =
 	"http://aidbox.io/sdc/openehr-template-source";
 
-const FORM_KIND_LABELS = {
-	"plan-definition": "Package",
-	component: "Component",
-	form: "Form",
-	"form-component": "Form & Component",
-} as const;
-
-export type FormKind = keyof typeof FORM_KIND_LABELS;
-
-export const FORM_KIND_OPTIONS = Object.entries(FORM_KIND_LABELS).map(
-	([value, label]) => ({
-		label,
-		value: value as FormKind,
-	}),
-);
-
-export function isFormKind(value: string): value is FormKind {
-	// `in` walks the prototype chain, so `?kind=constructor` would pass the guard
-	// and go out on the wire now that the kind reaches the box as a search param.
-	return Object.hasOwn(FORM_KIND_LABELS, value);
-}
-
 function buildQuestionnaireResponseUsageQuery(
 	questionnaire: Pick<Questionnaire, "url" | "version">,
 ) {
@@ -319,44 +247,6 @@ function subjectSearchParam(subject: string) {
 	return FHIR_REFERENCE_PATTERN.test(subject) || /^https?:\/\//.test(subject)
 		? "subject"
 		: "subject:text";
-}
-
-export function buildQuestionnaireQuery(
-	filters: FormFilters,
-	page: number,
-	pageSize: number,
-	excludeIds: string[] = [],
-) {
-	const query: Array<[string, string]> = [
-		["_count", String(pageSize)],
-		["_page", String(page)],
-		["_sort", filters.updatedSort === "asc" ? "_lastUpdated" : "-_lastUpdated"],
-	];
-
-	// Form kind lives in the sdc-questionnaire-assemble-expectation extension; the
-	// box exposes it as the `assemble-kind` Search resource so the filter, the
-	// count and the paging all stay server-side.
-	if (filters.kind) {
-		query.push(["assemble-kind", filters.kind]);
-	}
-
-	if (excludeIds.length > 0) {
-		query.push(["_id:not", excludeIds.join(",")]);
-	}
-
-	if (filters.q) {
-		query.push(["_ilike", filters.q]);
-	}
-
-	if (filters.status) {
-		query.push(["status", filters.status]);
-	}
-
-	if (filters.author) {
-		query.push(["publisher", filters.author]);
-	}
-
-	return query;
 }
 
 export function buildQuestionnaireResponseQuery(
@@ -746,99 +636,6 @@ function generateFormLinkBody(params: GenerateFormLinkParams) {
 	};
 }
 
-/** Keep existing questionnaire pins and distinguish PlanDefinition IDs in the same list. */
-export function getFormPinId(form: Form) {
-	return form.resourceType === "PlanDefinition"
-		? `PlanDefinition/${form.id}`
-		: (form.id ?? "");
-}
-
-export function usePinnedFormIds() {
-	const [pinnedIds, setPinnedIds] = useLocalStorage<string[]>({
-		key: PINNED_QUESTIONNAIRES_STORAGE_KEY,
-		defaultValue: [],
-	});
-
-	const togglePin = useCallback(
-		(id: string) => {
-			setPinnedIds((prev) =>
-				prev.includes(id)
-					? prev.filter((value) => value !== id)
-					: [...prev, id],
-			);
-		},
-		[setPinnedIds],
-	);
-
-	const removePin = useCallback(
-		(id: string) => {
-			setPinnedIds((prev) => prev.filter((value) => value !== id));
-		},
-		[setPinnedIds],
-	);
-
-	return { pinnedIds, togglePin, removePin };
-}
-
-export function usePinnedForms(pinnedIds: string[]) {
-	const client = useAidboxClient();
-
-	return useQuery({
-		queryKey: ["questionnaires", "pinned", pinnedIds],
-		queryFn: async () => {
-			if (pinnedIds.length === 0) {
-				return [] as Form[];
-			}
-
-			const forms = (
-				await Promise.all(
-					(["Questionnaire", "PlanDefinition"] as const).map(
-						async (resourceType) => {
-							const ids = pinnedIds
-								.filter(
-									(id) =>
-										id.startsWith("PlanDefinition/") ===
-										(resourceType === "PlanDefinition"),
-								)
-								.map((id) =>
-									resourceType === "PlanDefinition"
-										? id.slice("PlanDefinition/".length)
-										: id,
-								);
-							if (!ids.length) return [];
-							const query: Array<[string, string]> = [
-								["_id", ids.join(",")],
-								["_count", String(ids.length)],
-							];
-							if (resourceType === "PlanDefinition")
-								query.push([
-									"type",
-									`${PLAN_DEFINITION_TYPE_SYSTEM}|plan-definition`,
-								]);
-							const result = await searchFhirType(client, {
-								type: resourceType,
-								query,
-							});
-							if (!result.isOk())
-								throw new Error("Failed to fetch pinned forms");
-							return bundleResources<Form>(
-								result.value.resource as Bundle,
-								resourceType,
-							);
-						},
-					),
-				)
-			).flat();
-			const byId = new Map(forms.map((form) => [getFormPinId(form), form]));
-
-			return pinnedIds
-				.map((id) => byId.get(id))
-				.filter((form): form is Form => Boolean(form));
-		},
-		placeholderData: (previousData) => previousData,
-	});
-}
-
 export function useQuestionnaire(questionnaireId: string) {
 	const client = useAidboxClient();
 
@@ -861,7 +658,8 @@ export function useQuestionnaire(questionnaireId: string) {
 	});
 }
 
-export function useQuestionnaireCatalog() {
+/** Questionnaires keyed by canonical URL and by `Questionnaire/<id>`, to label responses. */
+export function useQuestionnairesByReference() {
 	const client = useAidboxClient();
 
 	return useQuery({

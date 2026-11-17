@@ -1,6 +1,5 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core/index";
-import type { QuestionnaireTheme } from "@aidbox-ui/fhir-types/io-health-samurai-sdc-r4/index";
 import { useQuery } from "@tanstack/react-query";
 
 const PAGE_SIZE = 200;
@@ -56,27 +55,6 @@ function nameOf(resource: NamedResource) {
 
 const byLabel = (left: ReferenceOption, right: ReferenceOption) =>
 	left.label.localeCompare(right.label);
-
-export function getQuestionnaireThemeLabel(
-	theme: Pick<QuestionnaireTheme, "id" | "theme-name">,
-) {
-	return theme["theme-name"] ?? theme.id ?? "Untitled theme";
-}
-
-export function useQuestionnaireThemes() {
-	const client = useAidboxClient();
-	return useQuery({
-		queryKey: ["sdc-config", "questionnaire-themes"],
-		queryFn: async () =>
-			(
-				await fetchResources<QuestionnaireTheme>(client, "QuestionnaireTheme")
-			).sort((left, right) =>
-				getQuestionnaireThemeLabel(left).localeCompare(
-					getQuestionnaireThemeLabel(right),
-				),
-			),
-	});
-}
 
 /**
  * Cloud storage accounts a configuration can point at. A box without one of

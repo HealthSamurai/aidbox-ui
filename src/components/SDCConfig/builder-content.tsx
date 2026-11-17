@@ -1,3 +1,4 @@
+import { useQuestionnaireThemes } from "@aidbox-ui/components/Forms/api/configurations";
 import type {
 	OperationOutcome,
 	Resource,
@@ -7,7 +8,6 @@ import * as HSComp from "@health-samurai/react-components";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
-import { useQuestionnaireThemes } from "./api";
 import { ConfigurationForm } from "./form";
 import {
 	type ConfigurationFormValues,
