@@ -96,7 +96,4 @@ jobs:
         env:
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          # The package is a prebuilt static bundle: consumers need only dist/,
-          # so don't make them install the app's runtime dependencies.
-          npm pkg delete dependencies
           pnpm publish --no-git-checks --access public --tag "$TAG" --provenance
