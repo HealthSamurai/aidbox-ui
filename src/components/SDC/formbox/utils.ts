@@ -27,14 +27,6 @@ export function getFormBuilderUrl(questionnaireId?: string) {
 	return url.toString();
 }
 
-/** The public form library of the classic SDC UI, to pick forms from. */
-export function getFormLibraryUrl() {
-	const url = new URL("ui/sdc", `${getAidboxBaseURL()}/`);
-	url.hash = "/library";
-
-	return url.toString();
-}
-
 export function getLiquidTemplateEditorUrl(templateId: string) {
 	const url = new URL("ui/sdc", `${getAidboxBaseURL()}/`);
 	url.hash = `/forms/builder/liquid?${new URLSearchParams({ template: templateId }).toString()}`;
