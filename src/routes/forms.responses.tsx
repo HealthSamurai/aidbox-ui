@@ -1,7 +1,7 @@
+import { FormsTabs } from "@aidbox-ui/components/Forms/forms-tabs";
+import { ResponsesPage } from "@aidbox-ui/components/Forms/responses/page";
+import { validateResponsesSearch } from "@aidbox-ui/components/Forms/responses/search";
 import { createFileRoute } from "@tanstack/react-router";
-import { FormsTabs } from "../components/SDC/forms/forms-tabs";
-import { ResponsesPage } from "../components/SDC/responses/page";
-import { validateResponsesSearch } from "../components/SDC/responses/search";
 
 function FormsResponses() {
 	return (

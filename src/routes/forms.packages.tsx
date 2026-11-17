@@ -1,5 +1,5 @@
+import { PlanDefinitionEditorPage } from "@aidbox-ui/components/PlanDefinition/plan-definition-editor";
 import { createFileRoute, useParams, useSearch } from "@tanstack/react-router";
-import { PlanDefinitionEditorPage } from "../components/SDC/formbox/pages/plan-definitions/plan-definition-editor";
 
 export const Route = createFileRoute("/forms/packages")({
 	component: PackageEditorRoute,

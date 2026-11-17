@@ -1,3 +1,10 @@
+import {
+	ClassicUiTab,
+	classicUiLink,
+	isLiquidTemplateLibrary,
+} from "@aidbox-ui/components/Forms/classic-ui-tab";
+import { SDCConfigBuilderContent } from "@aidbox-ui/components/SDCConfig/builder-content";
+import { VoiceAgentBuilderContent } from "@aidbox-ui/components/SDCVoiceAgent/agent-editor-page";
 import type {
 	OperationOutcome,
 	OperationOutcomeIssue,
@@ -32,13 +39,6 @@ import { ConceptMapProvider } from "../ConceptMap/page";
 import { EmptyState } from "../empty-state";
 import { MaterializationBuilderContent } from "../Materialization/builder-content";
 import { MaterializationsTab } from "../Materialization/target-tab";
-import { SDCConfigBuilderContent } from "../SDC/config/builder-content";
-import {
-	ClassicUiTab,
-	classicUiLink,
-	isLiquidTemplateLibrary,
-} from "../SDC/shared/classic-ui-tab";
-import { VoiceAgentBuilderContent } from "../SDC/voice-agent/agent-editor-page";
 import { SearchParameterBuilderContent } from "../SearchParameter/builder-content";
 import { IndexesTab as SearchParameterIndexesTab } from "../SearchParameter/indexes-tab";
 import { StatsTab as SearchParameterStatsTab } from "../SearchParameter/stats-tab";

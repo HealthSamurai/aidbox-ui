@@ -63,8 +63,8 @@
 	"overrides": [
 		{
 			"includes": [
-				"src/components/SDC/formbox/pages/plan-definitions/plan-definition-graph.tsx",
-				"src/components/SDC/formbox/pages/plan-definitions/plan-definition-graph-edges.tsx"
+				"src/components/PlanDefinition/plan-definition-graph.tsx",
+				"src/components/PlanDefinition/plan-definition-graph-edges.tsx"
 			],
 			"linter": {
 				"rules": {

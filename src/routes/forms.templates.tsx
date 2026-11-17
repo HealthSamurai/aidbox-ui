@@ -1,7 +1,7 @@
+import { FormsTabs } from "@aidbox-ui/components/Forms/forms-tabs";
+import { TemplatesPage } from "@aidbox-ui/components/Forms/templates/page";
+import { validateTemplatesSearch } from "@aidbox-ui/components/Forms/templates/search";
 import { createFileRoute } from "@tanstack/react-router";
-import { FormsTabs } from "../components/SDC/forms/forms-tabs";
-import { TemplatesPage } from "../components/SDC/templates/page";
-import { validateTemplatesSearch } from "../components/SDC/templates/search";
 
 function FormsTemplates() {
 	return (
