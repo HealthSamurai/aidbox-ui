@@ -30,12 +30,6 @@ import {
 	useState,
 } from "react";
 import {
-	convertOpenEhrTemplate,
-	findQuestionnaireByUrl,
-	useImportQuestionnaire,
-	validateQuestionnaire,
-} from "../api/forms";
-import {
 	buildIssueDiagnostics,
 	findIssueTextRange,
 	getIssueExpression,
@@ -51,6 +45,12 @@ import { getFormBuilderUrl } from "../utils";
 import { generateQuestionnaireFromPdf } from "./ai-engine";
 import { hasConfiguredAiProvider, subscribeToAiSettings } from "./ai-settings";
 import { AiSettingsDialog } from "./ai-settings-dialog";
+import {
+	convertOpenEhrTemplate,
+	findQuestionnaireByUrl,
+	useImportQuestionnaire,
+	validateQuestionnaire,
+} from "./api";
 import { type PdfPageImage, type PdfPreview, parsePdfToImages } from "./pdf";
 
 const ACCEPTED_TYPES =

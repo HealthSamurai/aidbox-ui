@@ -20,9 +20,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import type * as React from "react";
-import type { SdcWorkflow } from "../api/forms";
 import { getFormLabel } from "../api/forms-list";
-import type { ResponseGroup } from "../api/plan-definitions";
 import { formatHumanizedDate } from "../format";
 import {
 	formatInstant,
@@ -34,6 +32,7 @@ import {
 	getResponseRendererUrl,
 	normalizeCanonicalReference,
 } from "../utils";
+import type { ResponseGroup, SdcWorkflow } from "./api";
 import {
 	canCancelResponseSending,
 	getDeliveryDate,

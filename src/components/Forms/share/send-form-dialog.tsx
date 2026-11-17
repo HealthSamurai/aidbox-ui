@@ -34,18 +34,6 @@ import {
 	useQuestionnaireThemes,
 } from "../api/configurations";
 import type { Form } from "../api/forms";
-import {
-	type AidboxReferenceResource,
-	type AidboxSearchResource,
-	formatAidboxReferenceLabel,
-	formatEncounterLabel,
-	formatPatientLabel,
-	getPatientEmail,
-	searchAidboxReferenceResources,
-	useEncounters,
-	usePatients,
-	useSendForm,
-} from "../api/forms";
 import { useQuestionnaireMetadata } from "../api/plan-definitions";
 import {
 	capitalizeLabel,
@@ -62,6 +50,18 @@ import {
 	SendFormIcon,
 	ToggleRow,
 } from "../form-dialog-fields";
+import {
+	type AidboxReferenceResource,
+	type AidboxSearchResource,
+	formatAidboxReferenceLabel,
+	formatEncounterLabel,
+	formatPatientLabel,
+	getPatientEmail,
+	searchAidboxReferenceResources,
+	useEncounters,
+	usePatients,
+	useSendForm,
+} from "./api";
 import { ResourceSearchSelect } from "./resource-search-select";
 
 const EMAIL_PROVIDER_OPTIONS = [

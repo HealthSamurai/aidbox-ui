@@ -1,5 +1,4 @@
 import { DatePickerInput } from "@health-samurai/react-components";
-import type { ResponseFilterOption } from "../api/forms";
 import {
 	FilterField,
 	FilterSelect,
@@ -7,6 +6,7 @@ import {
 	OptionalFilters,
 	SearchInput,
 } from "../grid-filters";
+import type { ResponseFilterOption } from "./api";
 
 /*
  * No Delivery Date filter, as in Formbox: the delivery date comes from the

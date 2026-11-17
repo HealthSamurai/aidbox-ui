@@ -12,7 +12,7 @@ import {
 } from "@health-samurai/react-components";
 import { ChevronDown, Copy } from "lucide-react";
 import { useState } from "react";
-import type { SdcWorkflow } from "../api/forms";
+import type { SdcWorkflow } from "./api";
 import type { DeliveryDetail } from "./delivery";
 import {
 	buildDeliveryDetails,

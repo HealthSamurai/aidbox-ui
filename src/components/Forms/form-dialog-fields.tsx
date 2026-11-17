@@ -16,7 +16,8 @@ import {
 } from "@health-samurai/react-components";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
-import type { AidboxReferenceResource, Form } from "./api/forms";
+import type { Form } from "./api/forms";
+import type { AidboxReferenceResource } from "./share/api";
 import { humanize } from "./utils";
 
 export const DEFAULT_SELECT_VALUE = "__default__";

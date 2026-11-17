@@ -1,14 +1,14 @@
 import { DropdownMenuItem, toast } from "@health-samurai/react-components";
 import { Globe } from "lucide-react";
 import type { Form } from "../api/forms";
-import { useShareForm } from "../api/forms";
 import { getFormLabel } from "../api/forms-list";
+import { useShareForm } from "./api";
 import {
 	getResourceOrganizationId,
 	getResourceShareMode,
 	type ShareMode,
 	useOrgbacEnabled,
-} from "../api/sharing";
+} from "./sharing";
 
 export function FormShareMenuItems({ form }: { form: Form }) {
 	const orgbacEnabled = useOrgbacEnabled();

@@ -22,14 +22,16 @@ The form builder, the Liquid template editor and the response renderer are not h
 | `renderer.tsx` | Form renderer used by previews |
 | `classic-ui-tab.tsx` | Links into the classic UI, also used by ResourceEditor |
 | `utils.ts` | Classic UI URLs, labels, canonical helpers |
-| `api/` | Requests and query hooks: `forms-list.ts` (grid search), `forms.ts`, `plan-definitions.ts`, `templates.ts`, `sharing.ts`, `configurations.ts`, `resource-error.ts`, `const.ts` |
-| `share/` | Send, Share and Generate link dialogs, recipient search |
-| `import/` | Import dialog: JSON, PDF and AI import, AI provider settings |
+| `api/` | Requests shared across the section: `forms-list.ts` (the `Form` view, grid search, pins, filter options), `forms.ts` (one Questionnaire: read, duplicate, delete), `plan-definitions.ts` (packages, `searchResources`, `sdcRequest`), `templates.ts`, `configurations.ts` (SDCConfig and QuestionnaireTheme options), `resource-error.ts`, `const.ts` |
+| `share/` | Send, Share and Generate link dialogs, recipient search; `api.ts` sends and links, `sharing.ts` the OrgBAC share mode |
+| `import/` | Import dialog: JSON, openEHR, PDF and AI import, AI provider settings; `api.ts` validation and import requests |
 | `editor/` | Code editors for Questionnaire and PlanDefinition JSON, FHIRPath editor, editor shortcuts |
-| `responses/` | Responses grid, filters, delivery status, PDF export |
+| `responses/` | Responses grid, filters, delivery status, PDF export; `api.ts` search, package grouping, cancel sending, delete |
 | `templates/` | Liquid templates grid and bulk delete |
 
 ## Conventions
+
+- A request used by one feature lives in that feature's `api.ts`; `api/` holds only what several features share.
 
 - Grids use `components/data-table` with opt-in props only; do not change its defaults for the whole app.
 - Box requests go through `@aidbox-ui/utils/http` (`boxRequest`, `boxJson`) or `useAidboxClient`.

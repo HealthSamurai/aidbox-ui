@@ -19,17 +19,6 @@ import {
 	useQuestionnaireThemes,
 } from "../api/configurations";
 import type { Form } from "../api/forms";
-import {
-	type AidboxReferenceResource,
-	type AidboxSearchResource,
-	formatAidboxReferenceLabel,
-	formatEncounterLabel,
-	formatPatientLabel,
-	searchAidboxReferenceResources,
-	useEncounters,
-	useGenerateFormLink,
-	usePatients,
-} from "../api/forms";
 import { useQuestionnaireMetadata } from "../api/plan-definitions";
 import {
 	capitalizeLabel,
@@ -43,6 +32,17 @@ import {
 	resourceReference,
 	Section,
 } from "../form-dialog-fields";
+import {
+	type AidboxReferenceResource,
+	type AidboxSearchResource,
+	formatAidboxReferenceLabel,
+	formatEncounterLabel,
+	formatPatientLabel,
+	searchAidboxReferenceResources,
+	useEncounters,
+	useGenerateFormLink,
+	usePatients,
+} from "./api";
 import { ResourceSearchSelect } from "./resource-search-select";
 
 type ShareFormProps = {

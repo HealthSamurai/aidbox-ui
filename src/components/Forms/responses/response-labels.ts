@@ -5,12 +5,12 @@ import type {
 	RequestGroup,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { getFormLabel } from "../api/forms-list";
-import type { ResponseGroup } from "../api/plan-definitions";
 import { questionnaireTemplates } from "../api/templates";
 import {
 	getQuestionnaireResponseSubjectLabel,
 	normalizeCanonicalReference,
 } from "../utils";
+import type { ResponseGroup } from "./api";
 
 /** The purpose a form's liquid template is linked under to print a response. */
 export const PRINT_PURPOSE = "print";

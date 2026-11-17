@@ -4,32 +4,19 @@ import type {
 	OperationOutcome,
 	PlanDefinition,
 	Questionnaire,
-	QuestionnaireResponse,
-	RequestGroup,
 	Resource,
-	Task,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { generateId } from "@aidbox-ui/utils";
 import { boxJson, boxRequest } from "@aidbox-ui/utils/http";
 import type { RequestParams } from "@health-samurai/aidbox-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "./const";
-import {
-	buildQuestionnaireResponseQuery,
-	type Form,
-	type QuestionnaireResponseFilters,
-} from "./forms";
+import type { Form } from "./forms";
 import { getFormLabel } from "./forms-list";
 import { ResourceRequestError } from "./resource-error";
 
 export const ACTION_QUESTIONNAIRE_ANSWER_MAPPING_URL =
 	"http://health-samurai.io/fhir/sdc/StructureDefinition/action-questionnaire-answer-mapping";
-
-export type ResponseGroup = {
-	requestGroup: RequestGroup;
-	responses: QuestionnaireResponse[];
-	actionIdsByResponseId: Record<string, string>;
-};
 
 export type SdcRequestInit = {
 	method?: RequestParams["method"];
@@ -266,183 +253,5 @@ export function useDeletePlanDefinition() {
 			void client.invalidateQueries({ queryKey: ["planDefinitions"] });
 			void client.invalidateQueries({ queryKey: ["questionnaires"] });
 		},
-	});
-}
-
-/** Only the filtered response page becomes children; Tasks supply parentage, never extra siblings. */
-export function groupResponses(
-	responses: QuestionnaireResponse[],
-	tasks: Task[],
-	requestGroups: RequestGroup[],
-): { groups: ResponseGroup[]; standalone: QuestionnaireResponse[] } {
-	const byResponse = new Map<
-		string,
-		{ requestGroup: RequestGroup; actionId?: string }
-	>();
-	for (const group of requestGroups) {
-		const actionsByTask = new Map(
-			group.action?.map((action) => [action.resource?.reference, action.id]),
-		);
-		for (const task of tasks) {
-			if (
-				!actionsByTask.has(`Task/${task.id}`) ||
-				!task.basedOn?.some(
-					(reference) => reference.reference === `RequestGroup/${group.id}`,
-				)
-			)
-				continue;
-			for (const output of task.output ?? []) {
-				if (
-					!output.type.coding?.some(
-						(coding) =>
-							coding.system === "http://hl7.org/fhir/uv/sdc/CodeSystem/temp" &&
-							coding.code === "questionnaire-response",
-					)
-				)
-					continue;
-				const reference = output.valueReference?.reference;
-				if (reference)
-					byResponse.set(reference, {
-						requestGroup: group,
-						actionId: actionsByTask.get(`Task/${task.id}`),
-					});
-			}
-		}
-	}
-	const groups = new Map<string, ResponseGroup>();
-	const standalone: QuestionnaireResponse[] = [];
-	for (const response of responses) {
-		const parent = byResponse.get(`QuestionnaireResponse/${response.id}`);
-		const group = parent?.requestGroup;
-		if (!group?.id) {
-			standalone.push(response);
-			continue;
-		}
-		let responseGroup = groups.get(group.id);
-		if (!responseGroup) {
-			responseGroup = {
-				requestGroup: group,
-				responses: [],
-				actionIdsByResponseId: {},
-			};
-			groups.set(group.id, responseGroup);
-		}
-		responseGroup.responses.push(response);
-		if (response.id && parent?.actionId)
-			responseGroup.actionIdsByResponseId[response.id] = parent.actionId;
-	}
-	return { groups: [...groups.values()], standalone };
-}
-
-export function useGroupedResponses(
-	filters: QuestionnaireResponseFilters,
-	page: number,
-	pageSize: number,
-) {
-	const aidboxClient = useAidboxClient();
-	return useQuery({
-		queryKey: ["questionnaireResponses", "grouped", filters, page, pageSize],
-		queryFn: async ({ signal }) => {
-			const query = buildQuestionnaireResponseQuery(
-				filters,
-				1,
-				Math.min(page * pageSize, 100),
-			);
-			// A newly created RequestGroup has no responses yet. Child-only filters exclude
-			// it, while PlanDefinition and patient filters still apply to the RequestGroup.
-			const [matches, unopened] = await Promise.all([
-				searchResources<QuestionnaireResponse>(
-					aidboxClient,
-					"QuestionnaireResponse",
-					query,
-					signal,
-					page * pageSize,
-				),
-				filters.q ||
-				filters.status ||
-				filters.completedFrom ||
-				filters.completedTo
-					? Promise.resolve({ resources: [] as RequestGroup[], total: 0 })
-					: searchResources<RequestGroup>(
-							aidboxClient,
-							"RequestGroup",
-							[...query, ["sdc-empty", "true"]],
-							signal,
-							page * pageSize,
-						),
-			]);
-			const items = [...matches.resources, ...unopened.resources]
-				.sort(
-					(left, right) =>
-						(right.meta?.lastUpdated ?? "").localeCompare(
-							left.meta?.lastUpdated ?? "",
-						) ||
-						`${left.resourceType}/${left.id}`.localeCompare(
-							`${right.resourceType}/${right.id}`,
-						),
-				)
-				.slice((page - 1) * pageSize, page * pageSize);
-			const responses = items.filter(
-				(item) => item.resourceType === "QuestionnaireResponse",
-			);
-			const ids = responses.flatMap((response) =>
-				response.id ? [response.id] : [],
-			);
-			const tasks = ids.length
-				? (
-						await searchResources<Task>(
-							aidboxClient,
-							"Task",
-							[
-								["sdc-response", ids.join(",")],
-								[
-									"code",
-									"http://hl7.org/fhir/uv/sdc/CodeSystem/temp|complete-questionnaire",
-								],
-							],
-							signal,
-						)
-					).resources
-				: [];
-			const groupIds = [
-				...new Set(
-					tasks.flatMap((task) =>
-						(task.basedOn ?? []).flatMap((reference) =>
-							reference.reference?.startsWith("RequestGroup/")
-								? [reference.reference.slice(13)]
-								: [],
-						),
-					),
-				),
-			];
-			const groups = groupIds.length
-				? (
-						await searchResources<RequestGroup>(
-							aidboxClient,
-							"RequestGroup",
-							[["_id", groupIds.join(",")]],
-							signal,
-						)
-					).resources
-				: [];
-			const grouped = groupResponses(responses, tasks, groups);
-			return {
-				questionnaireResponses: responses,
-				standalone: grouped.standalone,
-				groups: [
-					...grouped.groups,
-					...items
-						.filter((item) => item.resourceType === "RequestGroup")
-						.map((requestGroup) => ({
-							requestGroup,
-							responses: [],
-							actionIdsByResponseId: {},
-						})),
-				],
-				total: matches.total + unopened.total,
-				unopenedTotal: unopened.total,
-			};
-		},
-		placeholderData: (previous) => previous,
 	});
 }

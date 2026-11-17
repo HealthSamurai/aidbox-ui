@@ -1,5 +1,5 @@
-import type { SdcWorkflow } from "../api/forms";
 import { formatInstant } from "../utils";
+import type { SdcWorkflow } from "./api";
 
 export function getDeliveryStatus(workflow?: SdcWorkflow) {
 	if (!workflow) {
