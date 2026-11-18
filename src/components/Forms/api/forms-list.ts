@@ -1,7 +1,13 @@
 import { useAidboxClient } from "@aidbox-ui/AidboxClient";
+import type {
+	PlanDefinition,
+	PlanDefinitionAction,
+	Questionnaire,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
 import { useLocalStorage } from "@aidbox-ui/hooks/index";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
+import type { Form } from "./forms";
 import { searchResources, usePlanDefinitions } from "./plan-definitions";
 
 /** `PlanDefinition.type` of an SDC package of forms. */
@@ -31,37 +37,21 @@ type MetaExtension = {
 	valueString?: string;
 };
 
-type FormMeta = { lastUpdated?: string; extension?: MetaExtension[] };
-
-type FormFields = {
-	id?: string;
-	url?: string;
-	version?: string;
-	name?: string;
-	title?: string;
-	status?: string;
-	publisher?: string;
-	meta?: FormMeta;
-};
-
-export type FormQuestionnaire = FormFields & {
-	resourceType: "Questionnaire";
+/**
+ * The extensions a form carries. The generated R4 types leave `extension` out,
+ * so they are read through this view of the resource.
+ */
+type FormExtensions = {
 	extension?: Array<{ url?: string; valueCode?: string }>;
+	meta?: { extension?: MetaExtension[] };
 };
 
-export type PlanDefinitionAction = {
-	id?: string;
-	title?: string;
-	definitionCanonical?: string;
-};
+export type FormQuestionnaire = Questionnaire;
 
 /** A package: a PlanDefinition whose actions are the forms in it. */
-export type FormPlanDefinition = FormFields & {
-	resourceType: "PlanDefinition";
-	action?: PlanDefinitionAction[];
-};
+export type FormPlanDefinition = PlanDefinition;
 
-export type Form = FormQuestionnaire | FormPlanDefinition;
+export type { Form };
 
 const FORM_KIND_LABELS = {
 	"plan-definition": "Package",
@@ -112,7 +102,7 @@ export function getFormPinId(form: Form) {
 
 export function getFormKind(form: Form): FormKind {
 	if (form.resourceType === "PlanDefinition") return "plan-definition";
-	const expectation = form.extension?.find(
+	const expectation = (form as Form & FormExtensions).extension?.find(
 		(extension) => extension.url === ASSEMBLE_EXPECTATION_URL,
 	)?.valueCode;
 	if (expectation === "assemble-child" || expectation === "independent-child") {
@@ -132,7 +122,9 @@ export function getFormKindLabel(form: Form) {
 }
 
 function findMetaExtension(form: Form, url: string) {
-	return form.meta?.extension?.find((extension) => extension.url === url);
+	return (form as Form & FormExtensions).meta?.extension?.find(
+		(extension) => extension.url === url,
+	);
 }
 
 /** Organization the form belongs to, `null` for a root-level form. */

@@ -31,7 +31,7 @@ import {
 	type UpdatedSort,
 } from "./api/forms-list";
 import { classicUiLink } from "./classic-ui-tab";
-import { type FormActions, toFormboxForm } from "./form-actions";
+import type { FormActions } from "./form-actions";
 import { SendFormIcon } from "./form-dialog-fields";
 import { formatHumanizedDate } from "./format";
 import { FormShareMenuItems } from "./share/form-share-menu-items";
@@ -454,7 +454,7 @@ function ActionsCell({
 						<Copy className="size-4" />
 						Duplicate
 					</HSComp.DropdownMenuItem>
-					<FormShareMenuItems form={toFormboxForm(form)} />
+					<FormShareMenuItems form={form} />
 					<HSComp.DropdownMenuItem
 						asChild
 						className="justify-start"

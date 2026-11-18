@@ -1,13 +1,12 @@
 import * as HSComp from "@health-samurai/react-components";
 import * as React from "react";
 import {
-	type Form as FormboxForm,
+	type Form,
 	type QuestionnaireDeleteCheck,
 	useDeleteQuestionnaire,
 	useDuplicateQuestionnaire,
 	useQuestionnaireDeleteCheck,
 } from "./api/forms";
-import type { Form } from "./api/forms-list";
 import { getFormLabel, getFormPinId } from "./api/forms-list";
 import {
 	useDeletePlanDefinition,
@@ -19,14 +18,6 @@ import { ImportFormDialog } from "./import/import-form-dialog";
 import { GeneratedFormLinkDialog } from "./share/generated-form-link-dialog";
 import { SendFormDialog } from "./share/send-form-dialog";
 import { ShareFormDialog } from "./share/share-form-dialog";
-
-/**
- * The grid reads a narrow view of each form; the actions, ported from Formbox,
- * take the whole R4 resource, which is what the search returned.
- */
-export function toFormboxForm(form: Form): FormboxForm {
-	return form as unknown as FormboxForm;
-}
 
 export type FormActions = {
 	preview: (form: Form) => void;
@@ -48,19 +39,12 @@ export function useFormActions({
 	/** A form is gone: drop it from the pins and the selection. */
 	onDeleted: (deleted: { pinId: string; key: string }) => void;
 }): { actions: FormActions; dialogs: React.ReactNode } {
-	const [formForDelete, setFormForDelete] = React.useState<FormboxForm | null>(
-		null,
-	);
+	const [formForDelete, setFormForDelete] = React.useState<Form | null>(null);
 	const [deleteCheck, setDeleteCheck] =
 		React.useState<QuestionnaireDeleteCheck | null>(null);
-	const [formForPreview, setFormForPreview] =
-		React.useState<FormboxForm | null>(null);
-	const [formForSend, setFormForSend] = React.useState<FormboxForm | null>(
-		null,
-	);
-	const [formForShare, setFormForShare] = React.useState<FormboxForm | null>(
-		null,
-	);
+	const [formForPreview, setFormForPreview] = React.useState<Form | null>(null);
+	const [formForSend, setFormForSend] = React.useState<Form | null>(null);
+	const [formForShare, setFormForShare] = React.useState<Form | null>(null);
 	const [generatedLink, setGeneratedLink] = React.useState<string | null>(null);
 	const [importOpen, setImportOpen] = React.useState(false);
 
@@ -72,7 +56,7 @@ export function useFormActions({
 	const isDeleting =
 		deleteQuestionnaire.isPending || deletePlanDefinition.isPending;
 
-	const deleted = (form: FormboxForm) => {
+	const deleted = (form: Form) => {
 		onDeleted({
 			pinId: getFormPinId(form),
 			key: `${form.resourceType}/${form.id}`,
@@ -81,7 +65,7 @@ export function useFormActions({
 	};
 	const showError = (error: Error) => HSComp.toast.error(error.message);
 
-	const duplicate = (form: FormboxForm) => {
+	const duplicate = (form: Form) => {
 		if (
 			!form.id ||
 			duplicateQuestionnaire.isPending ||
@@ -101,7 +85,7 @@ export function useFormActions({
 	// A package is deleted after a plain confirmation; a Questionnaire first
 	// asks the box what still refers to it, and deletes at once when nothing
 	// does.
-	const remove = (form: FormboxForm) => {
+	const remove = (form: Form) => {
 		if (!form.id || isDeleting || deleteCheckMutation.isPending) return;
 		if (form.resourceType === "PlanDefinition") {
 			setFormForDelete(form);
@@ -184,11 +168,11 @@ export function useFormActions({
 
 	return {
 		actions: {
-			preview: (form) => setFormForPreview(toFormboxForm(form)),
-			share: (form) => setFormForShare(toFormboxForm(form)),
-			send: (form) => setFormForSend(toFormboxForm(form)),
-			duplicate: (form) => duplicate(toFormboxForm(form)),
-			delete: (form) => remove(toFormboxForm(form)),
+			preview: (form) => setFormForPreview(form),
+			share: (form) => setFormForShare(form),
+			send: (form) => setFormForSend(form),
+			duplicate,
+			delete: remove,
 			importForm: () => setImportOpen(true),
 		},
 		dialogs,
