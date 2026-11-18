@@ -260,6 +260,7 @@ export function VoiceAgentBuilderContent({
 				to: "/resource/$resourceType/edit/$id",
 				params: { resourceType: "SDCVoiceAgent", id: saved.id },
 				search: { tab: "builder", mode: "json", builderTab: "form" },
+				ignoreBlocker: true,
 			});
 		}
 		return saved.id;
@@ -604,6 +605,7 @@ export function VoiceAgentBuilderContent({
 						navigate({
 							to: "/resource/$resourceType",
 							params: { resourceType: "SDCVoiceAgent" },
+							ignoreBlocker: true,
 						});
 				}}
 				description={

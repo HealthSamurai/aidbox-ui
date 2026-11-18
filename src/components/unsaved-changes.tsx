@@ -13,8 +13,9 @@ import { useEffect } from "react";
 
 /**
  * Aidbox's editor blocker driven by a dirty flag the editor derives from its
- * draft. `allowNavigation` lets a successful save or delete navigate away
- * without asking.
+ * draft. After a successful save or delete call `allowNavigation` and navigate
+ * with `ignoreBlocker: true`: the blocker reads the dirty flag only after the
+ * next render, so a navigation in the same tick would still be blocked.
  */
 export function useUnsavedChangesGuard(isDirty: boolean) {
 	const blocker = useUnsavedChangesBlocker();

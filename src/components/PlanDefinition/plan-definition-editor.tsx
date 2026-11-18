@@ -452,6 +452,7 @@ export function PlanDefinitionEditor({
 					to: "/forms/packages/$packageId",
 					params: { packageId: savedId },
 					replace: true,
+					ignoreBlocker: true,
 				});
 			}
 		} catch (error) {
