@@ -200,7 +200,15 @@ export function useForms(
 ) {
 	const client = useAidboxClient();
 	const planDefinitions = usePlanDefinitions();
+	const wantsPackages = !filters.kind || filters.kind === "plan-definition";
+	const packageIds = new Set(
+		(wantsPackages ? (planDefinitions.data ?? []) : [])
+			.filter((form) => !pinnedIds.includes(getFormPinId(form)))
+			.map((form) => form.id),
+	);
 	const query = useQuery({
+		// The packages listed are the ones in the PlanDefinition list, so the page
+		// refetches once that list changes (a package saved, copied or deleted).
 		queryKey: [
 			"questionnaires",
 			"sdc-forms",
@@ -209,15 +217,10 @@ export function useForms(
 			page,
 			pageSize,
 			pinnedIds,
+			[...packageIds],
 		],
 		enabled: planDefinitions.isSuccess,
 		queryFn: async () => {
-			const wantsPackages = !filters.kind || filters.kind === "plan-definition";
-			const packageIds = new Set(
-				(wantsPackages ? (planDefinitions.data ?? []) : [])
-					.filter((form) => !pinnedIds.includes(getFormPinId(form)))
-					.map((form) => form.id),
-			);
 			const end = page * pageSize;
 			const [questionnaires, packages] = await Promise.all([
 				filters.kind === "plan-definition"

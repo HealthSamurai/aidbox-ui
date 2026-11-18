@@ -45,11 +45,15 @@ function useExpandedPackages() {
 	return { expanded, toggle };
 }
 
-function GridMessage({ title, description }: FormsMessage) {
-	return <EmptyState grayscale title={title} description={description} />;
+function GridMessage({ title, description, testId }: FormsMessage) {
+	return (
+		<div className="contents" data-test-id={testId}>
+			<EmptyState grayscale title={title} description={description} />
+		</div>
+	);
 }
 
-type FormsMessage = { title: string; description?: string };
+type FormsMessage = { title: string; description?: string; testId: string };
 
 export function FormsPage() {
 	const { search, update } = useFormsSearch();
@@ -91,7 +95,11 @@ export function FormsPage() {
 	const pinnedForms = (pinnedIds.length > 0 ? (pinned.data ?? []) : []).filter(
 		(form) => !search.kind || getFormKind(form) === search.kind,
 	);
-	const pageForms = forms.data?.forms ?? [];
+	// The page is searched without the pinned forms, but while it refetches after
+	// a pin the previous page is still shown; keep the pinned form out of it.
+	const pageForms = (forms.data?.forms ?? []).filter(
+		(form) => !pinnedIds.includes(getFormPinId(form)),
+	);
 	const total = forms.data?.total ?? 0;
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 	// A page past the end (deleted forms, a narrower filter in an old link)
@@ -120,6 +128,7 @@ export function FormsPage() {
 	let message: FormsMessage | undefined;
 	if (forms.isError) {
 		message = {
+			testId: "forms-error-state",
 			title: "Forms could not be loaded",
 			description:
 				"The box did not return Questionnaire or PlanDefinition resources.",
@@ -127,10 +136,11 @@ export function FormsPage() {
 	} else if (!forms.isLoading && rows.length === 0) {
 		message = hasFilters
 			? {
+					testId: "forms-empty-state",
 					title: "No forms matched",
 					description: "Try a broader search or clear one of the filters.",
 				}
-			: { title: "No forms yet" };
+			: { testId: "forms-empty-state", title: "No forms yet" };
 	}
 
 	const open = (form: Form) => {
