@@ -253,7 +253,7 @@ export function planDefinitionErrors(
 }
 
 /** Check condition cycles and prefills that need answers from dependent forms. */
-export function planDefinitionDependencyErrors(
+function planDefinitionDependencyErrors(
 	actions: PlanDefinitionAction[],
 ): Record<string, string> {
 	const errors: Record<string, string> = {};

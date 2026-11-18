@@ -35,14 +35,14 @@ const TONES = {
 	low: "text-fg-info-primary",
 } as const;
 
-export function sortFindings(findings: PromptFinding[]) {
+function sortFindings(findings: PromptFinding[]) {
 	return [...findings].sort(
 		(left, right) => ORDER[left.severity] - ORDER[right.severity],
 	);
 }
 
 /** Whether the rewrite is worth offering: an unchanged prompt is not a suggestion. */
-export function hasRewrite(review: PromptReview, current: string) {
+function hasRewrite(review: PromptReview, current: string) {
 	return Boolean(review.improved) && review.improved.trim() !== current.trim();
 }
 

@@ -96,7 +96,7 @@ function optionLabel(questionnaire: QuestionnaireOption) {
  * agents saved before versions were pinned hold — can be matched to the one
  * revision it means.
  */
-export function newestVersions(questionnaires: QuestionnaireOption[]) {
+function newestVersions(questionnaires: QuestionnaireOption[]) {
 	const newest = new Map<string, string | undefined>();
 	for (const q of questionnaires) {
 		if (!q.url) continue;
@@ -112,7 +112,7 @@ export function newestVersions(questionnaires: QuestionnaireOption[]) {
 }
 
 /** Whether one row is ticked, by canonical or by the bare url it answers to. */
-export function chosenBy(
+function chosenBy(
 	chosen: string[],
 	newest: Map<string, string | undefined>,
 	questionnaire: QuestionnaireOption,

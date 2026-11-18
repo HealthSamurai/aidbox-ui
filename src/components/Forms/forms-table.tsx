@@ -41,7 +41,7 @@ import { FormShareMenuItems } from "./share/form-share-menu-items";
  * package, or a full-width line of an expanded package — a note (loading, an
  * error, "no forms yet") or the gap that frames its forms.
  */
-export type FormsGridRow =
+type FormsGridRow =
 	| { type: "form"; form: Form; pinned: boolean; lastPinned: boolean }
 	| { type: "member"; form: FormQuestionnaire; key: string; edge: CardEdge }
 	| { type: "note"; key: string; content: React.ReactNode; edge: CardEdge }
@@ -151,7 +151,7 @@ export function buildFormsGridRows({
 	});
 }
 
-export function gridRowKey(row: FormsGridRow) {
+function gridRowKey(row: FormsGridRow) {
 	return row.type === "form" ? getFormKey(row.form) : row.key;
 }
 
@@ -491,7 +491,7 @@ function selectableForms(rows: FormsGridRow[]): Form[] {
 	);
 }
 
-export type FormsSelection = {
+type FormsSelection = {
 	selected: Map<string, Form>;
 	onChange: (selected: Map<string, Form>) => void;
 };

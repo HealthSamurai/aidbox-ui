@@ -767,7 +767,7 @@ function emptyServiceFormValues(): ConfigurationFormValues["services"]["formStor
 	};
 }
 
-export const EMPTY_CONFIGURATION_FORM_VALUES: ConfigurationFormValues = {
+const EMPTY_CONFIGURATION_FORM_VALUES: ConfigurationFormValues = {
 	general: {
 		default: false,
 		description: "",

@@ -60,7 +60,7 @@ export function buildResponsePdfFileName(target: PdfExportTarget): string {
 }
 
 /** The liquid template the form is linked to for printing, if any. */
-export function getPrintTemplateId(
+function getPrintTemplateId(
 	questionnaire: QuestionnaireCatalog[string] | undefined,
 ) {
 	if (!questionnaire) return undefined;
@@ -69,7 +69,7 @@ export function getPrintTemplateId(
 	).find((template) => template.purpose === PRINT_PURPOSE)?.templateId;
 }
 
-export function getResponseQuestionnaire(
+function getResponseQuestionnaire(
 	response: QuestionnaireResponse,
 	questionnaireCatalog: QuestionnaireCatalog,
 ) {
@@ -79,7 +79,7 @@ export function getResponseQuestionnaire(
 }
 
 /** What the response is called in the list, and in an exported file name. */
-export function getResponseFormLabel(
+function getResponseFormLabel(
 	response: QuestionnaireResponse,
 	questionnaireCatalog: QuestionnaireCatalog,
 ) {

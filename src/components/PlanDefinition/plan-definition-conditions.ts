@@ -63,7 +63,7 @@ export type ConditionEditorDraft = {
 	rules?: ConditionGroup;
 };
 
-export const conditionOperators = [
+const conditionOperators = [
 	{ value: "=", label: "equals" },
 	{ value: "!=", label: "does not equal" },
 	{ value: ">", label: "is greater than" },

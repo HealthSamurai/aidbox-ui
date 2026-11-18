@@ -8,7 +8,7 @@ import type { Diagnostic } from "@codemirror/lint";
 import { parseResourceText, type ResourceFormat } from "./resource-format";
 
 /** Where an issue points in the editor text: its key up to the end of that line. */
-export type TextRange = { end: number; start: number };
+type TextRange = { end: number; start: number };
 
 /**
  * The path of an issue expression inside the resource. Type casts do not move

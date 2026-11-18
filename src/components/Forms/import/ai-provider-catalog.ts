@@ -70,7 +70,7 @@ const PROVIDER_CUSTOM_CONFIG: Record<string, Record<string, unknown>> = {
 	},
 };
 
-export const AI_PROVIDER_CATALOG = catalogJson as CatalogProvider[];
+const AI_PROVIDER_CATALOG = catalogJson as CatalogProvider[];
 
 export const PROVIDERS: ProviderConfig[] = AI_PROVIDER_CATALOG.filter(
 	(provider) => provider.customModel || provider.models.length > 0,

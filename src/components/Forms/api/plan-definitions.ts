@@ -18,7 +18,7 @@ import { ResourceRequestError } from "./resource-error";
 export const ACTION_QUESTIONNAIRE_ANSWER_MAPPING_URL =
 	"http://health-samurai.io/fhir/sdc/StructureDefinition/action-questionnaire-answer-mapping";
 
-export type SdcRequestInit = {
+type SdcRequestInit = {
 	method?: RequestParams["method"];
 	headers?: Record<string, string>;
 	body?: string;

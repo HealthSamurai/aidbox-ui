@@ -16,7 +16,7 @@ export type GraphViewportState = {
 	contentWidth: number;
 };
 
-export type PlanDefinitionGraphState = {
+type PlanDefinitionGraphState = {
 	edges: GraphEdgeVisibility;
 	viewport?: GraphViewportState;
 };

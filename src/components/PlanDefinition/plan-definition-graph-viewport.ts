@@ -58,7 +58,7 @@ function revealGraphTransform(
 }
 
 /** Leave room for the fixed viewport controls when fitting the whole PlanDefinition. */
-export function fitGraphTransform(
+function fitGraphTransform(
 	width: number,
 	height: number,
 	viewportWidth: number,

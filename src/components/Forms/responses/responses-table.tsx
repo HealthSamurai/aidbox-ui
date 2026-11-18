@@ -47,7 +47,7 @@ import type { QuestionnaireCatalog } from "./response-labels";
  * RequestGroup), a response inside an expanded package, or the note of an
  * expanded package that has no responses yet.
  */
-export type ResponsesGridRow =
+type ResponsesGridRow =
 	| { type: "response"; response: QuestionnaireResponse; group?: ResponseGroup }
 	| { type: "group"; group: ResponseGroup }
 	| { type: "empty"; key: string };
@@ -116,11 +116,11 @@ export function buildResponsesGridRows({
 	});
 }
 
-export function groupKey(requestGroupId: string) {
+function groupKey(requestGroupId: string) {
 	return `RequestGroup/${requestGroupId}`;
 }
 
-export function gridRowKey(row: ResponsesGridRow, index: number) {
+function gridRowKey(row: ResponsesGridRow, index: number) {
 	switch (row.type) {
 		case "response":
 			return row.response.id ?? `response-${index}`;
@@ -152,7 +152,7 @@ export type RowView = {
 	canCancelSending: boolean;
 };
 
-export type ResponsesTableContext = {
+type ResponsesTableContext = {
 	planDefinitions: PlanDefinition[];
 	questionnaireCatalog: QuestionnaireCatalog;
 	workflowsByResponseId: Record<string, SdcWorkflow>;
@@ -259,7 +259,7 @@ function responseView(
 	};
 }
 
-export function rowView(
+function rowView(
 	row: ResponsesGridRow,
 	context: ResponsesTableContext,
 ): RowView | undefined {
@@ -270,7 +270,7 @@ export function rowView(
 	return undefined;
 }
 
-export type ResponsesSelection = {
+type ResponsesSelection = {
 	selected: Set<string>;
 	onChange: (selected: Set<string>) => void;
 };

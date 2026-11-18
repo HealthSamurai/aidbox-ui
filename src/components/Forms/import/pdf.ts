@@ -55,7 +55,7 @@ async function pageToImage(
  */
 const PREVIEW_PAGE_LIMIT = 5;
 
-export type ParsePdfOptions = {
+type ParsePdfOptions = {
 	compression: number;
 	limit?: number;
 	scale: number;
@@ -66,7 +66,7 @@ const DEFAULT_PARSE_OPTIONS: ParsePdfOptions = {
 	scale: 1.8,
 };
 
-export async function renderPdfPages(
+async function renderPdfPages(
 	pdfJs: PdfJsModule,
 	pdfBuffer: ArrayBuffer,
 	options: ParsePdfOptions = DEFAULT_PARSE_OPTIONS,

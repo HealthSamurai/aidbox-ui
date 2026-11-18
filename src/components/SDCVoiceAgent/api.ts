@@ -283,7 +283,7 @@ export function useResourceTypes() {
 }
 
 /** `name` is what gets saved and sent; `label` is what a person reads. */
-export type VoiceModel = { provider: string; name: string; label?: string };
+type VoiceModel = { provider: string; name: string; label?: string };
 
 type VoiceCatalogue = {
 	kind: string;
@@ -292,7 +292,7 @@ type VoiceCatalogue = {
 	providers?: Array<{ provider: string; configured: boolean }>;
 };
 
-export function mergeVoiceCatalogues(
+function mergeVoiceCatalogues(
 	catalogues: VoiceCatalogue[],
 	tests: Array<{ provider: string }>,
 ) {
@@ -311,7 +311,7 @@ export function mergeVoiceCatalogues(
 	return [...models.values()];
 }
 
-export function mergeVoiceProviderStatuses(
+function mergeVoiceProviderStatuses(
 	catalogues: VoiceCatalogue[],
 	tests: Array<{ provider: string }>,
 ) {
@@ -386,7 +386,7 @@ export type CallResults = {
  */
 const CALL_RESULTS_POLL_LIMIT = 20;
 
-export function shouldPollCallResults(
+function shouldPollCallResults(
 	results: Pick<CallResults, "responses" | "extractionErrors"> | undefined,
 	successfulPolls: number,
 ) {

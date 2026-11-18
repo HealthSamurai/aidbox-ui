@@ -74,7 +74,7 @@ function dialable(value: string) {
  * The single reason a run cannot start, in the order the user would hit them.
  * Empty means go.
  */
-export function whyNotRunnable({
+function whyNotRunnable({
 	dialable: numberOk,
 	missing,
 	named,
@@ -96,7 +96,7 @@ export function whyNotRunnable({
 	return "";
 }
 
-export function patientPhone(patient?: ContextCandidate) {
+function patientPhone(patient?: ContextCandidate) {
 	const telecom = patient?.telecom;
 	if (!Array.isArray(telecom)) return "";
 	const phone = telecom.find(

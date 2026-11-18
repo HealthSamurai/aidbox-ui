@@ -330,7 +330,7 @@ async function stopResponseNotification(
  */
 const CANCEL_SENDING_CONCURRENCY = 4;
 
-export type CancelSendingResult = {
+type CancelSendingResult = {
 	canceled: string[];
 	/** First error seen, used for the message when a single row was cancelled. */
 	error?: Error;

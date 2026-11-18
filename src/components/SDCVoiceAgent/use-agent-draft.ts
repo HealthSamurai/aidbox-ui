@@ -95,7 +95,7 @@ function draftToAgent(
  * is one being typed for the first time, and adopting its empty text would wipe
  * the prompt keystroke by keystroke as the name is entered.
  */
-export function adoptableLineage({
+function adoptableLineage({
 	hasRevisions,
 	loaded,
 	stale,

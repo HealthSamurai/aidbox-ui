@@ -23,9 +23,9 @@ export type VoiceTestConfig = {
 
 export type TestConnection = ProviderCredentials & { provider: VoiceProvider };
 
-export const VOICE_TEST_CONFIG_KEY = "sdc-voice-test-config";
+const VOICE_TEST_CONFIG_KEY = "sdc-voice-test-config";
 
-export const PROVIDERS: Record<
+const PROVIDERS: Record<
 	VoiceKind,
 	Array<{ value: VoiceProvider; label: string }>
 > = {

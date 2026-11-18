@@ -1,6 +1,6 @@
 import { MODEL_OPTIONS, PROVIDER_BY_ID } from "./ai-provider-catalog";
 
-export const AI_SETTINGS_STORAGE_KEY = "ai-config";
+const AI_SETTINGS_STORAGE_KEY = "ai-config";
 
 export type AiSettings = {
 	model?: string | null;

@@ -108,7 +108,7 @@ export function buildPlanDefinitionAction(
 	};
 }
 
-export type PlanDefinitionRule = {
+type PlanDefinitionRule = {
 	kind: "condition" | "prefill";
 	actionId: string;
 	targetIndex: number;

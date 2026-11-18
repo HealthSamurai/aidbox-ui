@@ -16,9 +16,9 @@ export type AidboxReferenceResource = {
 };
 
 /** A resource of this box passed to a `$populatelink` / `$send` request. */
-export type ContextReference = AidboxReferenceResource;
+type ContextReference = AidboxReferenceResource;
 
-export type AidboxLaunchContext = Record<string, ContextReference>;
+type AidboxLaunchContext = Record<string, ContextReference>;
 
 export type AidboxSearchResource = Resource & {
 	description?: string;

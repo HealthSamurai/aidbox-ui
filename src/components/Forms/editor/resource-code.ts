@@ -9,13 +9,13 @@ import {
 	serializeResource,
 } from "./resource-format";
 
-export type EditableResource = {
+type EditableResource = {
 	resourceType: string;
 	id?: string;
 	meta?: { versionId?: string; lastUpdated?: string };
 };
 
-export function parseResourceCode<T extends EditableResource>(
+function parseResourceCode<T extends EditableResource>(
 	text: string,
 	current: T,
 	validate: (value: unknown) => void,

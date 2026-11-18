@@ -13,7 +13,7 @@ const ANY = "__any__";
 
 // Radix renders the selected value in a flex child, which defaults to
 // min-width:auto and would push the trigger wider than its column.
-export const FILTER_TRIGGER_CLASS_NAME =
+const FILTER_TRIGGER_CLASS_NAME =
 	"h-8 min-w-0 overflow-hidden bg-bg-primary *:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate";
 
 export function FilterField({

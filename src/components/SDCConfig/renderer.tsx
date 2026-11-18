@@ -589,7 +589,7 @@ function JsonEditorField({
 	);
 }
 
-export function KeyValueTableField({
+function KeyValueTableField({
 	fieldNode,
 	form,
 	path,

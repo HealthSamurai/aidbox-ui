@@ -18,7 +18,7 @@ import {
  */
 
 export type Msg = { id: string; role: "user" | "assistant"; content: string };
-export type CallState = "idle" | "starting" | "live" | "ended";
+type CallState = "idle" | "starting" | "live" | "ended";
 
 function message(payload: { role?: string; text?: string }): Msg {
 	return {

@@ -205,7 +205,7 @@ function PlanDefinitionResourceLink({
 	);
 }
 
-export function PlanDefinitionEditor({
+function PlanDefinitionEditor({
 	initialPlanDefinition,
 	initialQuestionnaires = [],
 	questionnaires,

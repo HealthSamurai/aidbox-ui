@@ -13,7 +13,7 @@ const INSTANCE_RENDERING_EXTENSION_URL =
 	"http://hl7.org/fhir/StructureDefinition/instance-rendering";
 const LIBRARY_CANONICAL_PREFIX = "http://forms.aidbox.io/Library/";
 
-export type TemplateFilters = {
+type TemplateFilters = {
 	q?: string;
 };
 
@@ -261,7 +261,7 @@ export function useDeleteLiquidTemplates() {
 	});
 }
 
-export type QuestionnaireTemplate = {
+type QuestionnaireTemplate = {
 	purpose: string;
 	templateId: string;
 };

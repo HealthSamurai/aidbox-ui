@@ -104,7 +104,7 @@ export type DeliveryDetail = {
  * Everything the Delivery Details dialog shows: the status headline, then the
  * rows grouped into the three sections the dialog separates with a hairline.
  */
-export type DeliveryDetailsView = {
+type DeliveryDetailsView = {
 	/** No workflow at all — the response was never sent by email. */
 	isEmpty: boolean;
 	status?: string;

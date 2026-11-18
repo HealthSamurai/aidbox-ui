@@ -20,10 +20,10 @@ import type { Form } from "./api/forms";
 import type { AidboxReferenceResource } from "./share/api";
 import { humanize } from "./utils";
 
-export const DEFAULT_SELECT_VALUE = "__default__";
+const DEFAULT_SELECT_VALUE = "__default__";
 export const NATIVE_INPUT_CLASS_NAME =
 	"flex h-9 w-full min-w-0 rounded-md border border-border-primary bg-bg-primary px-3 py-2 typo-body outline-none transition-all duration-300 hover:border-border-primary_hover focus-visible:border-border-link disabled:cursor-not-allowed disabled:border-border-primary disabled:bg-bg-secondary disabled:text-text-disabled";
-export const SWITCH_CLASS_NAME =
+const SWITCH_CLASS_NAME =
 	"h-[1.375rem] [&>[data-slot=switch-thumb]]:size-[1.125rem] [&>[data-slot=switch-thumb][data-state=checked]]:translate-x-[1.25rem] data-[state=unchecked]:bg-bg-disabled! hover:data-[state=unchecked]:bg-bg-disabled!";
 
 const LAUNCH_CONTEXT_EXTENSION_URL =
@@ -40,7 +40,7 @@ type QuestionnaireLaunchContextExtension = {
 	};
 };
 
-export type LaunchContextDefinition = {
+type LaunchContextDefinition = {
 	label: string;
 	name: string;
 	resourceType: string;
@@ -166,7 +166,7 @@ function formatDuration(durationMs: number) {
  *
  * Keep in sync with `calculate-warning-delay` in box/src-ui/sdc/forms/show/model.cljc.
  */
-export function describeWarningTimeout(
+function describeWarningTimeout(
 	sessionTimeoutMinutes: string,
 	warningTimeoutMinutes: string,
 ) {
@@ -379,7 +379,7 @@ export function ToggleRow({
 	);
 }
 
-export function MinutesInput({
+function MinutesInput({
 	id,
 	onChange,
 	testId,
@@ -409,7 +409,7 @@ export function MinutesInput({
 	);
 }
 
-export type SelectOption = {
+type SelectOption = {
 	label: string;
 	value: string;
 };

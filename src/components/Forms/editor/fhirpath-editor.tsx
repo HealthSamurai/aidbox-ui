@@ -35,7 +35,7 @@ const language = LRLanguage.define({
 });
 
 /** Complete the entire external variable, including IDs that need quoting. */
-export function completeFhirpathVariables(
+function completeFhirpathVariables(
 	variables: FhirpathVariable[],
 	context: CompletionContext,
 ) {

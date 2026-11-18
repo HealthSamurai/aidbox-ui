@@ -112,7 +112,7 @@ export function formatInstant(value?: string | null) {
 	}).format(date);
 }
 
-export function getReferenceLabel(
+function getReferenceLabel(
 	resource?: Pick<Reference, "display" | "reference"> | null,
 ) {
 	return resource?.display ?? resource?.reference ?? "";
