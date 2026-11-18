@@ -1,5 +1,5 @@
+import { useLocalStorage } from "@aidbox-ui/hooks/index";
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
 import {
 	buildSectionId,
 	CONFIGURATION_SCHEMA,
@@ -43,10 +43,11 @@ function SidebarItem({
 	visibleCategories: Set<string>;
 }) {
 	const key = categoryKey(def.category);
-	const storageKey = `configurations-sidebar-expanded:${key}`;
-	const [expanded, setExpanded] = useState(
-		() => localStorage.getItem(storageKey) !== "false",
-	);
+	const [expanded, setExpanded] = useLocalStorage<boolean>({
+		key: `configurations-sidebar-expanded:${key}`,
+		defaultValue: true,
+		getInitialValueInEffect: false,
+	});
 	const hasSubcategories = def.subcategories && def.subcategories.length > 0;
 	const hasVisibleChildren = def.subcategories?.some((sub) =>
 		visibleCategories.has(categoryKey(sub.category)),
@@ -69,9 +70,7 @@ function SidebarItem({
 				data-category={label}
 				onClick={() => {
 					if (hasSubcategories) {
-						const next = !expanded;
-						setExpanded(next);
-						localStorage.setItem(storageKey, String(next));
+						setExpanded(!expanded);
 					}
 					scrollToSection(sectionId);
 				}}
