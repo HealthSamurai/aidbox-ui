@@ -64,6 +64,8 @@ export function FilterSelect({
 	onChange: (value: string | undefined) => void;
 	testId: string;
 }) {
+	// "forms-filters__status-dropdown" lists "forms-filters__status-option"s.
+	const optionTestId = `${testId.replace(/-dropdown$/, "")}-option`;
 	return (
 		<HSComp.Select
 			value={value ?? ANY}
@@ -77,9 +79,15 @@ export function FilterSelect({
 				<HSComp.SelectValue placeholder="Any" />
 			</HSComp.SelectTrigger>
 			<HSComp.SelectContent>
-				<HSComp.SelectItem value={ANY}>Any</HSComp.SelectItem>
+				<HSComp.SelectItem value={ANY} data-test-id={optionTestId}>
+					Any
+				</HSComp.SelectItem>
 				{options.map((option) => (
-					<HSComp.SelectItem key={option.value} value={option.value}>
+					<HSComp.SelectItem
+						key={option.value}
+						value={option.value}
+						data-test-id={optionTestId}
+					>
 						{option.label}
 					</HSComp.SelectItem>
 				))}

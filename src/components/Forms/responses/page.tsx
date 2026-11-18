@@ -300,21 +300,27 @@ export function ResponsesPage() {
 		);
 	} else if (responses.isError) {
 		content = (
-			<EmptyState
-				grayscale
-				title="Responses could not be loaded"
-				description="The box did not return QuestionnaireResponse resources."
-			/>
+			<div className="contents" data-test-id="responses-error-state">
+				<EmptyState
+					grayscale
+					title="Responses could not be loaded"
+					description="The box did not return QuestionnaireResponse resources."
+				/>
+			</div>
 		);
 	} else if (rows.length === 0) {
-		content = hasFilters ? (
-			<EmptyState
-				grayscale
-				title="No responses matched"
-				description="Try a broader search or clear one of the filters."
-			/>
-		) : (
-			<EmptyState grayscale title="No responses yet" />
+		content = (
+			<div className="contents" data-test-id="responses-empty-state">
+				{hasFilters ? (
+					<EmptyState
+						grayscale
+						title="No responses matched"
+						description="Try a broader search or clear one of the filters."
+					/>
+				) : (
+					<EmptyState grayscale title="No responses yet" />
+				)}
+			</div>
 		);
 	} else {
 		content = (

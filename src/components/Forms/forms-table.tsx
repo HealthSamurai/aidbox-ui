@@ -332,6 +332,7 @@ function PinCell({
 			)}
 			aria-label={row.pinned ? `Unpin ${label}` : `Pin ${label}`}
 			aria-pressed={row.pinned}
+			data-pinned={row.pinned}
 			data-test-id="forms-table__pin-button"
 			onClick={() => onTogglePin(form)}
 			icon={<HSComp.PinIcon />}
@@ -617,13 +618,21 @@ function formsColumns({
 			header: "Version",
 			minSize: 70,
 			maxSize: 160,
-			cell: (row) => rowForm(row)?.version ?? "",
+			cell: (row) => (
+				<span data-test-id="forms-table__version-cell">
+					{rowForm(row)?.version ?? ""}
+				</span>
+			),
 		},
 		{
 			id: "status",
 			header: "Status",
 			minSize: 80,
-			cell: (row) => <FormStatusTag status={rowForm(row)?.status} />,
+			cell: (row) => (
+				<span data-test-id="forms-table__status-cell">
+					<FormStatusTag status={rowForm(row)?.status} />
+				</span>
+			),
 		},
 		{
 			id: "sharing",
@@ -640,7 +649,11 @@ function formsColumns({
 			minSize: 80,
 			cell: (row) => {
 				const form = rowForm(row);
-				return form ? getFormKindLabel(form) : "";
+				return (
+					<span data-test-id="forms-table__kind-cell">
+						{form ? getFormKindLabel(form) : ""}
+					</span>
+				);
 			},
 		},
 		{
@@ -696,6 +709,8 @@ function gridRowProps(expanded: Set<string>) {
 					),
 					"data-test-id": "forms-table__row",
 					"data-form-key": getFormKey(row.form),
+					"data-form-id": row.form.id,
+					"data-form-name": getFormLabel(row.form),
 					"data-pinned": row.pinned,
 				};
 			case "member":
@@ -703,6 +718,8 @@ function gridRowProps(expanded: Set<string>) {
 					className: cardRowClassName(row.edge),
 					"data-test-id": "forms-table__package-form-row",
 					"data-form-key": getFormKey(row.form),
+					"data-form-id": row.form.id,
+					"data-form-name": getFormLabel(row.form),
 				};
 			case "note":
 				return {
