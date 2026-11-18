@@ -209,9 +209,6 @@ importers:
       '@codemirror/lint':
         specifier: ^6.9.7
         version: 6.9.7
-      '@codemirror/lsp-client':
-        specifier: 6.2.2
-        version: 6.2.2
       '@codemirror/state':
         specifier: ^6.7.6
         version: 6.7.6
