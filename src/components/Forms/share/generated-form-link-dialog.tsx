@@ -1,3 +1,4 @@
+import { copyToClipboard } from "@aidbox-ui/utils/clipboard";
 import {
 	Button,
 	Dialog,
@@ -70,7 +71,10 @@ export function GeneratedFormLinkDialog({
 								return;
 							}
 
-							await navigator.clipboard.writeText(link);
+							if (!(await copyToClipboard(link))) {
+								toast.error("Could not copy the link");
+								return;
+							}
 							toast.success("Link copied");
 							onOpenChange(false);
 						}}

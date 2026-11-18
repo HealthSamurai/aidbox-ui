@@ -1,3 +1,4 @@
+import { copyToClipboard } from "@aidbox-ui/utils/clipboard";
 import {
 	Button,
 	Collapsible,
@@ -97,20 +98,10 @@ export function ResponseDeliveryDetailsDialog({
 						data-test-id="delivery-details-dialog__copy-button"
 						disabled={!hasDetails}
 						onClick={async () => {
-							// On a non-secure origin — which an on-prem or dev install often
-							// is — `navigator.clipboard` is undefined, and the browser can
-							// refuse the write even where it exists. Both leave the user
-							// holding nothing, so say so instead of failing into the console.
-							try {
-								await navigator.clipboard.writeText(
-									formatDeliveryDetails(details),
-								);
-							} catch {
+							if (!(await copyToClipboard(formatDeliveryDetails(details)))) {
 								toast.error("Could not copy the delivery details");
-
 								return;
 							}
-
 							toast.success("Delivery details copied");
 						}}
 					>
