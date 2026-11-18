@@ -37,7 +37,6 @@ import {
 	useReviewPrompt,
 	useVoiceQuestionnaires,
 } from "./api";
-import { CallConfirmDialog } from "./call-confirm-dialog";
 import { CallResultsPanel } from "./call-results";
 import type { ContextCandidate } from "./context-picker";
 import { ConversationPanel, type Transport } from "./conversation-panel";
@@ -568,16 +567,31 @@ export function VoiceAgentBuilderContent({
 				enabled={call.callState === "ended"}
 			/>
 
-			<CallConfirmDialog
+			<ConfirmDialog
+				title="Place a real call"
+				confirmLabel="Call"
 				open={confirmOpen}
 				onOpenChange={setConfirmOpen}
-				phone={phone}
-				subject={subjectSlot ? contextValues[subjectSlot.name] : undefined}
-				questionnaireCount={draft.questionnaires.length}
-				onConfirm={() => {
-					setConfirmOpen(false);
-					void run();
-				}}
+				description={
+					<>
+						Dial <span className="font-medium">{phone}</span>
+						{subjectSlot && contextValues[subjectSlot.name] ? (
+							<>
+								{" "}
+								for{" "}
+								<span className="font-medium">
+									{contextValues[subjectSlot.name]}
+								</span>
+							</>
+						) : null}
+						? The agent speaks to whoever answers and works through{" "}
+						{draft.questionnaires.length === 1
+							? "one questionnaire"
+							: `${draft.questionnaires.length} questionnaires`}
+						.
+					</>
+				}
+				onConfirm={() => void run()}
 			/>
 
 			<TestSettingsDialog
