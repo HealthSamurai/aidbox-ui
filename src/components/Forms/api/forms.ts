@@ -6,7 +6,7 @@ import type {
 	QuestionnaireResponse,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { boxJson, boxRequest, withFallback } from "@aidbox-ui/utils/http";
+import { rejectWith, resourceOf, withFallback } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 /** `client.searchType` through `client.request`, returning the raw bundle. */
@@ -150,12 +150,11 @@ export function useQuestionnaireDeleteCheck() {
 			const componentUsage =
 				(
 					await withFallback(
-						boxJson<QuestionnaireUsageResponse>(
-							client,
-							{
+						resourceOf(
+							client.request<QuestionnaireUsageResponse>({
 								method: "GET",
 								url: `/Questionnaire/${encodeURIComponent(questionnaire.id)}/$usage`,
-							},
+							}),
 							"Failed to check questionnaire usage",
 						),
 						{},
@@ -170,13 +169,12 @@ export function useQuestionnaireDeleteCheck() {
 				const questionnaireResponseUsageBundle = await withFallback<
 					Bundle | undefined
 				>(
-					boxJson<Bundle>(
-						client,
-						{
+					resourceOf(
+						client.request<Bundle>({
 							method: "GET",
 							url: "/sdc/QuestionnaireResponse",
 							params: [...questionnaireResponseUsageQuery],
-						},
+						}),
 						"Failed to check questionnaire responses",
 					),
 					undefined,
@@ -214,30 +212,26 @@ export function useDeleteQuestionnaire() {
 				throw new Error("Questionnaire id is required");
 			}
 
-			await boxRequest(
-				client,
-				{
+			await client
+				.rawRequest({
 					method: "DELETE",
 					url: `/sdc/Questionnaire/${encodeURIComponent(questionnaire.id)}`,
-				},
-				"Failed to delete questionnaire",
-			);
+				})
+				.catch(rejectWith("Failed to delete questionnaire"));
 
 			if (questionnaire.url && questionnaire.version) {
 				// The assembled copy may well not exist; nobody waits on it.
 				void withFallback(
-					boxRequest(
-						client,
-						{
+					client
+						.rawRequest({
 							method: "DELETE",
 							url: "/sdc/Questionnaire",
 							params: [
 								["url", questionnaire.url],
 								["version", `${questionnaire.version}-assembled`],
 							],
-						},
-						"Failed to delete the assembled questionnaire",
-					),
+						})
+						.catch(rejectWith("Failed to delete the assembled questionnaire")),
 					undefined,
 				);
 			}

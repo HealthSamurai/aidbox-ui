@@ -6,7 +6,7 @@ import type {
 	RequestGroup,
 	Task,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { boxJson, boxRequest } from "@aidbox-ui/utils/http";
+import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bundleResources, searchFhirType } from "../api/forms";
 import { searchResources } from "../api/plan-definitions";
@@ -288,13 +288,12 @@ export function useResponseWorkflows(
 	return useQuery({
 		queryKey: ["questionnaireResponseWorkflows", resourceType, workflowScope],
 		queryFn: async () => {
-			const body = await boxJson<SdcWorkflow[] | { workflows?: SdcWorkflow[] }>(
-				client,
-				{
+			const body = await resourceOf(
+				client.request<SdcWorkflow[] | { workflows?: SdcWorkflow[] }>({
 					method: "GET",
 					url: "/sdc/$workflow",
 					params: [[referenceKey, workflowScope]],
-				},
+				}),
 				"Failed to fetch response workflows",
 			);
 			const workflows = Array.isArray(body) ? body : (body.workflows ?? []);
@@ -311,17 +310,15 @@ async function stopResponseNotification(
 	responseId: string,
 	resourceType: "QuestionnaireResponse" | "RequestGroup",
 ) {
-	await boxRequest(
-		client,
-		{
+	await client
+		.rawRequest({
 			method: "POST",
 			url:
 				resourceType === "RequestGroup"
 					? `/fhir/RequestGroup/${encodeURIComponent(responseId)}/$sdc-stop-notification`
 					: `/QuestionnaireResponse/${encodeURIComponent(responseId)}/$stop-notification`,
-		},
-		"Failed to cancel sending",
-	);
+		})
+		.catch(rejectWith("Failed to cancel sending"));
 
 	return responseId;
 }
@@ -412,9 +409,8 @@ export function useDeleteQuestionnaireResponses() {
 
 	return useMutation({
 		mutationFn: async (responseIds: string[]) => {
-			await boxRequest(
-				client,
-				{
+			await client
+				.rawRequest({
 					method: "POST",
 					url: "/fhir",
 					body: JSON.stringify({
@@ -427,11 +423,14 @@ export function useDeleteQuestionnaireResponses() {
 							},
 						})),
 					}),
-				},
-				responseIds.length === 1
-					? "Failed to delete the response"
-					: "Failed to delete the responses",
-			);
+				})
+				.catch(
+					rejectWith(
+						responseIds.length === 1
+							? "Failed to delete the response"
+							: "Failed to delete the responses",
+					),
+				);
 
 			return responseIds;
 		},

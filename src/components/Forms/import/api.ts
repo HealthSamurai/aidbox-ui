@@ -4,7 +4,7 @@ import type {
 	OperationOutcome,
 	Questionnaire,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { boxJson } from "@aidbox-ui/utils/http";
+import { resourceOf } from "@aidbox-ui/utils/http";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	bundleResources,
@@ -23,16 +23,15 @@ function sanitizeImportedQuestionnaire(questionnaire: Questionnaire) {
 export async function validateQuestionnaire(
 	client: AidboxClientR5,
 	questionnaire: Questionnaire,
-	// Not forwarded yet: AidboxClient takes no AbortSignal (see `boxRequest`).
+	// Not forwarded yet: AidboxClient takes no AbortSignal (see `rejectWith`).
 	_signal?: AbortSignal,
 ): Promise<OperationOutcome> {
-	return boxJson<OperationOutcome>(
-		client,
-		{
+	return resourceOf(
+		client.request<OperationOutcome>({
 			method: "POST",
 			url: "/sdc/Questionnaire/$validate",
 			body: JSON.stringify(questionnaire),
-		},
+		}),
 		"Failed to validate questionnaire",
 	);
 }
@@ -41,7 +40,7 @@ export async function findQuestionnaireByUrl(
 	client: AidboxClientR5,
 	url: string,
 	version: string | undefined,
-	// Not forwarded yet: AidboxClient takes no AbortSignal (see `boxRequest`).
+	// Not forwarded yet: AidboxClient takes no AbortSignal (see `rejectWith`).
 	_signal?: AbortSignal,
 ): Promise<Questionnaire[]> {
 	const params: Array<[string, string]> = [["url", url]];
@@ -50,9 +49,12 @@ export async function findQuestionnaireByUrl(
 		params.push(["version", version]);
 	}
 
-	const bundle = await boxJson<Bundle>(
-		client,
-		{ method: "GET", url: "/sdc/Questionnaire", params },
+	const bundle = await resourceOf(
+		client.request<Bundle>({
+			method: "GET",
+			url: "/sdc/Questionnaire",
+			params,
+		}),
 		"Failed to search questionnaires",
 	);
 
@@ -68,18 +70,17 @@ export async function convertOpenEhrTemplate(
 	client: AidboxClientR5,
 	content: string,
 ): Promise<OpenEhrConversionResult> {
-	const parameters = await boxJson<{
-		parameter?: Array<{ name?: string; resource?: unknown }>;
-	}>(
-		client,
-		{
+	const parameters = await resourceOf(
+		client.request<{
+			parameter?: Array<{ name?: string; resource?: unknown }>;
+		}>({
 			method: "POST",
 			url: "/$sdc-openehr-convert",
 			body: JSON.stringify({
 				parameter: [{ name: "content", valueString: content }],
 				resourceType: "Parameters",
 			}),
-		},
+		}),
 		"Failed to convert OpenEHR template",
 	);
 	const questionnaire = parameters.parameter?.find(
@@ -124,9 +125,12 @@ async function postSdcResource<T>(
 	body: unknown,
 	failureMessage: string,
 ): Promise<T> {
-	return boxJson<T>(
-		client,
-		{ method: "POST", url: path, body: JSON.stringify(body) },
+	return resourceOf(
+		client.request<T>({
+			method: "POST",
+			url: path,
+			body: JSON.stringify(body),
+		}),
 		failureMessage,
 	);
 }

@@ -5,7 +5,7 @@ import type {
 	Patient,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { boxJson, boxRequest } from "@aidbox-ui/utils/http";
+import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bundleResources, type Form } from "../api/forms";
 import { buildShareModePatch, type ShareMode } from "./sharing";
@@ -80,12 +80,15 @@ async function searchAidboxResources<T extends Resource>(
 	client: AidboxClientR5,
 	type: string,
 	query: URLSearchParams,
-	// Not forwarded yet: AidboxClient takes no AbortSignal (see `boxRequest`).
+	// Not forwarded yet: AidboxClient takes no AbortSignal (see `rejectWith`).
 	_signal?: AbortSignal,
 ) {
-	const bundle = await boxJson<Bundle>(
-		client,
-		{ method: "GET", url: `/fhir/${type}`, params: [...query] },
+	const bundle = await resourceOf(
+		client.request<Bundle>({
+			method: "GET",
+			url: `/fhir/${type}`,
+			params: [...query],
+		}),
 		`Failed to fetch ${type}`,
 	);
 
@@ -503,18 +506,16 @@ export function useSendForm() {
 
 	return useMutation({
 		mutationFn: async (params: SendFormParams) => {
-			const response = await boxRequest(
-				client,
-				{
+			const { response } = await client
+				.rawRequest({
 					method: "POST",
 					url:
 						params.form.resourceType === "PlanDefinition"
 							? `/fhir/PlanDefinition/${encodeURIComponent(params.form.id)}/$sdc-send`
 							: "/fhir/Questionnaire/$send",
 					body: JSON.stringify(sendFormBody(params)),
-				},
-				"Failed to start form-sending process",
-			);
+				})
+				.catch(rejectWith("Failed to start form-sending process"));
 
 			const rawBody = await response.text();
 
@@ -545,18 +546,17 @@ export function useGenerateFormLink() {
 
 	return useMutation({
 		mutationFn: async (params: GenerateFormLinkParams) => {
-			const body = await boxJson<{
-				parameter?: Array<{ name?: string; valueUri?: string }>;
-			}>(
-				client,
-				{
+			const body = await resourceOf(
+				client.request<{
+					parameter?: Array<{ name?: string; valueUri?: string }>;
+				}>({
 					method: "POST",
 					url:
 						params.form.resourceType === "PlanDefinition"
 							? `/fhir/PlanDefinition/${encodeURIComponent(params.form.id)}/$sdc-start-link`
 							: `/fhir/Questionnaire/${encodeURIComponent(params.form.id)}/$populatelink`,
 					body: JSON.stringify(generateFormLinkBody(params)),
-				},
+				}),
 				"Failed to generate form link",
 			);
 			const link = body.parameter?.find(
@@ -600,15 +600,13 @@ export function useShareForm() {
 				throw new Error("Form id is required");
 			}
 
-			await boxRequest(
-				client,
-				{
+			await client
+				.rawRequest({
 					method: "PATCH",
 					url: `/sdc/${form.resourceType}/${encodeURIComponent(form.id)}`,
 					body: JSON.stringify(buildShareModePatch(form, mode)),
-				},
-				"Failed to change form sharing",
-			);
+				})
+				.catch(rejectWith("Failed to change form sharing"));
 
 			return form;
 		},

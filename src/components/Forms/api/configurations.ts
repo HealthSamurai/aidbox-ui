@@ -7,7 +7,7 @@ import type {
 	QuestionnaireTheme,
 	SDCConfig,
 } from "@aidbox-ui/fhir-types/io-health-samurai-sdc-r4/index";
-import { boxJson } from "@aidbox-ui/utils/http";
+import { resourceOf } from "@aidbox-ui/utils/http";
 import { useQuery } from "@tanstack/react-query";
 
 const CONFIGURATIONS_QUERY_KEY = ["sdc-configurations"] as const;
@@ -33,16 +33,15 @@ function bundleResources<T extends Resource>(
 }
 
 async function fetchFhirBundle(client: AidboxClientR5, resourceType: string) {
-	return boxJson<Bundle>(
-		client,
-		{
+	return resourceOf(
+		client.request<Bundle>({
 			method: "GET",
 			url: `/fhir/${resourceType}`,
 			params: [
 				["_count", String(CONFIGURATION_FILTER_PAGE_SIZE)],
 				["_sort", "-_lastUpdated"],
 			],
-		},
+		}),
 		`Failed to fetch ${resourceType}`,
 	);
 }

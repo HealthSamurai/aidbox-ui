@@ -1,12 +1,14 @@
-import type { AidboxClientR5 } from "@aidbox-ui/AidboxClient";
 import {
 	ResourceRequestError,
 	readResourceError,
 } from "@aidbox-ui/components/Forms/api/resource-error";
+import type { OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
+import type { OperationOutcome as BoxOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core";
 import { getAidboxBaseURL } from "@aidbox-ui/utils";
 import {
 	ErrorResponse,
-	type RequestParams,
+	type ResourceResponse,
+	type Result,
 } from "@health-samurai/aidbox-client";
 
 /** An Aidbox URL for an absolute path, kept under the base URL's path prefix. */
@@ -15,41 +17,42 @@ export function getAidboxURL(path: string): URL {
 }
 
 /**
- * A request to the box through `AidboxClient` (the browser session, and a
- * login on 401), for the SDC endpoints that answer outside plain FHIR. Resolves
- * to the successful response; any other answer becomes a `ResourceRequestError`
- * carrying the server's OperationOutcome.
+ * Turns a rejected `AidboxClient` request into a `ResourceRequestError` that
+ * carries the server's OperationOutcome:
+ * `client.rawRequest(params).catch(rejectWith("Failed to ..."))`.
  *
  * Callers still take an `AbortSignal` where React Query or an editor hands
  * them one, but `AidboxClient` has no way to pass it on to `fetch` yet, so a
- * cancelled request runs to completion. Forward the signal here once the
- * client's `RequestParams` grows a `signal` option.
+ * cancelled request runs to completion. Forward the signal once the client's
+ * `RequestParams` grows a `signal` option.
  */
-export async function boxRequest(
-	client: AidboxClientR5,
-	params: RequestParams,
-	failureMessage: string,
-): Promise<Response> {
-	try {
-		return (await client.rawRequest(params)).response;
-	} catch (error) {
+export function rejectWith(failureMessage: string) {
+	return async (error: unknown): Promise<never> => {
 		if (error instanceof ErrorResponse)
 			throw await readResourceError(
 				error.responseWithMeta.response,
 				failureMessage,
 			);
 		throw error;
-	}
+	};
 }
 
-/** `boxRequest` for an endpoint that answers with JSON. */
-export async function boxJson<T>(
-	client: AidboxClientR5,
-	params: RequestParams,
+/**
+ * The resource of a `client.request`. An OperationOutcome, or any other failed
+ * answer, rejects with a `ResourceRequestError`.
+ */
+export async function resourceOf<T>(
+	request: Promise<Result<ResourceResponse<T>, ResourceResponse<BoxOutcome>>>,
 	failureMessage: string,
 ): Promise<T> {
-	const response = await boxRequest(client, params, failureMessage);
-	return (await response.json()) as T;
+	const result = await request.catch(rejectWith(failureMessage));
+	if (result.isErr())
+		throw new ResourceRequestError(
+			// The box answers in R5; the issues read here are the same in R4.
+			result.value.resource as OperationOutcome,
+			result.value.response.status,
+		);
+	return result.value.resource;
 }
 
 /**

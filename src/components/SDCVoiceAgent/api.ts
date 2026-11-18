@@ -1,6 +1,6 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core/index";
-import { boxJson, boxRequest } from "@aidbox-ui/utils/http";
+import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import {
 	keepPreviousData,
 	useMutation,
@@ -117,16 +117,15 @@ async function fetchBundle(
 		["_count", String(PAGE_SIZE)],
 		["_sort", "-_lastUpdated"],
 	];
-	return boxJson<Bundle>(
-		client,
-		{
+	return resourceOf(
+		client.request<Bundle>({
 			method: "GET",
 			url: `/fhir/${resourceType}`,
 			params: [
 				...defaults.filter(([key]) => !params.some(([name]) => name === key)),
 				...params,
 			],
-		},
+		}),
 		`Failed to fetch ${resourceType}`,
 	);
 }
@@ -138,16 +137,15 @@ async function saveResource<T extends BoxResource>(
 	failureMessage: string,
 ) {
 	const isUpdate = Boolean(resource.id);
-	return boxJson<T>(
-		client,
-		{
+	return resourceOf(
+		client.request<T>({
 			method: isUpdate ? "PUT" : "POST",
 			url: isUpdate
 				? `/fhir/${resourceType}/${encodeURIComponent(resource.id ?? "")}`
 				: `/fhir/${resourceType}`,
 			headers: { Prefer: "return=representation" },
 			body: JSON.stringify(resource),
-		},
+		}),
 		failureMessage,
 	);
 }
@@ -155,22 +153,22 @@ async function saveResource<T extends BoxResource>(
 async function fetchAgent(client: AidboxClientR5, id: string) {
 	// through the box rather than plain FHIR: models are stored as Device
 	// references and the editor works in names
-	return boxJson<VoiceAgent>(
-		client,
-		{ method: "GET", url: `/sdc/voice/agent/${encodeURIComponent(id)}` },
+	return resourceOf(
+		client.request<VoiceAgent>({
+			method: "GET",
+			url: `/sdc/voice/agent/${encodeURIComponent(id)}`,
+		}),
 		"Failed to fetch agent",
 	);
 }
 
 async function deleteAgent(client: AidboxClientR5, id: string) {
-	await boxRequest(
-		client,
-		{
+	await client
+		.rawRequest({
 			method: "DELETE",
 			url: `/fhir/${AGENT_RESOURCE_TYPE}/${encodeURIComponent(id)}`,
-		},
-		"Failed to delete agent",
-	);
+		})
+		.catch(rejectWith("Failed to delete agent"));
 }
 
 /**
@@ -265,9 +263,11 @@ export function usePromptLineages() {
  * away from an empty picker and a refused call, so the editor picks from here.
  */
 async function fetchResourceTypes(client: AidboxClientR5) {
-	const types = await boxJson<Array<{ type?: string }>>(
-		client,
-		{ method: "GET", url: "/$sdc-resource-types" },
+	const types = await resourceOf(
+		client.request<Array<{ type?: string }>>({
+			method: "GET",
+			url: "/$sdc-resource-types",
+		}),
 		"Failed to fetch resource types",
 	);
 	return types.map((entry) => entry.type).filter(Boolean) as string[];
@@ -412,9 +412,11 @@ export function useCallResults(callId: string | undefined, enabled: boolean) {
 		retry: 20,
 		retryDelay: 2000,
 		queryFn: () =>
-			boxJson<CallResults>(
-				client,
-				{ method: "GET", url: `/sdc/voice/run/${callId}` },
+			resourceOf(
+				client.request<CallResults>({
+					method: "GET",
+					url: `/sdc/voice/run/${callId}`,
+				}),
 				"Failed to read the call results",
 			),
 	});
@@ -440,11 +442,13 @@ export function useVoiceModels(
 			const url = `/sdc/voice/models/${kind}`;
 			const failureMessage = `Failed to fetch ${kind} models`;
 			const catalogues = await Promise.all([
-				boxJson<VoiceCatalogue>(client, { method: "GET", url }, failureMessage),
+				resourceOf(
+					client.request<VoiceCatalogue>({ method: "GET", url }),
+					failureMessage,
+				),
 				...tests.map((test) =>
-					boxJson<VoiceCatalogue>(
-						client,
-						{
+					resourceOf(
+						client.request<VoiceCatalogue>({
 							method: "POST",
 							url,
 							body: JSON.stringify({
@@ -452,7 +456,7 @@ export function useVoiceModels(
 								apiKey: test.apiKey,
 								baseUrl: test.baseUrl,
 							}),
-						},
+						}),
 						failureMessage,
 					),
 				),
@@ -505,13 +509,12 @@ export function useSaveVoiceAgent() {
 		// $save-agent rather than a plain PUT: the editor names models, and the
 		// box turns those names into Devices on the way in
 		mutationFn: (agent: VoiceAgent) =>
-			boxJson<VoiceAgent>(
-				client,
-				{
+			resourceOf(
+				client.request<VoiceAgent>({
 					method: "POST",
 					url: "/sdc/voice/$save-agent",
 					body: JSON.stringify(agent),
-				},
+				}),
 				"Failed to save agent",
 			),
 		onSuccess: async (savedAgent) => {
@@ -554,13 +557,12 @@ export function useReviewPrompt() {
 			agent?: string;
 			credentials?: { llm?: { apiKey?: string; baseUrl?: string } };
 		}) =>
-			boxJson<PromptReview>(
-				client,
-				{
+			resourceOf(
+				client.request<PromptReview>({
 					method: "POST",
 					url: "/sdc/voice/$review-prompt",
 					body: JSON.stringify(input),
-				},
+				}),
 				"Failed to review the prompt",
 			),
 	});

@@ -8,20 +8,19 @@ import type { AidboxClientR5 } from "@aidbox-ui/AidboxClient";
  * the file stays text. A form without a print template is not exported.
  */
 
-import { boxJson, withFallback } from "@aidbox-ui/utils/http";
+import { resourceOf, withFallback } from "@aidbox-ui/utils/http";
 import { ErrorResponse } from "@health-samurai/aidbox-client";
 import { getTemplateLabel, type LiquidTemplateLibrary } from "../api/templates";
 import { PRINT_PURPOSE, type ResponsePdfTarget } from "./response-labels";
 
 async function templateName(client: AidboxClientR5, templateId: string) {
 	const library = await withFallback<LiquidTemplateLibrary | undefined>(
-		boxJson<LiquidTemplateLibrary>(
-			client,
-			{
+		resourceOf(
+			client.request<LiquidTemplateLibrary>({
 				method: "GET",
 				url: `/fhir/Library/${encodeURIComponent(templateId)}`,
 				params: [["_elements", "id,name,title"]],
-			},
+			}),
 			"Failed to fetch the template",
 		),
 		undefined,

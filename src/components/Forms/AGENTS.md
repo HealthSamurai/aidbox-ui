@@ -34,5 +34,5 @@ The form builder, the Liquid template editor and the response renderer are not h
 - A request used by one feature lives in that feature's `api.ts`; `api/` holds only what several features share.
 
 - Grids use `components/data-table` with opt-in props only; do not change its defaults for the whole app.
-- Box requests go through `@aidbox-ui/utils/http` (`boxRequest`, `boxJson`) or `useAidboxClient`.
+- Box requests go through `useAidboxClient`: `client.request<T>` wrapped in `resourceOf` for JSON, `client.rawRequest(...).catch(rejectWith(...))` otherwise (`@aidbox-ui/utils/http`), so a failure becomes a `ResourceRequestError` with the server's OperationOutcome.
 - Generic pieces shared with other SDC editors live outside: `components/app-select.tsx`, `components/unsaved-changes.tsx`, `components/save-diagnostics.tsx`, `utils/scroll.ts`.

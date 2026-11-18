@@ -4,7 +4,7 @@ import type {
 	Meta,
 	Questionnaire,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { boxJson, boxRequest, withFallback } from "@aidbox-ui/utils/http";
+import { rejectWith, resourceOf, withFallback } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const LIQUID_TEMPLATE_TOPIC =
@@ -121,13 +121,12 @@ async function fetchTemplates(
 	page: number,
 	pageSize: number,
 ) {
-	const bundle = await boxJson<Bundle>(
-		client,
-		{
+	const bundle = await resourceOf(
+		client.request<Bundle>({
 			method: "GET",
 			url: "/fhir/Library",
 			params: buildTemplatesQuery(filters, page, pageSize),
-		},
+		}),
 		"Failed to fetch templates",
 	);
 
@@ -142,16 +141,15 @@ async function fetchTemplates(
 }
 
 async function fetchTemplateUsage(client: AidboxClientR5) {
-	const bundle = await boxJson<Bundle>(
-		client,
-		{
+	const bundle = await resourceOf(
+		client.request<Bundle>({
 			method: "GET",
 			url: "/fhir/Questionnaire",
 			params: [
 				["_count", "1000"],
 				["_elements", "id,title,name,extension"],
 			],
-		},
+		}),
 		"Failed to fetch template usage",
 	);
 	const usage = new Map<string, TemplateUsage>();
@@ -224,9 +222,8 @@ async function deleteLiquidTemplates(
 	client: AidboxClientR5,
 	templateIds: string[],
 ) {
-	await boxRequest(
-		client,
-		{
+	await client
+		.rawRequest({
 			method: "POST",
 			url: "/fhir",
 			body: JSON.stringify({
@@ -239,11 +236,14 @@ async function deleteLiquidTemplates(
 					},
 				})),
 			}),
-		},
-		templateIds.length === 1
-			? "Failed to delete the template"
-			: "Failed to delete the templates",
-	);
+		})
+		.catch(
+			rejectWith(
+				templateIds.length === 1
+					? "Failed to delete the template"
+					: "Failed to delete the templates",
+			),
+		);
 
 	return templateIds;
 }
@@ -315,11 +315,9 @@ async function renderQuestionnaire(
 			resourceType: "Parameters",
 		}),
 	};
-	const response = await boxRequest(
-		client,
-		params,
-		"Failed to render the template",
-	);
+	const { response } = await client
+		.rawRequest(params)
+		.catch(rejectWith("Failed to render the template"));
 	return response.text();
 }
 
@@ -349,13 +347,12 @@ async function fetchTemplateNames(client: AidboxClientR5, ids: string[]) {
 		ids.map(async (id) => {
 			// a template that is gone or unreadable keeps its id as the label
 			const library = await withFallback<LiquidTemplateLibrary | undefined>(
-				boxJson<LiquidTemplateLibrary>(
-					client,
-					{
+				resourceOf(
+					client.request<LiquidTemplateLibrary>({
 						method: "GET",
 						url: `/fhir/Library/${encodeURIComponent(id)}`,
 						params: [["_elements", "id,name,title"]],
-					},
+					}),
 					"Failed to fetch the template",
 				),
 				undefined,

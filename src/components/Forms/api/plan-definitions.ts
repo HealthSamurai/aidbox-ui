@@ -7,7 +7,7 @@ import type {
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { generateId } from "@aidbox-ui/utils";
-import { boxJson, boxRequest } from "@aidbox-ui/utils/http";
+import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import type { RequestParams } from "@health-samurai/aidbox-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "./const";
@@ -22,7 +22,7 @@ export type SdcRequestInit = {
 	method?: RequestParams["method"];
 	headers?: Record<string, string>;
 	body?: string;
-	/** Not forwarded yet: AidboxClient takes no AbortSignal (see `boxRequest`). */
+	/** Not forwarded yet: AidboxClient takes no AbortSignal (see `rejectWith`). */
 	signal?: AbortSignal;
 };
 
@@ -32,9 +32,8 @@ export async function sdcRequest<T>(
 	path: string,
 	{ method = "GET", headers, body }: SdcRequestInit = {},
 ): Promise<T> {
-	return boxJson<T>(
-		client,
-		{ method, url: path, headers, body },
+	return resourceOf(
+		client.request<T>({ method, url: path, headers, body }),
 		"Could not load form data",
 	);
 }
@@ -235,14 +234,12 @@ export function useDeletePlanDefinition() {
 	return useMutation({
 		mutationFn: async (planDefinition: PlanDefinition) => {
 			if (!planDefinition.id) throw new Error("Package id is required");
-			await boxRequest(
-				aidboxClient,
-				{
+			await aidboxClient
+				.rawRequest({
 					method: "DELETE",
 					url: `/sdc/PlanDefinition/${encodeURIComponent(planDefinition.id)}`,
-				},
-				"Failed to delete package",
-			);
+				})
+				.catch(rejectWith("Failed to delete package"));
 			return planDefinition;
 		},
 		onSuccess: (planDefinition) => {
