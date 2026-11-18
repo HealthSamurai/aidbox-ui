@@ -18,9 +18,7 @@
 # requires pnpm 10+ and Node.js 18+
 git clone git@github.com:HealthSamurai/aidbox-ui.git
 cd aidbox-ui
-git submodule update --init --recursive
-pnpm install   # preinstall auto-builds the react-components submodule
-pnpm rc:build  # rebuild react-components + clear Vite cache
+pnpm install
 pnpm dev
 ```
 
@@ -37,7 +35,6 @@ Configure via `VITE_AIDBOX_BASE_URL` environment variable if needed.
 | `pnpm lint:fix` | Lint and auto-fix with Biome |
 | `pnpm all` | Format + typecheck + lint |
 | `pnpm hooks` | Install git pre-commit hooks |
-| `pnpm rc:build` | Rebuild react-components submodule + clear Vite cache |
 
 ## Tech stack
 

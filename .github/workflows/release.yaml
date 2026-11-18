@@ -1,0 +1,99 @@
+name: Release
+# Publishes the built UI (dist/) to npm as @health-samurai/aidbox-ui on every
+# push to master or a release branch (vNNNN). The version comes from
+# package.json: bump it to release, a push with an already published version
+# is a no-op. Nothing is tagged or pushed back to git.
+#
+# dist-tags: master publishes to "latest", vNNNN publishes to "rNNNN" (npm
+# rejects "vNNNN" as a tag, since it parses as a semver range).
+
+on:
+  push:
+    branches:
+      - master
+      - 'v[0-9][0-9][0-9][0-9]'
+
+permissions:
+  contents: read
+  id-token: write # npm trusted publishing + provenance
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'HealthSamurai/aidbox-ui'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve version
+        id: meta
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          name=$(jq -r .name package.json)
+          version=$(jq -r .version package.json)
+
+          if [ "$BRANCH" = master ]; then
+            tag=latest
+          else
+            release=${BRANCH#v}
+            tag=r$release
+            # A release branch must only publish its own release line,
+            # i.e. vNNNN publishes 1.NNNN.x.
+            if [[ ! "$version" =~ ^[0-9]+\.$release\.[0-9]+$ ]]; then
+              echo "::error::package.json version $version does not belong to release $release (expected <major>.$release.<patch>)"
+              exit 1
+            fi
+          fi
+
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "::notice::$name@$version is already published -- nothing to release"
+            publish=false
+          else
+            echo "::notice::Releasing $name@$version with dist-tag $tag"
+            publish=true
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install pnpm
+        if: steps.meta.outputs.publish == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Install node
+        if: steps.meta.outputs.publish == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: "pnpm"
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Install dependencies
+        if: steps.meta.outputs.publish == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Lint
+        if: steps.meta.outputs.publish == 'true'
+        run: pnpm lint:check
+
+      - name: Type check
+        if: steps.meta.outputs.publish == 'true'
+        run: pnpm typecheck
+
+      - name: Build
+        if: steps.meta.outputs.publish == 'true'
+        run: pnpm build
+
+      - name: Publish
+        if: steps.meta.outputs.publish == 'true'
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          pnpm publish --no-git-checks --access public --tag "$TAG" --provenance
