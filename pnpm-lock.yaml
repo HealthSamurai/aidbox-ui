@@ -203,6 +203,9 @@ importers:
       '@codemirror/autocomplete':
         specifier: 6.20.2
         version: 6.20.2
+      '@codemirror/lang-json':
+        specifier: ^6.0.2
+        version: 6.0.2
       '@codemirror/language':
         specifier: ^6.12.2
         version: 6.12.2

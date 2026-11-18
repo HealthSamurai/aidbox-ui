@@ -44,6 +44,7 @@
 		"@atomic-ehr/codegen": "0.0.24",
 		"@biomejs/biome": "2.1.3",
 		"@codemirror/autocomplete": "6.20.2",
+		"@codemirror/lang-json": "^6.0.2",
 		"@codemirror/language": "^6.12.2",
 		"@codemirror/lint": "^6.9.7",
 		"@codemirror/state": "^6.7.6",
