@@ -36,6 +36,9 @@ import {
 	type ChartConfig,
 	ChartPanel,
 } from "../components/notebook-chart/chart-panel";
+import { MeasureCellView } from "../components/notebook-measure/measure-cell";
+import { MeasureReportPanel } from "../components/notebook-measure/measure-report-panel";
+import { isMeasureReport } from "../components/notebook-measure/measure-types";
 import { NotebookResourcePicker } from "../components/notebook-resource-picker";
 import { HTTP_STATUS_CODES } from "../shared/const";
 import { copyToClipboard } from "../utils/clipboard";
@@ -51,7 +54,7 @@ type SavedRestResult = {
 
 export type Cell = {
 	id?: string;
-	type?: "rest" | "sql" | "markdown" | "rpc" | string;
+	type?: "rest" | "sql" | "markdown" | "rpc" | "measure" | string;
 	value?: string;
 	result?: SavedRestResult | unknown;
 };
@@ -285,6 +288,18 @@ function formatBodyContent(body: string, mode: BodyMode): string {
 	}
 }
 
+function parseMeasureReportBody(body: string) {
+	if (!body.includes("MeasureReport")) return null;
+	try {
+		const parsed: unknown = JSON.parse(body);
+		return isMeasureReport(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
+type RestTab = "body" | "headers" | "report";
+
 function ResponseStatus({ response }: { response: CellResponse }) {
 	const messageColor =
 		response.status >= 400 ? "text-critical-default" : "text-green-500";
@@ -319,7 +334,7 @@ export function RestCellView({
 	);
 	const [loading, setLoading] = useState(false);
 	const [hasFreshResponse, setHasFreshResponse] = useState(false);
-	const [tab, setTab] = useState<"body" | "headers">("body");
+	const [tab, setTab] = useState<RestTab | null>(null);
 	const responseRef = useRef<HTMLDivElement | null>(null);
 	const client = useAidboxClient();
 	const queryClient = useQueryClient();
@@ -407,12 +422,21 @@ export function RestCellView({
 	};
 
 	const bodyMode = response ? detectBodyMode(response.headers) : "json";
+	const measureReport =
+		response && bodyMode === "json"
+			? parseMeasureReportBody(response.body)
+			: null;
+	// A MeasureReport response opens on its rendered report.
+	const activeTab: RestTab =
+		tab === "report" && !measureReport
+			? "body"
+			: (tab ?? (measureReport ? "report" : "body"));
 	const content = response
-		? tab === "headers"
+		? activeTab === "headers"
 			? JSON.stringify(response.headers, null, 2)
 			: formatBodyContent(response.body, bodyMode)
 		: "";
-	const mode = tab === "headers" ? "json" : bodyMode;
+	const mode = activeTab === "headers" ? "json" : bodyMode;
 
 	return (
 		<div className="group/cell -mx-3 mt-4 mb-4 rounded-lg border border-border-default bg-bg-primary overflow-hidden">
@@ -447,8 +471,8 @@ export function RestCellView({
 			</div>
 			{response && (
 				<HSComp.Tabs
-					value={tab}
-					onValueChange={(v) => setTab(v as "body" | "headers")}
+					value={activeTab}
+					onValueChange={(v) => setTab(v as RestTab)}
 					className="flex flex-col"
 				>
 					<div className="flex items-center justify-between bg-bg-secondary pl-3 pr-4 h-10 border-t border-b border-border-default">
@@ -457,6 +481,9 @@ export function RestCellView({
 								Response:
 							</span>
 							<HSComp.TabsList>
+								{measureReport && (
+									<HSComp.TabsTrigger value="report">Report</HSComp.TabsTrigger>
+								)}
 								<HSComp.TabsTrigger value="body">Body</HSComp.TabsTrigger>
 								<HSComp.TabsTrigger value="headers">Headers</HSComp.TabsTrigger>
 							</HSComp.TabsList>
@@ -486,7 +513,12 @@ export function RestCellView({
 					</div>
 				</HSComp.Tabs>
 			)}
-			{response && (
+			{response && activeTab === "report" && measureReport && (
+				<div ref={responseRef}>
+					<MeasureReportPanel report={measureReport} />
+				</div>
+			)}
+			{response && activeTab !== "report" && (
 				<div
 					ref={responseRef}
 					className="max-h-[400px] overflow-auto [&_.cm-content]:!pl-1.5"
@@ -497,7 +529,7 @@ export function RestCellView({
 						</pre>
 					) : (
 						<HSComp.CodeEditor
-							key={`${tab}-${response.status}`}
+							key={`${activeTab}-${response.status}`}
 							readOnly
 							currentValue={content}
 							mode={mode}
@@ -1517,6 +1549,9 @@ export function CellView({ cell }: { cell: Cell }) {
 	}
 	if (type === "sql-view") {
 		return <SqlQueryCellView cell={cell} kind="sql-view" readOnly />;
+	}
+	if (type === "measure") {
+		return <MeasureCellView cell={cell} readOnly />;
 	}
 	if (type === "markdown") {
 		return (
