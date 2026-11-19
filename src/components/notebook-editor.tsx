@@ -22,6 +22,7 @@ import {
 	ViewDefinitionCellView,
 } from "../routes/notebooks.$id";
 import { ConfirmDialog } from "./confirm-dialog";
+import { MeasureCellView } from "./notebook-measure/measure-cell";
 
 export type CellType =
 	| "rest"
@@ -30,7 +31,8 @@ export type CellType =
 	| "rpc"
 	| "view-definition"
 	| "sql-query"
-	| "sql-view";
+	| "sql-view"
+	| "measure";
 
 export type EditableCell = {
 	id: string;
@@ -56,6 +58,7 @@ const CELL_TYPES: { value: CellType; label: string }[] = [
 	{ value: "view-definition", label: "ViewDefinition" },
 	{ value: "sql-query", label: "SQLQuery" },
 	{ value: "sql-view", label: "SQLView" },
+	{ value: "measure", label: "Measure" },
 ];
 
 const DEFAULT_CELL_VALUE: Record<CellType, string> = {
@@ -66,6 +69,7 @@ const DEFAULT_CELL_VALUE: Record<CellType, string> = {
 	"view-definition": "",
 	"sql-query": "",
 	"sql-view": "",
+	measure: "",
 };
 
 function genCellId(): string {
@@ -183,6 +187,12 @@ function CellWrapper({
 			<SqlQueryCellView
 				cell={cellLike}
 				kind="sql-view"
+				onValueChange={handleValue}
+				onResultChange={handleResult}
+			/>
+		) : cell.type === "measure" ? (
+			<MeasureCellView
+				cell={cellLike}
 				onValueChange={handleValue}
 				onResultChange={handleResult}
 			/>
