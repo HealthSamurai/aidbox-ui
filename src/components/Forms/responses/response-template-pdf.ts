@@ -8,7 +8,10 @@ import type { AidboxClientR5 } from "@aidbox-ui/AidboxClient";
  * the file stays text. A form without a print template is not exported.
  */
 
-import { resourceOf, withFallback } from "@aidbox-ui/utils/http";
+import {
+	resourceOf,
+	withFallback,
+} from "@aidbox-ui/components/Forms/api/resource-error";
 import { ErrorResponse } from "@health-samurai/aidbox-client";
 import { getTemplateLabel, type LiquidTemplateLibrary } from "../api/templates";
 import { PRINT_PURPOSE, type ResponsePdfTarget } from "./response-labels";

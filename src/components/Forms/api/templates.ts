@@ -1,10 +1,14 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import {
+	rejectWith,
+	resourceOf,
+	withFallback,
+} from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	Meta,
 	Questionnaire,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { rejectWith, resourceOf, withFallback } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const LIQUID_TEMPLATE_TOPIC =
@@ -222,11 +226,10 @@ async function deleteLiquidTemplates(
 	client: AidboxClientR5,
 	templateIds: string[],
 ) {
-	await client
-		.rawRequest({
-			method: "POST",
-			url: "/fhir",
-			body: JSON.stringify({
+	await resourceOf(
+		client.transaction({
+			format: "application/json",
+			bundle: {
 				resourceType: "Bundle",
 				type: "transaction",
 				entry: templateIds.map((templateId) => ({
@@ -235,15 +238,12 @@ async function deleteLiquidTemplates(
 						url: `Library/${encodeURIComponent(templateId)}`,
 					},
 				})),
-			}),
-		})
-		.catch(
-			rejectWith(
-				templateIds.length === 1
-					? "Failed to delete the template"
-					: "Failed to delete the templates",
-			),
-		);
+			},
+		}),
+		templateIds.length === 1
+			? "Failed to delete the template"
+			: "Failed to delete the templates",
+	);
 
 	return templateIds;
 }

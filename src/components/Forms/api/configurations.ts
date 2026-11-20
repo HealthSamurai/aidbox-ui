@@ -1,4 +1,5 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import { resourceOf } from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	Resource,
@@ -7,7 +8,6 @@ import type {
 	QuestionnaireTheme,
 	SDCConfig,
 } from "@aidbox-ui/fhir-types/io-health-samurai-sdc-r4/index";
-import { resourceOf } from "@aidbox-ui/utils/http";
 import { useQuery } from "@tanstack/react-query";
 
 const CONFIGURATIONS_QUERY_KEY = ["sdc-configurations"] as const;

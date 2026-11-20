@@ -1,4 +1,8 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import {
+	rejectWith,
+	resourceOf,
+} from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	OperationOutcome,
@@ -7,7 +11,6 @@ import type {
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { generateId } from "@aidbox-ui/utils";
-import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import type { RequestParams } from "@health-samurai/aidbox-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PLAN_DEFINITION_TYPE_SYSTEM } from "./const";

@@ -1,4 +1,4 @@
-import { getResourceEditorUrl } from "@aidbox-ui/utils/http";
+import { getResourceEditorUrl } from "@aidbox-ui/components/Forms/utils";
 import {
 	Accordion,
 	AccordionContent,

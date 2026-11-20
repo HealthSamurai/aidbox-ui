@@ -1,10 +1,10 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import { resourceOf } from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	OperationOutcome,
 	Questionnaire,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { resourceOf } from "@aidbox-ui/utils/http";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	bundleResources,

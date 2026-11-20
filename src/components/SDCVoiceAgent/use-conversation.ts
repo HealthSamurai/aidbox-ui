@@ -1,5 +1,4 @@
 import { generateId } from "@aidbox-ui/utils";
-import { getAidboxURL } from "@aidbox-ui/utils/http";
 import { toast } from "@health-samurai/react-components";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -209,9 +208,7 @@ export function useConversation() {
 	/** The phone call belongs to Twilio; this socket only watches its transcript. */
 	const watchCall = useCallback(
 		(callId: string) => {
-			const url = getAidboxURL("/sdc/voice/watch");
-			url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-			const ws = new WebSocket(url.toString());
+			const ws = new WebSocket(voiceWsUrl("/sdc/voice/watch"));
 			const watch = { id: callId, ws };
 			watchRef.current = watch;
 			setCallId(callId);

@@ -1,4 +1,4 @@
-import { getAidboxURL } from "@aidbox-ui/utils/http";
+import { getAidboxBaseURL } from "@aidbox-ui/utils";
 
 /**
  * Microphone capture and playback for a browser call. The socket carries raw
@@ -19,8 +19,8 @@ export type Call = {
 
 export const SAMPLE_RATE = 16_000;
 
-export function voiceWsUrl() {
-	const url = getAidboxURL("/sdc/voice/browser");
+export function voiceWsUrl(path = "/sdc/voice/browser") {
+	const url = new URL(`${getAidboxBaseURL()}${path}`);
 	url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 	return url.toString();
 }

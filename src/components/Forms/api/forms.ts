@@ -1,4 +1,9 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import {
+	rejectWith,
+	resourceOf,
+	withFallback,
+} from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	PlanDefinition,
@@ -6,7 +11,6 @@ import type {
 	QuestionnaireResponse,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { rejectWith, resourceOf, withFallback } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 /** `client.searchType` through `client.request`, returning the raw bundle. */

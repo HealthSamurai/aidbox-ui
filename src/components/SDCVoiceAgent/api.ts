@@ -1,6 +1,6 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import { resourceOf } from "@aidbox-ui/components/Forms/api/resource-error";
 import type { Bundle } from "@aidbox-ui/fhir-types/hl7-fhir-r5-core/index";
-import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import {
 	keepPreviousData,
 	useMutation,
@@ -163,12 +163,10 @@ async function fetchAgent(client: AidboxClientR5, id: string) {
 }
 
 async function deleteAgent(client: AidboxClientR5, id: string) {
-	await client
-		.rawRequest({
-			method: "DELETE",
-			url: `/fhir/${AGENT_RESOURCE_TYPE}/${encodeURIComponent(id)}`,
-		})
-		.catch(rejectWith("Failed to delete agent"));
+	await resourceOf(
+		client.delete({ type: AGENT_RESOURCE_TYPE, id }),
+		"Failed to delete agent",
+	);
 }
 
 /**

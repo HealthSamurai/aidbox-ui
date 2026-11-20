@@ -1,4 +1,8 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import {
+	rejectWith,
+	resourceOf,
+} from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	Questionnaire,
@@ -6,7 +10,6 @@ import type {
 	RequestGroup,
 	Task,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bundleResources, searchFhirType } from "../api/forms";
 import { searchResources } from "../api/plan-definitions";
@@ -409,11 +412,10 @@ export function useDeleteQuestionnaireResponses() {
 
 	return useMutation({
 		mutationFn: async (responseIds: string[]) => {
-			await client
-				.rawRequest({
-					method: "POST",
-					url: "/fhir",
-					body: JSON.stringify({
+			await resourceOf(
+				client.transaction({
+					format: "application/json",
+					bundle: {
 						resourceType: "Bundle",
 						type: "transaction",
 						entry: responseIds.map((responseId) => ({
@@ -422,15 +424,12 @@ export function useDeleteQuestionnaireResponses() {
 								url: `QuestionnaireResponse/${encodeURIComponent(responseId)}`,
 							},
 						})),
-					}),
-				})
-				.catch(
-					rejectWith(
-						responseIds.length === 1
-							? "Failed to delete the response"
-							: "Failed to delete the responses",
-					),
-				);
+					},
+				}),
+				responseIds.length === 1
+					? "Failed to delete the response"
+					: "Failed to delete the responses",
+			);
 
 			return responseIds;
 		},

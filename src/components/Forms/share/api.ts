@@ -1,11 +1,14 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import {
+	rejectWith,
+	resourceOf,
+} from "@aidbox-ui/components/Forms/api/resource-error";
 import type {
 	Bundle,
 	Encounter,
 	Patient,
 	Resource,
 } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { rejectWith, resourceOf } from "@aidbox-ui/utils/http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bundleResources, type Form } from "../api/forms";
 import { buildShareModePatch, type ShareMode } from "./sharing";

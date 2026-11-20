@@ -1,4 +1,9 @@
 import type { OperationOutcome } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
+import {
+	ErrorResponse,
+	type ResourceResponse,
+	type Result,
+} from "@health-samurai/aidbox-client";
 
 function isOperationOutcome(value: unknown): value is OperationOutcome {
 	return (
@@ -76,4 +81,51 @@ export function toOperationOutcome(
 	if (error instanceof Error && isOperationOutcome(error.cause))
 		return error.cause;
 	return errorOutcome(error instanceof Error ? error.message : fallback);
+}
+
+/**
+ * For `client.rawRequest(params).catch(rejectWith("Failed to ..."))`: the
+ * client throws an `ErrorResponse` with the body unread, so read the server's
+ * reason out of it.
+ */
+export function rejectWith(failureMessage: string) {
+	return async (error: unknown): Promise<never> => {
+		if (error instanceof ErrorResponse)
+			throw await readResourceError(
+				error.responseWithMeta.response,
+				failureMessage,
+			);
+		throw error;
+	};
+}
+
+/**
+ * The resource of a `client.request`; a failed answer rejects with a
+ * `ResourceRequestError` carrying the server's OperationOutcome.
+ */
+export async function resourceOf<T>(
+	request: Promise<Result<ResourceResponse<T>, ResourceResponse<unknown>>>,
+	failureMessage: string,
+): Promise<T> {
+	const result = await request.catch(rejectWith(failureMessage));
+	if (result.isErr())
+		throw new ResourceRequestError(
+			// The box answers in R5; the issues read here are the same in R4.
+			result.value.resource as OperationOutcome,
+			result.value.response.status,
+		);
+	return result.value.resource;
+}
+
+/** `fallback` when the box refuses the request; failing to reach it still rejects. */
+export async function withFallback<T>(
+	request: Promise<T>,
+	fallback: T,
+): Promise<T> {
+	try {
+		return await request;
+	} catch (error) {
+		if (error instanceof ResourceRequestError) return fallback;
+		throw error;
+	}
 }
