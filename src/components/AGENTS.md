@@ -9,6 +9,10 @@ Feature-level components organized by domain. Each subdirectory is a self-contai
 | `ResourceBrowser/` | Resource Browser | Browse and search FHIR resources, view profiles and search parameters |
 | `ResourceEditor/` | Resource Editor | Edit FHIR resources as JSON/YAML with version history |
 | `ViewDefinition/` | ViewDefinition Builder | SQL-on-FHIR ViewDefinition editor with form/code/SQL tabs |
+| `Forms/` | Forms | SDC forms, responses and Liquid templates at `/forms` |
+| `PlanDefinition/` | Package editor | SDC packages of forms at `/forms/packages/:id` |
+| `SDCConfig/` | SDCConfig Builder | Form editor for SDCConfig in ResourceEditor |
+| `SDCVoiceAgent/` | Voice agent Builder | Editor and test console for SDCVoiceAgent in ResourceEditor |
 | `rest/` | REST Console helpers | Tab management, header/param editors, collections for REST Console |
 
 ## Shared Component

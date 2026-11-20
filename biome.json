@@ -37,6 +37,14 @@
 				"useKeyWithClickEvents": "warn",
 				"noStaticElementInteractions": "warn"
 			},
+			"correctness": {
+				"useExhaustiveDependencies": {
+					"level": "error",
+					"options": {
+						"hooks": [{ "name": "useEffectEvent", "stableResult": true }]
+					}
+				}
+			},
 			"style": {
 				"noNonNullAssertion": "error"
 			},
@@ -51,6 +59,22 @@
 			"recommended": true
 		}
 	},
+	"overrides": [
+		{
+			"includes": [
+				"src/components/PlanDefinition/plan-definition-graph.tsx",
+				"src/components/PlanDefinition/plan-definition-graph-edges.tsx"
+			],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"noNoninteractiveTabindex": "off",
+						"useSemanticElements": "off"
+					}
+				}
+			}
+		}
+	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"

@@ -43,6 +43,8 @@ export const RESOURCE_TYPES_WITH_BUILDER = new Set([
 	"CodeSystem",
 	"ConceptMap",
 	"AidboxMaterialization",
+	"SDCConfig",
+	"SDCVoiceAgent",
 ]);
 
 /**

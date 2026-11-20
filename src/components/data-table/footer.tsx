@@ -82,20 +82,31 @@ export function DataTableFooter({
 	pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
 	selectedCount,
 	bulkActions,
+	summary,
 	onPageChange,
 	onPageSizeChange,
 }: DataTableFooterProps) {
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	const showBulkActions =
+		selectedCount > 0 && bulkActions !== undefined && bulkActions.length > 0;
 
 	return (
 		<div className="flex items-center justify-between border-t bg-bg-secondary px-4 h-10">
 			<div className="flex items-center gap-4">
-				{selectedCount > 0 && bulkActions && bulkActions.length > 0 && (
+				{!showBulkActions && summary ? (
+					<span
+						className="typo-body text-text-primary"
+						data-test-id="table-footer__total-text"
+					>
+						{summary}
+					</span>
+				) : null}
+				{showBulkActions && (
 					<>
 						<span className="typo-body text-text-primary">
 							{selectedCount} selected:
 						</span>
-						{bulkActions.map((action) => (
+						{bulkActions?.map((action) => (
 							<BulkActionButton key={action.id} action={action} />
 						))}
 					</>

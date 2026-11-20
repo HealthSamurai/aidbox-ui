@@ -1,5 +1,20 @@
 export type Segment = string | number;
 
+export type PathOffsetOptions = {
+	/**
+	 * When the path goes past what the text contains, return the offset of the
+	 * deepest key that was found instead of `null`, so a missing property still
+	 * points at the object that misses it.
+	 */
+	deepest?: boolean;
+};
+
+function toSegments(expression: string | Segment[]): Segment[] | null {
+	if (typeof expression !== "string")
+		return expression.length > 0 ? expression : null;
+	return parseExpression(expression);
+}
+
 export function parseExpression(expression: string): Segment[] | null {
 	// Strip the root resource type prefix (e.g. "ViewDefinition.")
 	const dotIndex = expression.indexOf(".");
@@ -27,9 +42,10 @@ export function parseExpression(expression: string): Segment[] | null {
  */
 export function findJsonPathOffset(
 	jsonText: string,
-	expression: string,
+	expression: string | Segment[],
+	{ deepest = false }: PathOffsetOptions = {},
 ): number | null {
-	const segments = parseExpression(expression);
+	const segments = toSegments(expression);
 	if (!segments) return null;
 
 	let pos = 0;
@@ -166,17 +182,18 @@ export function findJsonPathOffset(
 		return true;
 	}
 
-	let lastKeyOffset = 0;
+	let lastKeyOffset: number | null = null;
+	const missed = () => (deepest ? lastKeyOffset : null);
 
 	for (const segment of segments) {
 		if (typeof segment === "string") {
-			if (!enterObjectKey(segment)) return null;
+			if (!enterObjectKey(segment)) return missed();
 		} else {
-			if (!enterArrayIndex(segment)) return null;
+			if (!enterArrayIndex(segment)) return missed();
 		}
 	}
 
-	return lastKeyOffset;
+	return lastKeyOffset ?? 0;
 }
 
 /** Internal mutable state used while walking the YAML structure. */
@@ -184,7 +201,7 @@ interface YamlWalkState {
 	startLine: number;
 	contentIndent: number;
 	inlineOffset: number | null;
-	lastKeyOffset: number;
+	lastKeyOffset: number | null;
 }
 
 /** Precomputed data derived from the raw YAML text. */
@@ -237,7 +254,8 @@ function tryMatchInlineSegment(
 	state.contentIndent += 2;
 	const lineIdx = findLineForOffset(
 		info.lineStarts,
-		state.startLine,
+		// The array item already moved startLine past the line of its dash.
+		Math.max(0, state.startLine - 1),
 		state.inlineOffset,
 	);
 	state.startLine = lineIdx + 1;
@@ -318,9 +336,10 @@ function scanLinesForArrayIndex(
  */
 export function findYamlPathOffset(
 	yamlText: string,
-	expression: string,
+	expression: string | Segment[],
+	{ deepest = false }: PathOffsetOptions = {},
 ): number | null {
-	const segments = parseExpression(expression);
+	const segments = toSegments(expression);
 	if (!segments) return null;
 
 	const lines = yamlText.split("\n");
@@ -338,21 +357,22 @@ export function findYamlPathOffset(
 		startLine: 0,
 		contentIndent: 0,
 		inlineOffset: null,
-		lastKeyOffset: 0,
+		lastKeyOffset: null,
 	};
+	const missed = () => (deepest ? state.lastKeyOffset : null);
 
 	for (const segment of segments) {
 		if (typeof segment === "string") {
 			const found =
 				tryMatchInlineSegment(info, state, segment) ||
 				scanLinesForKey(info, state, segment);
-			if (!found) return null;
+			if (!found) return missed();
 		} else {
-			if (!scanLinesForArrayIndex(info, state, segment)) return null;
+			if (!scanLinesForArrayIndex(info, state, segment)) return missed();
 		}
 	}
 
-	return state.lastKeyOffset;
+	return state.lastKeyOffset ?? 0;
 }
 
 /**

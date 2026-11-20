@@ -7,3 +7,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
+
+declare module "virtual:customizable-messages-schema" {
+	const schema: object | null;
+	export default schema;
+}

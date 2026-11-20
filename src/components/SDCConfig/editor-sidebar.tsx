@@ -1,0 +1,145 @@
+import { useLocalStorage } from "@aidbox-ui/hooks/index";
+import { ChevronRight } from "lucide-react";
+import {
+	buildSectionId,
+	CONFIGURATION_SCHEMA,
+	type ConfigurationSection,
+	categoryKey,
+} from "./schema";
+
+const CONFIGURATION_SCROLL_AREA_ID = "configuration-form-scroll-area";
+
+function scrollToSection(id: string) {
+	const target = document.getElementById(id);
+
+	if (!target) {
+		return;
+	}
+
+	const viewport = document.querySelector<HTMLElement>(
+		`#${CONFIGURATION_SCROLL_AREA_ID} [data-slot="scroll-area-viewport"]`,
+	);
+
+	if (!viewport) {
+		target.scrollIntoView({ behavior: "smooth" });
+		return;
+	}
+
+	const viewportRect = viewport.getBoundingClientRect();
+	const targetRect = target.getBoundingClientRect();
+	const top = viewport.scrollTop + (targetRect.top - viewportRect.top) - 16;
+
+	viewport.scrollTo({
+		top: Math.max(0, top),
+		behavior: "smooth",
+	});
+}
+
+function SidebarItem({
+	def,
+	visibleCategories,
+}: {
+	def: ConfigurationSection;
+	visibleCategories: Set<string>;
+}) {
+	const key = categoryKey(def.category);
+	const [expanded, setExpanded] = useLocalStorage<boolean>({
+		key: `configurations-sidebar-expanded:${key}`,
+		defaultValue: true,
+		getInitialValueInEffect: false,
+	});
+	const hasSubcategories = def.subcategories && def.subcategories.length > 0;
+	const hasVisibleChildren = def.subcategories?.some((sub) =>
+		visibleCategories.has(categoryKey(sub.category)),
+	);
+	const isVisible = visibleCategories.has(key) || hasVisibleChildren;
+
+	if (!isVisible) {
+		return null;
+	}
+
+	const Icon = def.icon;
+	const sectionId = buildSectionId(def.category);
+	const label = def.category[0];
+
+	return (
+		<li>
+			<button
+				type="button"
+				data-test-id="configuration-editor-sidebar__category-button"
+				data-category={label}
+				onClick={() => {
+					if (hasSubcategories) {
+						setExpanded(!expanded);
+					}
+					scrollToSection(sectionId);
+				}}
+				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-text-primary hover:bg-bg-secondary"
+			>
+				{Icon ? <Icon size={16} className="shrink-0" /> : null}
+				<span className="flex-1 truncate">{label}</span>
+				<ChevronRight
+					size={16}
+					className={`shrink-0 transition-transform ${
+						hasSubcategories
+							? `text-text-secondary ${expanded ? "rotate-90" : ""}`
+							: "invisible"
+					}`}
+				/>
+			</button>
+			{hasSubcategories && expanded ? (
+				<ul className="mt-0.5">
+					{def.subcategories?.map((sub) => {
+						const subKey = categoryKey(sub.category);
+
+						if (!visibleCategories.has(subKey)) {
+							return null;
+						}
+
+						const subSectionId = buildSectionId(sub.category);
+						const subLabel = sub.category[sub.category.length - 1];
+
+						return (
+							<li key={subKey}>
+								<button
+									type="button"
+									data-test-id="configuration-editor-sidebar__subcategory-button"
+									data-category={subLabel}
+									onClick={() => scrollToSection(subSectionId)}
+									className="flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pl-8 pr-2 text-left text-sm text-text-primary hover:bg-bg-secondary"
+								>
+									<span className="truncate">{subLabel}</span>
+								</button>
+							</li>
+						);
+					})}
+				</ul>
+			) : null}
+		</li>
+	);
+}
+
+export function ConfigurationEditorSidebar({
+	visibleCategories,
+}: {
+	visibleCategories: Set<string>;
+}) {
+	return (
+		<nav
+			className="h-full overflow-hidden"
+			data-test-id="configuration-editor-sidebar"
+		>
+			<div className="h-full overflow-y-auto p-3">
+				<ul className="space-y-0.5">
+					{CONFIGURATION_SCHEMA.map((def) => (
+						<SidebarItem
+							key={categoryKey(def.category)}
+							def={def}
+							visibleCategories={visibleCategories}
+						/>
+					))}
+				</ul>
+			</div>
+		</nav>
+	);
+}
