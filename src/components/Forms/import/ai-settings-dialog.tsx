@@ -11,6 +11,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	Input,
+	Label,
 	Select,
 	SelectTrigger,
 	SelectValue,
@@ -216,13 +217,12 @@ export function AiSettingsDialog({
 							<>
 								{requiredFields.map((field) => (
 									<div key={field.name} className="grid gap-1.5">
-										<label
+										<Label
 											htmlFor={`ai-settings-${selectedProvider.id}-${field.name}`}
-											className="text-sm font-medium text-text-primary"
 										>
 											{field.label}{" "}
 											<span className="text-text-error-primary">*</span>
-										</label>
+										</Label>
 										<Input
 											id={`ai-settings-${selectedProvider.id}-${field.name}`}
 											data-test-id={`ai-settings-form__${field.name}-input`}
@@ -242,10 +242,12 @@ export function AiSettingsDialog({
 								))}
 
 								{optionalFields.length > 0 ? (
-									<button
+									<Button
 										type="button"
+										variant="ghost"
+										size="small"
 										data-test-id="ai-settings-form__toggle-optional-settings-button"
-										className="flex w-fit items-center gap-2 rounded-md px-2 py-1 text-sm text-text-secondary hover:bg-bg-secondary"
+										className="w-fit"
 										onClick={() => setShowOptionalFields((value) => !value)}
 									>
 										{showOptionalFields ? (
@@ -256,18 +258,17 @@ export function AiSettingsDialog({
 										{showOptionalFields
 											? "Hide optional provider settings"
 											: "Show optional provider settings"}
-									</button>
+									</Button>
 								) : null}
 
 								{showOptionalFields
 									? optionalFields.map((field) => (
 											<div key={field.name} className="grid gap-1.5">
-												<label
+												<Label
 													htmlFor={`ai-settings-${selectedProvider.id}-${field.name}`}
-													className="text-sm font-medium text-text-primary"
 												>
 													{field.label}
-												</label>
+												</Label>
 												<Input
 													id={`ai-settings-${selectedProvider.id}-${field.name}`}
 													data-test-id={`ai-settings-form__${field.name}-input`}
@@ -289,13 +290,10 @@ export function AiSettingsDialog({
 
 								{selectedProvider.customModel ? (
 									<div className="grid gap-1.5">
-										<label
-											htmlFor="ai-settings-model-id"
-											className="text-sm font-medium text-text-primary"
-										>
+										<Label htmlFor="ai-settings-model-id">
 											Model ID{" "}
 											<span className="text-text-error-primary">*</span>
-										</label>
+										</Label>
 										<Input
 											id="ai-settings-model-id"
 											data-test-id="ai-settings-form__model-id-input"

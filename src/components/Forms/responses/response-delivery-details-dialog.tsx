@@ -142,10 +142,12 @@ export function ResponseDeliveryDetailsDialog({
 										className="flex flex-col gap-2"
 									>
 										<CollapsibleTrigger asChild>
-											<button
+											<Button
 												type="button"
+												variant="link"
+												size="small"
 												data-test-id="delivery-details-dialog__technical-details-toggle-button"
-												className="flex cursor-pointer items-center gap-1 self-start text-sm text-text-secondary outline-none hover:text-text-primary"
+												className="self-start px-0"
 											>
 												Technical details
 												<ChevronDown
@@ -155,7 +157,7 @@ export function ResponseDeliveryDetailsDialog({
 														isTechnicalOpen && "rotate-180",
 													)}
 												/>
-											</button>
+											</Button>
 										</CollapsibleTrigger>
 										<CollapsibleContent>
 											<DetailRows rows={details.technicalRows} />

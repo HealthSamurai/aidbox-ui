@@ -9,6 +9,8 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 	cn,
+	Input,
+	Label,
 	Select,
 	SelectTrigger,
 	SelectValue,
@@ -21,10 +23,6 @@ import type { AidboxReferenceResource } from "./share/api";
 import { humanize } from "./utils";
 
 const DEFAULT_SELECT_VALUE = "__default__";
-export const NATIVE_INPUT_CLASS_NAME =
-	"flex h-9 w-full min-w-0 rounded-md border border-border-primary bg-bg-primary px-3 py-2 typo-body outline-none transition-all duration-300 hover:border-border-primary_hover focus-visible:border-border-link disabled:cursor-not-allowed disabled:border-border-primary disabled:bg-bg-secondary disabled:text-text-disabled";
-const SWITCH_CLASS_NAME =
-	"h-[1.375rem] [&>[data-slot=switch-thumb]]:size-[1.125rem] [&>[data-slot=switch-thumb][data-state=checked]]:translate-x-[1.25rem] data-[state=unchecked]:bg-bg-disabled! hover:data-[state=unchecked]:bg-bg-disabled!";
 
 const LAUNCH_CONTEXT_EXTENSION_URL =
 	"http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-launchContext";
@@ -305,10 +303,10 @@ export function Row({
 			)}
 			data-test-id={testId}
 		>
-			<label htmlFor={htmlFor} className="typo-body text-text-primary">
+			<Label htmlFor={htmlFor}>
 				{label}
 				{required ? <span className="text-text-error-primary"> *</span> : null}
-			</label>
+			</Label>
 			<div className="grid gap-1">
 				{children}
 				{error ? (
@@ -365,46 +363,48 @@ export function ToggleRow({
 
 	return (
 		<div className="flex items-center justify-between gap-4">
-			<label htmlFor={switchId} className="typo-body text-text-primary">
-				{label}
-			</label>
+			<Label htmlFor={switchId}>{label}</Label>
 			<Switch
 				id={switchId}
 				data-test-id={testId}
 				checked={checked}
 				onCheckedChange={onChange}
-				className={SWITCH_CLASS_NAME}
 			/>
 		</div>
 	);
 }
 
-function MinutesInput({
+/** A whole number with a unit suffix; the caller validates the text. */
+export function UnitInput({
 	id,
 	onChange,
 	testId,
+	unit,
 	value,
+	ariaLabel,
+	placeholder,
 }: {
 	id: string;
 	onChange: (value: string) => void;
 	testId?: string;
+	unit: string;
 	value: string;
+	ariaLabel?: string;
+	placeholder?: string;
 }) {
 	return (
-		<div className="relative w-full sm:w-[7rem]">
-			<input
+		<div className="w-full sm:w-[7.5rem]">
+			<Input
 				id={id}
-				type="number"
-				min="1"
+				inputMode="numeric"
+				aria-label={ariaLabel}
 				data-test-id={testId}
-				className={`${NATIVE_INPUT_CLASS_NAME} pr-11 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-				placeholder="Never"
+				className="bg-bg-primary"
+				suffix={unit}
+				placeholder={placeholder}
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 			/>
-			<span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 typo-body text-text-tertiary">
-				min
-			</span>
 		</div>
 	);
 }
@@ -603,7 +603,9 @@ export function FormBehaviorFields({
 				responsiveTo={rowResponsiveTo}
 				testId={`${testIdPrefix}__session-timeout-field`}
 			>
-				<MinutesInput
+				<UnitInput
+					unit="min"
+					placeholder="Never"
 					id={`${idPrefix}-session-timeout`}
 					testId={`${testIdPrefix}__session-timeout-input`}
 					value={sessionTimeoutMinutes}
@@ -621,7 +623,9 @@ export function FormBehaviorFields({
 				responsiveTo={rowResponsiveTo}
 				testId={`${testIdPrefix}__warning-timeout-field`}
 			>
-				<MinutesInput
+				<UnitInput
+					unit="min"
+					placeholder="Never"
 					id={`${idPrefix}-warning-timeout`}
 					testId={`${testIdPrefix}__warning-timeout-input`}
 					value={warningTimeoutMinutes}
@@ -635,11 +639,11 @@ export function FormBehaviorFields({
 				label="On submit"
 				responsiveTo={rowResponsiveTo}
 			>
-				<input
+				<Input
 					id={`${idPrefix}-redirect-on-submit`}
 					data-test-id={`${testIdPrefix}__redirect-on-submit-input`}
-					type="url"
-					className={NATIVE_INPUT_CLASS_NAME}
+					inputMode="url"
+					className="bg-bg-primary"
 					placeholder="https://example.com"
 					value={redirectOnSubmit}
 					onChange={(event) => setRedirectOnSubmit(event.target.value)}
@@ -650,11 +654,11 @@ export function FormBehaviorFields({
 				label="On save"
 				responsiveTo={rowResponsiveTo}
 			>
-				<input
+				<Input
 					id={`${idPrefix}-redirect-on-save`}
 					data-test-id={`${testIdPrefix}__redirect-on-save-input`}
-					type="url"
-					className={NATIVE_INPUT_CLASS_NAME}
+					inputMode="url"
+					className="bg-bg-primary"
 					placeholder="https://example.com"
 					value={redirectOnSave}
 					onChange={(event) => setRedirectOnSave(event.target.value)}
@@ -665,37 +669,16 @@ export function FormBehaviorFields({
 				label="On timeout"
 				responsiveTo={rowResponsiveTo}
 			>
-				<input
+				<Input
 					id={`${idPrefix}-redirect-on-timeout`}
 					data-test-id={`${testIdPrefix}__redirect-on-timeout-input`}
-					type="url"
-					className={NATIVE_INPUT_CLASS_NAME}
+					inputMode="url"
+					className="bg-bg-primary"
 					placeholder="https://example.com"
 					value={redirectOnTimeout}
 					onChange={(event) => setRedirectOnTimeout(event.target.value)}
 				/>
 			</Row>
 		</>
-	);
-}
-
-export function SendFormIcon({ className }: { className?: string }) {
-	return (
-		<svg
-			aria-hidden="true"
-			className={className}
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-		>
-			<path
-				d="M18.6669 11.9999C18.6669 12.0631 18.6489 12.1249 18.6152 12.1783C18.5814 12.2316 18.5331 12.2743 18.4761 12.3013L6.47606 17.9679C6.4161 17.9972 6.34871 18.0077 6.28268 17.9981C6.21665 17.9885 6.15505 17.9593 6.10589 17.9141C6.05674 17.869 6.02233 17.8101 6.00713 17.7451C5.99194 17.6802 5.99668 17.6121 6.02072 17.5499L7.91606 12.4653C8.02784 12.1651 8.02784 11.8348 7.91606 11.5346L6.02072 6.44994C5.99668 6.3877 5.99194 6.31966 6.00713 6.2547C6.02233 6.18973 6.05674 6.13084 6.10589 6.08572C6.15505 6.0406 6.21665 6.01133 6.28268 6.00174C6.34871 5.99215 6.4161 6.00267 6.47606 6.03194L18.4761 11.6986C18.5331 11.7256 18.5814 11.7683 18.6152 11.8216C18.6489 11.875 18.6669 11.9368 18.6669 11.9999ZM18.6669 11.9999H8.00006"
-				stroke="currentColor"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</svg>
 	);
 }

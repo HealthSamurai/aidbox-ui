@@ -18,6 +18,7 @@ import {
 	DialogTrigger,
 	IconButton,
 	OperationOutcomeView,
+	Skeleton,
 	toast,
 } from "@health-samurai/react-components";
 import { AlertTriangle, FileInput, Upload, X } from "lucide-react";
@@ -339,9 +340,9 @@ function PdfImportState({
 					))}
 					{parsingPdf
 						? [0, 1, 2].map((index) => (
-								<div
+								<Skeleton
 									key={index}
-									className="h-full aspect-[0.72] shrink-0 animate-pulse rounded border border-border-primary bg-bg-primary"
+									className="h-full aspect-[0.72] shrink-0"
 								/>
 							))
 						: null}

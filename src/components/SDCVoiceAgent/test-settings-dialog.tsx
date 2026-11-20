@@ -7,6 +7,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	Input,
+	Label,
 } from "@health-samurai/react-components";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -182,13 +183,10 @@ export function TestSettingsDialog({
 								</h3>
 								{provider === "openai" ? (
 									<div className="grid gap-1.5">
-										<label
-											className="text-sm text-text-primary"
-											htmlFor={`voice-test-${provider}-base-url`}
-										>
+										<Label htmlFor={`voice-test-${provider}-base-url`}>
 											Base URL{" "}
 											<span className="text-text-tertiary">(optional)</span>
-										</label>
+										</Label>
 										<Input
 											id={`voice-test-${provider}-base-url`}
 											data-test-id={`voice-test-settings-dialog__${provider}-base-url-input`}
@@ -206,12 +204,9 @@ export function TestSettingsDialog({
 									</div>
 								) : null}
 								<div className="grid gap-1.5">
-									<label
-										className="text-sm text-text-primary"
-										htmlFor={`voice-test-${provider}-api-key`}
-									>
+									<Label htmlFor={`voice-test-${provider}-api-key`}>
 										API key
-									</label>
+									</Label>
 									<Input
 										id={`voice-test-${provider}-api-key`}
 										data-test-id={`voice-test-settings-dialog__${provider}-api-key-input`}

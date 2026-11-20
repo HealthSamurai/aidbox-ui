@@ -17,6 +17,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	Input,
+	inputVariants,
 	Select,
 	SelectTrigger,
 	SelectValue,
@@ -26,6 +27,7 @@ import {
 	toast,
 } from "@health-samurai/react-components";
 import { useQueries } from "@tanstack/react-query";
+import { SendHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	getConfigurationLabel,
@@ -42,13 +44,12 @@ import {
 	fillPatientFromSubject,
 	GroupLabel,
 	getLaunchContextDefinitions,
-	NATIVE_INPUT_CLASS_NAME,
 	parseOptionalMinutes,
 	Row,
 	resourceReference,
 	Section,
-	SendFormIcon,
 	ToggleRow,
+	UnitInput,
 } from "../form-dialog-fields";
 import {
 	type AidboxReferenceResource,
@@ -236,46 +237,22 @@ function getFirstInvalidSendFieldTarget({
 // 12-hour `--:-- --`, measured with room to spare — plus the breathing room the
 // browser chrome needs.
 //
-// `block` overrides the `flex` in `NATIVE_INPUT_CLASS_NAME`, which a date or
+// `block` overrides the `flex` in the kit's `inputVariants`, which a date or
 // time input must not have: as a flex container Chrome packs the value and the
 // picker button to the start, so whenever the value is narrower than the field
 // — a 24-hour `--:--`, a short date format — the icon trails the text with all
 // the empty space after it. As a block the picker sits at the padding edge, the
 // way the browser draws it by default.
-const DATE_INPUT_CLASS_NAME = "block w-full sm:w-[9.75rem]";
-const TIME_INPUT_CLASS_NAME = "block w-full sm:w-[7rem]";
-
-function DaysInput({
-	ariaLabel,
-	id,
-	onChange,
-	testId,
-	value,
-}: {
-	ariaLabel?: string;
-	id: string;
-	onChange: (value: string) => void;
-	testId?: string;
-	value: string;
-}) {
-	return (
-		<div className="relative w-full sm:w-[6.5rem]">
-			<input
-				id={id}
-				type="number"
-				min="1"
-				aria-label={ariaLabel}
-				data-test-id={testId}
-				className={`${NATIVE_INPUT_CLASS_NAME} pr-12 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-				value={value}
-				onChange={(event) => onChange(event.target.value)}
-			/>
-			<span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 typo-body text-text-tertiary">
-				days
-			</span>
-		</div>
-	);
-}
+// ponytail: the kit has no time input and its DatePickerInput takes no id or
+// test id, so date and time stay native with the kit's input styles.
+const DATE_INPUT_CLASS_NAME = cn(
+	inputVariants(),
+	"block bg-bg-primary w-full sm:w-[9.75rem]",
+);
+const TIME_INPUT_CLASS_NAME = cn(
+	inputVariants(),
+	"block bg-bg-primary w-full sm:w-[7rem]",
+);
 
 function VariableToken({ children }: { children: React.ReactNode }) {
 	return (
@@ -371,11 +348,11 @@ function SendByEmailSections({
 					description={recipientEmailHint}
 					testId="send-form-dialog__recipient-email-field"
 				>
-					<input
+					<Input
 						id="send-form-recipient-email"
 						data-test-id="send-form-dialog__recipient-email-input"
-						type="email"
-						className={NATIVE_INPUT_CLASS_NAME}
+						inputMode="email"
+						className="bg-bg-primary"
 						placeholder="patient@example.com"
 						value={patientEmail}
 						onChange={(event) => {
@@ -461,7 +438,7 @@ function SendByEmailSections({
 								data-test-id="send-form-dialog__send-date-input"
 								type="date"
 								aria-label="Date"
-								className={cn(NATIVE_INPUT_CLASS_NAME, DATE_INPUT_CLASS_NAME)}
+								className={DATE_INPUT_CLASS_NAME}
 								value={sendDate}
 								onChange={(event) => setSendDate(event.target.value)}
 								aria-invalid={Boolean(scheduleErrors.date)}
@@ -471,7 +448,7 @@ function SendByEmailSections({
 								data-test-id="send-form-dialog__send-time-input"
 								type="time"
 								aria-label="Time"
-								className={cn(NATIVE_INPUT_CLASS_NAME, TIME_INPUT_CLASS_NAME)}
+								className={TIME_INPUT_CLASS_NAME}
 								value={sendTime}
 								onChange={(event) => setSendTime(event.target.value)}
 								aria-invalid={Boolean(scheduleErrors.time)}
@@ -487,7 +464,8 @@ function SendByEmailSections({
 					error={sendValidationRequested ? deadlineError : undefined}
 					testId="send-form-dialog__deadline-days-field"
 				>
-					<DaysInput
+					<UnitInput
+						unit="days"
 						id="send-form-deadline-days"
 						testId="send-form-dialog__deadline-days-input"
 						value={deadlineDays}
@@ -543,11 +521,11 @@ function SendByEmailSections({
 					description="Emailed when the form is completed or expires."
 					testId="send-form-dialog__practitioner-email-field"
 				>
-					<input
+					<Input
 						id="send-form-practitioner-email"
 						data-test-id="send-form-dialog__practitioner-email-input"
-						type="email"
-						className={NATIVE_INPUT_CLASS_NAME}
+						inputMode="email"
+						className="bg-bg-primary"
 						placeholder="doctor@example.com"
 						value={practitionerEmail}
 						onChange={(event) => setPractitionerEmail(event.target.value)}
@@ -568,7 +546,8 @@ function SendByEmailSections({
 							testId="send-form-dialog__follow-up-reminder-field"
 						>
 							<div className="flex flex-wrap gap-3">
-								<DaysInput
+								<UnitInput
+									unit="days"
 									ariaLabel="Reminder delay in days"
 									id="send-form-follow-up-days"
 									testId="send-form-dialog__follow-up-days-input"
@@ -580,7 +559,7 @@ function SendByEmailSections({
 									data-test-id="send-form-dialog__follow-up-time-input"
 									type="time"
 									aria-label="Reminder time"
-									className={cn(NATIVE_INPUT_CLASS_NAME, TIME_INPUT_CLASS_NAME)}
+									className={TIME_INPUT_CLASS_NAME}
 									value={followUpTime}
 									onChange={(event) => setFollowUpTime(event.target.value)}
 								/>
@@ -1176,7 +1155,7 @@ export function SendFormDialog({ onOpenChange, form }: SendFormDialogProps) {
 							data-test-id="send-form-dialog__submit-button"
 							disabled={sendPending || !form?.id}
 						>
-							<SendFormIcon className="size-4" />
+							<SendHorizontal className="size-4" />
 							{sendActionLabel}
 						</Button>
 					</DialogFooter>

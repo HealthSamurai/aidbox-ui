@@ -14,6 +14,7 @@ import {
 	Ellipsis,
 	Eye,
 	Pencil,
+	SendHorizontal,
 	Share2,
 	Trash2,
 } from "lucide-react";
@@ -32,7 +33,6 @@ import {
 } from "./api/forms-list";
 import { classicUiLink } from "./classic-ui-tab";
 import type { FormActions } from "./form-actions";
-import { SendFormIcon } from "./form-dialog-fields";
 import { formatHumanizedDate } from "./format";
 import { FormShareMenuItems } from "./share/form-share-menu-items";
 
@@ -414,7 +414,7 @@ function ActionsCell({
 				tooltip="Send"
 				testId="forms-table__send-button"
 				className="[&>svg]:size-5"
-				icon={<SendFormIcon className="size-5" />}
+				icon={<SendHorizontal className="size-5" />}
 				onClick={() => actions.send(form)}
 			/>
 			<HSComp.DropdownMenu>
