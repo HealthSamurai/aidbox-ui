@@ -5,12 +5,12 @@ import type {
 
 export const GRAPH_CARD_WIDTH = 320;
 export const GRAPH_GAP = 24;
-const ITEM_INSET = 17;
 const PORT_GAP = 8;
 const LANE_GAP = 20;
 
 export type GraphPoint = { x: number; y: number };
-export type GraphAnchor = { left: number; right: number; y: number };
+/** Vertical position of a rule port, in layout coordinates. */
+export type GraphAnchor = { y: number };
 export type GraphSide = "left" | "right";
 export type GraphItem = PlanDefinitionRuleItem & {
 	anchor: string;
@@ -35,8 +35,6 @@ export type GraphRoute = {
 	targetAnchor: string;
 	sourceOffset: number;
 	targetOffset: number;
-	source: GraphPoint;
-	target: GraphPoint;
 };
 
 const anchorKey = (key: string, kind: "form" | "item", linkId?: string) =>
@@ -116,11 +114,7 @@ export function planDefinitionGraphLayout(
 			56,
 			((counts.get(anchor) ?? 0) + 1) * PORT_GAP,
 		);
-		anchors.set(anchor, {
-			left: 0,
-			right: GRAPH_CARD_WIDTH,
-			y: y + 1 + headingHeight / 2,
-		});
+		anchors.set(anchor, { y: y + 1 + headingHeight / 2 });
 		const message = messages[index];
 		let offset = 1 + headingHeight;
 		const formItems = items[index] ?? [];
@@ -130,11 +124,7 @@ export function planDefinitionGraphLayout(
 		const rows = formItems.map((item, itemIndex) => {
 			const anchor = anchorKey(key, "item", item.linkId);
 			const height = Math.max(40, ((counts.get(anchor) ?? 0) + 1) * PORT_GAP);
-			anchors.set(anchor, {
-				left: ITEM_INSET,
-				right: GRAPH_CARD_WIDTH - ITEM_INSET,
-				y: y + offset + height / 2,
-			});
+			anchors.set(anchor, { y: y + offset + height / 2 });
 			offset += height + (itemIndex < formItems.length - 1 ? 8 : 0);
 			return { ...item, anchor, height };
 		});
@@ -262,14 +252,6 @@ export function planDefinitionGraphLayout(
 		targetAnchor: edge.targetAnchor,
 		sourceOffset: edge.sourceOffset,
 		targetOffset: edge.targetOffset,
-		source: {
-			x: gutter + edge.source[edge.side ?? "right"],
-			y: edge.source.y + edge.sourceOffset,
-		},
-		target: {
-			x: gutter + edge.target[edge.side ?? "right"],
-			y: edge.target.y + edge.targetOffset,
-		},
 	}));
 	return {
 		forms,

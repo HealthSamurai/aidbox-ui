@@ -1,6 +1,7 @@
 import { useAidboxClient } from "@aidbox-ui/AidboxClient";
 import {
 	sdcRequest,
+	useDeletePlanDefinition,
 	usePlanDefinition,
 	useQuestionnaireMetadata,
 	useSavePlanDefinition,
@@ -9,6 +10,7 @@ import {
 	ResourceRequestError,
 	toOperationOutcome,
 } from "@aidbox-ui/components/Forms/api/resource-error";
+import { DeleteFormDialog } from "@aidbox-ui/components/Forms/delete-form-dialog";
 import { editorShortcutHandler } from "@aidbox-ui/components/Forms/editor/editor-shortcuts";
 import {
 	isOperationOutcomeError,
@@ -16,7 +18,6 @@ import {
 } from "@aidbox-ui/components/Forms/editor/operation-outcome-context";
 import { useResourceCode } from "@aidbox-ui/components/Forms/editor/resource-code";
 import { ResourceEditorContent } from "@aidbox-ui/components/Forms/editor/resource-code-editor";
-import { ResourceEditorToolbar } from "@aidbox-ui/components/Forms/editor/resource-editor-toolbar";
 import { FormPreviewDialog } from "@aidbox-ui/components/Forms/form-preview-dialog";
 import {
 	getAidboxApiURL,
@@ -41,14 +42,17 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 	Skeleton,
+	Tabs,
 	TabsContent,
+	TabsList,
+	TabsTrigger,
 	toast,
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Columns3Cog } from "lucide-react";
+import { Columns3Cog, SaveIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { NavbarBreadcrumbSlot, NavbarRightSlot } from "./navbar-slot";
+import { NavbarBreadcrumbSlot } from "./navbar-slot";
 import { PlanDefinitionAddQuestionnairesDialog } from "./plan-definition-add-questionnaires-dialog";
 import { validatePlanDefinitionCode } from "./plan-definition-code";
 import { PlanDefinitionConditionEditor } from "./plan-definition-condition-editor";
@@ -193,12 +197,12 @@ function PlanDefinitionResourceLink({
 	if (!planDefinition?.id) return null;
 
 	return (
-		<Button variant="ghost" asChild>
+		<Button variant="ghost" size="small" className="px-0!" asChild>
 			<a
 				data-test-id="plan-definition-editor__open-resource-link"
 				href={getResourceEditorUrl("PlanDefinition", planDefinition.id)}
 			>
-				<Columns3Cog className="size-4" />
+				<Columns3Cog className="w-4 h-4" />
 				Open resource
 			</a>
 		</Button>
@@ -262,6 +266,8 @@ function PlanDefinitionEditor({
 		source: PlanDefinition;
 	} | null>(null);
 	const save = useSavePlanDefinition();
+	const remove = useDeletePlanDefinition();
+	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const interactionDisabled = save.isPending || isSorting;
 	const applyResource = (next: PlanDefinition) => {
 		validatePlanDefinitionCode(next);
@@ -516,6 +522,48 @@ function PlanDefinitionEditor({
 		onAddForms: () => setIsAddingForms(true),
 	};
 
+	const editorActions = (
+		<>
+			<Button
+				variant="ghost"
+				size="small"
+				className="px-0! text-text-link"
+				data-test-id="plan-definition-editor__save-button"
+				disabled={interactionDisabled}
+				onClick={() => void handleSave()}
+			>
+				<SaveIcon className="w-4 h-4" />
+				{save.isPending ? "Saving…" : "Save"}
+			</Button>
+			{savedPlanDefinition?.id && (
+				<Button
+					variant="ghost"
+					size="small"
+					className="px-0!"
+					data-test-id="plan-definition-editor__delete-button"
+					disabled={interactionDisabled || remove.isPending}
+					onClick={() => setIsDeleteOpen(true)}
+				>
+					<Trash2Icon className="w-4 h-4" />
+					Delete
+				</Button>
+			)}
+			<PlanDefinitionResourceLink planDefinition={savedPlanDefinition} />
+		</>
+	);
+	const confirmDelete = () => {
+		if (!savedPlanDefinition || remove.isPending) return;
+		remove.mutate(savedPlanDefinition, {
+			onError: (error) => toast.error(error.message),
+			onSuccess: () => {
+				setIsDeleteOpen(false);
+				toast.success("Package deleted");
+				guard.allowNavigation();
+				void navigate({ to: "/forms", ignoreBlocker: true });
+			},
+		});
+	};
+
 	return (
 		<OperationOutcomeProvider outcome={outcome}>
 			<FhirPathLspProvider>
@@ -523,6 +571,17 @@ function PlanDefinitionEditor({
 					{planDefinition.title?.trim()}
 				</NavbarBreadcrumbSlot>
 				<UnsavedChangesDialog guard={guard} />
+				<DeleteFormDialog
+					open={isDeleteOpen}
+					form={savedPlanDefinition ?? null}
+					componentUsage={[]}
+					qrUsage={[]}
+					isDeleting={remove.isPending}
+					onConfirm={confirmDelete}
+					onOpenChange={(open) => {
+						if (!remove.isPending) setIsDeleteOpen(open);
+					}}
+				/>
 				<FormPreviewDialog
 					form={preview}
 					loadResource={false}
@@ -547,18 +606,6 @@ function PlanDefinitionEditor({
 						}}
 					/>
 				)}
-				<NavbarRightSlot>
-					<div className="flex items-center gap-2">
-						<PlanDefinitionResourceLink planDefinition={savedPlanDefinition} />
-						<Button
-							data-test-id="plan-definition-editor__save-button"
-							disabled={interactionDisabled}
-							onClick={() => void handleSave()}
-						>
-							{save.isPending ? "Saving…" : "Save"}
-						</Button>
-					</div>
-				</NavbarRightSlot>
 				<fieldset
 					className="flex min-h-0 min-w-0 flex-1 flex-col"
 					data-test-id="plan-definition-editor"
@@ -588,28 +635,41 @@ function PlanDefinitionEditor({
 									/>
 								</div>
 							)}
-							<ResourceEditorToolbar
-								label="Package"
-								tabs={[
-									{
-										value: "graph",
-										label: "Graph",
-										testId: "plan-definition-editor__graph-tab",
-									},
-									{
-										value: "preview",
-										label: "Preview",
-										testId: "plan-definition-editor__preview-tab",
-									},
-									{ value: "code", label: "Code" },
-								]}
-								mode={activeView}
-								onModeChange={(mode) => {
+							<Tabs
+								value={activeView}
+								onValueChange={(mode) => {
 									code.changeMode(mode === "code" ? "code" : "form");
 									if (mode !== "code") setDesignerView(mode);
 								}}
-								disabled={interactionDisabled}
-							/>
+								className="h-auto flex-none"
+							>
+								<div className="flex h-10 flex-none items-center border-b bg-bg-primary px-4">
+									<TabsList aria-label="Package editor mode">
+										<TabsTrigger
+											value="graph"
+											disabled={interactionDisabled}
+											data-test-id="plan-definition-editor__graph-tab"
+										>
+											Graph
+										</TabsTrigger>
+										<TabsTrigger
+											value="preview"
+											disabled={interactionDisabled}
+											data-test-id="plan-definition-editor__preview-tab"
+										>
+											Preview
+										</TabsTrigger>
+										<TabsTrigger value="code" disabled={interactionDisabled}>
+											Code
+										</TabsTrigger>
+									</TabsList>
+								</div>
+							</Tabs>
+							{activeView !== "code" && (
+								<div className="flex h-10 flex-none items-center gap-4 border-b bg-bg-secondary px-4">
+									{editorActions}
+								</div>
+							)}
 							<div className="min-h-0 flex-1" hidden={activeView !== "preview"}>
 								<PlanDefinitionPreview planDefinition={resource} />
 							</div>
@@ -618,6 +678,7 @@ function PlanDefinitionEditor({
 								hidden={activeView === "preview"}
 							>
 								<ResourceEditorContent
+									actions={editorActions}
 									mode={code.mode}
 									resourceType="PlanDefinition"
 									value={code.text}

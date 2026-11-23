@@ -1,7 +1,5 @@
 import { useOperationOutcomeIssues } from "@aidbox-ui/components/Forms/editor/operation-outcome-context";
-import { useSortable } from "@dnd-kit/react/sortable";
 import {
-	Button,
 	cn,
 	DropdownMenu,
 	DropdownMenuContent,
@@ -9,104 +7,132 @@ import {
 	DropdownMenuTrigger,
 	IconButton,
 } from "@health-samurai/react-components";
-import { CircleAlert, Copy, EllipsisVertical, Eye, Trash2 } from "lucide-react";
-import type { CSSProperties } from "react";
 import {
-	GRAPH_CARD_WIDTH,
-	type GraphForm,
-} from "./plan-definition-graph-layout";
+	Handle,
+	type NodeProps,
+	Position,
+	useUpdateNodeInternals,
+} from "@xyflow/react";
+import { CircleAlert, Copy, EllipsisVertical, Eye, Trash2 } from "lucide-react";
+import { useEffect } from "react";
+import { GRAPH_CARD_WIDTH } from "./plan-definition-graph-layout";
+import { type FormNode, graphHandleId } from "./plan-definition-graph-types";
 
-export function GraphFormBlock({
-	form,
-	title,
-	conditional,
-	selected,
-	disabled,
-	invalid: localInvalid,
-	sorting,
-	scale,
-	onSelect,
-	onQuickLook,
-	onDuplicate,
-	onDelete,
-}: {
-	form: GraphForm;
-	title: string;
-	conditional: boolean;
-	selected: boolean;
-	disabled: boolean;
-	invalid: boolean;
-	sorting: boolean;
-	scale: number;
-	onSelect: () => void;
-	onQuickLook?: () => void;
-	onDuplicate: () => void;
-	onDelete: () => void;
-}) {
+const PORT_STYLE = {
+	width: 0,
+	height: 0,
+	minWidth: 0,
+	minHeight: 0,
+	border: 0,
+	background: "transparent",
+};
+
+/** Invisible rule ports on both sides of a row; React Flow measures them from the DOM. */
+function RulePorts({ anchor }: { anchor: string }) {
+	return (["left", "right"] as const).flatMap((side) =>
+		(["source", "target"] as const).map((type) => (
+			<Handle
+				key={`${side}-${type}`}
+				id={graphHandleId(anchor, side, type)}
+				type={type}
+				position={side === "left" ? Position.Left : Position.Right}
+				isConnectable={false}
+				style={PORT_STYLE}
+			/>
+		)),
+	);
+}
+
+export function GraphFormNode({ id, data }: NodeProps<FormNode>) {
+	const {
+		form,
+		title,
+		conditional,
+		selected,
+		disabled,
+		sorting,
+		dragging,
+		onSelect,
+		onQuickLook,
+		onDuplicate,
+		onDelete,
+		onMove,
+	} = data;
 	const invalid =
 		useOperationOutcomeIssues(
 			new RegExp(`^PlanDefinition\\.action\\[${form.index}\\](?:\\.|\\[|$)`),
 			{
 				severity: ["error", "fatal"],
 			},
-		).length > 0 || localInvalid;
-	const { ref, handleRef, isDragging } = useSortable({
-		id: form.key,
-		index: form.index,
-		disabled,
-	});
+		).length > 0 || data.invalid;
 	const hasBody = form.items.length > 0 || Boolean(form.message);
+	// Ports can change while the card keeps its size; re-measure them then.
+	const updateNodeInternals = useUpdateNodeInternals();
+	const ports = form.items.map((item) => item.anchor).join(" ");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: ports trigger the re-measure
+	useEffect(() => {
+		updateNodeInternals(id);
+	}, [id, ports, updateNodeInternals]);
 	return (
-		<li
-			ref={ref}
+		<article
 			data-test-id="plan-definition-graph__form-node"
 			data-action-index={form.index}
 			data-action-key={form.key}
 			aria-label={`Form ${form.index + 1}: ${title}`}
 			aria-current={selected ? "step" : undefined}
 			className={cn(
-				"relative rounded-lg border border-border-primary bg-bg-primary shadow-sm transition-colors data-[dnd-dragging]:origin-top-left data-[dnd-dragging]:[scale:var(--graph-scale)]",
+				// The card itself is the gray heading color and only the body paints white:
+				// at fractional zoom an inner edge then bleeds gray next to the gray border.
+				"relative overflow-hidden rounded-lg border border-border-primary bg-bg-secondary bg-clip-padding shadow-sm transition-colors",
 				!selected &&
 					!invalid &&
 					!disabled &&
 					"hover:border-border-primary_hover",
-				selected && "border-border-brand ring-1 ring-border-brand",
+				selected &&
+					"border-border-brand outline-2 -outline-offset-1 outline-border-brand",
 				invalid && "border-border-error",
-				isDragging && "z-30 shadow-lg",
+				dragging && "shadow-lg",
+				// The card shows focus for its main button, outside the border.
+				"has-[>button:focus-visible]:ring-4 has-[>button:focus-visible]:ring-ring-blue",
 			)}
-			style={
-				{
-					width: GRAPH_CARD_WIDTH,
-					height: form.height,
-					// Drag feedback moves into the top layer, outside the scaled viewport.
-					// Keep its original dimensions and apply the viewport scale there.
-					maxWidth: "none",
-					maxHeight: "none",
-					"--graph-scale": scale,
-				} as CSSProperties
-			}
+			style={{ width: GRAPH_CARD_WIDTH, height: form.height }}
 		>
-			<Button
-				ref={handleRef}
+			<button
 				type="button"
-				variant="ghost"
-				className="block h-full w-full cursor-grab touch-none select-none whitespace-normal rounded-lg p-0 text-left text-text-primary hover:bg-transparent active:cursor-grabbing active:bg-transparent focus-visible:ring-inset"
+				className={cn(
+					"block h-full w-full touch-none select-none text-left text-text-primary outline-none",
+					disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing",
+					dragging && "cursor-grabbing",
+				)}
 				aria-label={`${title}${invalid ? ", Form has errors" : ""}`}
-				aria-description={conditional ? "Conditional form" : undefined}
+				aria-description={
+					disabled
+						? conditional
+							? "Conditional form"
+							: undefined
+						: `${conditional ? "Conditional form. " : ""}Drag or press Alt+Arrow Up and Alt+Arrow Down to reorder.`
+				}
 				aria-current={selected ? "step" : undefined}
 				data-test-id="plan-definition-graph__form-button"
 				disabled={disabled}
 				onClick={() => {
 					if (!sorting) onSelect();
 				}}
+				onKeyDown={(event) => {
+					if (
+						!event.altKey ||
+						(event.key !== "ArrowUp" && event.key !== "ArrowDown")
+					)
+						return;
+					event.preventDefault();
+					event.stopPropagation();
+					onMove(event.key === "ArrowUp" ? -1 : 1);
+				}}
 			>
 				<span
-					data-graph-anchor={form.anchor}
 					className={cn(
-						"flex items-center gap-2 bg-bg-secondary pl-4 pr-20",
-						hasBody
-							? "rounded-t-lg border-b border-border-secondary"
-							: "rounded-lg",
+						"relative flex items-center gap-2 pl-4 pr-20",
+						hasBody && "border-b border-border-secondary",
 					)}
 					style={{ height: form.headingHeight }}
 				>
@@ -136,9 +162,10 @@ export function GraphFormBlock({
 							aria-label="Form has errors"
 						/>
 					)}
+					<RulePorts anchor={form.anchor} />
 				</span>
 				{hasBody && (
-					<span className="block p-4">
+					<span className="block bg-bg-primary p-4">
 						{form.message && (
 							<output className="block h-8 text-xs text-text-secondary">
 								{form.message}
@@ -148,10 +175,9 @@ export function GraphFormBlock({
 							{form.items.map((item) => (
 								<span
 									key={item.anchor}
-									data-graph-anchor={item.anchor}
 									data-test-id="plan-definition-graph__item-node"
 									data-link-id={item.linkId}
-									className="flex items-center gap-2 rounded border border-border-primary bg-bg-secondary px-3"
+									className="relative flex items-center gap-2 rounded border border-border-primary bg-bg-secondary px-3"
 									style={{ height: item.height }}
 								>
 									<span
@@ -160,14 +186,15 @@ export function GraphFormBlock({
 									>
 										{item.label}
 									</span>
+									<RulePorts anchor={item.anchor} />
 								</span>
 							))}
 						</span>
 					</span>
 				)}
-			</Button>
+			</button>
 			<div
-				className="absolute right-2 flex -translate-y-1/2 gap-1"
+				className="nodrag nopan absolute right-2 flex -translate-y-1/2 gap-1"
 				style={{ top: form.headingHeight / 2 }}
 			>
 				<IconButton
@@ -210,6 +237,6 @@ export function GraphFormBlock({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-		</li>
+		</article>
 	);
 }

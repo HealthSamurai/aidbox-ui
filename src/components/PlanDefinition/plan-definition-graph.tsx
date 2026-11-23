@@ -1,39 +1,26 @@
+import "@xyflow/react/dist/style.css";
 import {
 	issueMessage,
 	useOperationOutcomeError,
 	useOperationOutcomeIssues,
 } from "@aidbox-ui/components/Forms/editor/operation-outcome-context";
 import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
-import { Accessibility, Feedback } from "@dnd-kit/dom";
-import { RestrictToElement } from "@dnd-kit/dom/modifiers";
-import { DragDropProvider } from "@dnd-kit/react";
-import { isSortable } from "@dnd-kit/react/sortable";
-import { Button, cn, IconButton } from "@health-samurai/react-components";
+import { Button } from "@health-samurai/react-components";
 import {
-	CircleAlert,
-	Eye,
-	Package as PlanDefinitionIcon,
-	Plus,
-} from "lucide-react";
-import {
-	type MouseEvent,
-	useEffect,
-	useId,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
-import { planDefinitionDragSensors } from "./plan-definition-drag";
-import {
-	GraphEdgeControls,
-	GraphZoomControls,
-} from "./plan-definition-graph-controls";
-import { GraphConnections } from "./plan-definition-graph-edges";
-import { GraphFormBlock } from "./plan-definition-graph-form";
+	Controls,
+	type NodeChange,
+	Panel,
+	ReactFlow,
+	ReactFlowProvider,
+	useReactFlow,
+} from "@xyflow/react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { GraphEdgeControls } from "./plan-definition-graph-controls";
+import { graphEdgeTypes, ruleLabel } from "./plan-definition-graph-edges";
 import {
 	GRAPH_CARD_WIDTH,
 	GRAPH_GAP,
-	type GraphAnchor,
+	type GraphForm,
 	planDefinitionGraphLayout,
 } from "./plan-definition-graph-layout";
 import {
@@ -42,14 +29,31 @@ import {
 	planDefinitionRuleItems,
 } from "./plan-definition-graph-model";
 import {
+	GRAPH_PACKAGE_HEIGHT,
+	graphNodeTypes,
+} from "./plan-definition-graph-nodes";
+import {
+	GRAPH_MAX_ZOOM,
+	GRAPH_MIN_ZOOM,
 	readPlanDefinitionGraphState,
 	writePlanDefinitionGraphState,
 } from "./plan-definition-graph-state";
 import {
-	GRAPH_INTERACTIVE,
-	useGraphViewport,
-} from "./plan-definition-graph-viewport";
+	type GraphNode,
+	graphHandleId,
+	type RuleEdge,
+} from "./plan-definition-graph-types";
 import type { PlanDefinitionActionDraft } from "./plan-definition-model";
+
+/** The package node sits 24px from the top; forms follow it. */
+const PACKAGE_TOP = 24;
+const FORMS_TOP = PACKAGE_TOP + GRAPH_PACKAGE_HEIGHT;
+const PAN_STEP = 48;
+/** React Flow turns off pointer events on nodes that are neither draggable nor
+ * selectable; ours handle their own clicks. */
+const NODE_STYLE = { pointerEvents: "all" } as const;
+/** Keep the 12px inset the edge legend had before React Flow panels. */
+const PANEL_STYLE = { margin: 12 };
 
 type PlanDefinitionGraphProps = {
 	storageKey?: string;
@@ -77,7 +81,51 @@ type PlanDefinitionGraphProps = {
 	onDelete: (index: number) => void;
 };
 
-export function PlanDefinitionGraph({
+type GraphDrag = { key: string; from: number; to: number; y: number };
+
+const formNodeId = (key: string) => `form:${key}`;
+
+/** Final index of the dragged form: how many other forms sit above its center. */
+function dropIndex(forms: GraphForm[], from: number, y: number) {
+	const dragged = forms[from];
+	if (!dragged) return from;
+	const center = y + dragged.height / 2;
+	let top = forms[0]?.y ?? 0;
+	let index = 0;
+	for (const form of forms) {
+		if (form.index === from) continue;
+		if (center > top + form.height / 2) index++;
+		top += form.height + GRAPH_GAP;
+	}
+	return index;
+}
+
+/** Form tops in layout coordinates, previewing the drop position while dragging. */
+function formTops(forms: GraphForm[], drag: GraphDrag | null) {
+	const order = forms.map((form) => form.index);
+	if (drag) {
+		order.splice(drag.from, 1);
+		order.splice(drag.to, 0, drag.from);
+	}
+	const tops: number[] = [];
+	let top = forms[0]?.y ?? 0;
+	for (const index of order) {
+		tops[index] = top;
+		top += (forms[index]?.height ?? 0) + GRAPH_GAP;
+	}
+	if (drag) tops[drag.from] = drag.y;
+	return tops;
+}
+
+export function PlanDefinitionGraph(props: PlanDefinitionGraphProps) {
+	return (
+		<ReactFlowProvider>
+			<PlanDefinitionGraphFlow {...props} />
+		</ReactFlowProvider>
+	);
+}
+
+function PlanDefinitionGraphFlow({
 	storageKey,
 	planDefinitionTitle,
 	planDefinitionSelected,
@@ -102,16 +150,18 @@ export function PlanDefinitionGraph({
 	onDuplicate,
 	onDelete,
 }: PlanDefinitionGraphProps) {
+	const flow = useReactFlow<GraphNode, RuleEdge>();
 	const packageIssues = useOperationOutcomeIssues(
 		/^PlanDefinition(?:$|\.(?!action(?:\.|\[|$)))/,
 		{ severity: ["error", "fatal"] },
 	);
 	const formsError =
 		useOperationOutcomeError("PlanDefinition.action") ?? errors.action;
-	const formsErrorId = useId();
-	const diagramRef = useRef<HTMLDivElement>(null);
-	const trackRef = useRef<HTMLOListElement>(null);
-	const [sorting, setSorting] = useState(false);
+	const [drag, setDrag] = useState<GraphDrag | null>(null);
+	const sorting = drag !== null;
+	const [measured, setMeasured] = useState<
+		Record<string, { width: number; height: number }>
+	>({});
 	const [viewState, setViewState] = useState(() =>
 		readPlanDefinitionGraphState(storageKey),
 	);
@@ -119,7 +169,6 @@ export function PlanDefinitionGraph({
 	useEffect(() => {
 		writePlanDefinitionGraphState(storageKey, viewState);
 	}, [storageKey, viewState]);
-	const [liveAnchors, setLiveAnchors] = useState<Record<string, GraphAnchor>>();
 	const layout = useMemo(() => {
 		const connections = planDefinitionGraphEdges(actions).filter(
 			(edge) => visibleEdges[edge.kind],
@@ -144,54 +193,6 @@ export function PlanDefinitionGraph({
 			),
 		);
 	}, [actions, actionKeys, questionnaires, loading, visibleEdges]);
-	const lastForm = layout.forms.at(-1);
-	const viewport = useGraphViewport({
-		width: layout.width,
-		// Include the PlanDefinition heading, Add Forms button, and empty-state prompt.
-		height: 88 + layout.height + 64 + (actions.length ? 0 : 68),
-		nodeBounds: {
-			left: (layout.width - GRAPH_CARD_WIDTH) / 2,
-			right: (layout.width + GRAPH_CARD_WIDTH) / 2,
-			top: 24,
-			bottom: lastForm ? 88 + lastForm.y + lastForm.height : 88,
-		},
-		visibleEdges,
-		enabled: true,
-		sorting,
-		savedViewport: viewState.viewport,
-		onViewportChange: (viewport) =>
-			setViewState((current) => ({ ...current, viewport })),
-	});
-	const scale = viewport.transform.k;
-	// dnd-kit moves DOM elements optimistically. Follow their actual anchors during a drag.
-	useEffect(() => {
-		if (!sorting) return;
-		let frame = 0;
-		const measure = () => {
-			const diagram = diagramRef.current;
-			if (!diagram) return;
-			const origin = diagram.getBoundingClientRect();
-			const next: Record<string, GraphAnchor> = {};
-			for (const element of diagram.querySelectorAll<HTMLElement>(
-				"[data-graph-anchor]",
-			)) {
-				const key = element.dataset.graphAnchor;
-				if (!key || element.closest("[data-dnd-placeholder]")) continue;
-				const rect = element.getBoundingClientRect();
-				next[key] = {
-					left: (rect.left - origin.left) / scale,
-					right: (rect.right - origin.left) / scale,
-					y: (rect.top + rect.height / 2 - origin.top) / scale,
-				};
-			}
-			setLiveAnchors((current) =>
-				JSON.stringify(current) === JSON.stringify(next) ? current : next,
-			);
-			frame = requestAnimationFrame(measure);
-		};
-		frame = requestAnimationFrame(measure);
-		return () => cancelAnimationFrame(frame);
-	}, [sorting, scale]);
 	const title = (index: number) =>
 		actions[index]?.title || actions[index]?.id || "Untitled form";
 	const packageIssue = packageIssues[0];
@@ -200,45 +201,190 @@ export function PlanDefinitionGraph({
 		: Object.entries(errors).find(
 				([path]) => path !== "action" && !path.startsWith("action."),
 			)?.[1];
-	const anchors = sorting ? liveAnchors : undefined;
-	const addForms = (
-		<div
-			className="mx-auto flex flex-col gap-2"
-			style={{ width: GRAPH_CARD_WIDTH }}
-		>
-			<IconButton
-				variant="ghost"
-				className="size-10 self-center rounded-full border border-border-primary bg-bg-primary shadow-sm"
-				aria-label="Add Forms"
-				title="Add Forms"
-				icon={<Plus className="size-4" />}
-				data-test-id="plan-definition-editor__add-form-button"
-				disabled={disabled || sorting}
-				onClick={onAddForms}
-				aria-invalid={Boolean(formsError)}
-				aria-describedby={formsError ? formsErrorId : undefined}
-			/>
-			{formsError && (
-				<p
-					id={formsErrorId}
-					role="alert"
-					className="text-xs text-text-error-primary"
-				>
-					{formsError}
-				</p>
-			)}
-		</div>
-	);
-	const clearSelection = (event: MouseEvent<HTMLDivElement>) => {
-		if (
-			event.button === 0 &&
-			!disabled &&
-			!sorting &&
-			event.target instanceof Element &&
-			!event.target.closest(GRAPH_INTERACTIVE)
-		)
-			onSelect(null);
+
+	const tops = formTops(layout.forms, drag);
+	const nodes: GraphNode[] = [
+		{
+			id: "package",
+			type: "package",
+			position: { x: layout.gutter, y: PACKAGE_TOP },
+			draggable: false,
+			selectable: false,
+			style: NODE_STYLE,
+			measured: measured.package,
+			data: {
+				title: planDefinitionTitle,
+				selected: planDefinitionSelected,
+				error: planDefinitionError,
+				disabled: disabled || sorting,
+				onSelect: onSelectPlanDefinition,
+				onQuickLook: onQuickLookPlanDefinition,
+			},
+		},
+		...layout.forms.map((form): GraphNode => {
+			const questionnaire = questionnaires[form.index];
+			return {
+				id: formNodeId(form.key),
+				type: "form",
+				position: {
+					x: layout.gutter,
+					y: FORMS_TOP + (tops[form.index] ?? form.y),
+				},
+				width: GRAPH_CARD_WIDTH,
+				height: form.height,
+				measured: { width: GRAPH_CARD_WIDTH, height: form.height },
+				draggable: !disabled,
+				selectable: false,
+				style: NODE_STYLE,
+				zIndex: drag?.key === form.key ? 10 : 0,
+				data: {
+					form,
+					title: title(form.index),
+					conditional: Boolean(
+						actions[form.index]?.condition?.some(
+							(condition) =>
+								condition.kind === "applicability" &&
+								condition.expression?.expression?.trim(),
+						),
+					),
+					selected: selectedIndex === form.index,
+					invalid: Object.keys(errors).some(
+						(path) =>
+							path === `action.${form.index}` ||
+							path.startsWith(`action.${form.index}.`),
+					),
+					disabled,
+					sorting,
+					dragging: drag?.key === form.key,
+					onSelect: () => onSelect(form.index),
+					onQuickLook: questionnaire
+						? () => onQuickLook(questionnaire)
+						: undefined,
+					onDuplicate: () => onDuplicate(form.index),
+					onDelete: () => onDelete(form.index),
+					onMove: (direction) => {
+						const to = form.index + direction;
+						if (!disabled && to >= 0 && to < layout.forms.length)
+							onReorder(form.index, to);
+					},
+				},
+			};
+		}),
+		{
+			id: "add-forms",
+			type: "addForms",
+			position: {
+				x: layout.gutter,
+				y: FORMS_TOP + (layout.forms.length ? layout.height : 0),
+			},
+			draggable: false,
+			selectable: false,
+			style: NODE_STYLE,
+			measured: measured["add-forms"],
+			data: {
+				empty: !actions.length,
+				error: formsError,
+				disabled: disabled || sorting,
+				onAdd: onAddForms,
+			},
+		},
+	];
+
+	const highlighted = (edge: PlanDefinitionGraphEdge) =>
+		selectedEdgeId !== undefined
+			? edge.id === selectedEdgeId
+			: edge.sourceIndex === selectedIndex ||
+				edge.targetIndex === selectedIndex;
+	const edges: RuleEdge[] = layout.routes
+		.filter(({ edge }) => visibleEdges[edge.kind])
+		.flatMap((route) => {
+			const sourceKey = actionKeys[route.edge.sourceIndex];
+			const targetKey = actionKeys[route.edge.targetIndex];
+			if (sourceKey === undefined || targetKey === undefined) return [];
+			return [
+				{
+					id: route.edge.id,
+					type: "rule",
+					source: formNodeId(sourceKey),
+					target: formNodeId(targetKey),
+					sourceHandle: graphHandleId(route.sourceAnchor, route.side, "source"),
+					targetHandle: graphHandleId(route.targetAnchor, route.side, "target"),
+					selectable: false,
+					focusable: false,
+					// Edges paint above the cards, as their ports sit on card borders.
+					zIndex: 20,
+					data: {
+						route,
+						label: ruleLabel(route.edge, layout.forms, title),
+						highlighted: highlighted(route.edge),
+						selected: route.edge.id === selectedEdgeId,
+						invalid: Boolean(errors[route.edge.path]),
+						disabled,
+						sorting,
+						onSelectRule,
+					},
+				},
+			];
+		});
+
+	const onNodesChange = (changes: NodeChange<GraphNode>[]) => {
+		const sizes: typeof measured = {};
+		for (const change of changes) {
+			if (change.type === "dimensions" && change.dimensions)
+				sizes[change.id] = change.dimensions;
+			if (
+				change.type === "position" &&
+				change.dragging &&
+				change.position &&
+				drag &&
+				change.id === formNodeId(drag.key)
+			) {
+				const y = change.position.y - FORMS_TOP;
+				setDrag(
+					(current) =>
+						current && {
+							...current,
+							y,
+							to: dropIndex(layout.forms, current.from, y),
+						},
+				);
+			}
+		}
+		if (Object.keys(sizes).length)
+			setMeasured((current) =>
+				Object.entries(sizes).every(
+					([id, size]) =>
+						current[id]?.width === size.width &&
+						current[id]?.height === size.height,
+				)
+					? current
+					: { ...current, ...sizes },
+			);
 	};
+
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (event.target !== event.currentTarget || sorting) return;
+		const { x, y, zoom } = flow.getViewport();
+		const pan = {
+			ArrowLeft: [PAN_STEP, 0],
+			ArrowRight: [-PAN_STEP, 0],
+			ArrowUp: [0, PAN_STEP],
+			ArrowDown: [0, -PAN_STEP],
+		}[event.key];
+		if (pan)
+			flow.setViewport({ x: x + (pan[0] ?? 0), y: y + (pan[1] ?? 0), zoom });
+		else if (event.key === "+" || event.key === "=")
+			flow.zoomTo(Math.min(GRAPH_MAX_ZOOM, zoom * 1.2));
+		else if (event.key === "-")
+			flow.zoomTo(Math.max(GRAPH_MIN_ZOOM, zoom / 1.2));
+		else if (event.key === "f" || event.key === "F")
+			flow.fitView({ padding: 0.1, maxZoom: 1 });
+		else if (event.key === "0") flow.zoomTo(1);
+		else return;
+		event.preventDefault();
+	};
+
+	const saved = viewState.viewport;
 	return (
 		<div
 			className="flex h-full min-h-0 flex-col bg-bg-tertiary"
@@ -255,201 +401,76 @@ export function PlanDefinitionGraph({
 				</div>
 			)}
 			<div
-				ref={viewport.ref}
-				className={cn(
-					"relative min-h-0 flex-1 touch-none overflow-clip outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-brand",
-					viewport.panning ? "cursor-grabbing" : "cursor-grab",
-				)}
+				className="relative min-h-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-brand"
 				role="application"
 				aria-label="Package graph"
 				aria-description="Drag empty space to pan. Scroll or pinch to zoom. Use arrow keys to pan, plus and minus to zoom, F to fit, and 0 to reset zoom."
 				tabIndex={0}
-				onClick={clearSelection}
-				onKeyDown={viewport.onKeyDown}
+				onKeyDown={onKeyDown}
 				data-test-id="plan-definition-graph__viewport"
 			>
-				<div
-					className="absolute left-0 top-0 origin-top-left"
-					style={{
-						width: layout.width,
-						transform: `translate(${viewport.transform.x}px, ${viewport.transform.y}px) scale(${scale})`,
+				<ReactFlow<GraphNode, RuleEdge>
+					nodes={nodes}
+					edges={edges}
+					nodeTypes={graphNodeTypes}
+					edgeTypes={graphEdgeTypes}
+					onNodesChange={onNodesChange}
+					onNodeDragStart={(_, node) => {
+						if (node.type !== "form") return;
+						const { form } = node.data;
+						setDrag({
+							key: form.key,
+							from: form.index,
+							to: form.index,
+							y: form.y,
+						});
+						onSortingChange(true);
 					}}
-					data-test-id="plan-definition-graph__transform"
-					data-zoom={scale}
-				>
-					<div className="mx-auto pt-6" style={{ width: GRAPH_CARD_WIDTH }}>
-						<div className="relative">
-							<Button
-								variant="ghost"
-								className={cn(
-									"flex h-16 w-full items-center justify-start gap-3 rounded-xl border border-border-primary bg-bg-primary py-0 pr-14 pl-4 text-left shadow-sm hover:bg-bg-primary active:bg-bg-primary",
-									!planDefinitionSelected &&
-										!planDefinitionError &&
-										!disabled &&
-										"hover:border-border-primary_hover",
-									planDefinitionSelected &&
-										"border-border-brand ring-1 ring-border-brand",
-									planDefinitionError && "border-border-error",
-								)}
-								aria-label="Package settings"
-								aria-description={planDefinitionTitle || "Untitled package"}
-								aria-current={planDefinitionSelected ? "true" : undefined}
-								aria-invalid={Boolean(planDefinitionError)}
-								title={planDefinitionError ?? "Package settings"}
-								disabled={disabled || sorting}
-								onClick={onSelectPlanDefinition}
-								data-test-id="plan-definition-graph__plan-definition-node-button"
-							>
-								<span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-bg-secondary text-text-secondary">
-									<PlanDefinitionIcon className="size-5" />
-								</span>
-								<span className="min-w-0 flex-1">
-									<span className="block text-xs font-normal text-text-secondary">
-										Package
-									</span>
-									<span className="block truncate text-sm font-semibold text-text-primary">
-										{planDefinitionTitle || "Untitled package"}
-									</span>
-								</span>
-								{planDefinitionError && (
-									<CircleAlert
-										className="size-4 shrink-0 text-text-error-primary"
-										role="img"
-										aria-label="Package has errors"
-									/>
-								)}
-							</Button>
-							<IconButton
-								variant="ghost"
-								className="absolute top-1/2 right-4 -translate-y-1/2"
-								aria-label="Quick look at package"
-								title="Quick look at package"
-								data-test-id="plan-definition-graph__plan-definition-quick-look-button"
-								disabled={disabled || sorting}
-								onClick={onQuickLookPlanDefinition}
-								icon={<Eye className="size-4" />}
-							/>
-						</div>
-					</div>
-					<div
-						ref={diagramRef}
-						className="relative mx-auto"
-						style={{ width: layout.width, height: layout.height }}
-					>
-						<DragDropProvider
-							sensors={planDefinitionDragSensors}
-							modifiers={[
-								RestrictToElement.configure({
-									element: () => trackRef.current,
-								}),
-							]}
-							plugins={(defaults) => [
-								...defaults,
-								Feedback.configure({ dropAnimation: null }),
-								Accessibility.configure({
-									screenReaderInstructions: {
-										draggable:
-											"Press Enter to edit this form. Press Space to pick it up, then use the arrow keys to reorder. Press Space to drop or Escape to cancel.",
-									},
-								}),
-							]}
-							onDragStart={() => {
-								setSorting(true);
-								onSortingChange(true);
-							}}
-							onDragEnd={(event) => {
-								setSorting(false);
-								setLiveAnchors(undefined);
-								onSortingChange(false);
-								if (event.canceled) return;
-								const { source } = event.operation;
-								if (isSortable(source) && source.initialIndex !== source.index)
-									onReorder(source.initialIndex, source.index);
-							}}
-						>
-							<ol
-								ref={trackRef}
-								aria-label="Forms in runtime order"
-								className={cn(
-									"mx-auto flex flex-col",
-									actions.length > 0 && "py-6",
-								)}
-								style={{ width: GRAPH_CARD_WIDTH, gap: GRAPH_GAP }}
-							>
-								{layout.forms.map((form) => {
-									const questionnaire = questionnaires[form.index];
-									return (
-										<GraphFormBlock
-											key={form.key}
-											form={form}
-											title={title(form.index)}
-											conditional={Boolean(
-												actions[form.index]?.condition?.some(
-													(condition) =>
-														condition.kind === "applicability" &&
-														condition.expression?.expression?.trim(),
-												),
-											)}
-											selected={selectedIndex === form.index}
-											disabled={disabled}
-											sorting={sorting}
-											scale={scale}
-											invalid={Object.keys(errors).some(
-												(path) =>
-													path === `action.${form.index}` ||
-													path.startsWith(`action.${form.index}.`),
-											)}
-											onSelect={() => onSelect(form.index)}
-											onQuickLook={
-												questionnaire
-													? () => onQuickLook(questionnaire)
-													: undefined
-											}
-											onDuplicate={() => onDuplicate(form.index)}
-											onDelete={() => onDelete(form.index)}
-										/>
-									);
-								})}
-							</ol>
-						</DragDropProvider>
-						<GraphConnections
-							routes={layout.routes}
-							forms={layout.forms}
-							width={layout.width}
-							height={layout.height}
-							anchors={anchors}
-							selectedIndex={selectedIndex}
-							selectedEdgeId={selectedEdgeId}
-							visible={visibleEdges}
-							errors={errors}
-							disabled={disabled}
-							sorting={sorting}
-							viewportRef={viewport.ref}
-							title={title}
-							onSelectRule={onSelectRule}
-						/>
-					</div>
-					<div className="pb-6">
-						{!actions.length && (
-							<p className="py-6 text-center text-sm text-text-secondary">
-								Add forms to build your package
-							</p>
-						)}
-						{addForms}
-					</div>
-				</div>
-				<GraphEdgeControls
-					visible={visibleEdges}
-					onChange={(edges) =>
-						setViewState((current) => ({ ...current, edges }))
+					onNodeDragStop={() => {
+						if (!drag) return;
+						setDrag(null);
+						onSortingChange(false);
+						if (drag.from !== drag.to) onReorder(drag.from, drag.to);
+					}}
+					onPaneClick={() => {
+						if (!disabled && !sorting) onSelect(null);
+					}}
+					onMoveEnd={(_, viewport) =>
+						setViewState((current) => ({
+							...current,
+							viewport: { x: viewport.x, y: viewport.y, k: viewport.zoom },
+						}))
 					}
-				/>
-				<GraphZoomControls
-					scale={scale}
-					disabled={sorting}
-					onZoom={viewport.zoomTo}
-					onFit={viewport.fitView}
-				/>
+					defaultViewport={
+						saved ? { x: saved.x, y: saved.y, zoom: saved.k } : undefined
+					}
+					fitView={!saved}
+					fitViewOptions={{ padding: 0.1, maxZoom: 1 }}
+					minZoom={GRAPH_MIN_ZOOM}
+					maxZoom={GRAPH_MAX_ZOOM}
+					nodesConnectable={false}
+					nodesFocusable={false}
+					edgesFocusable={false}
+					elementsSelectable={false}
+					elevateNodesOnSelect={false}
+					disableKeyboardA11y
+					deleteKeyCode={null}
+					selectionKeyCode={null}
+					multiSelectionKeyCode={null}
+					zoomOnDoubleClick={false}
+					proOptions={{ hideAttribution: true }}
+					data-test-id="plan-definition-graph__transform"
+				>
+					<Panel position="top-right" style={PANEL_STYLE}>
+						<GraphEdgeControls
+							visible={visibleEdges}
+							onChange={(edges) =>
+								setViewState((current) => ({ ...current, edges }))
+							}
+						/>
+					</Panel>
+					<Controls showFitView={false} />
+				</ReactFlow>
 			</div>
 		</div>
 	);

@@ -12,8 +12,6 @@ export type GraphViewportState = {
 	x: number;
 	y: number;
 	k: number;
-	viewportWidth: number;
-	contentWidth: number;
 };
 
 type PlanDefinitionGraphState = {
@@ -44,18 +42,10 @@ export function readPlanDefinitionGraphState(
 			},
 			viewport:
 				viewport &&
-				[
-					viewport.x,
-					viewport.y,
-					viewport.k,
-					viewport.viewportWidth,
-					viewport.contentWidth,
-				].every(Number.isFinite) &&
+				[viewport.x, viewport.y, viewport.k].every(Number.isFinite) &&
 				viewport.k >= GRAPH_MIN_ZOOM &&
-				viewport.k <= GRAPH_MAX_ZOOM &&
-				viewport.viewportWidth > 0 &&
-				viewport.contentWidth > 0
-					? viewport
+				viewport.k <= GRAPH_MAX_ZOOM
+					? { x: viewport.x, y: viewport.y, k: viewport.k }
 					: undefined,
 		};
 	} catch {

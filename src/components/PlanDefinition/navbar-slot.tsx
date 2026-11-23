@@ -18,10 +18,6 @@ function NavbarSlot({
 	return target ? createPortal(children, target) : null;
 }
 
-export function NavbarRightSlot({ children }: PropsWithChildren) {
-	return <NavbarSlot targetId="navbar-page-slot-right">{children}</NavbarSlot>;
-}
-
 /** Let the current page supply a live label for its last breadcrumb. */
 export function NavbarBreadcrumbSlot({ children }: PropsWithChildren) {
 	return (

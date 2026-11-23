@@ -49,8 +49,6 @@
 		"@codemirror/lint": "^6.9.7",
 		"@codemirror/state": "^6.7.6",
 		"@codemirror/view": "^6.43.15",
-		"@dnd-kit/dom": "^0.5.3",
-		"@dnd-kit/react": "^0.5.3",
 		"@git-diff-view/file": "^0.1.8",
 		"@git-diff-view/react": "^0.1.8",
 		"@health-samurai/aidbox-client": "1.0.0",

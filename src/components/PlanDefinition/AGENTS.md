@@ -6,7 +6,7 @@ Package editor: an SDC PlanDefinition that bundles forms, with rules (conditions
 |------|-------------|
 | `plan-definition-editor.tsx` | Page and editor shell: load, draft, save, unsaved-changes guard |
 | `plan-definition-draft.ts`, `plan-definition-model.ts` | Draft state and the PlanDefinition ⇄ editor model mapping |
-| `plan-definition-graph*.ts(x)` | Graph view of forms and rules: layout, edges, viewport, controls |
+| `plan-definition-graph*.ts(x)` | Graph view of forms and rules on React Flow: layout, custom nodes and rule edges, drag reorder, edge legend |
 | `plan-definition-rule*.ts`, `plan-definition-condition*.tsx`, `plan-definition-conditions.ts`, `plan-definition-expressions.ts` | Rules and their FHIRPath conditions |
 | `plan-definition-prefill*.ts(x)` | Prefill rules between forms |
 | `plan-definition-properties.tsx`, `plan-definition-fields.tsx` | Package properties panel and inline field errors |

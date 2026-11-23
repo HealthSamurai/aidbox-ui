@@ -34,8 +34,11 @@ export function ResourceCodeEditor({
 	language,
 	onLanguageChange,
 	focusIssue,
+	actions,
 }: {
 	resourceType: string;
+	/** Left side of the editor bar, the resource type label by default. */
+	actions?: ReactNode;
 	value: string;
 	onChange: (text: string) => void;
 	onFormat: () => void;
@@ -81,9 +84,11 @@ export function ResourceCodeEditor({
 				setResourceText={onChange}
 				viewCallback={setView}
 				actions={
-					<span className="typo-label-xs text-text-secondary">
-						{resourceType}
-					</span>
+					actions ?? (
+						<span className="typo-label-xs text-text-secondary">
+							{resourceType}
+						</span>
+					)
 				}
 				trailingActions={<CodeEditorCopyButton textToCopy={value} />}
 				getStructureDefinitions={getStructureDefinitions}

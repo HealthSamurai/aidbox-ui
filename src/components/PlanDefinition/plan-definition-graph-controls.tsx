@@ -1,7 +1,5 @@
-import { Button, cn, IconButton } from "@health-samurai/react-components";
-import { Minus, Plus, Scan } from "lucide-react";
+import { Button, cn } from "@health-samurai/react-components";
 import type { GraphEdgeVisibility } from "./plan-definition-graph-state";
-import { GRAPH_MAX_ZOOM, GRAPH_MIN_ZOOM } from "./plan-definition-graph-state";
 
 export function GraphEdgeControls({
 	visible,
@@ -14,7 +12,7 @@ export function GraphEdgeControls({
 		<fieldset
 			aria-label="Visible connections"
 			data-graph-controls
-			className="absolute right-3 top-3 z-40 flex flex-col gap-0.5 rounded-md border border-border-primary bg-bg-primary p-1.5 shadow-sm"
+			className="flex flex-col gap-0.5 rounded-md border border-border-primary bg-bg-primary p-1.5 shadow-sm"
 		>
 			{(
 				[
@@ -55,66 +53,6 @@ export function GraphEdgeControls({
 					<span className={cn(!visible[kind] && "line-through")}>{label}</span>
 				</Button>
 			))}
-		</fieldset>
-	);
-}
-
-export function GraphZoomControls({
-	scale,
-	disabled,
-	onZoom,
-	onFit,
-}: {
-	scale: number;
-	disabled: boolean;
-	onZoom: (scale: number) => void;
-	onFit: () => void;
-}) {
-	return (
-		<fieldset
-			aria-label="Graph view controls"
-			data-graph-controls
-			className="absolute bottom-3 left-3 z-40 flex items-center divide-x divide-border-secondary overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-sm"
-		>
-			<IconButton
-				className="size-8 rounded-none"
-				aria-label="Zoom out"
-				title="Zoom out (−)"
-				icon={<Minus />}
-				disabled={disabled || scale <= GRAPH_MIN_ZOOM}
-				onClick={() => onZoom(scale / 1.2)}
-				data-test-id="plan-definition-graph__zoom-out-button"
-			/>
-			<Button
-				variant="ghost"
-				size="small"
-				className="h-8 min-w-16 rounded-none px-2 text-xs tabular-nums"
-				aria-label={`Reset zoom to 100%, current zoom ${Math.round(scale * 100)}%`}
-				title="Reset zoom to 100% (0)"
-				disabled={disabled}
-				onClick={() => onZoom(1)}
-				data-test-id="plan-definition-graph__reset-zoom-button"
-			>
-				{Math.round(scale * 100)}%
-			</Button>
-			<IconButton
-				className="size-8 rounded-none"
-				aria-label="Zoom in"
-				title="Zoom in (+)"
-				icon={<Plus />}
-				disabled={disabled || scale >= GRAPH_MAX_ZOOM}
-				onClick={() => onZoom(scale * 1.2)}
-				data-test-id="plan-definition-graph__zoom-in-button"
-			/>
-			<IconButton
-				className="size-8 rounded-none"
-				aria-label="Fit view"
-				title="Fit view (F)"
-				icon={<Scan />}
-				disabled={disabled}
-				onClick={onFit}
-				data-test-id="plan-definition-graph__fit-view-button"
-			/>
 		</fieldset>
 	);
 }
