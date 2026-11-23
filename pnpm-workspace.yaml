@@ -2,6 +2,8 @@ allowBuilds:
   esbuild: false
   # pdfjs-dist optional Node renderer; the UI renders PDFs in the browser
   canvas: false
+  # fhirpath preinstall only sets up its demo app
+  fhirpath: false
 
 minimumReleaseAgeExclude:
   - '@health-samurai/aidbox-client@1.0.0'

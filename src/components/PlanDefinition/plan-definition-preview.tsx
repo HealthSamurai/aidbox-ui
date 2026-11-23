@@ -22,6 +22,103 @@ import {
 	useState,
 } from "react";
 
+const PREVIEW_WIDTHS = [
+	{ id: "auto", label: "Auto width", width: "100%", icon: MoveHorizontal },
+	{ id: "mobile", label: "Mobile", width: "425px", icon: Smartphone },
+	{ id: "tablet", label: "Tablet", width: "768px", icon: Tablet },
+	{ id: "desktop", label: "Desktop", width: "1024px", icon: Laptop },
+];
+
+/**
+ * The bar above a form preview: reset on the left, device widths and a custom
+ * width in the middle. Shared by the package and the Questionnaire previews.
+ */
+export function PreviewToolbar({
+	onReset,
+	width,
+	onWidthChange,
+}: {
+	onReset?: () => void;
+	width: string;
+	onWidthChange: (width: string) => void;
+}) {
+	const [editingWidth, setEditingWidth] = useState(false);
+	const applyWidth = (value: string) => {
+		const next = value.trim();
+		if (/^\d+(px|%)?$/.test(next) && Number.parseInt(next, 10) > 0)
+			onWidthChange(/^\d+$/.test(next) ? `${next}px` : next);
+		setEditingWidth(false);
+	};
+
+	return (
+		<div className="@container/preview-toolbar grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-bg-secondary px-4">
+			{onReset && (
+				<IconButton
+					type="button"
+					variant="ghost"
+					className=" justify-self-start rounded-md  hover:bg-bg-brand-primary hover:text-text-brand-primary"
+					aria-label="Reset form state"
+					title="Reset form state"
+					data-test-id="plan-definition-preview__reset-button"
+					onClick={onReset}
+					icon={<RefreshCw className="size-4" />}
+				/>
+			)}
+			<fieldset
+				className="col-start-2 flex min-w-0 items-center gap-1"
+				aria-label="Preview width"
+			>
+				{PREVIEW_WIDTHS.map(({ id, label, width: presetWidth, icon: Icon }) => (
+					<IconButton
+						key={id}
+						type="button"
+						variant="ghost"
+						className={cn(
+							" rounded-md  hover:bg-bg-brand-primary hover:text-text-brand-primary aria-pressed:bg-bg-brand-primary aria-pressed:text-text-brand-primary",
+							id !== "auto" && "hidden @lg/preview-toolbar:flex",
+						)}
+						aria-label={label}
+						aria-pressed={width === presetWidth}
+						title={`${label} (${presetWidth})`}
+						data-test-id={`plan-definition-preview__${id}-width-button`}
+						onClick={() => onWidthChange(presetWidth)}
+						icon={<Icon className="size-4" />}
+					/>
+				))}
+				{editingWidth ? (
+					<Input
+						autoFocus
+						onFocus={(event) => event.currentTarget.select()}
+						aria-label="Custom preview width"
+						title="Width in pixels or percent"
+						data-test-id="plan-definition-preview__width-input"
+						className="h-7 w-20 px-2 text-xs!"
+						defaultValue={width}
+						onBlur={(event) => applyWidth(event.currentTarget.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") applyWidth(event.currentTarget.value);
+							if (event.key === "Escape") setEditingWidth(false);
+						}}
+					/>
+				) : (
+					<Button
+						type="button"
+						variant="ghost"
+						size="small"
+						className="h-7 rounded-md px-2 text-xs!"
+						aria-label="Custom preview width"
+						title="Set width in pixels or percent"
+						data-test-id="plan-definition-preview__custom-width-button"
+						onClick={() => setEditingWidth(true)}
+					>
+						{width}
+					</Button>
+				)}
+			</fieldset>
+		</div>
+	);
+}
+
 /** Run the real RequestGroup renderer against an unsaved, isolated preview session. */
 export function PlanDefinitionPreview({
 	planDefinition,
@@ -34,96 +131,18 @@ export function PlanDefinitionPreview({
 	// Tab changes retain the iframe. Explicit refresh replaces the entire renderer session.
 	const refresh = () => setHandle(generateId());
 	const [previewWidth, setPreviewWidth] = useState("100%");
-	const [editingWidth, setEditingWidth] = useState(false);
-	const applyWidth = (value: string) => {
-		const width = value.trim();
-		if (/^\d+(px|%)?$/.test(width) && Number.parseInt(width, 10) > 0)
-			setPreviewWidth(/^\d+$/.test(width) ? `${width}px` : width);
-		setEditingWidth(false);
-	};
 
 	return (
 		<section
-			className="@container/plan-definition-preview flex h-full min-h-0 min-w-0 flex-col bg-bg-primary"
+			className="flex h-full min-h-0 min-w-0 flex-col bg-bg-primary"
 			aria-label="Package preview"
 		>
 			{renderHeader?.(refresh)}
-			<div className="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-bg-secondary px-4">
-				{!renderHeader && (
-					<IconButton
-						type="button"
-						variant="ghost"
-						className=" justify-self-start rounded-md  hover:bg-bg-brand-primary hover:text-text-brand-primary"
-						aria-label="Reset form state"
-						title="Reset form state"
-						data-test-id="plan-definition-preview__reset-button"
-						onClick={refresh}
-						icon={<RefreshCw className="size-4" />}
-					/>
-				)}
-				<fieldset
-					className="col-start-2 flex min-w-0 items-center gap-1"
-					aria-label="Preview width"
-				>
-					{[
-						{
-							id: "auto",
-							label: "Auto width",
-							width: "100%",
-							icon: MoveHorizontal,
-						},
-						{ id: "mobile", label: "Mobile", width: "425px", icon: Smartphone },
-						{ id: "tablet", label: "Tablet", width: "768px", icon: Tablet },
-						{ id: "desktop", label: "Desktop", width: "1024px", icon: Laptop },
-					].map(({ id, label, width, icon: Icon }) => (
-						<IconButton
-							key={id}
-							type="button"
-							variant="ghost"
-							className={cn(
-								" rounded-md  hover:bg-bg-brand-primary hover:text-text-brand-primary aria-pressed:bg-bg-brand-primary aria-pressed:text-text-brand-primary",
-								id !== "auto" && "hidden @lg/plan-definition-preview:flex",
-							)}
-							aria-label={label}
-							aria-pressed={previewWidth === width}
-							title={`${label} (${width})`}
-							data-test-id={`plan-definition-preview__${id}-width-button`}
-							onClick={() => setPreviewWidth(width)}
-							icon={<Icon className="size-4" />}
-						/>
-					))}
-					{editingWidth ? (
-						<Input
-							autoFocus
-							onFocus={(event) => event.currentTarget.select()}
-							aria-label="Custom preview width"
-							title="Width in pixels or percent"
-							data-test-id="plan-definition-preview__width-input"
-							className="h-7 w-20 px-2 text-xs!"
-							defaultValue={previewWidth}
-							onBlur={(event) => applyWidth(event.currentTarget.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter")
-									applyWidth(event.currentTarget.value);
-								if (event.key === "Escape") setEditingWidth(false);
-							}}
-						/>
-					) : (
-						<Button
-							type="button"
-							variant="ghost"
-							size="small"
-							className="h-7 rounded-md px-2 text-xs!"
-							aria-label="Custom preview width"
-							title="Set width in pixels or percent"
-							data-test-id="plan-definition-preview__custom-width-button"
-							onClick={() => setEditingWidth(true)}
-						>
-							{previewWidth}
-						</Button>
-					)}
-				</fieldset>
-			</div>
+			<PreviewToolbar
+				onReset={renderHeader ? undefined : refresh}
+				width={previewWidth}
+				onWidthChange={setPreviewWidth}
+			/>
 			<PlanDefinitionPreviewFrame
 				key={handle}
 				planDefinition={planDefinition}

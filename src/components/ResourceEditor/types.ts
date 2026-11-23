@@ -8,6 +8,7 @@ export const RESOURCE_EDITOR_TABS = [
 	"lineage",
 	"graph",
 	"materializations",
+	"preview",
 ] as const;
 export type ResourceEditorTab = (typeof RESOURCE_EDITOR_TABS)[number];
 const resourceEditorTabSet = new Set(RESOURCE_EDITOR_TABS);

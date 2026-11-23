@@ -3,8 +3,10 @@ import {
 	classicUiLink,
 	isLiquidTemplateLibrary,
 } from "@aidbox-ui/components/Forms/classic-ui-tab";
+import { QuestionnairePreview } from "@aidbox-ui/components/Forms/questionnaire-preview";
 import { SDCConfigBuilderContent } from "@aidbox-ui/components/SDCConfig/builder-content";
 import { VoiceAgentBuilderContent } from "@aidbox-ui/components/SDCVoiceAgent/agent-editor-page";
+import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import type {
 	OperationOutcome,
 	OperationOutcomeIssue,
@@ -136,6 +138,27 @@ const sdcConfigBuilderTab = (
 							className="grow min-h-0 flex flex-col"
 						>
 							<SDCConfigBuilderContent {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/** Empty unless this is a Questionnaire, so the caller needs no branch. */
+const questionnairePreviewTab = (
+	enabled: boolean,
+	props: React.ComponentProps<typeof QuestionnairePreview>,
+): EditorTabItem[] =>
+	enabled
+		? [
+				{
+					value: "preview",
+					trigger: (
+						<HSComp.TabsTrigger value="preview">Preview</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent value="preview" className="grow min-h-0">
+							<QuestionnairePreview {...props} />
 						</HSComp.TabsContent>
 					),
 				},
@@ -874,6 +897,12 @@ export const ResourceEditorPage = ({
 			</HSComp.TabsContent>
 		),
 	});
+
+	tabs.push(
+		...questionnairePreviewTab(resourceType === "Questionnaire", {
+			questionnaire: resource as Questionnaire,
+		}),
+	);
 
 	const hasHistoryTab = !isLibrary && !isViewDefinition;
 	if (id && hasHistoryTab) {
