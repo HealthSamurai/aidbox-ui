@@ -9,7 +9,10 @@ import themeCss from "@formbox/hs-theme/style.css?inline";
 import Renderer, {
 	type QuestionnaireOf,
 	type QuestionnaireResponseOf,
+	useStrings,
 } from "@formbox/renderer";
+import { Button } from "@health-samurai/react-components";
+import type { ComponentProps, FormEvent } from "react";
 
 /*
  * The theme's CSS opens with a global preflight (borders in currentcolor,
@@ -38,6 +41,94 @@ ${themeClasses}
 }`;
 document.head.appendChild(style);
 
+type FormProperties = ComponentProps<typeof theme.Form>;
+
+/**
+ * The theme's form is a single column with the buttons after the last item.
+ * The preview shows it as an Aidbox UI page instead: a section heading and
+ * the items on the page, and the actions in a footer at the bottom.
+ */
+function PreviewForm({
+	onSubmit,
+	onCancel,
+	children,
+	title,
+	description,
+	languageSelector,
+	errors,
+	before,
+	after,
+	signature,
+	pagination,
+}: FormProperties) {
+	const strings = useStrings();
+	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		onSubmit?.();
+	};
+	return (
+		<form className="flex flex-col gap-6 px-8 pt-6" onSubmit={handleSubmit}>
+			{(title || description || languageSelector) && (
+				<header className="flex items-start justify-between gap-3">
+					<div className="min-w-0">
+						{title && (
+							<h2 className="text-2xl font-semibold text-text-primary">
+								{title}
+							</h2>
+						)}
+						{description && (
+							<p className="mt-1 text-sm text-text-secondary">{description}</p>
+						)}
+					</div>
+					{languageSelector}
+				</header>
+			)}
+			{errors}
+			{before}
+			<div className="flex flex-col gap-4">{children}</div>
+			{after}
+			{pagination && (
+				<div className="flex items-center gap-2 text-sm text-text-primary">
+					<Button
+						variant="secondary"
+						size="small"
+						type="button"
+						onClick={pagination.onPrev}
+						disabled={pagination.disabledPrev}
+					>
+						{strings.pagination.previous}
+					</Button>
+					<span>
+						{pagination.current} / {pagination.total}
+					</span>
+					<Button
+						variant="secondary"
+						size="small"
+						type="button"
+						onClick={pagination.onNext}
+						disabled={pagination.disabledNext}
+					>
+						{strings.pagination.next}
+					</Button>
+				</div>
+			)}
+			<footer className="sticky bottom-0 -mx-8 flex items-center gap-2 border-t border-border-primary bg-bg-primary px-8 py-3">
+				<Button type="submit" variant="primary" disabled={!onSubmit}>
+					{strings.form.submit}
+				</Button>
+				{onCancel && (
+					<Button type="button" variant="secondary" onClick={onCancel}>
+						{strings.form.cancel}
+					</Button>
+				)}
+				{signature && <div className="ml-auto">{signature}</div>}
+			</footer>
+		</form>
+	);
+}
+
+const previewTheme = { ...theme, Form: PreviewForm };
+
 /** Loaded lazily: the renderer and its theme are a heavy chunk of their own. */
 export default function QuestionnaireRenderer({
 	questionnaire,
@@ -63,7 +154,7 @@ export default function QuestionnaireRenderer({
 				questionnaireResponse as QuestionnaireResponseOf<"r4"> | undefined
 			}
 			terminologyServerUrl={terminologyServerUrl}
-			theme={theme}
+			theme={previewTheme}
 			onChange={onResponseChange}
 			onSubmit={onSubmit}
 		/>
@@ -77,7 +168,7 @@ export default function QuestionnaireRenderer({
 					| undefined
 			}
 			terminologyServerUrl={terminologyServerUrl}
-			theme={theme}
+			theme={previewTheme}
 			onChange={onResponseChange}
 			onSubmit={onSubmit}
 		/>

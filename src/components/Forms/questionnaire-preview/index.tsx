@@ -225,7 +225,7 @@ export function QuestionnairePreview({
 				}
 			/>
 			<div
-				className={`flex min-h-0 flex-1 flex-col overflow-auto bg-bg-primary ${renderer === "classic" ? "" : "p-6"}`}
+				className={`flex min-h-0 flex-1 flex-col overflow-auto bg-bg-primary`}
 			>
 				{/* The classic renderer brings its own page and card and scrolls
 				    inside; the Formbox form sits on the page as a card. */}
@@ -233,7 +233,7 @@ export function QuestionnairePreview({
 					className={
 						renderer === "classic"
 							? "mx-auto flex min-h-0 max-w-full flex-1 flex-col"
-							: "mx-auto flex min-h-fit max-w-full flex-1 flex-col overflow-hidden rounded-lg border border-border-default bg-bg-primary"
+							: "mx-auto w-full max-w-full"
 					}
 					style={{ width: previewWidth }}
 				>
@@ -246,7 +246,7 @@ export function QuestionnairePreview({
 							onSubmit={onSubmit}
 						/>
 					) : fhirVersion ? (
-						<div className="px-8 py-7" data-formbox-theme-root="">
+						<div data-formbox-theme-root="">
 							{/* A new key retries after the questionnaire is fixed. */}
 							<RenderErrorBoundary key={`${questionnaireKey}-${session}`}>
 								<Suspense fallback={<Loading />}>
