@@ -219,8 +219,8 @@ importers:
         specifier: ^6.43.15
         version: 6.43.15
       '@formbox/hs-theme':
-        specifier: 0.4.1
-        version: 0.4.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 0.5.0
+        version: 0.5.0(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.4)(react@19.2.4)(redux@5.0.1)
       '@formbox/renderer':
         specifier: 0.4.1
         version: 0.4.1(@lhncbc/ucum-lhc@7.1.10)(classnames@2.5.1)(fhirpath@4.11.0)(mobx-react-lite@4.1.1(mobx@6.16.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(mobx-utils@6.1.1(mobx@6.16.1))(mobx@6.16.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -863,8 +863,8 @@ packages:
   '@formbox/fhir@0.4.1':
     resolution: {integrity: sha512-mfK6eB1Au0M5SK/r6/50lTA1iCs+cJ5KUxlOs/D67qcIlKRjbCZ3AmV0zwt6NUtVkZ+yYdYUJyO2Rg5bIhwaug==}
 
-  '@formbox/hs-theme@0.4.1':
-    resolution: {integrity: sha512-XyglX/iugV3D/s4S3zd7dtS9JS5vk4UmPNWMt7ITRrTQbUpkLpH5dhMNcwdPA3Olq61vBliCYjMu8ieBQZ6Z3w==}
+  '@formbox/hs-theme@0.5.0':
+    resolution: {integrity: sha512-CtwrAi+e1klQQOTZnTECZWjyktY/sQryMa1flQp0Oz3xHGLHdFmPIghehXsQS3RX3pVJPCQVTe1Ow+g3Omd+GA==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -4599,13 +4599,18 @@ snapshots:
     dependencies:
       '@types/fhir': 0.0.41
 
-  '@formbox/hs-theme@0.4.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@formbox/hs-theme@0.5.0(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.4)(react@19.2.4)(redux@5.0.1)':
     dependencies:
       '@formbox/theme': 0.4.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      classnames: 2.5.1
+      '@health-samurai/react-components': 1.0.0(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-is@19.2.4)(redux@5.0.1)
       perfect-freehand: 1.2.3
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
+    transitivePeerDependencies:
+      - '@types/react'
+      - '@types/react-dom'
+      - react-is
+      - redux
 
   '@formbox/renderer@0.4.1(@lhncbc/ucum-lhc@7.1.10)(classnames@2.5.1)(fhirpath@4.11.0)(mobx-react-lite@4.1.1(mobx@6.16.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(mobx-utils@6.1.1(mobx@6.16.1))(mobx@6.16.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:

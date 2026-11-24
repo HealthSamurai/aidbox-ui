@@ -9,6 +9,7 @@ minimumReleaseAgeExclude:
   - '@health-samurai/aidbox-client@1.0.0'
   - '@health-samurai/aidbox-fhirpath-lsp@1.0.0'
   - '@health-samurai/react-components@1.0.0'
+  - '@formbox/hs-theme@0.5.0'
 
 # For vulnerabilities in transitive deps
 overrides:
