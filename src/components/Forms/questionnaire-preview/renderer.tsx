@@ -1,9 +1,15 @@
 import { isR4Like } from "@aidbox-ui/components/ConceptMap/version";
-import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
+import type {
+	Questionnaire,
+	QuestionnaireResponse,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { getAidboxBaseURL } from "@aidbox-ui/utils";
 import { theme } from "@formbox/hs-theme";
 import themeCss from "@formbox/hs-theme/style.css?inline";
-import Renderer, { type QuestionnaireOf } from "@formbox/renderer";
+import Renderer, {
+	type QuestionnaireOf,
+	type QuestionnaireResponseOf,
+} from "@formbox/renderer";
 
 /*
  * The theme's CSS opens with a global preflight (borders in currentcolor,
@@ -35,29 +41,45 @@ document.head.appendChild(style);
 /** Loaded lazily: the renderer and its theme are a heavy chunk of their own. */
 export default function QuestionnaireRenderer({
 	questionnaire,
+	questionnaireResponse,
 	fhirVersion,
 	onResponseChange,
+	onSubmit,
 }: {
 	questionnaire: Questionnaire;
+	/** Answers to start from; edits stay in the preview. */
+	questionnaireResponse?: QuestionnaireResponse;
 	fhirVersion: string;
 	onResponseChange: (response: object) => void;
+	/** Without it the form's Submit button stays disabled. */
+	onSubmit?: ((response: object) => void) | undefined;
 }) {
 	const terminologyServerUrl = `${getAidboxBaseURL()}/fhir`;
 	return isR4Like(fhirVersion) ? (
 		<Renderer
 			fhirVersion="r4"
 			questionnaire={questionnaire as QuestionnaireOf<"r4">}
+			defaultQuestionnaireResponse={
+				questionnaireResponse as QuestionnaireResponseOf<"r4"> | undefined
+			}
 			terminologyServerUrl={terminologyServerUrl}
 			theme={theme}
 			onChange={onResponseChange}
+			onSubmit={onSubmit}
 		/>
 	) : (
 		<Renderer
 			fhirVersion="r5"
 			questionnaire={questionnaire as unknown as QuestionnaireOf<"r5">}
+			defaultQuestionnaireResponse={
+				questionnaireResponse as unknown as
+					| QuestionnaireResponseOf<"r5">
+					| undefined
+			}
 			terminologyServerUrl={terminologyServerUrl}
 			theme={theme}
 			onChange={onResponseChange}
+			onSubmit={onSubmit}
 		/>
 	);
 }

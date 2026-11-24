@@ -4,9 +4,13 @@ import {
 	isLiquidTemplateLibrary,
 } from "@aidbox-ui/components/Forms/classic-ui-tab";
 import { QuestionnairePreview } from "@aidbox-ui/components/Forms/questionnaire-preview";
+import { QuestionnaireResponsePreview } from "@aidbox-ui/components/Forms/questionnaire-preview/response-preview";
 import { SDCConfigBuilderContent } from "@aidbox-ui/components/SDCConfig/builder-content";
 import { VoiceAgentBuilderContent } from "@aidbox-ui/components/SDCVoiceAgent/agent-editor-page";
-import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
+import type {
+	Questionnaire,
+	QuestionnaireResponse,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import type {
 	OperationOutcome,
 	OperationOutcomeIssue,
@@ -144,12 +148,27 @@ const sdcConfigBuilderTab = (
 			]
 		: [];
 
-/** Empty unless this is a Questionnaire, so the caller needs no branch. */
-const questionnairePreviewTab = (
-	enabled: boolean,
-	props: React.ComponentProps<typeof QuestionnairePreview>,
-): EditorTabItem[] =>
-	enabled
+/** The form a Questionnaire or a QuestionnaireResponse renders to. */
+const formPreview = (resourceType: string, resource: Resource) => {
+	if (resourceType === "Questionnaire")
+		return (
+			<QuestionnairePreview
+				questionnaire={resource as Questionnaire}
+				rendererSwitch
+			/>
+		);
+	if (resourceType === "QuestionnaireResponse")
+		return (
+			<QuestionnaireResponsePreview
+				questionnaireResponse={resource as QuestionnaireResponse}
+			/>
+		);
+	return undefined;
+};
+
+/** Empty without a preview, so the caller needs no branch. */
+const formPreviewTab = (preview: React.ReactNode): EditorTabItem[] =>
+	preview
 		? [
 				{
 					value: "preview",
@@ -158,7 +177,7 @@ const questionnairePreviewTab = (
 					),
 					content: (
 						<HSComp.TabsContent value="preview" className="grow min-h-0">
-							<QuestionnairePreview {...props} />
+							{preview}
 						</HSComp.TabsContent>
 					),
 				},
@@ -898,11 +917,7 @@ export const ResourceEditorPage = ({
 		),
 	});
 
-	tabs.push(
-		...questionnairePreviewTab(resourceType === "Questionnaire", {
-			questionnaire: resource as Questionnaire,
-		}),
-	);
+	tabs.push(...formPreviewTab(formPreview(resourceType, resource)));
 
 	const hasHistoryTab = !isLibrary && !isViewDefinition;
 	if (id && hasHistoryTab) {

@@ -1,7 +1,10 @@
-import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
+import type {
+	Questionnaire,
+	QuestionnaireResponse,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { Alert, AlertDescription } from "@health-samurai/react-components";
 import { AlertCircle, LoaderCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { getRendererWebComponentUrl } from "./utils";
 
 const RENDERER_TAG_NAME = "aidbox-form-renderer";
@@ -52,10 +55,33 @@ function ensureRendererWebComponentLoaded() {
 	return rendererScriptPromise;
 }
 
-export function Renderer({ questionnaire }: { questionnaire: Questionnaire }) {
+export function Renderer({
+	questionnaire,
+	questionnaireResponse,
+	onResponseChange,
+	onSubmit,
+}: {
+	questionnaire: Questionnaire;
+	/** Answers to show; the form is rendered controlled, nothing is saved. */
+	questionnaireResponse?: QuestionnaireResponse;
+	onResponseChange?: (response: object) => void;
+	/** Shows the renderer's own footer; its Submit hands the response here. */
+	onSubmit?: (response: object) => void;
+}) {
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [isReady, setIsReady] = useState(false);
+	const questionnaireJson = JSON.stringify(questionnaire);
+	const responseJson = questionnaireResponse
+		? JSON.stringify(questionnaireResponse)
+		: undefined;
+	const handleChange = useEffectEvent((event: Event) =>
+		onResponseChange?.((event as CustomEvent<object>).detail),
+	);
+	const handleSubmit = useEffectEvent((event: Event) =>
+		onSubmit?.((event as CustomEvent<object>).detail),
+	);
+	const submittable = Boolean(onSubmit);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -70,11 +96,13 @@ export function Renderer({ questionnaire }: { questionnaire: Questionnaire }) {
 				}
 
 				const rendererElement = document.createElement(RENDERER_TAG_NAME);
-				rendererElement.setAttribute(
-					"questionnaire",
-					JSON.stringify(questionnaire),
-				);
-				rendererElement.setAttribute("hide-footer", "true");
+				rendererElement.setAttribute("questionnaire", questionnaireJson);
+				if (responseJson) {
+					rendererElement.setAttribute("questionnaire-response", responseJson);
+				}
+				if (!submittable) {
+					rendererElement.setAttribute("hide-footer", "true");
+				}
 				rendererElement.setAttribute(
 					"style",
 					"display:block;width:100%;height:100%;border:0;",
@@ -87,6 +115,8 @@ export function Renderer({ questionnaire }: { questionnaire: Questionnaire }) {
 				};
 
 				rendererElement.addEventListener("ready", handleReady, { once: true });
+				rendererElement.addEventListener("change", handleChange);
+				rendererElement.addEventListener("submit", handleSubmit);
 				hostRef.current.replaceChildren(rendererElement);
 			})
 			.catch((caughtError: unknown) => {
@@ -105,7 +135,7 @@ export function Renderer({ questionnaire }: { questionnaire: Questionnaire }) {
 				hostRef.current.replaceChildren();
 			}
 		};
-	}, [questionnaire]);
+	}, [questionnaireJson, responseJson, submittable]);
 
 	return (
 		<div

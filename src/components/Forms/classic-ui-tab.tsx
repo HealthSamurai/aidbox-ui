@@ -2,7 +2,7 @@ import { getAidboxBaseURL } from "@aidbox-ui/utils";
 import { ExternalLink } from "lucide-react";
 
 /** The classic (CLJS) SDC UI, where forms are built and responses rendered. */
-function classicUiUrl(app: "ui/sdc" | "ui/sdc/renderer", route: string) {
+function classicUiUrl(app: "ui/sdc", route: string) {
 	const url = new URL(app, `${getAidboxBaseURL()}/`);
 	url.hash = route;
 	return url.toString();
@@ -35,9 +35,9 @@ export function isLiquidTemplateLibrary(resource: {
 
 /**
  * Where a resource opens in the classic UI: a Questionnaire in the form
- * builder (a new form while it has no id yet), a QuestionnaireResponse in the
- * renderer, a liquid template Library in the template editor. `undefined` for
- * anything else.
+ * builder (a new form while it has no id yet), a liquid template Library in
+ * the template editor. `undefined` for anything else; a QuestionnaireResponse
+ * links to the classic renderer from its preview instead.
  */
 export function classicUiLink(
 	resourceType: string,
@@ -49,15 +49,6 @@ export function classicUiLink(
 		return {
 			label: "Form Builder",
 			href: classicUiUrl("ui/sdc", `/forms/builder${params}`),
-		};
-	}
-	if (resourceType === "QuestionnaireResponse" && id) {
-		return {
-			label: "Renderer",
-			href: classicUiUrl(
-				"ui/sdc/renderer",
-				`/questionnaire-response/${encodeURIComponent(id)}`,
-			),
 		};
 	}
 	if (resourceType === "Library" && isLiquidTemplate && id) {

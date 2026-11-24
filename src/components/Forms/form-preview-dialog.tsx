@@ -14,7 +14,7 @@ import {
 	useTemplateNames,
 } from "./api/templates";
 import { PreviewDialog } from "./preview-dialog";
-import { Renderer } from "./renderer";
+import { QuestionnairePreview } from "./questionnaire-preview";
 
 const FORM_VIEW = "form";
 
@@ -198,7 +198,14 @@ export function FormPreviewDialog({
 			) : formQuestionnaire && purpose ? (
 				<TemplatePreview purpose={purpose} questionnaire={formQuestionnaire} />
 			) : fullForm ? (
-				<Renderer questionnaire={fullForm} />
+				<div className="min-h-0 flex-1">
+					<QuestionnairePreview
+						questionnaire={fullForm}
+						rendererSwitch
+						showResponse={false}
+						toolbarClassName="pr-12"
+					/>
+				</div>
 			) : null}
 		</PreviewDialog>
 	);

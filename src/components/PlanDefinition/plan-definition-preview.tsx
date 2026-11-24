@@ -37,10 +37,15 @@ export function PreviewToolbar({
 	onReset,
 	width,
 	onWidthChange,
+	actions,
+	className,
 }: {
 	onReset?: () => void;
 	width: string;
 	onWidthChange: (width: string) => void;
+	/** Controls on the right, such as the renderer switch. */
+	actions?: ReactNode;
+	className?: string;
 }) {
 	const [editingWidth, setEditingWidth] = useState(false);
 	const applyWidth = (value: string) => {
@@ -51,7 +56,12 @@ export function PreviewToolbar({
 	};
 
 	return (
-		<div className="@container/preview-toolbar grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-bg-secondary px-4">
+		<div
+			className={cn(
+				"@container/preview-toolbar grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-bg-secondary px-4",
+				className,
+			)}
+		>
 			{onReset && (
 				<IconButton
 					type="button"
@@ -115,6 +125,11 @@ export function PreviewToolbar({
 					</Button>
 				)}
 			</fieldset>
+			{actions && (
+				<div className="col-start-3 flex min-w-0 items-center justify-self-end">
+					{actions}
+				</div>
+			)}
 		</div>
 	);
 }

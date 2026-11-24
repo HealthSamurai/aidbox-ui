@@ -1,6 +1,9 @@
 import { useFhirServerVersion } from "@aidbox-ui/components/ConceptMap/version";
 import { PreviewToolbar } from "@aidbox-ui/components/PlanDefinition/plan-definition-preview";
-import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
+import type {
+	Questionnaire,
+	QuestionnaireResponse,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import { useLocalStorage } from "@aidbox-ui/hooks";
 import { generateId } from "@aidbox-ui/utils";
 import * as HSComp from "@health-samurai/react-components";
@@ -11,8 +14,35 @@ import {
 	PanelBottomOpen,
 } from "lucide-react";
 import { Component, lazy, type ReactNode, Suspense, useState } from "react";
+import { Renderer as ClassicRenderer } from "../renderer";
 
 const QuestionnaireRenderer = lazy(() => import("./renderer"));
+
+type RendererKind = "classic" | "formbox";
+
+/**
+ * Shared links and the rest of production still use the classic renderer, so
+ * the preview defaults to it; Formbox is opt-in while in beta.
+ */
+function RendererSwitch({
+	value,
+	onChange,
+}: {
+	value: RendererKind;
+	onChange: (value: RendererKind) => void;
+}) {
+	return (
+		<HSComp.SegmentControl
+			value={value}
+			onValueChange={(next) => onChange(next as RendererKind)}
+			items={[
+				{ value: "classic", label: "Classic" },
+				{ value: "formbox", label: "Formbox (beta)" },
+			]}
+			data-test-id="questionnaire-preview__renderer-switch"
+		/>
+	);
+}
 
 /** An edited Questionnaire may be anything; show why it does not render. */
 class RenderErrorBoundary extends Component<
@@ -90,7 +120,7 @@ function ResponseHeader({
 }
 
 /** The response the form produces, updated on every answer. */
-function ResponsePanel({ response }: { response: object | null }) {
+function ResponsePanel({ response }: { response: object | undefined }) {
 	return response ? (
 		<div
 			className="min-h-0 flex-1"
@@ -110,19 +140,52 @@ function ResponsePanel({ response }: { response: object | null }) {
 }
 
 /**
- * The Questionnaire as a respondent sees it, rendered with the Formbox
- * renderer from the editor's current, possibly unsaved, state, with the
- * QuestionnaireResponse it produces below, the way the ViewDefinition builder
- * shows its result.
+ * The Questionnaire as a respondent sees it, rendered from the editor's
+ * current, possibly unsaved, state, with the QuestionnaireResponse it produces
+ * below, the way the ViewDefinition builder shows its result. Given a
+ * response, the form starts from its answers.
+ *
+ * With `rendererSwitch` the classic renderer is the default and Formbox is
+ * opt-in; without it Formbox is used.
  */
 export function QuestionnairePreview({
 	questionnaire,
+	questionnaireResponse,
+	rendererSwitch = false,
+	showResponse = true,
+	onSubmit,
+	toolbarClassName,
 }: {
 	questionnaire: Questionnaire;
+	questionnaireResponse?: QuestionnaireResponse;
+	rendererSwitch?: boolean;
+	/** The produced response below the form; off where the response is the resource itself. */
+	showResponse?: boolean;
+	/** Turns on the renderer's Submit, which hands the response here. */
+	onSubmit?: (response: object) => void;
+	/** In a dialog the toolbar leaves room for its close button. */
+	toolbarClassName?: string;
 }) {
 	const fhirVersion = useFhirServerVersion();
-	// Keyed by the questionnaire: an edit starts a new form and a new response.
-	const questionnaireKey = JSON.stringify(questionnaire);
+	const [selectedRenderer, setSelectedRenderer] = useLocalStorage<RendererKind>(
+		{
+			key: "questionnairePreview-renderer",
+			defaultValue: "classic",
+			getInitialValueInEffect: false,
+		},
+	);
+	// Anything but an explicit opt-in, an outdated stored value too, is classic.
+	const renderer: RendererKind = !rendererSwitch
+		? "formbox"
+		: selectedRenderer === "formbox"
+			? "formbox"
+			: "classic";
+	// Keyed by the inputs: an edit starts a new form and a new response.
+	const questionnaireKey = JSON.stringify([
+		questionnaire,
+		questionnaireResponse,
+		renderer,
+	]);
 	const [response, setResponse] = useState<{
 		key: string;
 		value: object;
@@ -134,7 +197,9 @@ export function QuestionnairePreview({
 			getInitialValueInEffect: false,
 		});
 	const currentResponse =
-		response?.key === questionnaireKey ? response.value : null;
+		response?.key === questionnaireKey ? response.value : questionnaireResponse;
+	const onResponseChange = (value: object) =>
+		setResponse({ key: questionnaireKey, value });
 
 	// The renderer keeps its answers; reset starts the form over.
 	const [session, setSession] = useState(() => generateId());
@@ -152,24 +217,45 @@ export function QuestionnairePreview({
 				}}
 				width={previewWidth}
 				onWidthChange={setPreviewWidth}
+				className={toolbarClassName}
+				actions={
+					rendererSwitch && (
+						<RendererSwitch value={renderer} onChange={setSelectedRenderer} />
+					)
+				}
 			/>
-			<div className="min-h-0 flex-1 overflow-auto bg-bg-primary p-6">
-				{/* The form sits on the page as a card, the way a respondent gets it. */}
+			<div
+				className={`flex min-h-0 flex-1 flex-col overflow-auto bg-bg-primary ${renderer === "classic" ? "" : "p-6"}`}
+			>
+				{/* The classic renderer brings its own page and card and scrolls
+				    inside; the Formbox form sits on the page as a card. */}
 				<div
-					className="mx-auto max-w-full overflow-hidden rounded-lg border border-border-default bg-bg-primary"
+					className={
+						renderer === "classic"
+							? "mx-auto flex min-h-0 max-w-full flex-1 flex-col"
+							: "mx-auto flex min-h-fit max-w-full flex-1 flex-col overflow-hidden rounded-lg border border-border-default bg-bg-primary"
+					}
 					style={{ width: previewWidth }}
 				>
-					{fhirVersion ? (
+					{renderer === "classic" ? (
+						<ClassicRenderer
+							key={session}
+							questionnaire={questionnaire}
+							questionnaireResponse={questionnaireResponse}
+							onResponseChange={onResponseChange}
+							onSubmit={onSubmit}
+						/>
+					) : fhirVersion ? (
 						<div className="px-8 py-7" data-formbox-theme-root="">
 							{/* A new key retries after the questionnaire is fixed. */}
 							<RenderErrorBoundary key={`${questionnaireKey}-${session}`}>
 								<Suspense fallback={<Loading />}>
 									<QuestionnaireRenderer
 										questionnaire={questionnaire}
+										questionnaireResponse={questionnaireResponse}
 										fhirVersion={fhirVersion}
-										onResponseChange={(value) =>
-											setResponse({ key: questionnaireKey, value })
-										}
+										onResponseChange={onResponseChange}
+										onSubmit={onSubmit}
 									/>
 								</Suspense>
 							</RenderErrorBoundary>
@@ -181,6 +267,8 @@ export function QuestionnairePreview({
 			</div>
 		</section>
 	);
+
+	if (!showResponse) return form;
 
 	if (isResponseCollapsed) {
 		return (
