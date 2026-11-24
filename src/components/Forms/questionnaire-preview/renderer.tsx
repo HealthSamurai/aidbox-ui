@@ -113,15 +113,17 @@ function PreviewForm({
 				</div>
 			)}
 			<footer className="sticky bottom-0 -mx-8 flex items-center gap-2 border-t border-border-primary bg-bg-primary px-8 py-3">
-				<Button type="submit" variant="primary" disabled={!onSubmit}>
-					{strings.form.submit}
-				</Button>
-				{onCancel && (
-					<Button type="button" variant="secondary" onClick={onCancel}>
-						{strings.form.cancel}
+				{signature}
+				<div className="ml-auto flex items-center gap-2">
+					{onCancel && (
+						<Button type="button" variant="secondary" onClick={onCancel}>
+							{strings.form.cancel}
+						</Button>
+					)}
+					<Button type="submit" variant="primary" disabled={!onSubmit}>
+						{strings.form.submit}
 					</Button>
-				)}
-				{signature && <div className="ml-auto">{signature}</div>}
+				</div>
 			</footer>
 		</form>
 	);
