@@ -1,9 +1,12 @@
 allowBuilds:
   esbuild: false
-  # pdfjs-dist optional Node renderer; the UI renders PDFs in the browser
-  canvas: false
   # fhirpath preinstall only sets up its demo app
   fhirpath: false
+
+# pdfjs-dist's optional Node renderer and its native toolchain (node-pre-gyp,
+# tar); the UI renders PDFs in the browser
+ignoredOptionalDependencies:
+  - canvas
 
 minimumReleaseAgeExclude:
   - '@health-samurai/aidbox-client@1.0.0'
@@ -17,3 +20,5 @@ overrides:
   fast-xml-parser: ^5.12.1
   # @mcp-b/global
   zod@<4.6.6: ^4.6.6
+  # @lhncbc/ucum-lhc lists csv-parse 4 but never imports it
+  csv-parse@<7.0.2: ^7.0.2

@@ -52,7 +52,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Audit
-        run: pnpm audit --prod --audit-level=high
+        run: pnpm audit --audit-level=high
 
   build:
     runs-on: ubuntu-24.04

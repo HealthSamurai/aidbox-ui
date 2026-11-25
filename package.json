@@ -76,7 +76,7 @@
 		"@vitejs/plugin-react": "^4.7.0",
 		"@xyflow/react": "^12.10.2",
 		"@zed-industries/claude-agent-acp": "^0.20.2",
-		"ai": "6.0.205",
+		"ai": "6.0.272",
 		"babel-plugin-react-compiler": "19.1.0-rc.3",
 		"classnames": "^2.5.1",
 		"codemirror-json-schema": "^0.8.1",
