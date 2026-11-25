@@ -161,7 +161,7 @@ export function QuestionnairePreview({
 	rendererSwitch?: boolean;
 	/** The produced response below the form; off where the response is the resource itself. */
 	showResponse?: boolean;
-	/** Turns on the renderer's Submit, which hands the response here. */
+	/** Turns on the form's Save, which hands the response here. */
 	onSubmit?: (response: object) => void;
 	/** In a dialog the toolbar leaves room for its close button. */
 	toolbarClassName?: string;

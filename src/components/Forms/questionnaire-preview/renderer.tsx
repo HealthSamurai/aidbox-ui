@@ -46,13 +46,13 @@ type FormProperties = ComponentProps<typeof theme.Form>;
 /**
  * The theme's form is a single column with the buttons after the last item.
  * The preview shows it as an Aidbox UI page instead: a section heading and
- * the items on the page, and the actions in a footer at the bottom. A form
- * nobody submits, such as a Questionnaire preview, has no actions.
+ * the items on the page, and Save in a footer at the bottom. A form nobody
+ * saves, such as a Questionnaire preview, has no actions. There is no Cancel:
+ * the renderer's cancel only clears validation and keeps the answers.
  */
 function PreviewForm({
 	actions,
 	onSubmit,
-	onCancel,
 	children,
 	title,
 	description,
@@ -118,16 +118,9 @@ function PreviewForm({
 				<footer className="sticky bottom-0 -mx-8 flex items-center gap-2 border-t border-border-primary bg-bg-primary px-8 py-3">
 					{signature}
 					{actions && (
-						<div className="ml-auto flex items-center gap-2">
-							{onCancel && (
-								<Button type="button" variant="secondary" onClick={onCancel}>
-									{strings.form.cancel}
-								</Button>
-							)}
-							<Button type="submit" variant="primary">
-								{strings.form.submit}
-							</Button>
-						</div>
+						<Button type="submit" variant="primary" className="ml-auto">
+							Save
+						</Button>
 					)}
 				</footer>
 			)}
@@ -160,7 +153,7 @@ export default function QuestionnaireRenderer({
 	questionnaireResponse?: QuestionnaireResponse;
 	fhirVersion: string;
 	onResponseChange: (response: object) => void;
-	/** Without it the form has no Submit and Cancel buttons. */
+	/** Without it the form has no Save button. */
 	onSubmit?: ((response: object) => void) | undefined;
 }) {
 	const terminologyServerUrl = `${getAidboxBaseURL()}/fhir`;
