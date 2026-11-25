@@ -170,16 +170,14 @@ export function QuestionnairePreview({
 	const [selectedRenderer, setSelectedRenderer] = useLocalStorage<RendererKind>(
 		{
 			key: "questionnairePreview-renderer",
-			defaultValue: "classic",
+			defaultValue: "formbox",
 			getInitialValueInEffect: false,
 		},
 	);
-	// Anything but an explicit opt-in, an outdated stored value too, is classic.
-	const renderer: RendererKind = !rendererSwitch
-		? "formbox"
-		: selectedRenderer === "formbox"
-			? "formbox"
-			: "classic";
+	// Anything but an explicit choice of classic, an outdated stored value
+	// too, is Formbox.
+	const renderer: RendererKind =
+		rendererSwitch && selectedRenderer === "classic" ? "classic" : "formbox";
 	// Keyed by the inputs: an edit starts a new form and a new response.
 	const questionnaireKey = JSON.stringify([
 		questionnaire,
