@@ -40,6 +40,14 @@ import type {
 import * as Constants from "./constants";
 import type * as Types from "./types";
 
+// Bulk delete is a single transaction (POST /fhir). A 403 on it means the
+// access policy denied the FhirTransaction operation itself, not the individual
+// DELETEs, so the server's bare "Forbidden" doesn't tell the user what to fix.
+class BulkDeleteForbiddenError extends Error {}
+
+const BULK_DELETE_FORBIDDEN_HINT =
+	"Deleting selected resources is sent as a FHIR transaction (POST /fhir). Allow the FhirTransaction operation in your AccessPolicy — each DELETE in the bundle is still checked against your policies separately.";
+
 const ResourcesPageContext = React.createContext<Types.ResourcesPageContext>({
 	resourceType: "",
 });
@@ -418,13 +426,21 @@ const ResourcesTabContent = ({
 				},
 			});
 			if (result.isErr()) {
+				if (result.value.response.status === 403) {
+					throw new BulkDeleteForbiddenError(BULK_DELETE_FORBIDDEN_HINT);
+				}
 				throw new Error("Failed to delete resources", {
 					cause: result.value.resource,
 				});
 			}
 			return result.value.resource;
 		},
-		onError: ApiUtils.onMutationError,
+		onError: (error, ...rest) => {
+			if (error instanceof BulkDeleteForbiddenError) {
+				return ApiUtils.toastError("Access denied", error.message);
+			}
+			return ApiUtils.onMutationError(error, ...rest);
+		},
 		onSuccess: () => {
 			setSelectedIds(new Set());
 			queryClient.invalidateQueries({
