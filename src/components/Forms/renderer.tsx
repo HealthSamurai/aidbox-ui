@@ -28,8 +28,11 @@ function ensureRendererWebComponentLoaded() {
 				.then(() => resolve(), reject);
 		};
 
+		// The failed script leaves the page, so the next attempt loads it again
+		// instead of waiting on an element that never gets defined.
 		const onError = () => {
 			rendererScriptPromise = null;
+			document.querySelector(RENDERER_SCRIPT_SELECTOR)?.remove();
 			reject(new Error("Failed to load renderer webcomponent"));
 		};
 

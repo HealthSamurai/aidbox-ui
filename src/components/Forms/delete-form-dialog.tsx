@@ -22,6 +22,8 @@ type DeleteFormDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	open: boolean;
 	qrUsage: QuestionnaireResponse[];
+	/** A usage lookup failed: say so rather than imply the form is unused. */
+	usageUnknown?: boolean;
 	form: Form | null;
 };
 
@@ -32,6 +34,7 @@ export function DeleteFormDialog({
 	onOpenChange,
 	open,
 	qrUsage,
+	usageUnknown,
 	form,
 }: DeleteFormDialogProps) {
 	const status = form?.status;
@@ -57,6 +60,11 @@ export function DeleteFormDialog({
 						</p>
 						{status === "active" || status === "retired" ? (
 							<p>{`${resourceLabel} is in '${status}' status and may be used in production.`}</p>
+						) : null}
+						{usageUnknown ? (
+							<p data-test-id="delete-form-dialog__usage-unknown-text">
+								Could not check where this questionnaire is used.
+							</p>
 						) : null}
 						{componentUsage.length > 0 ? (
 							<div className="space-y-2">

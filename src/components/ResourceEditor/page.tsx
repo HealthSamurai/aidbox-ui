@@ -3,10 +3,6 @@ import {
 	classicUiLink,
 	isLiquidTemplateLibrary,
 } from "@aidbox-ui/components/Forms/classic-ui-tab";
-import { QuestionnairePreview } from "@aidbox-ui/components/Forms/questionnaire-preview";
-import { QuestionnaireResponsePreview } from "@aidbox-ui/components/Forms/questionnaire-preview/response-preview";
-import { SDCConfigBuilderContent } from "@aidbox-ui/components/SDCConfig/builder-content";
-import { VoiceAgentBuilderContent } from "@aidbox-ui/components/SDCVoiceAgent/agent-editor-page";
 import type {
 	Questionnaire,
 	QuestionnaireResponse,
@@ -68,6 +64,31 @@ import { deleteResource, fetchResource } from "./api";
 import { EditTabContent } from "./edit-tab-content";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
+
+// The SDC builders and previews load with their tab, so the editor of every
+// other resource type does not carry them.
+const QuestionnairePreview = React.lazy(() =>
+	import("@aidbox-ui/components/Forms/questionnaire-preview").then(
+		(module) => ({
+			default: module.QuestionnairePreview,
+		}),
+	),
+);
+const QuestionnaireResponsePreview = React.lazy(() =>
+	import(
+		"@aidbox-ui/components/Forms/questionnaire-preview/response-preview"
+	).then((module) => ({ default: module.QuestionnaireResponsePreview })),
+);
+const SDCConfigBuilderContent = React.lazy(() =>
+	import("@aidbox-ui/components/SDCConfig/builder-content").then((module) => ({
+		default: module.SDCConfigBuilderContent,
+	})),
+);
+const VoiceAgentBuilderContent = React.lazy(() =>
+	import("@aidbox-ui/components/SDCVoiceAgent/agent-editor-page").then(
+		(module) => ({ default: module.VoiceAgentBuilderContent }),
+	),
+);
 
 type EditorTabItem = {
 	value: string;
@@ -141,7 +162,9 @@ const sdcConfigBuilderTab = (
 							value="builder"
 							className="grow min-h-0 flex flex-col"
 						>
-							<SDCConfigBuilderContent {...props} />
+							<React.Suspense fallback={null}>
+								<SDCConfigBuilderContent {...props} />
+							</React.Suspense>
 						</HSComp.TabsContent>
 					),
 				},
@@ -177,7 +200,7 @@ const formPreviewTab = (preview: React.ReactNode): EditorTabItem[] =>
 					),
 					content: (
 						<HSComp.TabsContent value="preview" className="grow min-h-0">
-							{preview}
+							<React.Suspense fallback={null}>{preview}</React.Suspense>
 						</HSComp.TabsContent>
 					),
 				},
@@ -194,15 +217,17 @@ const VoiceAgentBuilderTab = ({
 }) => {
 	const queryClient = useQueryClient();
 	return (
-		<VoiceAgentBuilderContent
-			agentId={id}
-			onDeleted={onDeleted}
-			onSaved={() =>
-				void queryClient.invalidateQueries({
-					queryKey: [pageId, "SDCVoiceAgent", id],
-				})
-			}
-		/>
+		<React.Suspense fallback={null}>
+			<VoiceAgentBuilderContent
+				agentId={id}
+				onDeleted={onDeleted}
+				onSaved={() =>
+					void queryClient.invalidateQueries({
+						queryKey: [pageId, "SDCVoiceAgent", id],
+					})
+				}
+			/>
+		</React.Suspense>
 	);
 };
 

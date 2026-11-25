@@ -156,7 +156,9 @@ export default function QuestionnaireRenderer({
 	/** Without it the form has no Save button. */
 	onSubmit?: ((response: object) => void) | undefined;
 }) {
-	const terminologyServerUrl = `${getAidboxBaseURL()}/fhir`;
+	// /sdc expands through the terminology server the SDCConfig names, as the
+	// other SDC screens do.
+	const terminologyServerUrl = `${getAidboxBaseURL()}/sdc`;
 	const previewTheme = onSubmit ? submittableTheme : viewOnlyTheme;
 	return isR4Like(fhirVersion) ? (
 		<Renderer

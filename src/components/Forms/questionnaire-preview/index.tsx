@@ -20,10 +20,7 @@ const QuestionnaireRenderer = lazy(() => import("./renderer"));
 
 type RendererKind = "classic" | "formbox";
 
-/**
- * Shared links and the rest of production still use the classic renderer, so
- * the preview defaults to it; Formbox is opt-in while in beta.
- */
+/** Formbox is the default; the classic renderer is one click away. */
 function RendererSwitch({
 	value,
 	onChange,
@@ -145,8 +142,8 @@ function ResponsePanel({ response }: { response: object | undefined }) {
  * below, the way the ViewDefinition builder shows its result. Given a
  * response, the form starts from its answers.
  *
- * With `rendererSwitch` the classic renderer is the default and Formbox is
- * opt-in; without it Formbox is used.
+ * Formbox renders it; `rendererSwitch` lets the person pick the classic
+ * renderer instead.
  */
 export function QuestionnairePreview({
 	questionnaire,

@@ -57,6 +57,8 @@ type QuestionnaireUsageResponse = {
 export type QuestionnaireDeleteCheck = {
 	componentUsage: Questionnaire[];
 	qrUsage: QuestionnaireResponse[];
+	/** A usage lookup failed, so the lists may be incomplete. */
+	usageUnknown: boolean;
 	requiresConfirmation: boolean;
 };
 
@@ -124,7 +126,7 @@ export function useDuplicateQuestionnaire() {
 		mutationFn: async (questionnaireId: string) => {
 			const result = await client.request({
 				method: "POST",
-				url: `/fhir/Questionnaire/${questionnaireId}/$duplicate`,
+				url: `/fhir/Questionnaire/${encodeURIComponent(questionnaireId)}/$duplicate`,
 			});
 
 			if (result.isOk()) {
@@ -149,21 +151,21 @@ export function useQuestionnaireDeleteCheck() {
 				throw new Error("Questionnaire id is required");
 			}
 
-			// Usage only decides whether to ask for confirmation; a refused
-			// lookup counts as none.
-			const componentUsage =
-				(
-					await withFallback(
-						resourceOf(
-							client.request<QuestionnaireUsageResponse>({
-								method: "GET",
-								url: `/Questionnaire/${encodeURIComponent(questionnaire.id)}/$usage`,
-							}),
-							"Failed to check questionnaire usage",
-						),
-						{},
-					)
-				).questionnaires ?? [];
+			// Usage only decides whether to ask for confirmation, so a refused
+			// lookup does not stop the delete; it asks for confirmation instead
+			// of deleting at once.
+			const usage = await withFallback<QuestionnaireUsageResponse | null>(
+				resourceOf(
+					client.request<QuestionnaireUsageResponse>({
+						method: "GET",
+						url: `/Questionnaire/${encodeURIComponent(questionnaire.id)}/$usage`,
+					}),
+					"Failed to check questionnaire usage",
+				),
+				null,
+			);
+			const componentUsage = usage?.questionnaires ?? [];
+			let usageUnknown = usage === null;
 
 			const questionnaireResponseUsageQuery =
 				buildQuestionnaireResponseUsageQuery(questionnaire);
@@ -183,7 +185,8 @@ export function useQuestionnaireDeleteCheck() {
 					),
 					undefined,
 				);
-				if (questionnaireResponseUsageBundle) {
+				if (!questionnaireResponseUsageBundle) usageUnknown = true;
+				else {
 					qrUsage = bundleResources<QuestionnaireResponse>(
 						questionnaireResponseUsageBundle,
 						"QuestionnaireResponse",
@@ -194,12 +197,14 @@ export function useQuestionnaireDeleteCheck() {
 			const requiresConfirmation =
 				questionnaire.status === "active" ||
 				questionnaire.status === "retired" ||
+				usageUnknown ||
 				componentUsage.length > 0 ||
 				qrUsage.length > 0;
 
 			return {
 				componentUsage,
 				qrUsage,
+				usageUnknown,
 				requiresConfirmation,
 			};
 		},

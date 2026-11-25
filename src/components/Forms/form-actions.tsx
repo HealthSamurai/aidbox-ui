@@ -83,8 +83,8 @@ export function useFormActions({
 	};
 
 	// A package is deleted after a plain confirmation; a Questionnaire first
-	// asks the box what still refers to it, and deletes at once when nothing
-	// does.
+	// asks the box what still refers to it, and deletes at once only when
+	// nothing does and the lookups succeeded.
 	const remove = (form: Form) => {
 		if (!form.id || isDeleting || deleteCheckMutation.isPending) return;
 		if (form.resourceType === "PlanDefinition") {
@@ -157,6 +157,7 @@ export function useFormActions({
 				open={Boolean(formForDelete)}
 				componentUsage={deleteCheck?.componentUsage ?? []}
 				qrUsage={deleteCheck?.qrUsage ?? []}
+				usageUnknown={deleteCheck?.usageUnknown}
 				isDeleting={isDeleting}
 				onConfirm={confirmDelete}
 				onOpenChange={(open) => {

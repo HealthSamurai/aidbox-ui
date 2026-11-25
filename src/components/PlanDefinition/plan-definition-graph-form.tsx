@@ -14,7 +14,7 @@ import {
 	useUpdateNodeInternals,
 } from "@xyflow/react";
 import { CircleAlert, Copy, EllipsisVertical, Eye, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { GRAPH_CARD_WIDTH } from "./plan-definition-graph-layout";
 import { type FormNode, graphHandleId } from "./plan-definition-graph-types";
 
@@ -69,8 +69,10 @@ export function GraphFormNode({ id, data }: NodeProps<FormNode>) {
 	// Ports can change while the card keeps its size; re-measure them then.
 	const updateNodeInternals = useUpdateNodeInternals();
 	const ports = form.items.map((item) => item.anchor).join(" ");
-	// biome-ignore lint/correctness/useExhaustiveDependencies: ports trigger the re-measure
+	const measuredPorts = useRef<string | null>(null);
 	useEffect(() => {
+		if (measuredPorts.current === ports) return;
+		measuredPorts.current = ports;
 		updateNodeInternals(id);
 	}, [id, ports, updateNodeInternals]);
 	return (

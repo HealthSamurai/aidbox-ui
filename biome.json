@@ -62,14 +62,22 @@
 	},
 	"overrides": [
 		{
+			"includes": ["src/components/PlanDefinition/plan-definition-graph.tsx"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"noNoninteractiveTabindex": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": [
-				"src/components/PlanDefinition/plan-definition-graph.tsx",
 				"src/components/PlanDefinition/plan-definition-graph-edges.tsx"
 			],
 			"linter": {
 				"rules": {
 					"a11y": {
-						"noNoninteractiveTabindex": "off",
 						"useSemanticElements": "off"
 					}
 				}
