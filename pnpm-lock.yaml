@@ -278,12 +278,6 @@ importers:
       '@types/css-modules':
         specifier: ^1.0.5
         version: 1.0.5
-      '@types/d3-selection':
-        specifier: ^3.0.12
-        version: 3.0.12
-      '@types/d3-zoom':
-        specifier: ^3.0.8
-        version: 3.0.8
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -317,12 +311,6 @@ importers:
       codemirror-json-schema:
         specifier: ^0.8.1
         version: 0.8.1(@codemirror/language@6.12.2)(@codemirror/lint@6.9.7)(@codemirror/state@6.7.6)(@codemirror/view@6.43.15)(@lezer/common@1.5.3)
-      d3-selection:
-        specifier: ^3.0.0
-        version: 3.0.0
-      d3-zoom:
-        specifier: ^3.0.0
-        version: 3.0.0
       fhirpath:
         specifier: ^4.11.0
         version: 4.11.0
