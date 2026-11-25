@@ -3,7 +3,6 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import claudeChat from "./vite-plugin-claude-chat.ts";
-import customizableMessagesSchema from "./vite-plugin-customizable-messages-schema.ts";
 
 const ReactCompilerConfig = {};
 
@@ -39,7 +38,6 @@ export default defineConfig({
 			},
 		},
 		claudeChat(),
-		customizableMessagesSchema(),
 		tailwindcss(),
 		tanstackRouter({
 			target: "react",

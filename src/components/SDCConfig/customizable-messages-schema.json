@@ -1,0 +1,1434 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "title" : "SDC Config Custom Translations",
+  "description" : "JSON Schema for the SDC config `translations` property. Keys must follow the customizable message-id tree; leaf objects map known SDC locale-file language codes to translated strings.",
+  "type" : "object",
+  "additionalProperties" : false,
+  "properties" : {
+    "warning" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "fhir" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "version-indeterminate" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Cannot determine version; the questionnaire contains fields common to multiple known versions."
+              }
+            }
+          }
+        }
+      }
+    },
+    "alert" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "questionnaire-response-not-found" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Cannot load the questionnaire response"
+              }
+            },
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Response with id %s does not exists."
+              }
+            }
+          }
+        },
+        "provide-url" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Please provide a URL for your link."
+              }
+            }
+          }
+        },
+        "next-question-response-error" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Errors while get next question"
+              }
+            }
+          }
+        },
+        "next-question-invalid-q-reference" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "QuestionnaireResponse does not reference contained Questionnaire (reference: '%s')"
+              }
+            },
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Next question error"
+              }
+            }
+          }
+        },
+        "next-question-missing-contained-q" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "QuestionnaireResponse does not have a contained Questionnaire"
+              }
+            },
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Next question error"
+              }
+            }
+          }
+        },
+        "next-questions-service-does-not-return-new-items" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Next Question service does not return new items"
+              }
+            },
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "No new items"
+              }
+            }
+          }
+        },
+        "questionnaire-response-cannot-repopulate" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Repopulate process encountered errors"
+              }
+            }
+          }
+        },
+        "questionnaire-response-cannot-save" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Cannot save QuestionnaireResponse"
+              }
+            }
+          }
+        },
+        "file-too-large" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Max allowed file size is: %d"
+              }
+            }
+          }
+        },
+        "network" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Network error"
+              }
+            },
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Network issues detected, please try again later."
+              }
+            },
+            "refresh" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Refresh"
+              }
+            }
+          }
+        },
+        "questionnaire-not-found" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Cannot load the questionnaire"
+              }
+            },
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Questionnaire with url '%s' does not exists"
+              }
+            }
+          }
+        },
+        "next-question-id-mismatch" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Next question error"
+              }
+            },
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "QuestionnaireResponse ID mismatch: sent '%s', received '%s'"
+              }
+            }
+          }
+        },
+        "questionnaire-response-save-issues" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Warnings"
+              }
+            }
+          }
+        },
+        "unauthorized" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Authorization required"
+              }
+            },
+            "details" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Your token is invalid or expired"
+              }
+            }
+          }
+        }
+      }
+    },
+    "form" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "status" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "ready" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Ready to go"
+              }
+            },
+            "saved-time" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Saved "
+              }
+            },
+            "offline-ready" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Changes will be saved locally"
+              }
+            },
+            "submitting" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Submitting changes..."
+              }
+            },
+            "offline-saved" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Changes saved locally"
+              }
+            },
+            "saved" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Changes saved"
+              }
+            },
+            "offline" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Offline"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "additionalProperties" : false,
+              "properties" : {
+                "validation" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Validation error"
+                  }
+                },
+                "other" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Not submitted yet"
+                  }
+                }
+              }
+            },
+            "amended" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Form amended"
+              }
+            },
+            "populating" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Populating form..."
+              }
+            },
+            "recording" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Recording input..."
+              }
+            },
+            "saving" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Saving changes..."
+              }
+            },
+            "calling-next-question" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Getting next question..."
+              }
+            },
+            "submitted" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Form submitted"
+              }
+            },
+            "amending" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Amending changes..."
+              }
+            }
+          }
+        },
+        "button" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "offline-amend" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "You are offline and cannot amend"
+              }
+            },
+            "amend" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Amend"
+              }
+            },
+            "review" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Continue"
+              }
+            },
+            "skip-item" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Skip Question"
+              }
+            },
+            "redirect" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Save and exit"
+              }
+            },
+            "saved" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Saved"
+              }
+            },
+            "offline-submit" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "You are offline and cannot submit"
+              }
+            },
+            "save-and-close" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Save"
+              }
+            },
+            "next-question" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Next Question"
+              }
+            },
+            "offline-next-question" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "You are offline and cannot call Next Question"
+              }
+            },
+            "next-item" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Continue"
+              }
+            },
+            "submit" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Submit"
+              }
+            },
+            "repopulate" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Repopulate"
+              }
+            },
+            "print" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Print"
+              }
+            }
+          }
+        },
+        "label" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "last-one-question" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "That's the last one"
+              }
+            },
+            "back-to-invalid-answers" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Back to invalid answers"
+              }
+            }
+          }
+        },
+        "outline" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "title" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Contents"
+              }
+            }
+          }
+        },
+        "print" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "browser" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Browser print"
+              }
+            }
+          }
+        }
+      }
+    },
+    "offline" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "new-version-available" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "New version of this page is available. Please refresh the page to get the latest version."
+          }
+        },
+        "reloading" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "Reloading..."
+          }
+        },
+        "reload" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "Reload"
+          }
+        }
+      }
+    },
+    "error" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "validation" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "integer-value-less-than-min-integer" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Integer value cannot be less than -2147483648"
+              }
+            },
+            "signature-author-required" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Signature author is required"
+              }
+            },
+            "type-mismatch" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Expected answer of type: '%s', got: '%s'"
+              }
+            },
+            "invalid-answer" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Invalid answer"
+              }
+            },
+            "file-too-large" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "File is too large (allowed max size: %s)"
+              }
+            },
+            "signature-required" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Signature is required"
+              }
+            },
+            "value-length-less-than-min" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Answer length cannot be less than %s"
+              }
+            },
+            "answer-required" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Answer is required"
+              }
+            },
+            "value-greater-than-max" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Value cannot be greater than %s"
+              }
+            },
+            "integer-value-greater-than-max-integer" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Integer value cannot be greater than 2147483647"
+              }
+            },
+            "group-answer-required" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "At least one child item must be answered"
+              }
+            },
+            "value-less-than-min" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Value cannot be less than %s"
+              }
+            },
+            "value-length-greater-than-max" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Answer length cannot be greater than %s"
+              }
+            }
+          }
+        },
+        "invalid-jwt" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "Invalid JWT"
+          }
+        },
+        "fhir" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "version-conversion" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Unable to convert the provided resource to the required format."
+              }
+            },
+            "resource-not-questionnaire" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "The provided resource does not match the format of a questionnaire."
+              }
+            },
+            "empty-resource" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "The provided resource contains no data."
+              }
+            },
+            "version-incompatible" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "The questionnaire contains properties from multiple incompatible FHIR versions."
+              }
+            }
+          }
+        },
+        "validate" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "value-decimal-places" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Answer exceeds maximum decimal places: %s"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nhs" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "session-timeout" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "log-out" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Log out"
+              }
+            },
+            "message" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "For security reasons, you'll be logged out in %s."
+              }
+            },
+            "stay-logged-in" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Stay logged in"
+              }
+            }
+          }
+        }
+      }
+    },
+    "builder" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "warning" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "questionnaire-imported-from-openehr" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "This Questionnaire was generated from an openEHR template. Modifying it may prevent reverse conversion into an openEHR Composition."
+              }
+            },
+            "questionnaire-changed-version-when-in-production-status" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Changing Questionnaire version while in production status (%s) may cause data inconsistencies and affect existing form submissions"
+              }
+            },
+            "questionnaire-in-production-status-changed" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Changes to Questionnaire in production status may affect existing form submissions and data collection processes"
+              }
+            },
+            "questionnaire-is-used-as-component" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "This Questionnaire is used as a component in other Questionnaires - changes will propagate to all forms using this component"
+              }
+            },
+            "questionnaire-fhirpath-outside-profile" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Some FHIRPath expressions use functions the target runtime does not have: %s"
+              }
+            },
+            "questionnaire-changed-url-when-in-production-status" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Changing Questionnaire.url while in production status (%s) may break existing integrations and references to this Questionnaire"
+              }
+            },
+            "questionnaire-belongs-to-other-organization" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "This Questionnaire belongs to another organization. You don’t have permission to modify it."
+              }
+            },
+            "questionnaire-moved-from-production-status" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Moving Questionnaire from production status (%s) may invalidate existing form submissions and break dependent integrations"
+              }
+            }
+          }
+        },
+        "error" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "questionnaire-with-same-url-and-version-exists" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "A Questionnaire with the same URL and version already exists (ID: %s)"
+              }
+            },
+            "questionnaire-move-to-production-status-when-no-url" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "A Questionnaire URL is required for production use to ensure stable references and proper versioning"
+              }
+            }
+          }
+        }
+      }
+    },
+    "widget" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "repeats" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "add" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Add item"
+              }
+            }
+          }
+        },
+        "drawing-pad" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "close" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Close annotation editor"
+              }
+            },
+            "alt" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Annotation pad background"
+              }
+            },
+            "clear" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Clear canvas"
+              }
+            },
+            "open" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Edit annotation"
+              }
+            }
+          }
+        },
+        "speech-to-text" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "tooltip" : {
+              "type" : "object",
+              "additionalProperties" : false,
+              "properties" : {
+                "recording" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Recording your speech"
+                  }
+                },
+                "unsupported" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Speech to text is disabled because neither GPU is available nor cross-origin isolation is enabled"
+                  }
+                },
+                "initializing" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Initializing speech to text engine"
+                  }
+                },
+                "record" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Click to record your speech"
+                  }
+                },
+                "converting" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Converting your speech to text"
+                  }
+                }
+              }
+            },
+            "record" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Record"
+              }
+            }
+          }
+        },
+        "signature" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "alt" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Sign here"
+              }
+            },
+            "clear" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Clear signature"
+              }
+            },
+            "open" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Expand sign pad"
+              }
+            },
+            "close" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Close sign pad"
+              }
+            }
+          }
+        },
+        "time" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "now" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Now"
+              }
+            },
+            "clear" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Clear"
+              }
+            },
+            "minutes" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Minutes"
+              }
+            },
+            "select" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Select"
+              }
+            },
+            "pick" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Pick time"
+              }
+            },
+            "hours" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Hours"
+              }
+            },
+            "cancel" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Cancel"
+              }
+            }
+          }
+        },
+        "date" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "today" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Today"
+              }
+            },
+            "select" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Select"
+              }
+            },
+            "pick" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Pick date"
+              }
+            },
+            "clear" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Clear"
+              }
+            },
+            "cancel" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Cancel"
+              }
+            }
+          }
+        },
+        "file" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "browse" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Browse"
+              }
+            },
+            "preview" : {
+              "type" : "object",
+              "additionalProperties" : false,
+              "properties" : {
+                "title" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "File Preview"
+                  }
+                },
+                "alt" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Unable to show image"
+                  }
+                },
+                "content-type" : {
+                  "allOf" : [ {
+                    "$ref" : "#/definitions/translationLeaf"
+                  } ],
+                  "default" : {
+                    "en" : "Content Type: Unknown"
+                  }
+                }
+              }
+            },
+            "placeholder" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Choose file"
+              }
+            }
+          }
+        },
+        "page" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "current-page" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Page %d of %d"
+              }
+            },
+            "next-page" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Next Page"
+              }
+            },
+            "previous-page" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Previous Page"
+              }
+            }
+          }
+        },
+        "choice" : {
+          "type" : "object",
+          "additionalProperties" : false,
+          "properties" : {
+            "no-options" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "No options"
+              }
+            },
+            "specify-other" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Specify other..."
+              }
+            },
+            "your-custom-answer" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Your custom answer:"
+              }
+            },
+            "select" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Select"
+              }
+            },
+            "search" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Search"
+              }
+            },
+            "pick-from-a-list" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Pick from a list"
+              }
+            },
+            "loading-more" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Loading options..."
+              }
+            },
+            "load-more" : {
+              "allOf" : [ {
+                "$ref" : "#/definitions/translationLeaf"
+              } ],
+              "default" : {
+                "en" : "Load more options"
+              }
+            }
+          }
+        }
+      }
+    },
+    "session-expired" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "properties" : {
+        "message" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "Your session has expired due to inactivity"
+          }
+        },
+        "reload" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "Reload Page"
+          }
+        },
+        "title" : {
+          "allOf" : [ {
+            "$ref" : "#/definitions/translationLeaf"
+          } ],
+          "default" : {
+            "en" : "Session Expired"
+          }
+        }
+      }
+    }
+  },
+  "definitions" : {
+    "translationLeaf" : {
+      "type" : "object",
+      "description" : "Per-locale translation overrides for a customizable SDC message.",
+      "minProperties" : 1,
+      "additionalProperties" : false,
+      "properties" : {
+        "en" : {
+          "type" : "string"
+        },
+        "fi" : {
+          "type" : "string"
+        },
+        "sv" : {
+          "type" : "string"
+        },
+        "fr" : {
+          "type" : "string"
+        },
+        "de" : {
+          "type" : "string"
+        },
+        "ru" : {
+          "type" : "string"
+        },
+        "ar" : {
+          "type" : "string"
+        }
+      }
+    }
+  }
+}

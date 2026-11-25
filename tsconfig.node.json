@@ -27,9 +27,5 @@
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true
 	},
-	"include": [
-		"vite.config.ts",
-		"vite-plugin-claude-chat.ts",
-		"vite-plugin-customizable-messages-schema.ts"
-	]
+	"include": ["vite.config.ts", "vite-plugin-claude-chat.ts"]
 }

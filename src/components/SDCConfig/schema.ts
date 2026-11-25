@@ -1,4 +1,3 @@
-import customizableMessagesSchema from "virtual:customizable-messages-schema";
 import { jsonLanguage } from "@codemirror/lang-json";
 import { linter } from "@codemirror/lint";
 import type { Extension } from "@codemirror/state";
@@ -10,6 +9,13 @@ import {
 } from "codemirror-json-schema";
 import type { LucideIcon } from "lucide-react";
 import { Blocks, Database, FileText, Globe, Settings } from "lucide-react";
+/**
+ * Every SDC message an SDCConfig can translate, with its English default.
+ * A copy of `box/resources/sdc/customizable-messages-schema.json` from
+ * sansara, which `make gettext` generates there; copy it again when the box
+ * adds or renames customizable messages.
+ */
+import customizableMessagesSchema from "./customizable-messages-schema.json";
 import {
 	BUILDER_BOOLEAN_FIELDS,
 	BUILDER_LAYOUT_OPTIONS,
@@ -120,9 +126,9 @@ function buildJsonSchemaEditorExtensions(schema: object): Extension[] {
 	];
 }
 
-const translationsJsonEditorExtensions = customizableMessagesSchema
-	? buildJsonSchemaEditorExtensions(customizableMessagesSchema)
-	: [];
+const translationsJsonEditorExtensions = buildJsonSchemaEditorExtensions(
+	customizableMessagesSchema,
+);
 
 export const CONFIGURATION_SCHEMA: ConfigurationSection[] = [
 	{
