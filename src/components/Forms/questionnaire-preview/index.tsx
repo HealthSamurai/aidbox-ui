@@ -37,7 +37,7 @@ function RendererSwitch({
 			onValueChange={(next) => onChange(next as RendererKind)}
 			items={[
 				{ value: "classic", label: "Classic" },
-				{ value: "formbox", label: "Formbox (beta)" },
+				{ value: "formbox", label: "Formbox" },
 			]}
 			data-test-id="questionnaire-preview__renderer-switch"
 		/>

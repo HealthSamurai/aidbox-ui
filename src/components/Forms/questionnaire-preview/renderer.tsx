@@ -46,9 +46,11 @@ type FormProperties = ComponentProps<typeof theme.Form>;
 /**
  * The theme's form is a single column with the buttons after the last item.
  * The preview shows it as an Aidbox UI page instead: a section heading and
- * the items on the page, and the actions in a footer at the bottom.
+ * the items on the page, and the actions in a footer at the bottom. A form
+ * nobody submits, such as a Questionnaire preview, has no actions.
  */
 function PreviewForm({
+	actions,
 	onSubmit,
 	onCancel,
 	children,
@@ -60,7 +62,7 @@ function PreviewForm({
 	after,
 	signature,
 	pagination,
-}: FormProperties) {
+}: FormProperties & { actions: boolean }) {
 	const strings = useStrings();
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -112,24 +114,38 @@ function PreviewForm({
 					</Button>
 				</div>
 			)}
-			<footer className="sticky bottom-0 -mx-8 flex items-center gap-2 border-t border-border-primary bg-bg-primary px-8 py-3">
-				{signature}
-				<div className="ml-auto flex items-center gap-2">
-					{onCancel && (
-						<Button type="button" variant="secondary" onClick={onCancel}>
-							{strings.form.cancel}
-						</Button>
+			{(signature || actions) && (
+				<footer className="sticky bottom-0 -mx-8 flex items-center gap-2 border-t border-border-primary bg-bg-primary px-8 py-3">
+					{signature}
+					{actions && (
+						<div className="ml-auto flex items-center gap-2">
+							{onCancel && (
+								<Button type="button" variant="secondary" onClick={onCancel}>
+									{strings.form.cancel}
+								</Button>
+							)}
+							<Button type="submit" variant="primary">
+								{strings.form.submit}
+							</Button>
+						</div>
 					)}
-					<Button type="submit" variant="primary" disabled={!onSubmit}>
-						{strings.form.submit}
-					</Button>
-				</div>
-			</footer>
+				</footer>
+			)}
 		</form>
 	);
 }
 
-const previewTheme = { ...theme, Form: PreviewForm };
+/** The renderer hands every form a submit handler, so the theme decides. */
+const submittableTheme = {
+	...theme,
+	Form: (properties: FormProperties) => <PreviewForm {...properties} actions />,
+};
+const viewOnlyTheme = {
+	...theme,
+	Form: (properties: FormProperties) => (
+		<PreviewForm {...properties} actions={false} />
+	),
+};
 
 /** Loaded lazily: the renderer and its theme are a heavy chunk of their own. */
 export default function QuestionnaireRenderer({
@@ -144,10 +160,11 @@ export default function QuestionnaireRenderer({
 	questionnaireResponse?: QuestionnaireResponse;
 	fhirVersion: string;
 	onResponseChange: (response: object) => void;
-	/** Without it the form's Submit button stays disabled. */
+	/** Without it the form has no Submit and Cancel buttons. */
 	onSubmit?: ((response: object) => void) | undefined;
 }) {
 	const terminologyServerUrl = `${getAidboxBaseURL()}/fhir`;
+	const previewTheme = onSubmit ? submittableTheme : viewOnlyTheme;
 	return isR4Like(fhirVersion) ? (
 		<Renderer
 			fhirVersion="r4"
