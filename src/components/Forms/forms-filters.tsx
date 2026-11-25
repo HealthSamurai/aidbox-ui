@@ -1,7 +1,6 @@
 import type * as React from "react";
 import { FORM_KIND_OPTIONS, type FormKind, isFormKind } from "./api/forms-list";
 import {
-	FilterField,
 	FilterSelect,
 	type OptionalFilter,
 	OptionalFilters,
@@ -86,13 +85,12 @@ export function FormsFilters({
 	];
 	return (
 		<div
-			className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-4"
+			className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-3"
 			data-test-id="forms-filters"
 		>
-			<FilterField
-				label="Search"
+			<div
 				className="w-full sm:w-auto sm:min-w-64 sm:flex-1"
-				testId="forms-filters__search-field"
+				data-test-id="forms-filters__search-field"
 			>
 				<SearchInput
 					placeholder="Form name or URL"
@@ -100,7 +98,7 @@ export function FormsFilters({
 					value={values.q ?? ""}
 					onChange={(q) => onChange({ q: q || undefined })}
 				/>
-			</FilterField>
+			</div>
 			<OptionalFilters filters={filters} testIdPrefix="forms-filters" />
 			{actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
 		</div>

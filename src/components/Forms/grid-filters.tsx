@@ -14,7 +14,7 @@ const ANY = "__any__";
 // Radix renders the selected value in a flex child, which defaults to
 // min-width:auto and would push the trigger wider than its column.
 const FILTER_TRIGGER_CLASS_NAME =
-	"h-8 min-w-0 overflow-hidden bg-bg-primary *:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate";
+	"min-w-0 overflow-hidden bg-bg-primary *:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate";
 
 export function FilterField({
 	children,
@@ -156,12 +156,10 @@ export function OptionalFilters({
 				<HSComp.DropdownMenu>
 					<HSComp.DropdownMenuTrigger asChild>
 						<HSComp.Button
-							variant="ghost"
-							size="small"
+							variant="secondary"
 							data-test-id={`${testIdPrefix}__add-filters-button`}
-							className="h-8 gap-1 border-0 bg-bg-tertiary px-3 text-text-quternary hover:bg-bg-tertiary hover:text-text-secondary"
 						>
-							<Plus className="size-4" />
+							<Plus className="text-fg-link" />
 							Add filters
 						</HSComp.Button>
 					</HSComp.DropdownMenuTrigger>
@@ -185,9 +183,7 @@ export function OptionalFilters({
 			) : null}
 			{visible.length > 0 ? (
 				<HSComp.Button
-					variant="ghost"
-					size="small"
-					className="h-8 border-0 bg-transparent px-3 text-text-quternary hover:bg-bg-tertiary hover:text-text-quternary"
+					variant="secondary"
 					data-test-id={`${testIdPrefix}__reset-all-button`}
 					onClick={dropAll}
 				>
@@ -228,7 +224,7 @@ export function SearchInput({
 			placeholder={placeholder}
 			value={text}
 			onChange={(event) => update(event.target.value)}
-			className="h-8 bg-bg-primary"
+			className="bg-bg-primary"
 			data-test-id={testId}
 			leftSlot={<Search />}
 			rightSlot={

@@ -28,9 +28,7 @@ export function FormsToolbar({
 	return (
 		<div className="flex items-center gap-2">
 			<HSComp.Button
-				size="small"
-				variant="ghost"
-				className="h-8 gap-1 border-0 bg-bg-tertiary px-3 text-text-quternary hover:bg-bg-tertiary hover:text-text-secondary"
+				variant="secondary"
 				data-test-id="forms-toolbar__new-plan-definition-button"
 				onClick={() =>
 					navigate({
@@ -40,7 +38,7 @@ export function FormsToolbar({
 					})
 				}
 			>
-				<Plus className="size-4" />
+				<Plus className="text-fg-link" />
 				New Package
 				{selectedFormIds.length > 0 ? (
 					<span
@@ -53,7 +51,6 @@ export function FormsToolbar({
 			</HSComp.Button>
 			{selectedForms.length > 0 ? (
 				<HSComp.Button
-					size="small"
 					variant="ghost"
 					onClick={onClearSelection}
 					data-test-id="forms-toolbar__clear-selection-button"
@@ -61,13 +58,8 @@ export function FormsToolbar({
 					Clear selection
 				</HSComp.Button>
 			) : null}
-			<HSComp.SplitButton
-				size="small"
-				className="*:data-[slot=button]:h-8 *:data-[slot=button]:px-3 *:data-[slot=button]:gap-2 *:data-[slot=dropdown-menu-trigger]:h-8 *:data-[slot=dropdown-menu-trigger]:border-l *:data-[slot=dropdown-menu-trigger]:border-white/30"
-				data-test-id="forms-toolbar"
-			>
+			<HSComp.SplitButton data-test-id="forms-toolbar">
 				<HSComp.Button
-					size="small"
 					data-test-id="forms-toolbar__new-form-button"
 					onClick={openNewForm}
 				>
@@ -77,7 +69,6 @@ export function FormsToolbar({
 				<HSComp.DropdownMenu>
 					<HSComp.DropdownMenuTrigger asChild>
 						<HSComp.Button
-							size="small"
 							aria-label="Open form creation menu"
 							data-test-id="forms-toolbar__menu-button"
 						>

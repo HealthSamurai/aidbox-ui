@@ -18,7 +18,7 @@ import {
 	useTemplateUsage,
 } from "../api/templates";
 import { formatHumanizedDate } from "../format";
-import { FilterField, SearchInput } from "../grid-filters";
+import { SearchInput } from "../grid-filters";
 import { pageAfterDeleting } from "../responses/pagination";
 import { getLiquidTemplateEditorUrl, getNewLiquidTemplateUrl } from "../utils";
 import { DeleteTemplatesDialog } from "./delete-templates-dialog";
@@ -39,12 +39,7 @@ const openNewTemplate = () => window.location.assign(getNewLiquidTemplateUrl());
 
 function NewTemplateButton({ testId }: { testId: string }) {
 	return (
-		<HSComp.Button
-			size="small"
-			className="h-8 px-3"
-			data-test-id={testId}
-			onClick={openNewTemplate}
-		>
+		<HSComp.Button data-test-id={testId} onClick={openNewTemplate}>
 			<Plus className="size-4" />
 			New Template
 		</HSComp.Button>
@@ -382,13 +377,12 @@ export function TemplatesPage() {
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div
-				className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-4"
+				className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-3"
 				data-test-id="templates-filters"
 			>
-				<FilterField
-					label="Search"
+				<div
 					className="w-full sm:w-auto sm:min-w-64 sm:flex-1"
-					testId="templates-filters__search-field"
+					data-test-id="templates-filters__search-field"
 				>
 					<SearchInput
 						placeholder="Template name or id"
@@ -396,7 +390,7 @@ export function TemplatesPage() {
 						value={search.q ?? ""}
 						onChange={(q) => update({ q: q || undefined, page: undefined })}
 					/>
-				</FilterField>
+				</div>
 				<div className="ml-auto shrink-0">
 					<NewTemplateButton testId="templates-page__new-template-button" />
 				</div>

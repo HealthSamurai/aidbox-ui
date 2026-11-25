@@ -1,6 +1,5 @@
 import { DatePickerInput } from "@health-samurai/react-components";
 import {
-	FilterField,
 	FilterSelect,
 	type OptionalFilter,
 	OptionalFilters,
@@ -117,13 +116,12 @@ export function ResponsesFilters({
 	];
 	return (
 		<div
-			className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-4"
+			className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-3"
 			data-test-id="responses-filters"
 		>
-			<FilterField
-				label="Search"
+			<div
 				className="w-full sm:w-auto sm:min-w-64 sm:flex-1"
-				testId="responses-filters__search-field"
+				data-test-id="responses-filters__search-field"
 			>
 				<SearchInput
 					placeholder="Response ID, Subject or Form"
@@ -131,7 +129,7 @@ export function ResponsesFilters({
 					value={values.q ?? ""}
 					onChange={(q) => onChange({ q: q || undefined })}
 				/>
-			</FilterField>
+			</div>
 			<OptionalFilters filters={filters} testIdPrefix="responses-filters" />
 		</div>
 	);
