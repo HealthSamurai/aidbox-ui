@@ -1,6 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { GraphForm, GraphRoute } from "./plan-definition-graph-layout";
-import type { PlanDefinitionGraphEdge } from "./plan-definition-graph-model";
 
 export type PackageNodeData = {
 	title: string;
@@ -46,11 +45,9 @@ export type RuleEdgeData = {
 	route: GraphRoute;
 	label: string;
 	highlighted: boolean;
-	selected: boolean;
 	invalid: boolean;
-	disabled: boolean;
-	sorting: boolean;
-	onSelectRule: (edge: PlanDefinitionGraphEdge) => void;
+	/** Clickable and focusable: not read-only and no form being dragged. */
+	interactive: boolean;
 };
 
 export type RuleEdge = Edge<RuleEdgeData, "rule">;

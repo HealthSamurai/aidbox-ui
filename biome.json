@@ -60,20 +60,6 @@
 			"recommended": true
 		}
 	},
-	"overrides": [
-		{
-			"includes": [
-				"src/components/PlanDefinition/plan-definition-graph-edges.tsx"
-			],
-			"linter": {
-				"rules": {
-					"a11y": {
-						"useSemanticElements": "off"
-					}
-				}
-			}
-		}
-	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"

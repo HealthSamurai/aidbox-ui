@@ -8,6 +8,7 @@ import type { Questionnaire } from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index
 import { Button } from "@health-samurai/react-components";
 import {
 	Controls,
+	type EdgeChange,
 	type NodeChange,
 	Panel,
 	ReactFlow,
@@ -298,6 +299,9 @@ function PlanDefinitionGraphFlow({
 			const sourceKey = actionKeys[route.edge.sourceIndex];
 			const targetKey = actionKeys[route.edge.targetIndex];
 			if (sourceKey === undefined || targetKey === undefined) return [];
+			const selected = route.edge.id === selectedEdgeId;
+			const interactive = !disabled && !sorting;
+			const label = ruleLabel(route.edge, layout.forms, title);
 			return [
 				{
 					id: route.edge.id,
@@ -306,23 +310,45 @@ function PlanDefinitionGraphFlow({
 					target: formNodeId(targetKey),
 					sourceHandle: graphHandleId(route.sourceAnchor, route.side, "source"),
 					targetHandle: graphHandleId(route.targetAnchor, route.side, "target"),
-					selectable: false,
-					focusable: false,
+					// React Flow makes the edge a button: it focuses it, and a click,
+					// Enter or Space selects it, which onEdgesChange turns into the rule.
+					selectable: interactive,
+					focusable: interactive,
+					selected,
+					ariaRole: "button",
+					ariaLabel: label,
+					className: "group",
+					domAttributes: {
+						"aria-pressed": selected,
+						"aria-disabled": !interactive,
+						"data-test-id": "plan-definition-graph__rule-button",
+						"data-edge-kind": route.edge.kind,
+						"data-side": route.side,
+					},
 					// Edges paint above the cards, as their ports sit on card borders.
 					zIndex: 20,
 					data: {
 						route,
-						label: ruleLabel(route.edge, layout.forms, title),
+						label,
 						highlighted: highlighted(route.edge),
-						selected: route.edge.id === selectedEdgeId,
 						invalid: Boolean(errors[route.edge.path]),
-						disabled,
-						sorting,
-						onSelectRule,
+						interactive,
 					},
 				},
 			];
 		});
+
+	const onEdgesChange = (changes: EdgeChange<RuleEdge>[]) => {
+		const picked = changes.find(
+			(change) => change.type === "select" && change.selected,
+		);
+		const route =
+			picked &&
+			"id" in picked &&
+			layout.routes.find(({ edge }) => edge.id === picked.id);
+		// Unselecting is left to the pane click, which clears the selection.
+		if (route) onSelectRule(route.edge);
+	};
 
 	const onNodesChange = (changes: NodeChange<GraphNode>[]) => {
 		const sizes: typeof measured = {};
@@ -385,6 +411,7 @@ function PlanDefinitionGraphFlow({
 					nodeTypes={graphNodeTypes}
 					edgeTypes={graphEdgeTypes}
 					onNodesChange={onNodesChange}
+					onEdgesChange={onEdgesChange}
 					onNodeDragStart={(_, node) => {
 						if (node.type !== "form") return;
 						const { form } = node.data;
@@ -420,10 +447,7 @@ function PlanDefinitionGraphFlow({
 					maxZoom={GRAPH_MAX_ZOOM}
 					nodesConnectable={false}
 					nodesFocusable={false}
-					edgesFocusable={false}
-					elementsSelectable={false}
 					elevateNodesOnSelect={false}
-					disableKeyboardA11y
 					deleteKeyCode={null}
 					selectionKeyCode={null}
 					multiSelectionKeyCode={null}

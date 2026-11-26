@@ -1,6 +1,5 @@
 import { useOperationOutcomeIssues } from "@aidbox-ui/components/Forms/editor/operation-outcome-context";
 import type { EdgeProps } from "@xyflow/react";
-import { useState } from "react";
 import { type GraphForm, graphEdgePath } from "./plan-definition-graph-layout";
 import type { PlanDefinitionGraphEdge } from "./plan-definition-graph-model";
 import type { RuleEdge } from "./plan-definition-graph-types";
@@ -34,22 +33,12 @@ function GraphRuleEdge({
 	targetY,
 	data,
 }: EdgeProps<RuleEdge>) {
-	const [hovered, setHovered] = useState(false);
 	const issues = useOperationOutcomeIssues(
 		data?.route.edge.issuePattern ?? /$^/,
 		{ severity: ["error", "fatal"] },
 	);
 	if (!data) return null;
-	const {
-		route,
-		label,
-		highlighted,
-		selected,
-		invalid,
-		disabled,
-		sorting,
-		onSelectRule,
-	} = data;
+	const { route, label, highlighted, invalid, interactive } = data;
 	const { edge } = route;
 	const source = { x: sourceX, y: sourceY + route.sourceOffset };
 	const target = { x: targetX, y: targetY + route.targetOffset };
@@ -60,9 +49,6 @@ function GraphRuleEdge({
 		route.laneX,
 	);
 	const kind = invalid || issues.length ? "error" : edge.kind;
-	const select = () => {
-		if (!disabled && !sorting) onSelectRule(edge);
-	};
 	return (
 		<g
 			data-test-id="plan-definition-graph__edge"
@@ -82,42 +68,22 @@ function GraphRuleEdge({
 				d={path}
 				fill="none"
 				stroke="currentColor"
-				strokeWidth={hovered ? 3 : 1.5}
+				className="[stroke-width:1.5px] group-hover:[stroke-width:3px] group-focus-visible:[stroke-width:3px]"
 				strokeDasharray={edge.kind === "prefill" ? "5 4" : undefined}
 				data-test-id="plan-definition-graph__edge-path"
 			/>
+			{/* A wide transparent stroke, so the thin line is easy to hit. */}
 			<path
 				d={path}
 				fill="none"
 				stroke="transparent"
 				strokeWidth="14"
 				className={
-					sorting
-						? "pointer-events-none outline-none"
-						: "pointer-events-auto cursor-pointer outline-none"
+					interactive
+						? "pointer-events-auto cursor-pointer"
+						: "pointer-events-none"
 				}
-				role="button"
-				tabIndex={disabled || sorting ? -1 : 0}
-				aria-label={label}
-				aria-disabled={disabled || sorting}
-				aria-pressed={selected}
-				data-test-id="plan-definition-graph__rule-button"
-				data-edge-kind={edge.kind}
-				data-side={route.side}
-				onClick={(event) => {
-					event.stopPropagation();
-					select();
-				}}
-				onKeyDown={(event) => {
-					if (event.key === "Enter" || event.key === " ") {
-						event.preventDefault();
-						select();
-					}
-				}}
-				onPointerEnter={() => setHovered(true)}
-				onPointerLeave={() => setHovered(false)}
-				onFocus={() => setHovered(true)}
-				onBlur={() => setHovered(false)}
+				data-test-id="plan-definition-graph__edge-hit-area"
 			>
 				<title>{label}</title>
 			</path>
