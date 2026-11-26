@@ -4,7 +4,6 @@ export const DEFAULT_PAGE_SIZE = 30;
 
 /** The Forms grid's state in the URL; defaults are left out of it. */
 export type FormsSearch = {
-	author?: string;
 	kind?: FormKind;
 	page?: number;
 	pageSize?: number;
@@ -20,7 +19,6 @@ export function validateFormsSearch(
 	search: Record<string, unknown>,
 ): FormsSearch {
 	const next: FormsSearch = {};
-	if (nonEmptyString(search.author)) next.author = search.author;
 	if (nonEmptyString(search.kind) && isFormKind(search.kind)) {
 		next.kind = search.kind;
 	}

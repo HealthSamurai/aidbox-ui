@@ -1,10 +1,5 @@
 import { DatePickerInput } from "@health-samurai/react-components";
-import {
-	FilterSelect,
-	type OptionalFilter,
-	OptionalFilters,
-	SearchInput,
-} from "../grid-filters";
+import { FilterSelect, SearchInput } from "../grid-filters";
 import type { ResponseFilterOption } from "./api";
 
 /*
@@ -36,87 +31,9 @@ export function ResponsesFilters({
 	subjectOptions: ResponseFilterOption[];
 	onChange: (next: Partial<ResponsesFilterValues>) => void;
 }) {
-	const filters: OptionalFilter[] = [
-		{
-			key: "plan-definition",
-			label: "Package",
-			isSet: Boolean(values.planDefinition),
-			reset: () => onChange({ planDefinition: undefined }),
-			control: (
-				<FilterSelect
-					label="Package"
-					value={values.planDefinition}
-					options={planDefinitionOptions}
-					onChange={(planDefinition) => onChange({ planDefinition })}
-					testId="responses-filters__plan-definition-dropdown"
-				/>
-			),
-		},
-		{
-			key: "status",
-			label: "Status",
-			isSet: Boolean(values.status),
-			reset: () => onChange({ status: undefined }),
-			control: (
-				<FilterSelect
-					label="Status"
-					value={values.status}
-					options={statusOptions.map((status) => ({
-						value: status,
-						label: status,
-					}))}
-					onChange={(status) => onChange({ status })}
-					testId="responses-filters__status-dropdown"
-				/>
-			),
-		},
-		{
-			key: "completion-date",
-			label: "Completion Date",
-			className: "w-auto",
-			isSet: Boolean(values.completedFrom || values.completedTo),
-			reset: () =>
-				onChange({ completedFrom: undefined, completedTo: undefined }),
-			control: (
-				<div
-					className="flex items-center"
-					data-test-id="responses-filters__completion-date"
-				>
-					<DatePickerInput
-						value={values.completedFrom ?? ""}
-						onChange={(value) =>
-							onChange({ completedFrom: value || undefined })
-						}
-						className="w-36"
-					/>
-					<span className="px-1 text-text-secondary text-xs">—</span>
-					<DatePickerInput
-						value={values.completedTo ?? ""}
-						onChange={(value) => onChange({ completedTo: value || undefined })}
-						className="w-36"
-					/>
-				</div>
-			),
-		},
-		{
-			key: "subject",
-			label: "Subject",
-			isSet: Boolean(values.subject),
-			reset: () => onChange({ subject: undefined }),
-			control: (
-				<FilterSelect
-					label="Subject"
-					value={values.subject}
-					options={subjectOptions}
-					onChange={(subject) => onChange({ subject })}
-					testId="responses-filters__subject-dropdown"
-				/>
-			),
-		},
-	];
 	return (
 		<div
-			className="flex flex-wrap items-end gap-3 border-b border-border-secondary bg-bg-primary px-4 py-3"
+			className="flex flex-wrap items-center gap-3 border-b border-border-secondary bg-bg-primary px-4 py-3"
 			data-test-id="responses-filters"
 		>
 			<div
@@ -130,7 +47,51 @@ export function ResponsesFilters({
 					onChange={(q) => onChange({ q: q || undefined })}
 				/>
 			</div>
-			<OptionalFilters filters={filters} testIdPrefix="responses-filters" />
+			<FilterSelect
+				label="Package"
+				className="w-44"
+				value={values.planDefinition}
+				options={planDefinitionOptions}
+				onChange={(planDefinition) => onChange({ planDefinition })}
+				testId="responses-filters__plan-definition-dropdown"
+			/>
+			<FilterSelect
+				label="Status"
+				className="w-36"
+				value={values.status}
+				options={statusOptions.map((status) => ({
+					value: status,
+					label: status,
+				}))}
+				onChange={(status) => onChange({ status })}
+				testId="responses-filters__status-dropdown"
+			/>
+			<FilterSelect
+				label="Subject"
+				className="w-44"
+				value={values.subject}
+				options={subjectOptions}
+				onChange={(subject) => onChange({ subject })}
+				testId="responses-filters__subject-dropdown"
+			/>
+			<div
+				className="flex items-center"
+				data-test-id="responses-filters__completion-date"
+			>
+				<DatePickerInput
+					placeholder="Completed from"
+					value={values.completedFrom ?? ""}
+					onChange={(value) => onChange({ completedFrom: value || undefined })}
+					className="w-44"
+				/>
+				<span className="px-1 text-text-secondary text-xs">—</span>
+				<DatePickerInput
+					placeholder="To"
+					value={values.completedTo ?? ""}
+					onChange={(value) => onChange({ completedTo: value || undefined })}
+					className="w-44"
+				/>
+			</div>
 		</div>
 	);
 }

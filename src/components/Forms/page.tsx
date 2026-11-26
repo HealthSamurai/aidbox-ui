@@ -8,7 +8,6 @@ import {
 	getFormKey,
 	getFormKind,
 	getFormPinId,
-	useFormFilterOptions,
 	useForms,
 	usePinnedFormIds,
 	usePinnedForms,
@@ -61,7 +60,6 @@ export function FormsPage() {
 	const pageSize = search.pageSize ?? DEFAULT_PAGE_SIZE;
 	const updatedSort = search.updatedSort ?? "desc";
 	const filters: FormFilters = {
-		author: search.author,
 		kind: search.kind,
 		q: search.q,
 		status: search.status,
@@ -86,7 +84,6 @@ export function FormsPage() {
 	});
 	const pinned = usePinnedForms(pinnedIds);
 	const forms = useForms(filters, page, pageSize, pinnedIds);
-	const filterOptions = useFormFilterOptions();
 	const { expanded, toggle } = useExpandedPackages();
 	const catalog = useQuestionnaireCatalog(expanded.size > 0);
 
@@ -122,9 +119,7 @@ export function FormsPage() {
 
 	const setFilters = (next: Partial<FormsFilterValues>) =>
 		update({ ...next, page: undefined });
-	const hasFilters = Boolean(
-		search.q || search.status || search.author || search.kind,
-	);
+	const hasFilters = Boolean(search.q || search.status || search.kind);
 	let message: FormsMessage | undefined;
 	if (forms.isError) {
 		message = {
@@ -159,11 +154,8 @@ export function FormsPage() {
 				values={{
 					q: search.q,
 					status: search.status,
-					author: search.author,
 					kind: search.kind,
 				}}
-				statusOptions={filterOptions.statusOptions}
-				authorOptions={filterOptions.authorOptions}
 				onChange={setFilters}
 				actions={
 					<FormsToolbar

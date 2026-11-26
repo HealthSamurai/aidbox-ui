@@ -66,6 +66,13 @@ export const FORM_KIND_OPTIONS = Object.entries(FORM_KIND_LABELS).map(
 	([value, label]) => ({ label, value: value as FormKind }),
 );
 
+/** The publication statuses a form is created and retired with; `unknown` is left out. */
+export const FORM_STATUS_OPTIONS = [
+	{ value: "draft", label: "Draft" },
+	{ value: "active", label: "Active" },
+	{ value: "retired", label: "Retired" },
+];
+
 export function isFormKind(value: string): value is FormKind {
 	// `in` would walk the prototype chain and let `?kind=constructor` through.
 	return Object.hasOwn(FORM_KIND_LABELS, value);
@@ -74,7 +81,6 @@ export function isFormKind(value: string): value is FormKind {
 export type UpdatedSort = "asc" | "desc";
 
 export type FormFilters = {
-	author?: string;
 	kind?: FormKind;
 	q?: string;
 	status?: string;
@@ -172,7 +178,6 @@ function buildFormsQuery(
 	if (excludedIds.length > 0) query.push(["_id:not", excludedIds.join(",")]);
 	if (filters.q) query.push(["_ilike", filters.q]);
 	if (filters.status) query.push(["status", filters.status]);
-	if (filters.author) query.push(["publisher", filters.author]);
 	return query;
 }
 
@@ -275,50 +280,11 @@ export function useQuestionnaireCatalog(enabled: boolean) {
 		queryFn: async () =>
 			(
 				await searchResources<FormQuestionnaire>(client, "Questionnaire", [
-					[
-						"_elements",
-						"id,url,version,title,name,status,publisher,meta,extension",
-					],
+					["_elements", "id,url,version,title,name,status,meta,extension"],
 				])
 			).resources,
 		staleTime: 60_000,
 	});
-}
-
-/** The authors and statuses the filters offer, from forms and packages alike. */
-export function useFormFilterOptions() {
-	const client = useAidboxClient();
-	const planDefinitions = usePlanDefinitions();
-	const questionnaires = useQuery({
-		queryKey: ["questionnaires", "sdc-forms", "filter-options"],
-		queryFn: async () =>
-			(
-				await searchResources<FormQuestionnaire>(
-					client,
-					"Questionnaire",
-					[
-						["_count", "1000"],
-						["_elements", "publisher,status"],
-					],
-					undefined,
-					1000,
-				)
-			).resources,
-		staleTime: 5 * 60_000,
-		refetchOnWindowFocus: false,
-	});
-	const forms: Form[] = [
-		...(questionnaires.data ?? []),
-		...(planDefinitions.data ?? []),
-	];
-	const distinct = (values: Array<string | undefined>) =>
-		[
-			...new Set(values.filter((value): value is string => Boolean(value))),
-		].sort((left, right) => left.localeCompare(right));
-	return {
-		authorOptions: distinct(forms.map((form) => form.publisher)),
-		statusOptions: distinct(forms.map((form) => form.status)),
-	};
 }
 
 export function usePinnedFormIds() {

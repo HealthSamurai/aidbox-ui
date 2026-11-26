@@ -667,27 +667,6 @@ function formsColumns({
 			},
 		},
 		{
-			id: "author",
-			header: "Author",
-			minSize: 80,
-			// A long publisher would otherwise eat the room the name needs.
-			maxSize: 200,
-			cell: (row) => {
-				const form = rowForm(row);
-				// Forms without a publisher show their machine name, as Formbox does.
-				const author = form ? (form.publisher ?? form.name ?? "") : "";
-				return (
-					<span
-						className="block truncate"
-						title={author}
-						data-test-id="forms-table__author-text"
-					>
-						{author}
-					</span>
-				);
-			},
-		},
-		{
 			id: "actions",
 			header: "Actions",
 			fixedSize: 160,
