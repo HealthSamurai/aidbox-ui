@@ -1,4 +1,5 @@
 import { type AidboxClientR5, useAidboxClient } from "@aidbox-ui/AidboxClient";
+import { ConfirmDialog } from "@aidbox-ui/components/confirm-dialog";
 import type {
 	OperationOutcomeIssue,
 	Questionnaire,
@@ -428,6 +429,7 @@ export function ImportFormDialog({
 	const [diagnostics, setDiagnostics] = useState<OperationOutcomeIssue[]>([]);
 	const [validating, setValidating] = useState(false);
 	const [duplicate, setDuplicate] = useState(false);
+	const [confirmOverwriteOpen, setConfirmOverwriteOpen] = useState(false);
 	const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
 	const [aiConfigured, setAiConfigured] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -763,19 +765,18 @@ export function ImportFormDialog({
 		}
 
 		if (duplicate) {
-			const ok = window.confirm(
-				"This will overwrite the existing questionnaire. Continue?",
-			);
-
-			if (!ok) {
-				return;
-			}
+			setConfirmOverwriteOpen(true);
+			return;
 		}
 
+		runImport(parsedQuestionnaire);
+	};
+
+	const runImport = (questionnaire: Questionnaire) => {
 		importMutation.mutate(
 			{
 				openEhrSource: openEhrSource ?? undefined,
-				questionnaire: parsedQuestionnaire,
+				questionnaire,
 			},
 			{
 				onSuccess: (saved) => {
@@ -951,6 +952,17 @@ export function ImportFormDialog({
 					if (!nextOpen) {
 						setAiConfigured(hasConfiguredAiProvider());
 					}
+				}}
+			/>
+			<ConfirmDialog
+				open={confirmOverwriteOpen}
+				onOpenChange={setConfirmOverwriteOpen}
+				title="Overwrite questionnaire"
+				description="A questionnaire with this URL and version already exists. Importing will overwrite it."
+				confirmLabel="Overwrite"
+				danger
+				onConfirm={() => {
+					if (parsedQuestionnaire) runImport(parsedQuestionnaire);
 				}}
 			/>
 		</>
