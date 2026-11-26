@@ -3,7 +3,6 @@
 // Any manual changes made to this file may be overwritten.
 
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
-
 import type { Element } from "../hl7-fhir-r5-core/Element";
 
 export type { DataType } from "../hl7-fhir-r5-core/DataType";

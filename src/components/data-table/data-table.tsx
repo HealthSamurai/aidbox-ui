@@ -3,7 +3,7 @@
 import * as HSComp from "@health-samurai/react-components";
 import React from "react";
 import { useLocalStorage } from "../../hooks";
-import type { ColumnDef, DataTableProps, SortState } from "./types";
+import type { ColumnDef, DataTableProps, RowProps, SortState } from "./types";
 
 const DEFAULT_MIN_SIZE = 60;
 const DEFAULT_MAX_SIZE = 1000;
@@ -24,6 +24,67 @@ function sortedColumn(
 	return undefined;
 }
 
+/** A column of controls keeps its exact width; a growing one takes the rest. */
+function columnStyle<T>(column: ColumnDef<T>): React.CSSProperties | undefined {
+	if (column.fixedSize != null)
+		return { width: column.fixedSize, minWidth: column.fixedSize };
+	if (column.grow) return { width: "100%" };
+	return undefined;
+}
+
+/** One row of `data`, with what both tables need to know before drawing it. */
+type BodyRow<T> = {
+	row: T;
+	index: number;
+	id: string;
+	/** Set when the row is drawn as a single cell over every column. */
+	fullWidth: React.ReactNode | undefined;
+	/** Position among ordinary rows, so zebra stripes skip full-width rows. */
+	stripe: number;
+};
+
+function toBodyRows<T>(
+	data: T[],
+	rowKey: (row: T, index: number) => string,
+	fullWidthRow: ((row: T) => React.ReactNode) | undefined,
+): BodyRow<T>[] {
+	let stripe = 0;
+	return data.map((row, index) => {
+		const id = rowKey(row, index);
+		const content = fullWidthRow?.(row);
+		if (content != null && content !== false) {
+			return { row, index, id, fullWidth: content, stripe: 0 };
+		}
+		return { row, index, id, fullWidth: undefined, stripe: stripe++ };
+	});
+}
+
+/**
+ * A spacer, a loading or error line, a group heading: one cell over every
+ * column. It is not a record, so it takes no clicks, selection or hover.
+ */
+function FullWidthRow({
+	zebra,
+	colSpan,
+	rowProps,
+	children,
+}: {
+	zebra: boolean;
+	colSpan: number;
+	rowProps: RowProps | undefined;
+	children: React.ReactNode;
+}) {
+	return (
+		<HSComp.TableRow
+			zebra={zebra}
+			{...rowProps}
+			className={HSComp.cn("hover:bg-transparent", rowProps?.className)}
+		>
+			<HSComp.TableCell colSpan={colSpan}>{children}</HSComp.TableCell>
+		</HSComp.TableRow>
+	);
+}
+
 function ColumnHead<T>({
 	column,
 	sort,
@@ -41,8 +102,12 @@ function ColumnHead<T>({
 }) {
 	const head = (
 		<HSComp.TableHead
-			className={resizeHandle ? "relative" : column.width}
-			style={column.grow ? { width: "100%" } : undefined}
+			{...column.headerProps}
+			className={HSComp.cn(
+				resizeHandle ? "relative" : column.width,
+				column.headerClassName,
+			)}
+			style={columnStyle(column)}
 			sortable={column.sortable}
 			sorted={sortedColumn(sort, column.id)}
 			reverseIcon={column.reverseIcon}
@@ -116,15 +181,15 @@ function ResizeHandle({
 }
 
 function useSelectionHelpers<T>(
-	data: T[],
-	rowKey: (row: T, index: number) => string,
+	rows: BodyRow<T>[],
 	selectable: boolean | undefined,
 	selectedIds: Set<string> | undefined,
 	onSelectionChange:
 		| React.Dispatch<React.SetStateAction<Set<string>>>
 		| undefined,
+	keepOtherPages: boolean,
 ) {
-	const allIds = data.map(rowKey);
+	const allIds = rows.filter((r) => r.fullWidth === undefined).map((r) => r.id);
 	const allSelected =
 		selectable &&
 		!!selectedIds &&
@@ -136,13 +201,25 @@ function useSelectionHelpers<T>(
 		!allSelected &&
 		allIds.some((id) => selectedIds.has(id));
 
+	/**
+	 * Select-all replaces the selection with the rows of this page, or clears
+	 * it. With `keepOtherPages` it only adds or removes the ids of this page and
+	 * leaves a selection made on another page alone.
+	 */
 	const toggleAll = () => {
 		if (!onSelectionChange) return;
-		if (allSelected) {
-			onSelectionChange(new Set());
-		} else {
-			onSelectionChange(new Set(allIds));
+		if (!keepOtherPages) {
+			onSelectionChange(allSelected ? new Set() : new Set(allIds));
+			return;
 		}
+		onSelectionChange((prev) => {
+			const next = new Set(prev);
+			for (const id of allIds) {
+				if (allSelected) next.delete(id);
+				else next.add(id);
+			}
+			return next;
+		});
 	};
 
 	const toggleOne = (id: string) => {
@@ -188,22 +265,33 @@ function SimpleDataTable<T>({
 	onSelectionChange,
 	sort,
 	onSortToggle,
+	tableId,
 	zebra = true,
 	noRowHover,
 	onRowClick,
+	rowProps,
+	fullWidthRow,
+	keepSelectionAcrossPages = false,
 }: DataTableProps<T>) {
+	const bodyRows = toBodyRows(data, rowKey, fullWidthRow);
 	const { allSelected, someSelected, toggleAll, toggleOne } =
 		useSelectionHelpers(
-			data,
-			rowKey,
+			bodyRows,
 			selectable,
 			selectedIds,
 			onSelectionChange,
+			keepSelectionAcrossPages,
 		);
+	const fullWidthColSpan = columns.length + (selectable ? 1 : 0);
 
 	return (
 		<div className="contents [&>div[data-slot=table-container]]:overflow-visible [&>div[data-slot=table-container]]:h-auto">
-			<HSComp.Table zebra={zebra} stickyHeader className="typo-code">
+			<HSComp.Table
+				zebra={zebra}
+				stickyHeader
+				className="typo-code"
+				data-test-id={tableId}
+			>
 				<HSComp.TableHeader>
 					<HSComp.TableRow>
 						{selectable && (
@@ -216,6 +304,9 @@ function SimpleDataTable<T>({
 									}
 									onCheckedChange={toggleAll}
 									aria-label="Select all"
+									data-test-id={
+										tableId ? `${tableId}__select-all-checkbox` : undefined
+									}
 								/>
 							</HSComp.TableHead>
 						)}
@@ -231,17 +322,35 @@ function SimpleDataTable<T>({
 				</HSComp.TableHeader>
 				<HSComp.TableBody
 					className={noRowHover ? "[&_tr]:hover:bg-transparent" : undefined}
+					data-test-id={tableId ? `${tableId}__body` : undefined}
 				>
-					{data.map((row, index) => {
-						const id = rowKey(row, index);
+					{bodyRows.map(({ row, index, id, fullWidth, stripe }) => {
+						const props = rowProps?.(row, index);
+						if (fullWidth !== undefined) {
+							return (
+								<FullWidthRow
+									key={id || index}
+									zebra={zebra}
+									colSpan={fullWidthColSpan}
+									rowProps={props}
+								>
+									{fullWidth}
+								</FullWidthRow>
+							);
+						}
 						const isSelected = selectedIds?.has(id) ?? false;
+						const { className: rowClassName, ...rowAttrs } = props ?? {};
 						return (
 							<HSComp.TableRow
 								key={id || index}
 								zebra={zebra}
-								index={index}
+								index={stripe}
 								selected={isSelected}
-								className={onRowClick ? "cursor-pointer" : undefined}
+								{...rowAttrs}
+								className={HSComp.cn(
+									onRowClick ? "cursor-pointer" : undefined,
+									rowClassName,
+								)}
 								onClick={
 									onRowClick
 										? (e) => {
@@ -259,13 +368,18 @@ function SimpleDataTable<T>({
 											checked={isSelected}
 											onCheckedChange={() => toggleOne(id)}
 											aria-label={`Select ${id}`}
+											data-test-id={
+												tableId ? `${tableId}__select-checkbox` : undefined
+											}
 										/>
 									</HSComp.TableCell>
 								)}
 								{columns.map((column) => (
 									<HSComp.TableCell
 										key={column.id}
+										{...column.cellProps?.(row)}
 										className={column.className ?? column.width}
+										style={columnStyle(column)}
 									>
 										{column.cell(row)}
 									</HSComp.TableCell>
@@ -293,14 +407,18 @@ function ResizableDataTable<T>({
 	noRowHover,
 	renderExpandedRow,
 	onRowClick,
+	rowProps,
+	fullWidthRow,
+	keepSelectionAcrossPages = false,
 }: DataTableProps<T>) {
+	const bodyRows = toBodyRows(data, rowKey, fullWidthRow);
 	const { allSelected, someSelected, toggleAll, toggleOne } =
 		useSelectionHelpers(
-			data,
-			rowKey,
+			bodyRows,
 			selectable,
 			selectedIds,
 			onSelectionChange,
+			keepSelectionAcrossPages,
 		);
 
 	const containerRef = React.useRef<HTMLDivElement>(null);
@@ -356,7 +474,9 @@ function ResizableDataTable<T>({
 	});
 
 	const wrapperStyle = (column: ColumnDef<T>): React.CSSProperties => {
-		const fixed = persistedSizing[column.id];
+		// A column taken out of resizing ignores a width saved before that.
+		const fixed =
+			column.resizable === false ? undefined : persistedSizing[column.id];
 		if (fixed != null) {
 			return { width: fixed, minWidth: fixed, maxWidth: fixed };
 		}
@@ -406,6 +526,7 @@ function ResizableDataTable<T>({
 				zebra={zebra}
 				stickyHeader
 				className="typo-code"
+				data-test-id={tableId}
 				style={{ tableLayout: "auto", width: "100%" }}
 			>
 				<HSComp.TableHeader>
@@ -423,6 +544,9 @@ function ResizableDataTable<T>({
 									}
 									onCheckedChange={toggleAll}
 									aria-label="Select all"
+									data-test-id={
+										tableId ? `${tableId}__select-all-checkbox` : undefined
+									}
 								/>
 							</HSComp.TableHead>
 						)}
@@ -433,13 +557,18 @@ function ResizableDataTable<T>({
 								sort={sort}
 								onSortToggle={onSortToggle}
 								colId={column.id}
-								wrapperStyle={wrapperStyle(column)}
+								wrapperStyle={
+									column.fixedSize == null ? wrapperStyle(column) : undefined
+								}
 								resizeHandle={
-									<ResizeHandle
-										columnId={column.id}
-										isResizing={resizingId === column.id}
-										onPointerDown={startResize(column)}
-									/>
+									column.resizable === false ||
+									column.fixedSize != null ? undefined : (
+										<ResizeHandle
+											columnId={column.id}
+											isResizing={resizingId === column.id}
+											onPointerDown={startResize(column)}
+										/>
+									)
 								}
 							/>
 						))}
@@ -450,20 +579,36 @@ function ResizableDataTable<T>({
 				</HSComp.TableHeader>
 				<HSComp.TableBody
 					className={noRowHover ? "[&_tr]:hover:bg-transparent" : undefined}
+					data-test-id={tableId ? `${tableId}__body` : undefined}
 				>
-					{data.map((row, index) => {
-						const id = rowKey(row, index);
+					{bodyRows.map(({ row, index, id, fullWidth, stripe }) => {
+						const props = rowProps?.(row, index);
+						if (fullWidth !== undefined) {
+							return (
+								<FullWidthRow
+									key={id || index}
+									zebra={zebra}
+									colSpan={expandColSpan}
+									rowProps={props}
+								>
+									{fullWidth}
+								</FullWidthRow>
+							);
+						}
 						const isSelected = selectedIds?.has(id) ?? false;
 						const isExpanded = expandable && expandedKeys.has(id);
+						const { className: rowClassName, ...rowAttrs } = props ?? {};
 						return (
 							<React.Fragment key={id || index}>
 								<HSComp.TableRow
 									zebra={zebra}
-									index={index}
+									index={stripe}
 									selected={isSelected}
-									className={
-										expandable || onRowClick ? "cursor-pointer" : undefined
-									}
+									{...rowAttrs}
+									className={HSComp.cn(
+										expandable || onRowClick ? "cursor-pointer" : undefined,
+										rowClassName,
+									)}
 									onClick={
 										expandable || onRowClick
 											? (e) => {
@@ -485,18 +630,26 @@ function ResizableDataTable<T>({
 												checked={isSelected}
 												onCheckedChange={() => toggleOne(id)}
 												aria-label={`Select ${id}`}
+												data-test-id={
+													tableId ? `${tableId}__select-checkbox` : undefined
+												}
 											/>
 										</HSComp.TableCell>
 									)}
 									{columns.map((column) => (
 										<HSComp.TableCell
 											key={column.id}
+											{...column.cellProps?.(row)}
 											className={column.className}
-											style={column.grow ? { width: "100%" } : undefined}
+											style={columnStyle(column)}
 										>
-											<div className="truncate" style={wrapperStyle(column)}>
-												{column.cell(row)}
-											</div>
+											{column.fixedSize != null ? (
+												column.cell(row)
+											) : (
+												<div className="truncate" style={wrapperStyle(column)}>
+													{column.cell(row)}
+												</div>
+											)}
 										</HSComp.TableCell>
 									))}
 									{!hasGrow && <HSComp.TableCell aria-hidden />}

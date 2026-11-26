@@ -4,7 +4,6 @@
 
 import type { ContactPoint } from "../hl7-fhir-r5-core/ContactPoint";
 import type { DataType } from "../hl7-fhir-r5-core/DataType";
-
 import type { Element } from "../hl7-fhir-r5-core/Element";
 
 export type { ContactPoint } from "../hl7-fhir-r5-core/ContactPoint";

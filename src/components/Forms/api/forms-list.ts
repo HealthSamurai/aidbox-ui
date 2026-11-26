@@ -1,0 +1,352 @@
+import { useAidboxClient } from "@aidbox-ui/AidboxClient";
+import type {
+	PlanDefinition,
+	PlanDefinitionAction,
+	Questionnaire,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core";
+import { useLocalStorage } from "@aidbox-ui/hooks/index";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import type { Form } from "./forms";
+import { searchResources, usePlanDefinitions } from "./plan-definitions";
+
+/** `PlanDefinition.type` of an SDC package of forms. */
+const PLAN_DEFINITION_TYPE =
+	"http://health-samurai.io/fhir/sdc/CodeSystem/plan-definition-type|plan-definition";
+const ASSEMBLE_EXPECTATION_URL =
+	"http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-assemble-expectation";
+const TENANT_ORGANIZATION_URL = "https://aidbox.app/tenant-organization-id";
+const TENANT_RESOURCE_MODE_URL = "https://aidbox.app/tenant-resource-mode";
+/**
+ * Formbox's key: Aidbox UI is served from the same origin, so a form pinned in
+ * one is pinned in the other.
+ */
+const PINNED_FORMS_STORAGE_KEY = "formbox:pinned-questionnaires";
+/** The box caps a search page at this many entries. */
+const MAX_PAGE_SIZE = 100;
+
+/**
+ * A `meta.extension` entry. Polymorphic values arrive in FHIR format
+ * (`valueReference`) from the FHIR API and in Aidbox format (`value.Reference`)
+ * from the native one, so both shapes are read.
+ */
+type MetaExtension = {
+	url?: string;
+	value?: { Reference?: { id?: string; reference?: string }; string?: string };
+	valueReference?: { id?: string; reference?: string };
+	valueString?: string;
+};
+
+/**
+ * The extensions a form carries. The generated R4 types leave `extension` out,
+ * so they are read through this view of the resource.
+ */
+type FormExtensions = {
+	extension?: Array<{ url?: string; valueCode?: string }>;
+	meta?: { extension?: MetaExtension[] };
+};
+
+export type FormQuestionnaire = Questionnaire;
+
+/** A package: a PlanDefinition whose actions are the forms in it. */
+export type FormPlanDefinition = PlanDefinition;
+
+export type { Form };
+
+const FORM_KIND_LABELS = {
+	"plan-definition": "Package",
+	component: "Component",
+	form: "Form",
+	"form-component": "Form & Component",
+} as const;
+
+export type FormKind = keyof typeof FORM_KIND_LABELS;
+
+export const FORM_KIND_OPTIONS = Object.entries(FORM_KIND_LABELS).map(
+	([value, label]) => ({ label, value: value as FormKind }),
+);
+
+/** The publication statuses a form is created and retired with; `unknown` is left out. */
+export const FORM_STATUS_OPTIONS = [
+	{ value: "draft", label: "Draft" },
+	{ value: "active", label: "Active" },
+	{ value: "retired", label: "Retired" },
+];
+
+export function isFormKind(value: string): value is FormKind {
+	// `in` would walk the prototype chain and let `?kind=constructor` through.
+	return Object.hasOwn(FORM_KIND_LABELS, value);
+}
+
+export type UpdatedSort = "asc" | "desc";
+
+export type FormFilters = {
+	kind?: FormKind;
+	q?: string;
+	status?: string;
+	updatedSort?: UpdatedSort;
+};
+
+export function getFormLabel(form: Pick<Form, "id" | "name" | "title">) {
+	return form.title ?? form.name ?? form.id ?? "Untitled form";
+}
+
+/** `Questionnaire/<id>` or `PlanDefinition/<id>`: a row's key and selection id. */
+export function getFormKey(form: Form) {
+	return `${form.resourceType}/${form.id}`;
+}
+
+/**
+ * Pins keep Formbox's format: a bare id for a Questionnaire, a reference for a
+ * PlanDefinition.
+ */
+export function getFormPinId(form: Form) {
+	return form.resourceType === "PlanDefinition"
+		? `PlanDefinition/${form.id}`
+		: (form.id ?? "");
+}
+
+export function getFormKind(form: Form): FormKind {
+	if (form.resourceType === "PlanDefinition") return "plan-definition";
+	const expectation = (form as Form & FormExtensions).extension?.find(
+		(extension) => extension.url === ASSEMBLE_EXPECTATION_URL,
+	)?.valueCode;
+	if (expectation === "assemble-child" || expectation === "independent-child") {
+		return "component";
+	}
+	if (
+		expectation === "assemble-root-or-child" ||
+		expectation === "independent-root-or-child"
+	) {
+		return "form-component";
+	}
+	return "form";
+}
+
+export function getFormKindLabel(form: Form) {
+	return FORM_KIND_LABELS[getFormKind(form)];
+}
+
+function findMetaExtension(form: Form, url: string) {
+	return (form as Form & FormExtensions).meta?.extension?.find(
+		(extension) => extension.url === url,
+	);
+}
+
+/** Organization the form belongs to, `null` for a root-level form. */
+export function getFormOrganizationId(form: Form): string | null {
+	const extension = findMetaExtension(form, TENANT_ORGANIZATION_URL);
+	const reference = extension?.value?.Reference ?? extension?.valueReference;
+	return reference?.id ?? reference?.reference?.split("/").pop() ?? null;
+}
+
+/** Shared with the owner's child organizations, or with all of them. */
+export function getFormShareMode(
+	form: Form,
+): "shared" | "system-shared" | null {
+	const extension = findMetaExtension(form, TENANT_RESOURCE_MODE_URL);
+	const mode = extension?.value?.string ?? extension?.valueString;
+	return mode === "shared" || mode === "system-shared" ? mode : null;
+}
+
+/** The Questionnaire a package action points at, by canonical or reference. */
+export function findActionQuestionnaire(
+	action: PlanDefinitionAction,
+	questionnaires: FormQuestionnaire[],
+) {
+	const [url, version] = (action.definitionCanonical ?? "").split("|");
+	return questionnaires.find(
+		(questionnaire) =>
+			(questionnaire.url === url ||
+				`Questionnaire/${questionnaire.id}` === url) &&
+			(!version || questionnaire.version === version),
+	);
+}
+
+function buildFormsQuery(
+	filters: FormFilters,
+	pageSize: number,
+	excludedIds: string[] = [],
+) {
+	const query: Array<[string, string]> = [
+		["_count", String(pageSize)],
+		["_sort", filters.updatedSort === "asc" ? "_lastUpdated" : "-_lastUpdated"],
+	];
+	// The kind lives in the assemble-expectation extension; the box searches it
+	// as `assemble-kind`, so filtering, counting and paging stay server-side.
+	if (filters.kind) query.push(["assemble-kind", filters.kind]);
+	if (excludedIds.length > 0) query.push(["_id:not", excludedIds.join(",")]);
+	if (filters.q) query.push(["_ilike", filters.q]);
+	if (filters.status) query.push(["status", filters.status]);
+	return query;
+}
+
+/** Newest (or oldest) first, then by key, so equal dates keep a stable order. */
+function compareByUpdated(direction: UpdatedSort) {
+	const sign = direction === "asc" ? 1 : -1;
+	return (left: Form, right: Form) =>
+		sign *
+			(left.meta?.lastUpdated ?? "").localeCompare(
+				right.meta?.lastUpdated ?? "",
+			) || getFormKey(left).localeCompare(getFormKey(right));
+}
+
+/**
+ * One page of forms: Questionnaires and packages merged into one list, sorted
+ * by update date. Both are searched with the same filters, and the page is cut
+ * from the merged list, so packages do not distort the paging. Pinned forms are
+ * left out: they are shown above the page.
+ */
+export function useForms(
+	filters: FormFilters,
+	page: number,
+	pageSize: number,
+	pinnedIds: string[],
+) {
+	const client = useAidboxClient();
+	const planDefinitions = usePlanDefinitions();
+	const wantsPackages = !filters.kind || filters.kind === "plan-definition";
+	const packageIds = new Set(
+		(wantsPackages ? (planDefinitions.data ?? []) : [])
+			.filter((form) => !pinnedIds.includes(getFormPinId(form)))
+			.map((form) => form.id),
+	);
+	const query = useQuery({
+		// The packages listed are the ones in the PlanDefinition list, so the page
+		// refetches once that list changes (a package saved, copied or deleted).
+		queryKey: [
+			"questionnaires",
+			"sdc-forms",
+			"page",
+			filters,
+			page,
+			pageSize,
+			pinnedIds,
+			[...packageIds],
+		],
+		enabled: planDefinitions.isSuccess,
+		queryFn: async () => {
+			const end = page * pageSize;
+			const [questionnaires, packages] = await Promise.all([
+				filters.kind === "plan-definition"
+					? { resources: [], total: 0 }
+					: searchResources<FormQuestionnaire>(
+							client,
+							"Questionnaire",
+							buildFormsQuery(
+								filters,
+								Math.min(end, MAX_PAGE_SIZE),
+								pinnedIds.filter((id) => !id.startsWith("PlanDefinition/")),
+							),
+							undefined,
+							end,
+						),
+				packageIds.size > 0
+					? searchResources<FormPlanDefinition>(client, "PlanDefinition", [
+							["type", PLAN_DEFINITION_TYPE],
+							...buildFormsQuery(
+								{ ...filters, kind: undefined },
+								MAX_PAGE_SIZE,
+							),
+						])
+					: { resources: [], total: 0 },
+			]);
+			const matchingPackages = packages.resources.filter((form) =>
+				packageIds.has(form.id),
+			);
+			const forms: Form[] = [...questionnaires.resources, ...matchingPackages]
+				.sort(compareByUpdated(filters.updatedSort ?? "desc"))
+				.slice((page - 1) * pageSize, end);
+			return {
+				forms,
+				total: questionnaires.total + matchingPackages.length,
+			};
+		},
+		placeholderData: (previous) => previous,
+	});
+	return {
+		data: query.data,
+		isLoading: planDefinitions.isLoading || query.isLoading,
+		isError: planDefinitions.isError || query.isError,
+	};
+}
+
+/** Every Questionnaire, enough of it to fill the rows of an expanded package. */
+export function useQuestionnaireCatalog(enabled: boolean) {
+	const client = useAidboxClient();
+	return useQuery({
+		queryKey: ["questionnaires", "sdc-forms", "questionnaire-catalog"],
+		enabled,
+		queryFn: async () =>
+			(
+				await searchResources<FormQuestionnaire>(client, "Questionnaire", [
+					["_elements", "id,url,version,title,name,status,meta,extension"],
+				])
+			).resources,
+		staleTime: 60_000,
+	});
+}
+
+export function usePinnedFormIds() {
+	const [pinnedIds, setPinnedIds] = useLocalStorage<string[]>({
+		key: PINNED_FORMS_STORAGE_KEY,
+		defaultValue: [],
+		getInitialValueInEffect: false,
+	});
+	const togglePin = useCallback(
+		(id: string) =>
+			setPinnedIds((previous) =>
+				previous.includes(id)
+					? previous.filter((value) => value !== id)
+					: [...previous, id],
+			),
+		[setPinnedIds],
+	);
+	const removePin = useCallback(
+		(id: string) =>
+			setPinnedIds((previous) => previous.filter((value) => value !== id)),
+		[setPinnedIds],
+	);
+	return { pinnedIds, togglePin, removePin };
+}
+
+/** The pinned forms, in the order they were pinned. */
+export function usePinnedForms(pinnedIds: string[]) {
+	const client = useAidboxClient();
+	return useQuery({
+		queryKey: ["questionnaires", "sdc-forms", "pinned", pinnedIds],
+		enabled: pinnedIds.length > 0,
+		queryFn: async () => {
+			const packageIds = pinnedIds
+				.filter((id) => id.startsWith("PlanDefinition/"))
+				.map((id) => id.slice("PlanDefinition/".length));
+			const questionnaireIds = pinnedIds.filter(
+				(id) => !id.startsWith("PlanDefinition/"),
+			);
+			const [questionnaires, packages] = await Promise.all([
+				questionnaireIds.length > 0
+					? searchResources<FormQuestionnaire>(client, "Questionnaire", [
+							["_id", questionnaireIds.join(",")],
+						])
+					: { resources: [], total: 0 },
+				packageIds.length > 0
+					? searchResources<FormPlanDefinition>(client, "PlanDefinition", [
+							["_id", packageIds.join(",")],
+							["type", PLAN_DEFINITION_TYPE],
+						])
+					: { resources: [], total: 0 },
+			]);
+			const byPinId = new Map<string, Form>(
+				[...questionnaires.resources, ...packages.resources].map((form) => [
+					getFormPinId(form),
+					form,
+				]),
+			);
+			return pinnedIds.flatMap((id) => {
+				const form = byPinId.get(id);
+				return form ? [form] : [];
+			});
+		},
+		placeholderData: (previous) => previous,
+	});
+}

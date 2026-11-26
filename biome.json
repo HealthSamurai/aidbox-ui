@@ -17,6 +17,7 @@
 			"tsconfig.node.json",
 			"vite.config.ts",
 			"!src/**/routeTree.gen.ts",
+			"!src/components/SDCConfig/customizable-messages-schema.json",
 			"scripts/**"
 		],
 		"ignoreUnknown": false
@@ -36,6 +37,14 @@
 			"a11y": {
 				"useKeyWithClickEvents": "warn",
 				"noStaticElementInteractions": "warn"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": {
+					"level": "error",
+					"options": {
+						"hooks": [{ "name": "useEffectEvent", "stableResult": true }]
+					}
+				}
 			},
 			"style": {
 				"noNonNullAssertion": "error"

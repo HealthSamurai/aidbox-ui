@@ -17,7 +17,13 @@ const COUNT = 20;
 
 const NO_CODES: ValueSetExpansion = { codes: [], complete: false };
 
-export function useExpandValueSet(): ExpandValueSet {
+/**
+ * `endpoint` is the `$expand` operation to call: SDC screens pass
+ * `/sdc/ValueSet/$expand`, which goes to the terminology server SDCConfig names.
+ */
+export function useExpandValueSet(
+	endpoint = "/fhir/ValueSet/$expand",
+): ExpandValueSet {
 	const client = useAidboxClient();
 	const clientRef = useRef<AidboxClientR5>(client);
 	clientRef.current = client;
@@ -53,7 +59,7 @@ export function useExpandValueSet(): ExpandValueSet {
 			const result = await clientRef.current.request<ValueSetExpansionResource>(
 				{
 					method: "GET",
-					url: "/fhir/ValueSet/$expand",
+					url: endpoint,
 					params,
 				},
 			);
@@ -68,7 +74,7 @@ export function useExpandValueSet(): ExpandValueSet {
 					: codes.length < COUNT;
 			return { codes, complete };
 		},
-		[],
+		[endpoint],
 	);
 
 	return useCallback(

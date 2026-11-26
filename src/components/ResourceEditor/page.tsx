@@ -1,3 +1,12 @@
+import {
+	ClassicUiTab,
+	classicUiLink,
+	isLiquidTemplateLibrary,
+} from "@aidbox-ui/components/Forms/classic-ui-tab";
+import type {
+	Questionnaire,
+	QuestionnaireResponse,
+} from "@aidbox-ui/fhir-types/hl7-fhir-r4-core/index";
 import type {
 	OperationOutcome,
 	OperationOutcomeIssue,
@@ -8,7 +17,7 @@ import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { CodeEditorView } from "@health-samurai/react-components";
 import * as HSComp from "@health-samurai/react-components";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Router from "@tanstack/react-router";
 import * as YAML from "js-yaml";
 import React from "react";
@@ -56,6 +65,31 @@ import { EditTabContent } from "./edit-tab-content";
 import { type EditorMode, pageId, type ResourceEditorTab } from "./types";
 import { VersionsTab } from "./versions-tab";
 
+// The SDC builders and previews load with their tab, so the editor of every
+// other resource type does not carry them.
+const QuestionnairePreview = React.lazy(() =>
+	import("@aidbox-ui/components/Forms/questionnaire-preview").then(
+		(module) => ({
+			default: module.QuestionnairePreview,
+		}),
+	),
+);
+const QuestionnaireResponsePreview = React.lazy(() =>
+	import(
+		"@aidbox-ui/components/Forms/questionnaire-preview/response-preview"
+	).then((module) => ({ default: module.QuestionnaireResponsePreview })),
+);
+const SDCConfigBuilderContent = React.lazy(() =>
+	import("@aidbox-ui/components/SDCConfig/builder-content").then((module) => ({
+		default: module.SDCConfigBuilderContent,
+	})),
+);
+const VoiceAgentBuilderContent = React.lazy(() =>
+	import("@aidbox-ui/components/SDCVoiceAgent/agent-editor-page").then(
+		(module) => ({ default: module.VoiceAgentBuilderContent }),
+	),
+);
+
 type EditorTabItem = {
 	value: string;
 	trigger: React.ReactNode;
@@ -80,6 +114,138 @@ const materializationBuilderTab = (
 							className="grow min-h-0 flex flex-col"
 						>
 							<MaterializationBuilderContent {...props} />
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/**
+ * The row of editor tabs, plus a tab-looking link into the classic SDC UI for
+ * the resources edited there. Hidden when there is nothing to switch to.
+ */
+const EditorTabBar = ({
+	tabs,
+	resourceType,
+	id,
+	isLiquidTemplate,
+}: {
+	tabs: EditorTabItem[];
+	resourceType: string;
+	id: string | undefined;
+	isLiquidTemplate: boolean;
+}) => {
+	const classicUi = classicUiLink(resourceType, id, isLiquidTemplate);
+	if (tabs.length < 2 && !classicUi) return null;
+	return (
+		<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
+			<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
+			{classicUi && <ClassicUiTab {...classicUi} />}
+		</div>
+	);
+};
+
+/** Empty unless this is an SDCConfig, so the caller needs no branch. */
+const sdcConfigBuilderTab = (
+	enabled: boolean,
+	props: React.ComponentProps<typeof SDCConfigBuilderContent>,
+): EditorTabItem[] =>
+	enabled
+		? [
+				{
+					value: "builder",
+					trigger: (
+						<HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent
+							value="builder"
+							className="grow min-h-0 flex flex-col"
+						>
+							<React.Suspense fallback={null}>
+								<SDCConfigBuilderContent {...props} />
+							</React.Suspense>
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/** The form a Questionnaire or a QuestionnaireResponse renders to. */
+const formPreview = (resourceType: string, resource: Resource) => {
+	if (resourceType === "Questionnaire")
+		return (
+			<QuestionnairePreview
+				questionnaire={resource as Questionnaire}
+				rendererSwitch
+			/>
+		);
+	if (resourceType === "QuestionnaireResponse")
+		return (
+			<QuestionnaireResponsePreview
+				questionnaireResponse={resource as QuestionnaireResponse}
+			/>
+		);
+	return undefined;
+};
+
+/** Empty without a preview, so the caller needs no branch. */
+const formPreviewTab = (preview: React.ReactNode): EditorTabItem[] =>
+	preview
+		? [
+				{
+					value: "preview",
+					trigger: (
+						<HSComp.TabsTrigger value="preview">Preview</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent value="preview" className="grow min-h-0">
+							<React.Suspense fallback={null}>{preview}</React.Suspense>
+						</HSComp.TabsContent>
+					),
+				},
+			]
+		: [];
+
+/** The voice agent saves itself; the editor refetches the resource afterwards. */
+const VoiceAgentBuilderTab = ({
+	id,
+	onDeleted,
+}: {
+	id: string | undefined;
+	onDeleted: (() => void) | undefined;
+}) => {
+	const queryClient = useQueryClient();
+	return (
+		<React.Suspense fallback={null}>
+			<VoiceAgentBuilderContent
+				agentId={id}
+				onDeleted={onDeleted}
+				onSaved={() =>
+					void queryClient.invalidateQueries({
+						queryKey: [pageId, "SDCVoiceAgent", id],
+					})
+				}
+			/>
+		</React.Suspense>
+	);
+};
+
+/** Empty unless this is an SDCVoiceAgent, so the caller needs no branch. */
+const voiceAgentBuilderTab = (
+	enabled: boolean,
+	props: React.ComponentProps<typeof VoiceAgentBuilderTab>,
+): EditorTabItem[] =>
+	enabled
+		? [
+				{
+					value: "builder",
+					trigger: (
+						<HSComp.TabsTrigger value="builder">Builder</HSComp.TabsTrigger>
+					),
+					content: (
+						<HSComp.TabsContent value="builder" className="grow min-h-0">
+							<VoiceAgentBuilderTab {...props} />
 						</HSComp.TabsContent>
 					),
 				},
@@ -470,10 +636,14 @@ export const ResourceEditorPage = ({
 	const isCodeSystem = resourceType === "CodeSystem";
 	const isConceptMap = resourceType === "ConceptMap";
 	const isMaterialization = resourceType === "AidboxMaterialization";
+	const isSDCConfig = resourceType === "SDCConfig";
+	const isSDCVoiceAgent = resourceType === "SDCVoiceAgent";
 	const { isSqlLibrary, isSQLView, builderLabel } = detectSqlLibrary(
 		initialResource,
 		isLibrary,
 	);
+	// Edited in the classic template editor, so the SQL builder has no business here.
+	const isLiquidTemplate = isLiquidTemplateLibrary(initialResource);
 
 	const tabs: {
 		value: string;
@@ -566,7 +736,7 @@ export const ResourceEditorPage = ({
 		});
 	}
 
-	if (isLibrary) {
+	if (isLibrary && !isLiquidTemplate) {
 		tabs.push({
 			value: "sqlquery",
 			trigger: (
@@ -653,6 +823,16 @@ export const ResourceEditorPage = ({
 			onDismissMaterializeError: () => setMaterializeError(null),
 		}),
 	);
+
+	tabs.push(
+		...sdcConfigBuilderTab(isSDCConfig, {
+			resource,
+			onResourceChange: handleResourceChange,
+			actions: editActions,
+			saveError,
+		}),
+	);
+	tabs.push(...voiceAgentBuilderTab(isSDCVoiceAgent, { id, onDeleted }));
 
 	if (isSearchParameter) {
 		tabs.push({
@@ -762,6 +942,8 @@ export const ResourceEditorPage = ({
 		),
 	});
 
+	tabs.push(...formPreviewTab(formPreview(resourceType, resource)));
+
 	const hasHistoryTab = !isLibrary && !isViewDefinition;
 	if (id && hasHistoryTab) {
 		tabs.push({
@@ -791,11 +973,12 @@ export const ResourceEditorPage = ({
 				onValueChange={handleOnTabSelect}
 				className="grow min-h-0"
 			>
-				{tabs.length > 1 && (
-					<div className="flex items-center bg-bg-primary px-4 border-b h-10 flex-none">
-						<HSComp.TabsList>{tabs.map((t) => t.trigger)}</HSComp.TabsList>
-					</div>
-				)}
+				<EditorTabBar
+					tabs={tabs}
+					resourceType={resourceType}
+					id={id}
+					isLiquidTemplate={isLiquidTemplate}
+				/>
 				{tabs.map((t) => t.content)}
 			</HSComp.Tabs>
 

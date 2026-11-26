@@ -4,7 +4,6 @@
 
 import type { BackboneElement } from "../hl7-fhir-r5-core/BackboneElement";
 import type { CanonicalResource } from "../hl7-fhir-r5-core/CanonicalResource";
-
 import type { Element } from "../hl7-fhir-r5-core/Element";
 
 export type { BackboneElement } from "../hl7-fhir-r5-core/BackboneElement";

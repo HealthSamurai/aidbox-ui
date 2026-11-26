@@ -15,6 +15,7 @@ import { Route as AsyncOperationsRouteImport } from './routes/async-operations'
 import { Route as AuditEventsRouteImport } from './routes/audit-events'
 import { Route as DatabaseRouteImport } from './routes/database'
 import { Route as DbConsoleRouteImport } from './routes/db-console'
+import { Route as FormsRouteImport } from './routes/forms'
 import { Route as IgRouteImport } from './routes/ig'
 import { Route as NotebooksRouteImport } from './routes/notebooks'
 import { Route as ResourceRouteImport } from './routes/resource'
@@ -27,6 +28,10 @@ import { Route as AnalyticsViewsRouteImport } from './routes/analytics.views'
 import { Route as AsyncOperationsIndexRouteImport } from './routes/async-operations.index'
 import { Route as AsyncOperationsOperationIdRouteImport } from './routes/async-operations.$operationId'
 import { Route as DatabaseIndexRouteImport } from './routes/database.index'
+import { Route as FormsIndexRouteImport } from './routes/forms.index'
+import { Route as FormsPackagesRouteImport } from './routes/forms.packages'
+import { Route as FormsResponsesRouteImport } from './routes/forms.responses'
+import { Route as FormsTemplatesRouteImport } from './routes/forms.templates'
 import { Route as IgIndexRouteImport } from './routes/ig.index'
 import { Route as IgPackageIdRouteImport } from './routes/ig.$packageId'
 import { Route as IgAddRouteImport } from './routes/ig.add'
@@ -40,6 +45,8 @@ import { Route as AnalyticsQueriesCreateRouteImport } from './routes/analytics.q
 import { Route as AnalyticsSqlviewCreateRouteImport } from './routes/analytics.sqlview.create'
 import { Route as AnalyticsViewsIndexRouteImport } from './routes/analytics.views.index'
 import { Route as AnalyticsViewsCreateRouteImport } from './routes/analytics.views.create'
+import { Route as FormsPackagesPackageIdRouteImport } from './routes/forms.packages.$packageId'
+import { Route as FormsPackagesNewRouteImport } from './routes/forms.packages.new'
 import { Route as IgPackageIdIndexRouteImport } from './routes/ig.$packageId.index'
 import { Route as NotebooksIdEditRouteImport } from './routes/notebooks.$id_.edit'
 import { Route as ResourceResourceTypeIndexRouteImport } from './routes/resource.$resourceType.index'
@@ -79,6 +86,11 @@ const DatabaseRoute = DatabaseRouteImport.update({
 const DbConsoleRoute = DbConsoleRouteImport.update({
   id: '/db-console',
   path: '/db-console',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FormsRoute = FormsRouteImport.update({
+  id: '/forms',
+  path: '/forms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IgRoute = IgRouteImport.update({
@@ -141,6 +153,26 @@ const DatabaseIndexRoute = DatabaseIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DatabaseRoute,
+} as any)
+const FormsIndexRoute = FormsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FormsRoute,
+} as any)
+const FormsPackagesRoute = FormsPackagesRouteImport.update({
+  id: '/packages',
+  path: '/packages',
+  getParentRoute: () => FormsRoute,
+} as any)
+const FormsResponsesRoute = FormsResponsesRouteImport.update({
+  id: '/responses',
+  path: '/responses',
+  getParentRoute: () => FormsRoute,
+} as any)
+const FormsTemplatesRoute = FormsTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => FormsRoute,
 } as any)
 const IgIndexRoute = IgIndexRouteImport.update({
   id: '/',
@@ -207,6 +239,16 @@ const AnalyticsViewsCreateRoute = AnalyticsViewsCreateRouteImport.update({
   path: '/create',
   getParentRoute: () => AnalyticsViewsRoute,
 } as any)
+const FormsPackagesPackageIdRoute = FormsPackagesPackageIdRouteImport.update({
+  id: '/$packageId',
+  path: '/$packageId',
+  getParentRoute: () => FormsPackagesRoute,
+} as any)
+const FormsPackagesNewRoute = FormsPackagesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => FormsPackagesRoute,
+} as any)
 const IgPackageIdIndexRoute = IgPackageIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -270,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/audit-events': typeof AuditEventsRoute
   '/database': typeof DatabaseRouteWithChildren
   '/db-console': typeof DbConsoleRoute
+  '/forms': typeof FormsRouteWithChildren
   '/ig': typeof IgRouteWithChildren
   '/notebooks': typeof NotebooksRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
@@ -279,6 +322,9 @@ export interface FileRoutesByFullPath {
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
+  '/forms/packages': typeof FormsPackagesRouteWithChildren
+  '/forms/responses': typeof FormsResponsesRoute
+  '/forms/templates': typeof FormsTemplatesRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
@@ -287,12 +333,15 @@ export interface FileRoutesByFullPath {
   '/analytics/': typeof AnalyticsIndexRoute
   '/async-operations/': typeof AsyncOperationsIndexRoute
   '/database/': typeof DatabaseIndexRoute
+  '/forms/': typeof FormsIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/sqlview/create': typeof AnalyticsSqlviewCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
+  '/forms/packages/$packageId': typeof FormsPackagesPackageIdRoute
+  '/forms/packages/new': typeof FormsPackagesNewRoute
   '/notebooks/$id/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries/': typeof AnalyticsQueriesIndexRoute
@@ -314,18 +363,24 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
+  '/forms/packages': typeof FormsPackagesRouteWithChildren
+  '/forms/responses': typeof FormsResponsesRoute
+  '/forms/templates': typeof FormsTemplatesRoute
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
   '/notebooks/new': typeof NotebooksNewRoute
   '/analytics': typeof AnalyticsIndexRoute
   '/async-operations': typeof AsyncOperationsIndexRoute
   '/database': typeof DatabaseIndexRoute
+  '/forms': typeof FormsIndexRoute
   '/ig': typeof IgIndexRoute
   '/notebooks': typeof NotebooksIndexRoute
   '/resource': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/sqlview/create': typeof AnalyticsSqlviewCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
+  '/forms/packages/$packageId': typeof FormsPackagesPackageIdRoute
+  '/forms/packages/new': typeof FormsPackagesNewRoute
   '/notebooks/$id/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries': typeof AnalyticsQueriesIndexRoute
@@ -347,6 +402,7 @@ export interface FileRoutesById {
   '/audit-events': typeof AuditEventsRoute
   '/database': typeof DatabaseRouteWithChildren
   '/db-console': typeof DbConsoleRoute
+  '/forms': typeof FormsRouteWithChildren
   '/ig': typeof IgRouteWithChildren
   '/notebooks': typeof NotebooksRouteWithChildren
   '/resource': typeof ResourceRouteWithChildren
@@ -356,6 +412,9 @@ export interface FileRoutesById {
   '/analytics/sqlview': typeof AnalyticsSqlviewRouteWithChildren
   '/analytics/views': typeof AnalyticsViewsRouteWithChildren
   '/async-operations/$operationId': typeof AsyncOperationsOperationIdRoute
+  '/forms/packages': typeof FormsPackagesRouteWithChildren
+  '/forms/responses': typeof FormsResponsesRoute
+  '/forms/templates': typeof FormsTemplatesRoute
   '/ig/$packageId': typeof IgPackageIdRouteWithChildren
   '/ig/add': typeof IgAddRoute
   '/notebooks/$id': typeof NotebooksIdRoute
@@ -364,12 +423,15 @@ export interface FileRoutesById {
   '/analytics/': typeof AnalyticsIndexRoute
   '/async-operations/': typeof AsyncOperationsIndexRoute
   '/database/': typeof DatabaseIndexRoute
+  '/forms/': typeof FormsIndexRoute
   '/ig/': typeof IgIndexRoute
   '/notebooks/': typeof NotebooksIndexRoute
   '/resource/': typeof ResourceIndexRoute
   '/analytics/queries/create': typeof AnalyticsQueriesCreateRoute
   '/analytics/sqlview/create': typeof AnalyticsSqlviewCreateRoute
   '/analytics/views/create': typeof AnalyticsViewsCreateRoute
+  '/forms/packages/$packageId': typeof FormsPackagesPackageIdRoute
+  '/forms/packages/new': typeof FormsPackagesNewRoute
   '/notebooks/$id_/edit': typeof NotebooksIdEditRoute
   '/resource/$resourceType/create': typeof ResourceResourceTypeCreateRoute
   '/analytics/queries/': typeof AnalyticsQueriesIndexRoute
@@ -392,6 +454,7 @@ export interface FileRouteTypes {
     | '/audit-events'
     | '/database'
     | '/db-console'
+    | '/forms'
     | '/ig'
     | '/notebooks'
     | '/resource'
@@ -401,6 +464,9 @@ export interface FileRouteTypes {
     | '/analytics/sqlview'
     | '/analytics/views'
     | '/async-operations/$operationId'
+    | '/forms/packages'
+    | '/forms/responses'
+    | '/forms/templates'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
@@ -409,12 +475,15 @@ export interface FileRouteTypes {
     | '/analytics/'
     | '/async-operations/'
     | '/database/'
+    | '/forms/'
     | '/ig/'
     | '/notebooks/'
     | '/resource/'
     | '/analytics/queries/create'
     | '/analytics/sqlview/create'
     | '/analytics/views/create'
+    | '/forms/packages/$packageId'
+    | '/forms/packages/new'
     | '/notebooks/$id/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries/'
@@ -436,18 +505,24 @@ export interface FileRouteTypes {
     | '/settings'
     | '/analytics/sqlview'
     | '/async-operations/$operationId'
+    | '/forms/packages'
+    | '/forms/responses'
+    | '/forms/templates'
     | '/ig/add'
     | '/notebooks/$id'
     | '/notebooks/new'
     | '/analytics'
     | '/async-operations'
     | '/database'
+    | '/forms'
     | '/ig'
     | '/notebooks'
     | '/resource'
     | '/analytics/queries/create'
     | '/analytics/sqlview/create'
     | '/analytics/views/create'
+    | '/forms/packages/$packageId'
+    | '/forms/packages/new'
     | '/notebooks/$id/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries'
@@ -468,6 +543,7 @@ export interface FileRouteTypes {
     | '/audit-events'
     | '/database'
     | '/db-console'
+    | '/forms'
     | '/ig'
     | '/notebooks'
     | '/resource'
@@ -477,6 +553,9 @@ export interface FileRouteTypes {
     | '/analytics/sqlview'
     | '/analytics/views'
     | '/async-operations/$operationId'
+    | '/forms/packages'
+    | '/forms/responses'
+    | '/forms/templates'
     | '/ig/$packageId'
     | '/ig/add'
     | '/notebooks/$id'
@@ -485,12 +564,15 @@ export interface FileRouteTypes {
     | '/analytics/'
     | '/async-operations/'
     | '/database/'
+    | '/forms/'
     | '/ig/'
     | '/notebooks/'
     | '/resource/'
     | '/analytics/queries/create'
     | '/analytics/sqlview/create'
     | '/analytics/views/create'
+    | '/forms/packages/$packageId'
+    | '/forms/packages/new'
     | '/notebooks/$id_/edit'
     | '/resource/$resourceType/create'
     | '/analytics/queries/'
@@ -512,6 +594,7 @@ export interface RootRouteChildren {
   AuditEventsRoute: typeof AuditEventsRoute
   DatabaseRoute: typeof DatabaseRouteWithChildren
   DbConsoleRoute: typeof DbConsoleRoute
+  FormsRoute: typeof FormsRouteWithChildren
   IgRoute: typeof IgRouteWithChildren
   NotebooksRoute: typeof NotebooksRouteWithChildren
   ResourceRoute: typeof ResourceRouteWithChildren
@@ -561,6 +644,13 @@ declare module '@tanstack/react-router' {
       path: '/db-console'
       fullPath: '/db-console'
       preLoaderRoute: typeof DbConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forms': {
+      id: '/forms'
+      path: '/forms'
+      fullPath: '/forms'
+      preLoaderRoute: typeof FormsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ig': {
@@ -646,6 +736,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/database/'
       preLoaderRoute: typeof DatabaseIndexRouteImport
       parentRoute: typeof DatabaseRoute
+    }
+    '/forms/': {
+      id: '/forms/'
+      path: '/'
+      fullPath: '/forms/'
+      preLoaderRoute: typeof FormsIndexRouteImport
+      parentRoute: typeof FormsRoute
+    }
+    '/forms/packages': {
+      id: '/forms/packages'
+      path: '/packages'
+      fullPath: '/forms/packages'
+      preLoaderRoute: typeof FormsPackagesRouteImport
+      parentRoute: typeof FormsRoute
+    }
+    '/forms/responses': {
+      id: '/forms/responses'
+      path: '/responses'
+      fullPath: '/forms/responses'
+      preLoaderRoute: typeof FormsResponsesRouteImport
+      parentRoute: typeof FormsRoute
+    }
+    '/forms/templates': {
+      id: '/forms/templates'
+      path: '/templates'
+      fullPath: '/forms/templates'
+      preLoaderRoute: typeof FormsTemplatesRouteImport
+      parentRoute: typeof FormsRoute
     }
     '/ig/': {
       id: '/ig/'
@@ -737,6 +855,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/analytics/views/create'
       preLoaderRoute: typeof AnalyticsViewsCreateRouteImport
       parentRoute: typeof AnalyticsViewsRoute
+    }
+    '/forms/packages/$packageId': {
+      id: '/forms/packages/$packageId'
+      path: '/$packageId'
+      fullPath: '/forms/packages/$packageId'
+      preLoaderRoute: typeof FormsPackagesPackageIdRouteImport
+      parentRoute: typeof FormsPackagesRoute
+    }
+    '/forms/packages/new': {
+      id: '/forms/packages/new'
+      path: '/new'
+      fullPath: '/forms/packages/new'
+      preLoaderRoute: typeof FormsPackagesNewRouteImport
+      parentRoute: typeof FormsPackagesRoute
     }
     '/ig/$packageId/': {
       id: '/ig/$packageId/'
@@ -901,6 +1033,36 @@ const DatabaseRouteWithChildren = DatabaseRoute._addFileChildren(
   DatabaseRouteChildren,
 )
 
+interface FormsPackagesRouteChildren {
+  FormsPackagesPackageIdRoute: typeof FormsPackagesPackageIdRoute
+  FormsPackagesNewRoute: typeof FormsPackagesNewRoute
+}
+
+const FormsPackagesRouteChildren: FormsPackagesRouteChildren = {
+  FormsPackagesPackageIdRoute: FormsPackagesPackageIdRoute,
+  FormsPackagesNewRoute: FormsPackagesNewRoute,
+}
+
+const FormsPackagesRouteWithChildren = FormsPackagesRoute._addFileChildren(
+  FormsPackagesRouteChildren,
+)
+
+interface FormsRouteChildren {
+  FormsPackagesRoute: typeof FormsPackagesRouteWithChildren
+  FormsResponsesRoute: typeof FormsResponsesRoute
+  FormsTemplatesRoute: typeof FormsTemplatesRoute
+  FormsIndexRoute: typeof FormsIndexRoute
+}
+
+const FormsRouteChildren: FormsRouteChildren = {
+  FormsPackagesRoute: FormsPackagesRouteWithChildren,
+  FormsResponsesRoute: FormsResponsesRoute,
+  FormsTemplatesRoute: FormsTemplatesRoute,
+  FormsIndexRoute: FormsIndexRoute,
+}
+
+const FormsRouteWithChildren = FormsRoute._addFileChildren(FormsRouteChildren)
+
 interface IgPackageIdRouteChildren {
   IgPackageIdIndexRoute: typeof IgPackageIdIndexRoute
   IgPackageIdResourceResourceTypeResourceIdRoute: typeof IgPackageIdResourceResourceTypeResourceIdRoute
@@ -984,6 +1146,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditEventsRoute: AuditEventsRoute,
   DatabaseRoute: DatabaseRouteWithChildren,
   DbConsoleRoute: DbConsoleRoute,
+  FormsRoute: FormsRouteWithChildren,
   IgRoute: IgRouteWithChildren,
   NotebooksRoute: NotebooksRouteWithChildren,
   ResourceRoute: ResourceRouteWithChildren,
