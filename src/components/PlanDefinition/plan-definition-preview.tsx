@@ -102,7 +102,7 @@ export function PreviewToolbar({
 						aria-label="Custom preview width"
 						title="Width in pixels or percent"
 						data-test-id="plan-definition-preview__width-input"
-						className="h-7 w-20 px-2 text-xs!"
+						className="h-6 w-20 px-2 typo-body-xs"
 						defaultValue={width}
 						onBlur={(event) => applyWidth(event.currentTarget.value)}
 						onKeyDown={(event) => {
@@ -115,7 +115,6 @@ export function PreviewToolbar({
 						type="button"
 						variant="ghost"
 						size="small"
-						className="h-7 rounded-md px-2 text-xs!"
 						aria-label="Custom preview width"
 						title="Set width in pixels or percent"
 						data-test-id="plan-definition-preview__custom-width-button"

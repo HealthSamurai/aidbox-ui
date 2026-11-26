@@ -110,8 +110,7 @@ export function ResourceSearchSelect<T>({
 					data-test-id={testId ? `${testId}__trigger` : undefined}
 					className={cn(
 						"h-9 w-full justify-between px-3 typo-body",
-						inline &&
-							"h-8 w-fit max-w-[min(24rem,100%)] gap-1.5 rounded-md px-2",
+						inline && "w-fit max-w-[min(24rem,100%)] gap-1.5 px-2",
 					)}
 				>
 					<span className="min-w-0 text-left">

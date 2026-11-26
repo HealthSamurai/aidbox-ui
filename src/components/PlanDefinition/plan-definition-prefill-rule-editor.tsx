@@ -78,16 +78,17 @@ export function PrefillRuleEditor({
 			data-prefill-id={id}
 			data-rule-path={`${path}.expression`}
 		>
-			<IconButton
-				variant="ghost"
-				aria-label={`Remove prefill ${index + 1}`}
-				title="Remove prefill"
-				className="size-8 shrink-0"
-				onClick={onRemove}
-				icon={<Trash2 className="size-4" />}
-			/>
-			<div className="flex min-h-8 min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1 text-sm text-text-primary">
-				<span className="flex h-8 shrink-0 items-center whitespace-nowrap">
+			<span className="flex h-9 w-8 shrink-0 items-center justify-center">
+				<IconButton
+					variant="ghost"
+					aria-label={`Remove prefill ${index + 1}`}
+					title="Remove prefill"
+					onClick={onRemove}
+					icon={<Trash2 className="size-4" />}
+				/>
+			</span>
+			<div className="flex min-h-9 min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1 text-sm text-text-primary">
+				<span className="flex h-9 shrink-0 items-center whitespace-nowrap">
 					Prefill
 				</span>
 				<div className="min-w-0 space-y-1.5">
@@ -127,7 +128,7 @@ export function PrefillRuleEditor({
 						message={targetError}
 					/>
 				</div>
-				<span className="flex h-8 shrink-0 items-center whitespace-nowrap">
+				<span className="flex h-9 shrink-0 items-center whitespace-nowrap">
 					with
 				</span>
 				<div

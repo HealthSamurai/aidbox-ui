@@ -15,13 +15,14 @@ import { generateId } from "@aidbox-ui/utils";
 import {
 	Button,
 	cn,
+	DatePickerInput,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	IconButton,
-	inputVariants,
+	Input,
 	Select,
 	SelectTrigger,
 	SelectValue,
@@ -51,12 +52,34 @@ import type {
 import { PlanDefinitionQuestionSelect } from "./plan-definition-question-select";
 import { conditionRulePaths } from "./plan-definition-rule-highlight";
 
-const inlineSelectClassName =
-	"h-8 w-fit min-w-0 max-w-full gap-1.5 px-2 py-0 text-sm";
-const inlineInputClassName = cn(
-	inputVariants(),
-	"h-8 w-auto min-w-16 max-w-full px-2 py-0 text-sm md:text-sm [field-sizing:content]",
-);
+const answerPlaceholders: Partial<Record<ConditionAnswer["type"], string>> = {
+	coding: "Code",
+	reference: "Resource/id",
+	integer: "0",
+	decimal: "0.0",
+	quantity: "0.0",
+	dateTime: "YYYY-MM-DDThh:mm:ss",
+	time: "hh:mm:ss",
+};
+
+const answerInputModes: Partial<
+	Record<ConditionAnswer["type"], "numeric" | "decimal">
+> = {
+	integer: "numeric",
+	decimal: "decimal",
+	quantity: "decimal",
+};
+
+/** The date picker shows dd.mm.yyyy; FHIR stores YYYY-MM-DD. */
+function isoDateToPicker(value: string) {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	return match ? `${match[3]}.${match[2]}.${match[1]}` : value;
+}
+
+function pickerDateToIso(value: string) {
+	const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value);
+	return match ? `${match[3]}-${match[2]}-${match[1]}` : value;
+}
 
 /** Edit availability using questionnaire-style rules or unrestricted FHIRPath. */
 export function PlanDefinitionConditionEditor({
@@ -111,7 +134,7 @@ export function PlanDefinitionConditionEditor({
 		<section className="space-y-3" aria-label="Enable when">
 			{mode === "rules" && rules ? (
 				<>
-					{loading && <Skeleton className="h-8" />}
+					{loading && <Skeleton className="h-9" />}
 					{loadError && (
 						<p className="text-xs text-text-secondary">
 							Could not load questions.{" "}
@@ -281,15 +304,16 @@ function ConditionGroupEditor({
 			>
 				{(combined || onRemove) && (
 					<div className="absolute top-1/2 left-0 z-10 flex -translate-y-1/2 items-center">
-						<IconButton
-							className="size-8"
-							variant="ghost"
-							aria-label="Remove condition group"
-							title="Remove condition group"
-							data-test-id="plan-definition-conditions__remove-group-button"
-							onClick={removeGroup}
-							icon={<Trash2 className="size-4" />}
-						/>
+						<span className="flex size-8 items-center justify-center">
+							<IconButton
+								variant="ghost"
+								aria-label="Remove condition group"
+								title="Remove condition group"
+								data-test-id="plan-definition-conditions__remove-group-button"
+								onClick={removeGroup}
+								icon={<Trash2 className="size-4" />}
+							/>
+						</span>
 						{combined && (
 							<Button
 								variant="ghost"
@@ -409,7 +433,7 @@ function AddConditionMenu({
 			<DropdownMenuTrigger asChild>
 				<Button
 					variant="secondary"
-					className="h-8 w-fit px-3"
+					className="w-fit"
 					data-test-id="plan-definition-editor__add-condition-button"
 				>
 					<Plus className="size-4" />
@@ -494,15 +518,16 @@ function ConditionRuleEditor({
 			data-source-action-id={rule.actionId}
 			data-source-link-id={rule.kind === "rule" ? rule.question : undefined}
 		>
-			<IconButton
-				variant="ghost"
-				className="size-8 shrink-0"
-				aria-label="Remove condition"
-				title="Remove condition"
-				onClick={onRemove}
-				icon={<Trash2 className="size-4" />}
-			/>
-			<div className="flex min-h-8 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-primary">
+			<span className="flex h-9 w-8 shrink-0 items-center justify-center">
+				<IconButton
+					variant="ghost"
+					aria-label="Remove condition"
+					title="Remove condition"
+					onClick={onRemove}
+					icon={<Trash2 className="size-4" />}
+				/>
+			</span>
+			<div className="flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-primary">
 				<span className="whitespace-nowrap">
 					When {rule.kind === "form" ? "form" : "question"}
 				</span>
@@ -558,7 +583,7 @@ function ConditionRuleEditor({
 					}}
 				>
 					<SelectTrigger
-						className={inlineSelectClassName}
+						className="w-fit max-w-full"
 						aria-label="Condition operator"
 					>
 						<SelectValue />
@@ -657,7 +682,7 @@ function ConditionValueEditor({
 				onValueChange={(value) => onChange({ ...answer, value })}
 			>
 				<SelectTrigger
-					className={inlineSelectClassName}
+					className="w-fit max-w-full"
 					aria-label="Condition answer"
 				>
 					<SelectValue placeholder="Choose an answer" />
@@ -668,36 +693,31 @@ function ConditionValueEditor({
 				</AppSelectContent>
 			</Select>
 		);
-	const inputTypes: Partial<Record<ConditionAnswer["type"], string>> = {
-		integer: "number",
-		decimal: "number",
-		quantity: "number",
-		date: "date",
-		dateTime: "datetime-local",
-		time: "time",
-	};
+	if (answer.type === "date")
+		return (
+			<DatePickerInput
+				className="w-40"
+				value={isoDateToPicker(answer.value)}
+				onChange={(value) =>
+					onChange({ ...answer, value: pickerDateToIso(value) })
+				}
+			/>
+		);
 	return (
 		<div className="flex min-w-0 flex-wrap items-center gap-2">
-			<input
+			<Input
 				aria-label="Condition answer"
-				placeholder={
-					answer.type === "coding"
-						? "Code"
-						: answer.type === "reference"
-							? "Resource/id"
-							: "Answer"
-				}
-				type={inputTypes[answer.type] ?? "text"}
-				step={answer.type === "integer" ? "1" : "any"}
-				className={inlineInputClassName}
+				className="w-fit [field-sizing:content]"
+				placeholder={answerPlaceholders[answer.type] ?? "Answer"}
+				inputMode={answerInputModes[answer.type]}
 				value={answer.value}
 				onChange={(event) => onChange({ ...answer, value: event.target.value })}
 			/>
 			{answer.type === "coding" && (
-				<input
+				<Input
 					aria-label="Code system"
+					className="w-fit [field-sizing:content]"
 					placeholder="Code system (optional)"
-					className={inlineInputClassName}
 					value={answer.system ?? ""}
 					onChange={(event) =>
 						onChange({ ...answer, system: event.target.value })

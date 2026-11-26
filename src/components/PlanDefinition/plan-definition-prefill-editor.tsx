@@ -88,7 +88,7 @@ export function PlanDefinitionPrefillEditor({
 			<div className="flex items-center">
 				<Button
 					variant="secondary"
-					className="h-8 w-fit px-3"
+					className="w-fit"
 					disabled={!ready}
 					data-test-id="plan-definition-editor__add-prefill-button"
 					onClick={() => {

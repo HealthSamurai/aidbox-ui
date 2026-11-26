@@ -27,7 +27,7 @@ export function GraphEdgeControls({
 					aria-pressed={visible[kind]}
 					title={`${visible[kind] ? "Hide" : "Show"} ${label.toLowerCase()} edges`}
 					className={cn(
-						"h-7 justify-start gap-2 rounded px-2 text-xs font-normal text-text-primary",
+						"justify-start gap-2 font-normal text-text-primary",
 						!visible[kind] && "opacity-50",
 					)}
 					onClick={() => onChange({ ...visible, [kind]: !visible[kind] })}
