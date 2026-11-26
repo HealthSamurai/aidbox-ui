@@ -19,10 +19,7 @@ import {
 import { useResourceCode } from "@aidbox-ui/components/Forms/editor/resource-code";
 import { ResourceEditorContent } from "@aidbox-ui/components/Forms/editor/resource-code-editor";
 import { FormPreviewDialog } from "@aidbox-ui/components/Forms/form-preview-dialog";
-import {
-	getAidboxApiURL,
-	getResourceEditorUrl,
-} from "@aidbox-ui/components/Forms/utils";
+import { getAidboxApiURL } from "@aidbox-ui/components/Forms/utils";
 import { SaveDiagnostics } from "@aidbox-ui/components/save-diagnostics";
 import {
 	UnsavedChangesDialog,
@@ -50,7 +47,7 @@ import {
 } from "@health-samurai/react-components";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Columns3Cog, SaveIcon, Trash2Icon } from "lucide-react";
+import { SaveIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { NavbarBreadcrumbSlot } from "./navbar-slot";
 import { PlanDefinitionAddQuestionnairesDialog } from "./plan-definition-add-questionnaires-dialog";
@@ -187,26 +184,6 @@ function problemPropertiesTab(path: string) {
 	if (path.includes(".condition.")) return "condition";
 	if (path.includes(".prefill.")) return "prefill";
 	return "settings";
-}
-
-function PlanDefinitionResourceLink({
-	planDefinition,
-}: {
-	planDefinition?: PlanDefinition;
-}) {
-	if (!planDefinition?.id) return null;
-
-	return (
-		<Button variant="ghost" size="small" className="px-0!" asChild>
-			<a
-				data-test-id="plan-definition-editor__open-resource-link"
-				href={getResourceEditorUrl("PlanDefinition", planDefinition.id)}
-			>
-				<Columns3Cog className="w-4 h-4" />
-				Open resource
-			</a>
-		</Button>
-	);
 }
 
 function PlanDefinitionEditor({
@@ -548,7 +525,6 @@ function PlanDefinitionEditor({
 					Delete
 				</Button>
 			)}
-			<PlanDefinitionResourceLink planDefinition={savedPlanDefinition} />
 		</>
 	);
 	const confirmDelete = () => {
