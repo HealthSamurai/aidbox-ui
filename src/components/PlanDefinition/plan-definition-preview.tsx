@@ -66,7 +66,7 @@ export function PreviewToolbar({
 				<IconButton
 					type="button"
 					variant="ghost"
-					className=" justify-self-start rounded-md  hover:bg-bg-brand-primary hover:text-text-brand-primary"
+					className="justify-self-start"
 					aria-label="Reset form state"
 					title="Reset form state"
 					data-test-id="plan-definition-preview__reset-button"
@@ -84,7 +84,7 @@ export function PreviewToolbar({
 						type="button"
 						variant="ghost"
 						className={cn(
-							" rounded-md  hover:bg-bg-brand-primary hover:text-text-brand-primary aria-pressed:bg-bg-brand-primary aria-pressed:text-text-brand-primary",
+							"aria-pressed:bg-bg-tertiary aria-pressed:text-text-primary",
 							id !== "auto" && "hidden @lg/preview-toolbar:flex",
 						)}
 						aria-label={label}

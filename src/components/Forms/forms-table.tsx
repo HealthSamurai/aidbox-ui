@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import type * as React from "react";
 import {
+	FORM_STATUS_OPTIONS,
 	type Form,
 	type FormPlanDefinition,
 	type FormQuestionnaire,
@@ -35,6 +36,7 @@ import { classicUiLink } from "./classic-ui-tab";
 import type { FormActions } from "./form-actions";
 import { formatHumanizedDate } from "./format";
 import { FormShareMenuItems } from "./share/form-share-menu-items";
+import { StatusBadge } from "./status-badge";
 
 /**
  * A row of the grid: a form or package of the page, a form inside an expanded
@@ -161,16 +163,13 @@ function rowForm(row: FormsGridRow): Form | undefined {
 
 function FormStatusTag({ status }: { status?: string }) {
 	if (!status) return null;
-	const color =
-		status === "active"
-			? "green"
-			: status === "draft" || status === "retired"
-				? "gray"
-				: "contrast";
+	const label =
+		FORM_STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+		status;
 	return (
-		<HSComp.Tag size="small" color={color} vibrance="subtle">
-			{status}
-		</HSComp.Tag>
+		<StatusBadge tone={status === "active" ? "green" : "gray"}>
+			{label}
+		</StatusBadge>
 	);
 }
 

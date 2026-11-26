@@ -1,70 +1,26 @@
-import { Tag } from "@health-samurai/react-components";
+import { StatusBadge, type StatusTone } from "../status-badge";
+
+const DELIVERY_STATUSES: Record<string, [string, StatusTone]> = {
+	sent: ["Sent", "green"],
+	queued: ["Queued", "yellow"],
+	cancelled: ["Canceled", "red"],
+	canceled: ["Canceled", "red"],
+	failed: ["Failed", "red"],
+};
 
 export function ResponseDeliveryStatusTag({
 	status,
 }: {
 	status?: string | null;
 }) {
-	if (!status) {
-		return null;
-	}
-
-	switch (status.toLowerCase()) {
-		case "sent":
-			return (
-				<Tag
-					data-test-id="response-delivery-status-tag"
-					color="green"
-					vibrance="subtle"
-					size="small"
-				>
-					Sent
-				</Tag>
-			);
-		case "queued":
-			return (
-				<Tag
-					data-test-id="response-delivery-status-tag"
-					color="yellow"
-					vibrance="subtle"
-					size="small"
-				>
-					Queued
-				</Tag>
-			);
-		case "cancelled":
-		case "canceled":
-			return (
-				<Tag
-					data-test-id="response-delivery-status-tag"
-					color="red"
-					vibrance="subtle"
-					size="small"
-				>
-					Canceled
-				</Tag>
-			);
-		case "failed":
-			return (
-				<Tag
-					data-test-id="response-delivery-status-tag"
-					color="red"
-					vibrance="subtle"
-					size="small"
-				>
-					Failed
-				</Tag>
-			);
-		default:
-			return (
-				<Tag
-					data-test-id="response-delivery-status-tag"
-					color="gray"
-					vibrance="subtle"
-					size="small"
-				>
-					{status}
-				</Tag>
-			);
-	}
+	if (!status) return null;
+	const [label, tone] = DELIVERY_STATUSES[status.toLowerCase()] ?? [
+		status,
+		"gray",
+	];
+	return (
+		<StatusBadge tone={tone} testId="response-delivery-status-tag">
+			{label}
+		</StatusBadge>
+	);
 }
