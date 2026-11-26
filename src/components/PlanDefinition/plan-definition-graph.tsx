@@ -12,9 +12,8 @@ import {
 	Panel,
 	ReactFlow,
 	ReactFlowProvider,
-	useReactFlow,
 } from "@xyflow/react";
-import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GraphEdgeControls } from "./plan-definition-graph-controls";
 import { graphEdgeTypes, ruleLabel } from "./plan-definition-graph-edges";
 import {
@@ -48,7 +47,6 @@ import type { PlanDefinitionActionDraft } from "./plan-definition-model";
 /** The package node sits 24px from the top; forms follow it. */
 const PACKAGE_TOP = 24;
 const FORMS_TOP = PACKAGE_TOP + GRAPH_PACKAGE_HEIGHT;
-const PAN_STEP = 48;
 /** React Flow turns off pointer events on nodes that are neither draggable nor
  * selectable; ours handle their own clicks. */
 const NODE_STYLE = { pointerEvents: "all" } as const;
@@ -150,7 +148,6 @@ function PlanDefinitionGraphFlow({
 	onDuplicate,
 	onDelete,
 }: PlanDefinitionGraphProps) {
-	const flow = useReactFlow<GraphNode, RuleEdge>();
 	const packageIssues = useOperationOutcomeIssues(
 		/^PlanDefinition(?:$|\.(?!action(?:\.|\[|$)))/,
 		{ severity: ["error", "fatal"] },
@@ -362,28 +359,6 @@ function PlanDefinitionGraphFlow({
 			);
 	};
 
-	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-		if (event.target !== event.currentTarget || sorting) return;
-		const { x, y, zoom } = flow.getViewport();
-		const pan = {
-			ArrowLeft: [PAN_STEP, 0],
-			ArrowRight: [-PAN_STEP, 0],
-			ArrowUp: [0, PAN_STEP],
-			ArrowDown: [0, -PAN_STEP],
-		}[event.key];
-		if (pan)
-			flow.setViewport({ x: x + (pan[0] ?? 0), y: y + (pan[1] ?? 0), zoom });
-		else if (event.key === "+" || event.key === "=")
-			flow.zoomTo(Math.min(GRAPH_MAX_ZOOM, zoom * 1.2));
-		else if (event.key === "-")
-			flow.zoomTo(Math.max(GRAPH_MIN_ZOOM, zoom / 1.2));
-		else if (event.key === "f" || event.key === "F")
-			flow.fitView({ padding: 0.1, maxZoom: 1 });
-		else if (event.key === "0") flow.zoomTo(1);
-		else return;
-		event.preventDefault();
-	};
-
 	const saved = viewState.viewport;
 	return (
 		<div
@@ -401,12 +376,7 @@ function PlanDefinitionGraphFlow({
 				</div>
 			)}
 			<div
-				className="relative min-h-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-brand"
-				role="application"
-				aria-label="Package graph"
-				aria-description="Drag empty space to pan. Scroll or pinch to zoom. Use arrow keys to pan, plus and minus to zoom, F to fit, and 0 to reset zoom."
-				tabIndex={0}
-				onKeyDown={onKeyDown}
+				className="relative min-h-0 flex-1"
 				data-test-id="plan-definition-graph__viewport"
 			>
 				<ReactFlow<GraphNode, RuleEdge>
